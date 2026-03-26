@@ -1,0 +1,54 @@
+name: Update Fund NAV Data
+
+on:
+  schedule:
+    # 11:00 UTC = 18:00 Vietnam (after market close), Mon-Fri
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-nav:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install vnstock
+        run: pip install vnstock
+
+      - name: Register vnstock API key
+        run: python -X utf8 -c "from vnstock import register_user; register_user(api_key='${{ secrets.VNSTOCK_API_KEY }}')"
+
+      - name: Update NAV data
+        run: node scripts/update_nav.mjs
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/
+          git commit -m "Update fund NAV data $(date -u +%Y-%m-%d)"
+          git push
