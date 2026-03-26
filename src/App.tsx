@@ -8,6 +8,7 @@ import { DrawdownChart } from './components/DrawdownChart'
 import { YearlyPerformanceChart } from './components/YearlyPerformanceChart'
 import { RollingReturnChart } from './components/RollingReturnChart'
 import { SimulationPanel } from './components/SimulationPanel'
+import { DCAPanel } from './components/DCAPanel'
 import { DateRangePicker } from './components/DateRangePicker'
 import { FUND_COLORS } from './constants'
 import type { ChartSeries } from './types'
@@ -101,10 +102,9 @@ export function App() {
         </button>
         <button
           className={`tab ${state.tab === 'dca' ? 'tab-active' : ''}`}
-          disabled
-          title="Sắp ra mắt"
+          onClick={() => updateState({ tab: 'dca' })}
         >
-          DCA (Sắp ra mắt)
+          DCA
         </button>
       </div>
 
@@ -158,6 +158,11 @@ export function App() {
       {/* Simulate Tab — always mounted, hidden via CSS when inactive */}
       <div style={{ display: state.tab === 'simulate' ? undefined : 'none' }}>
         <SimulationPanel funds={metadata} />
+      </div>
+
+      {/* DCA Tab */}
+      <div style={{ display: state.tab === 'dca' ? undefined : 'none' }}>
+        <DCAPanel funds={metadata} />
       </div>
 
       <footer className="app-footer">
