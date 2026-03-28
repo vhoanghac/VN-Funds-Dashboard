@@ -120,10 +120,11 @@ export function SimulationPanel({ funds }: Props) {
   function addPortfolio() {
     if (portfolios.length >= MAX_PORTFOLIOS) return
     const num = nextIdRef.current++
+    const defaultFundId = funds[0]?.id || ''
     const portfolio: Portfolio = {
       id: `p${num}`,
-      name: `Danh mục ${num}`,
-      slots: [{ fundId: funds[0]?.id || '', weight: 100 }],
+      name: defaultFundId || `Danh mục ${num}`,
+      slots: [{ fundId: defaultFundId, weight: 100 }],
       rebalFreq: 'quarterly',
     }
     setPortfolios([...portfolios, portfolio])
@@ -149,14 +150,18 @@ export function SimulationPanel({ funds }: Props) {
   function removeSlot(portfolioId: string, index: number) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId || p.slots.length <= 1) return p
-      return { ...p, slots: p.slots.filter((_, i) => i !== index) }
+      const newSlots = p.slots.filter((_, i) => i !== index)
+      const name = newSlots.length === 1 && newSlots[0]!.fundId ? newSlots[0]!.fundId : p.name
+      return { ...p, name, slots: newSlots }
     }))
   }
 
   function updateSlot(portfolioId: string, index: number, update: Partial<FundSlot>) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId) return p
-      return { ...p, slots: p.slots.map((s, i) => i === index ? { ...s, ...update } : s) }
+      const newSlots = p.slots.map((s, i) => i === index ? { ...s, ...update } : s)
+      const name = newSlots.length === 1 && update.fundId ? update.fundId : p.name
+      return { ...p, name, slots: newSlots }
     }))
   }
 
