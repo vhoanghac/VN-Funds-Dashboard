@@ -2,20 +2,12 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import Select from 'react-select'
 import type {
   ReturnPoint, RebalanceFrequency, FundMeta, PricePoint,
-  ChartSeries, KPIData, YearlyReturn,
 } from '../types'
-import { simulateDCA, type DCAFrequency, type DCASlot } from '../utils/dca'
-import {
-  cagr, maxDrawdown,
-  drawdownSeries, yearlyReturns, rollingReturns, rollingAverage,
-  winRateAmong,
-} from '../utils/calculations'
+import { simulateDCA, dcaMWRR, type DCAFrequency, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
-import { KPICards } from './KPICards'
-import { CumulativeReturnChart } from './CumulativeReturnChart'
-import { DrawdownChart } from './DrawdownChart'
-import { YearlyPerformanceChart } from './YearlyPerformanceChart'
-import { RollingReturnChart } from './RollingReturnChart'
+import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
+import { PortfolioValueChart } from './PortfolioValueChart'
+import { DCAGlossary } from './DCAGlossary'
 
 interface Props {
   funds: FundMeta[]
@@ -35,12 +27,9 @@ interface DCAPortfolioResult {
   name: string
   color: string
   cumulative: ReturnPoint[]
-  drawdown: ReturnPoint[]
-  yearly: YearlyReturn[]
-  rolling: ReturnPoint[]
-  kpi: KPIData
   totalInvested: number
   finalValue: number
+  mwrr: number | null
   investedSeries: { date: string; value: number }[]
   valueSeries: { date: string; value: number }[]
 }
@@ -81,8 +70,6 @@ export function DCAPanel({ funds }: Props) {
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>([])
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
-  const [rollingPeriod, setRollingPeriod] = useState(12)
-
   // Snapshot at run time
   const [committed, setCommitted] = useState<{
     portfolios: DCAPortfolioState[]
@@ -107,7 +94,8 @@ export function DCAPanel({ funds }: Props) {
     return ids
   }, [portfolios])
 
-  // Fetch DAILY CSV data (not weekly — DCA needs daily precision)
+  // Fetch CSV data, resample to weekly (end-of-week price)
+  // Matches Compare/Simulate tabs so all tabs use the same date grid
   useEffect(() => {
     let cancelled = false
     const toFetch = Array.from(neededIds).filter(id => !fundData.has(id))
@@ -120,7 +108,10 @@ export function DCAPanel({ funds }: Props) {
         if (!resp.ok) return null
         const text = await resp.text()
         const daily = parseCSV(text)
-        return { id, daily }
+        // Resample to weekly (last trading day of each ISO week)
+        // Same as Compare/Simulate tabs — unifies date grid across all tabs
+        const weekly = resampleToWeekly(daily)
+        return { id, daily: weekly }
       }),
     ).then(results => {
       if (cancelled) return
@@ -266,20 +257,31 @@ export function DCAPanel({ funds }: Props) {
     if (committed.dateFrom && committed.dateFrom > globalStart) globalStart = committed.dateFrom
     if (committed.dateTo && committed.dateTo < globalEnd) globalEnd = committed.dateTo
 
-    // ── Step 2: Run DCA for each portfolio with aligned dates ──
+    // ── Step 2: Collect & align ALL fund prices to a common weekly grid ──
+    // Different funds may have different "last trading days" within the same
+    // ISO week. Aligning ensures all portfolios share the same date points
+    // so chart lines overlap correctly.
+    const allFilteredPrices = new Map<string, PricePoint[]>()
+    for (const fundId of allFundIds) {
+      const prices = fundData.get(fundId)
+      if (!prices) return null
+      allFilteredPrices.set(fundId, prices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
+    }
+    const alignedPrices = alignFundsToCommonGrid(allFilteredPrices)
+
+    // ── Step 3: Run DCA for each portfolio with aligned dates ──
     const portfolioResults: DCAPortfolioResult[] = []
 
     for (let pIdx = 0; pIdx < committed.portfolios.length; pIdx++) {
       const p = committed.portfolios[pIdx]!
       const color = PORTFOLIO_COLORS[pIdx % PORTFOLIO_COLORS.length]!
 
-      // Filter daily prices to the GLOBAL common range
+      // Pick this portfolio's fund prices from the aligned grid
       const filteredPrices = new Map<string, PricePoint[]>()
       for (const slot of p.slots) {
-        const prices = fundData.get(slot.fundId)
+        const prices = alignedPrices.get(slot.fundId)
         if (!prices) return null
-        const filtered = prices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd)
-        filteredPrices.set(slot.fundId, filtered)
+        filteredPrices.set(slot.fundId, prices)
       }
 
       const dcaResult = simulateDCA(
@@ -292,70 +294,28 @@ export function DCAPanel({ funds }: Props) {
       if (dcaResult.cumulative.length === 0) {
         portfolioResults.push({
           id: p.id, name: p.name, color,
-          cumulative: [], drawdown: [], yearly: [], rolling: [],
-          kpi: { cagr: null, maxDrawdown: null, rollingAvg12M: null, winRate: null },
-          totalInvested: 0, finalValue: 0,
+          cumulative: [],
+          totalInvested: 0, finalValue: 0, mwrr: null,
           investedSeries: [], valueSeries: [],
         })
         continue
       }
 
-      const dd = drawdownSeries(dcaResult.returns)
-      const yr = yearlyReturns(dcaResult.returns)
-      const roll = rollingReturns(dcaResult.returns, rollingPeriod)
-
       portfolioResults.push({
         id: p.id, name: p.name, color,
         cumulative: dcaResult.cumulative,
-        drawdown: dd,
-        yearly: yr,
-        rolling: roll,
-        kpi: {
-          cagr: cagr(dcaResult.returns),
-          maxDrawdown: maxDrawdown(dcaResult.returns),
-          rollingAvg12M: rollingAverage(rollingReturns(dcaResult.returns, 12)),
-          winRate: null,
-        },
         totalInvested: dcaResult.totalInvested,
         finalValue: dcaResult.finalValue,
+        mwrr: dcaMWRR(dcaResult.cashflows),
         investedSeries: dcaResult.invested,
         valueSeries: dcaResult.values,
       })
     }
 
-    // Compute win rates
-    const allYearly = portfolioResults.map(r => r.yearly)
-    for (let i = 0; i < portfolioResults.length; i++) {
-      if (portfolioResults[i]!.cumulative.length > 0) {
-        portfolioResults[i]!.kpi.winRate = winRateAmong(allYearly, i)
-      }
-    }
-
     return portfolioResults
-  }, [committed, fundData, rollingPeriod])
+  }, [committed, fundData])
 
-  // ── Build chart series ──
   const validResults = results?.filter(r => r.cumulative.length > 0) ?? []
-
-  const cumulativeSeries: ChartSeries[] = validResults.map(r => ({
-    name: r.name, color: r.color, data: r.cumulative,
-  }))
-
-  const ddSeries: ChartSeries[] = validResults.map(r => ({
-    name: r.name, color: r.color, data: r.drawdown,
-  }))
-
-  const rollSeries: ChartSeries[] = validResults.map(r => ({
-    name: r.name, color: r.color, data: r.rolling,
-  }))
-
-  const yearlySeries = validResults.map(r => ({
-    name: r.name, color: r.color, data: r.yearly,
-  }))
-
-  const kpiFunds = validResults.map(r => ({
-    name: r.name, color: r.color, kpi: r.kpi,
-  }))
 
   const startDate = validResults.length > 0
     ? validResults[0]!.cumulative[0]?.date : undefined
@@ -481,6 +441,10 @@ export function DCAPanel({ funds }: Props) {
             ))}
           </select>
         </div>
+
+        <p className="dca-note">
+          * Thời gian đầu, các quỹ cập nhật thông tin giá vào các ngày khác nhau. Trong trường hợp này, hệ thống sẽ tự chọn giá vào ngày giao dịch cuối cùng trong tuần.
+        </p>
       </div>
 
       {/* ── Portfolio Cards ── */}
@@ -625,41 +589,75 @@ export function DCAPanel({ funds }: Props) {
 
           {/* DCA Summary Cards */}
           <div className="dca-summary-grid">
-            {validResults.map(r => (
-              <div key={r.id} className="dca-summary-card" style={{ borderLeftColor: r.color }}>
-                <div className="dca-summary-name">{r.name}</div>
-                <div className="dca-summary-row">
-                  <span>Tổng đầu tư</span>
-                  <span className="dca-summary-value">{formatVND(r.totalInvested)}</span>
+            {validResults.map(r => {
+              // CAGR of investor: (finalValue / totalInvested)^(1/years) - 1
+              // Uses actual calendar years from first to last DCA date
+              const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+              const dcaYears = r.cumulative.length >= 2
+                ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
+                   new Date(r.cumulative[0]!.date).getTime()) / msPerYear
+                : null
+              const investorCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
+                ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
+                : null
+
+              return (
+                <div key={r.id} className="dca-summary-card" style={{ borderLeftColor: r.color }}>
+                  <div className="dca-summary-name">{r.name}</div>
+                  <div className="dca-summary-row">
+                    <span>Giá trị cuối kỳ
+                      <span className="dca-info-icon" title="Ending Value — giá trị danh mục tại thời điểm cuối kỳ backtest.">?</span>
+                    </span>
+                    <span className="dca-summary-value">{formatVND(Math.round(r.finalValue))}</span>
+                  </div>
+                  <div className="dca-summary-row">
+                    <span>Tổng đầu tư
+                      <span className="dca-info-icon" title="Total Contributions — tổng số tiền đã nạp vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
+                    </span>
+                    <span className="dca-summary-value">{formatVND(r.totalInvested)}</span>
+                  </div>
+                  <div className="dca-summary-separator" />
+                  <div className="dca-summary-row">
+                    <span>Lợi nhuận tích lũy
+                      <span className="dca-info-icon" title="Lợi nhuận tích lũy trong kỳ backtest (giá trị cuối kỳ ÷ tổng đầu tư − 1).">?</span>
+                    </span>
+                    <span className={`dca-summary-value ${r.finalValue >= r.totalInvested ? 'dca-profit' : 'dca-loss'}`}>
+                      {r.totalInvested > 0
+                        ? ((r.finalValue / r.totalInvested - 1) * 100).toFixed(2) + '%'
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="dca-summary-row">
+                    <span>CAGR
+                      <span className="dca-info-icon" title="Lợi nhuận tích lũy quy năm: (Giá trị cuối ÷ Tổng đầu tư)^(1/số năm) − 1. Cho biết nếu danh mục tăng đều mỗi năm thì mỗi năm lãi bao nhiêu %. Lưu ý: chỉ số này thường thấp hơn MWRR trong DCA vì giả định toàn bộ vốn đã hoạt động từ đầu.">?</span>
+                    </span>
+                    <span className={`dca-summary-value ${(investorCagr ?? 0) >= 0 ? 'dca-profit' : 'dca-loss'}`}>
+                      {investorCagr !== null ? (investorCagr * 100).toFixed(2) + '%' : '—'}
+                    </span>
+                  </div>
+                  <div className="dca-summary-row">
+                    <span>MWRR
+                      <span className="dca-info-icon" title="Money-Weighted Rate of Return — lợi nhuận thực tế của nhà đầu tư, tính đến thời điểm và số tiền từng lần nạp (IRR). Chỉ số chính để đánh giá hiệu quả chiến lược DCA. Thường cao hơn CAGR vì nhận ra rằng phần lớn vốn DCA chỉ hoạt động trong thời gian ngắn hơn toàn kỳ.">?</span>
+                    </span>
+                    <span className={`dca-summary-value ${(r.mwrr ?? 0) >= 0 ? 'dca-profit' : 'dca-loss'}`}>
+                      {r.mwrr !== null ? (r.mwrr * 100).toFixed(2) + '%' : '—'}
+                    </span>
+                  </div>
                 </div>
-                <div className="dca-summary-row">
-                  <span>Giá trị hiện tại</span>
-                  <span className="dca-summary-value">{formatVND(Math.round(r.finalValue))}</span>
-                </div>
-                <div className="dca-summary-row">
-                  <span>Lợi nhuận</span>
-                  <span className={`dca-summary-value ${r.finalValue >= r.totalInvested ? 'dca-profit' : 'dca-loss'}`}>
-                    {r.totalInvested > 0
-                      ? ((r.finalValue / r.totalInvested - 1) * 100).toFixed(2) + '%'
-                      : '—'}
-                  </span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* KPI Cards */}
-          <KPICards funds={kpiFunds} />
-
-          {/* Charts */}
-          <CumulativeReturnChart series={cumulativeSeries} />
-          <DrawdownChart series={ddSeries} />
-          <YearlyPerformanceChart series={yearlySeries} />
-          <RollingReturnChart
-            series={rollSeries}
-            period={rollingPeriod}
-            onPeriodChange={setRollingPeriod}
+          {/* Portfolio Value Chart (MWRR) */}
+          <PortfolioValueChart
+            portfolios={validResults.map(r => ({
+              name: r.name,
+              color: r.color,
+              values: r.valueSeries,
+              invested: r.investedSeries,
+            }))}
           />
+
         </>
       )}
 
@@ -668,6 +666,9 @@ export function DCAPanel({ funds }: Props) {
           Bấm "Thêm Danh Mục" để bắt đầu mô phỏng DCA.
         </div>
       )}
+
+      {/* Giải Thích Khái Niệm */}
+      <DCAGlossary />
     </div>
   )
 }

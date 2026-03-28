@@ -63,11 +63,13 @@ export function cumulativeReturns(returns: ReturnPoint[]): ReturnPoint[] {
 // ─── CAGR ───────────────────────────────────────────────────
 
 /**
- * Annualized return (CAGR) using geometric annualization.
- * Matches R: Return.annualized(scale = 52) for weekly data.
+ * Annualized return (CAGR) using actual calendar time.
  *
- * Formula: (cumprod(1 + r))^(52/n) - 1
- * where n = number of weekly return observations.
+ * Formula: (cumprod(1 + r))^(1/years) - 1
+ * where years = actual elapsed time from first to last data point.
+ *
+ * This is more accurate than the old 52/n approach which assumed
+ * exactly 52 data points per year.
  */
 export function cagr(returns: ReturnPoint[]): number | null {
   if (returns.length === 0) return null
@@ -77,8 +79,14 @@ export function cagr(returns: ReturnPoint[]): number | null {
     growth *= 1 + r.value
   }
 
-  const n = returns.length
-  return Math.pow(growth, WEEKS_PER_YEAR / n) - 1
+  // Use actual calendar time for annualization
+  const startDate = new Date(returns[0]!.date)
+  const endDate = new Date(returns[returns.length - 1]!.date)
+  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+  const years = (endDate.getTime() - startDate.getTime()) / msPerYear
+
+  if (years <= 0) return null
+  return Math.pow(growth, 1 / years) - 1
 }
 
 // ─── Max Drawdown ───────────────────────────────────────────

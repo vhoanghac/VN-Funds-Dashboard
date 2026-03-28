@@ -8,6 +8,7 @@ interface FundKPI {
 
 interface Props {
   funds: FundKPI[]
+  dcaMode?: boolean
 }
 
 const TOOLTIPS: Record<string, string | undefined> = {
@@ -17,12 +18,21 @@ const TOOLTIPS: Record<string, string | undefined> = {
   winRate: 'Tỷ lệ thắng — phần trăm số năm đầy đủ mà quỹ có lợi nhuận cao nhất trong nhóm so sánh.',
 }
 
-export function KPICards({ funds }: Props) {
+const DCA_TOOLTIPS: Record<string, string | undefined> = {
+  cagr: 'CAGR (TWRR) — tốc độ tăng trưởng trung bình mỗi năm của quỹ, bỏ qua dòng tiền DCA. Đây là hiệu suất thuần của quỹ, không phải lợi nhuận thực tế trên tiền bạn đầu tư.',
+  maxDrawdown: 'Mức sụt giảm tối đa (TWRR) — mức giảm lớn nhất tính từ đỉnh dựa trên hiệu suất thuần của quỹ.',
+  rollingAvg: 'TB Rolling 12T (TWRR) — hiệu suất trung bình quy năm nếu giữ quỹ bất kỳ 12 tháng liên tục nào, bỏ qua dòng tiền DCA.',
+  winRate: 'Tỷ lệ thắng — phần trăm số năm đầy đủ mà quỹ có lợi nhuận cao nhất trong nhóm so sánh.',
+}
+
+export function KPICards({ funds, dcaMode }: Props) {
+  const tips = dcaMode ? DCA_TOOLTIPS : TOOLTIPS
+
   return (
     <div className="kpi-grid">
       <KPICard
-        title="CAGR"
-        tooltip={TOOLTIPS.cagr}
+        title={dcaMode ? 'CAGR (TWRR)' : 'CAGR'}
+        tooltip={tips.cagr}
         funds={funds}
         getValue={f => f.kpi.cagr}
         format={formatPercent}
@@ -30,7 +40,7 @@ export function KPICards({ funds }: Props) {
       />
       <KPICard
         title="Sụt giảm tối đa"
-        tooltip={TOOLTIPS.maxDrawdown}
+        tooltip={tips.maxDrawdown}
         funds={funds}
         getValue={f => f.kpi.maxDrawdown}
         format={formatPercent}
@@ -38,7 +48,7 @@ export function KPICards({ funds }: Props) {
       />
       <KPICard
         title="TB Rolling 12T"
-        tooltip={TOOLTIPS.rollingAvg}
+        tooltip={tips.rollingAvg}
         funds={funds}
         getValue={f => f.kpi.rollingAvg12M}
         format={formatPercent}
@@ -46,7 +56,7 @@ export function KPICards({ funds }: Props) {
       />
       <KPICard
         title="Tỷ lệ thắng (năm)"
-        tooltip={TOOLTIPS.winRate}
+        tooltip={tips.winRate}
         funds={funds}
         getValue={f => f.kpi.winRate}
         format={formatPercent}

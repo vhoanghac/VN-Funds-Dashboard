@@ -167,6 +167,7 @@ export function App() {
 
       <footer className="app-footer">
         <p>Dữ liệu từ fmarket.vn & vnstock. Cập nhật hàng ngày.</p>
+        <p>Blog: <a href="https://vohoanghac.com" target="_blank" rel="noopener noreferrer">vohoanghac.com</a></p>
       </footer>
     </div>
   )

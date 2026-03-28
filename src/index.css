@@ -889,6 +889,14 @@ body {
   min-width: 140px;
 }
 
+.dca-note {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
 /* DCA Summary Cards */
 .dca-summary-grid {
   display: grid;
@@ -931,6 +939,154 @@ body {
 
 .dca-loss {
   color: #DC2626;
+}
+
+.dca-summary-separator {
+  border-top: 1px solid #e5e7eb;
+  margin: 6px 0;
+}
+
+.dca-info-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 10px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+  margin-left: 4px;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.dca-twrr-note {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #1e40af;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* ─── DCA Glossary ────────────── */
+.dca-glossary {
+  margin-top: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dca-glossary-toggle {
+  width: 100%;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dca-glossary-toggle:hover {
+  background: #f1f5f9;
+}
+
+.dca-glossary-content {
+  padding: 20px 24px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #334155;
+}
+
+.dca-glossary-content h3 {
+  font-size: 1.05rem;
+  color: #0f172a;
+  margin: 24px 0 8px;
+}
+
+.dca-glossary-content h3:first-child {
+  margin-top: 0;
+}
+
+.dca-glossary-content h4 {
+  font-size: 0.95rem;
+  color: #1e293b;
+  margin: 18px 0 6px;
+}
+
+.dca-glossary-content p {
+  margin: 6px 0;
+}
+
+.dca-glossary-content ul {
+  margin: 6px 0 12px 20px;
+  padding: 0;
+}
+
+.dca-glossary-content li {
+  margin-bottom: 4px;
+}
+
+.dca-glossary-formula {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.92rem;
+  color: #1e40af;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.dca-glossary-note {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  padding: 10px 14px;
+  margin: 14px 0;
+  font-size: 0.85rem;
+  color: #92400e;
+  border-radius: 0 6px 6px 0;
+}
+
+.dca-glossary-divider {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 24px 0;
+}
+
+.dca-glossary-table-wrap {
+  overflow-x: auto;
+  margin: 10px 0 16px;
+}
+
+.dca-glossary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.dca-glossary-table th,
+.dca-glossary-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.dca-glossary-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dca-glossary-table td {
+  color: #475569;
 }
 
 /* ─── Responsive: Tablet (≤768px) ────────────── */

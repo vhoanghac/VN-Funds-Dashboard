@@ -30,7 +30,61 @@ export function resampleToWeekly(daily: PricePoint[]): WeeklyPrice[] {
 /**
  * Returns "YYYY-WNN" key for ISO week grouping.
  */
-function getISOWeekKey(dateStr: string): string {
+/**
+ * Align multiple funds' weekly prices to a common date grid.
+ *
+ * Different funds may have different "last trading days" within the same
+ * ISO week (e.g., Fund A trades until Thursday, Fund B until Friday).
+ * This causes chart lines to misalign because they have different x-values.
+ *
+ * Fix: for each ISO week, pick ONE representative date (the latest across
+ * all funds), and remap every fund's price to that common date.
+ */
+export function alignFundsToCommonGrid(
+  fundPrices: Map<string, PricePoint[]>,
+): Map<string, PricePoint[]> {
+  if (fundPrices.size <= 1) return fundPrices
+
+  // Step 1: For each ISO week, find the latest date across all funds
+  const weekToCommonDate = new Map<string, string>()
+  for (const prices of fundPrices.values()) {
+    for (const p of prices) {
+      const wk = getISOWeekKey(p.date)
+      const existing = weekToCommonDate.get(wk)
+      if (!existing || p.date > existing) {
+        weekToCommonDate.set(wk, p.date)
+      }
+    }
+  }
+
+  // Step 2: Sort weeks by their common date
+  const sortedWeeks = Array.from(weekToCommonDate.entries())
+    .sort((a, b) => a[1].localeCompare(b[1]))
+
+  // Step 3: Remap each fund's prices to the common dates
+  const result = new Map<string, PricePoint[]>()
+  for (const [fundId, prices] of fundPrices) {
+    // Build ISO week → price for this fund
+    const weekPrice = new Map<string, number>()
+    for (const p of prices) {
+      weekPrice.set(getISOWeekKey(p.date), p.price)
+    }
+
+    const aligned: PricePoint[] = []
+    for (const [wk, commonDate] of sortedWeeks) {
+      const price = weekPrice.get(wk)
+      if (price !== undefined) {
+        aligned.push({ date: commonDate, price })
+      }
+    }
+
+    result.set(fundId, aligned)
+  }
+
+  return result
+}
+
+export function getISOWeekKey(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00')
   const year = date.getFullYear()
 
