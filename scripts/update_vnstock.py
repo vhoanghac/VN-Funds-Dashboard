@@ -112,10 +112,15 @@ def update_etf(symbol):
 def main():
     print(f'\n🚀 vnstock Updater — {datetime.now().strftime("%Y-%m-%d %H:%M")}\n')
 
-    # Register API key
+    # Register API key (from environment variable)
     from vnstock import register_user
+    api_key = os.environ.get('VNSTOCK_API_KEY')
+    if not api_key:
+        print('❌ VNSTOCK_API_KEY environment variable not set!')
+        print('   Set it with: export VNSTOCK_API_KEY=your_key_here')
+        return
     print('🔑 Registering vnstock API key...')
-    register_user(api_key='***REMOVED***')
+    register_user(api_key=api_key)
     print()
 
     # ── 1. ETFs ──
