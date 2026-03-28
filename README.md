@@ -1,10 +1,10 @@
 # So Sánh Quỹ Đầu Tư Việt Nam
 
-Chào mọi người. 
+Chào mọi người.
 
 Mình ấp ủ ước mơ làm một cái dashboard để so sánh quỹ mở cổ phiếu với ETF tại Việt Nam từ lâu. Ban đầu code bằng R nhưng dashboard lại chạy rất chậm, tính toán lại lâu, không phù hợp để làm những chuyện này. Mà bản thân cũng không thể học code nên đành gác lại mọi thứ.
 
-Nay nhờ sự giúp đỡ của Claude Code thì ước mơ này đã thành hiện thực. 
+Nay nhờ sự giúp đỡ của Claude Code thì ước mơ này đã thành hiện thực.
 
 Dashboard so sánh hiệu suất các quỹ đầu tư và ETF tại Việt Nam. Dữ liệu cập nhật tự động hàng ngày.
 
@@ -37,30 +37,30 @@ Dashboard so sánh hiệu suất các quỹ đầu tư và ETF tại Việt Nam.
 | DCDE | Dragon Capital | 2014 |
 | ENF | Eastspring | 2014 |
 | MBVF | MB Capital | 2014 |
-| VEOF | VFM | 2014 |
+| VEOF | VinaCapital | 2014 |
 | VCBFBCF | Vietcombank | 2014 |
 | SSISCA | SSI | 2014 |
-| E1VFVN30 | ETF VN30 | 2014 |
-| MAFEQI | Mirae Asset | 2014 |
+| E1VFVN30 | Dragon Capital | 2014 |
+| MAFEQI | Manulife | 2014 |
 | BVPF | BaoViet Fund | 2017 |
 | VESAF | VinaCapital | 2017 |
 | VNDAF | VNDirect | 2018 |
 | DCAF | Dragon Capital | 2019 |
 | MAGEF | Mirae Asset | 2019 |
-| FUEVFVND | ETF VNDiamond | 2020 |
+| FUEVFVND | Dragon Capital | 2020 |
 | VCBFMGF | Vietcombank | 2021 |
-| TBLF | Thinh Binh Long | 2021 |
+| TBLF | SGI Capital | 2021 |
 | VLGF | SSI | 2021 |
 | NTPPF | NTP Capital | 2022 |
-| FUEDCMID | ETF DC MidCap | 2022 |
+| FUEDCMID | Dragon Capital | 2022 |
 | PHVSF | Phu Hung | 2022 |
 | UVEEF | UOB Vietnam | 2022 |
-| BMFF | Bordier MB | 2023 |
+| BMFF | Bordier MB Capital | 2023 |
 | VMEEF | VietinBank | 2023 |
-| VCAMDF | VCA Capital | 2024 |
-| LHCDF | Lien Hiep Capital | 2024 |
-| VDEF | VFM Dividend | 2024 |
-| TCGF | Techcom Capital | 2024 |
+| VCAMDF | VCAM | 2024 |
+| LHCDF | Lighthouse Capital | 2024 |
+| VDEF | VinaCapital | 2024 |
+| TCGF | TCAM | 2024 |
 | EVESG | Eastspring ESG | 2024 |
 
 ### Nguồn dữ liệu
