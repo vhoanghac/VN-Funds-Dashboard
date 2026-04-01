@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react'
 import type { DashboardState } from '../types'
 import { DEFAULT_FUNDS } from '../constants'
 
-const VALID_TABS = ['compare', 'simulate', 'dca'] as const
+const VALID_TABS = ['compare', 'simulate', 'dca', 'changelog'] as const
 const VALID_PERIODS = [6, 12, 24, 36, 48]
 
 /**

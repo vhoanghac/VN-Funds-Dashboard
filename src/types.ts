@@ -20,7 +20,7 @@ export interface ReturnPoint {
 export interface FundMeta {
   id: string
   name_vi: string
-  type: 'mutual_fund' | 'etf'
+  type: 'mutual_fund' | 'bond' | 'balanced' | 'etf'
   start_date: string
   csv_file: string
 }
@@ -53,7 +53,7 @@ export type RebalanceFrequency = 'monthly' | 'quarterly' | 'yearly'
 /** URL state for the dashboard */
 export interface DashboardState {
   funds: string[] // selected fund IDs for comparison
-  tab: 'compare' | 'simulate' | 'dca'
+  tab: 'compare' | 'simulate' | 'dca' | 'changelog'
   rollingPeriod: number // months: 6, 12, 24, 36, 48
   dateFrom: string | null
   dateTo: string | null

@@ -1,0 +1,69 @@
+const ENTRIES = [
+  {
+    version: 'v2.2',
+    date: '01/04/2026',
+    items: [
+      'Thêm 24 quỹ mới: 19 quỹ trái phiếu và 5 quỹ cân bằng từ fmarket.vn',
+      'Nâng tổng số quỹ từ 30 → 54 (27 cổ phiếu + 19 trái phiếu + 5 cân bằng + 3 ETF)',
+    ],
+  },
+  {
+    version: 'v2.1',
+    date: '03/2026',
+    items: [
+      'Tab DCA: tự động đặt tên danh mục theo mã quỹ khi chỉ chọn 1 quỹ',
+      'Sửa lỗi căn chỉnh ngày (date alignment) khi so sánh nhiều danh mục trong DCA',
+    ],
+  },
+  {
+    version: 'v2.0',
+    date: '03/2026',
+    items: [
+      'Thêm tab Tích Lũy Định Kỳ (DCA): mô phỏng đầu tư định kỳ với nhiều danh mục, rebalance tự động, biểu đồ giá trị danh mục và chỉ số MWRR',
+    ],
+  },
+  {
+    version: 'v1.2',
+    date: '03/2026',
+    items: [
+      'Thêm CSS responsive cho màn hình tablet và điện thoại',
+    ],
+  },
+  {
+    version: 'v1.1',
+    date: '03/2026',
+    items: [
+      'Thêm GitHub Actions: tự động cập nhật NAV hàng ngày lúc 18:00 (giờ VN), thứ 2–6',
+    ],
+  },
+  {
+    version: 'v1.0',
+    date: '03/2026',
+    items: [
+      'Ra mắt dashboard: So sánh quỹ, Mô Phỏng danh mục, biểu đồ CAGR/Drawdown/Rolling Returns',
+    ],
+  },
+]
+
+export function ChangelogPanel() {
+  return (
+    <div className="changelog-panel">
+      <h2>Changelog</h2>
+      <div className="changelog-list">
+        {ENTRIES.map(entry => (
+          <div key={entry.version} className="changelog-entry">
+            <div className="changelog-header">
+              <span className="changelog-version">{entry.version}</span>
+              <span className="changelog-date">{entry.date}</span>
+            </div>
+            <ul className="changelog-items">
+              {entry.items.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

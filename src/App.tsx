@@ -9,6 +9,7 @@ import { YearlyPerformanceChart } from './components/YearlyPerformanceChart'
 import { RollingReturnChart } from './components/RollingReturnChart'
 import { SimulationPanel } from './components/SimulationPanel'
 import { DCAPanel } from './components/DCAPanel'
+import { ChangelogPanel } from './components/ChangelogPanel'
 import { DateRangePicker } from './components/DateRangePicker'
 import { FUND_COLORS } from './constants'
 import type { ChartSeries } from './types'
@@ -106,6 +107,12 @@ export function App() {
         >
           DCA
         </button>
+        <button
+          className={`tab ${state.tab === 'changelog' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'changelog' })}
+        >
+          Changelog
+        </button>
       </div>
 
       {/* Compare Tab — hidden via CSS when inactive to preserve state */}
@@ -164,6 +171,9 @@ export function App() {
       <div style={{ display: state.tab === 'dca' ? undefined : 'none' }}>
         <DCAPanel funds={metadata} />
       </div>
+
+      {/* Changelog Tab */}
+      {state.tab === 'changelog' && <ChangelogPanel />}
 
       <footer className="app-footer">
         <p>Dữ liệu từ fmarket.vn & vnstock. Cập nhật hàng ngày.</p>

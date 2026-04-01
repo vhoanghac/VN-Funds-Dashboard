@@ -77,6 +77,37 @@ body {
   color: #991b1b;
 }
 
+/* ─── Fund Category Filter ────────────────────── */
+.fund-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.category-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.category-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.category-btn-active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
 /* ─── Fund Selector ───────────────────────────── */
 .fund-selector {
   background: var(--color-surface);
@@ -726,6 +757,63 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* ─── Changelog ───────────────────────────────── */
+.changelog-panel {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.changelog-panel h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: var(--color-text);
+}
+
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.changelog-entry {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 16px;
+}
+
+.changelog-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.changelog-version {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+
+.changelog-date {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.changelog-items {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.changelog-items li {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  line-height: 1.5;
 }
 
 /* ─── Footer ──────────────────────────────────── */

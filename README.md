@@ -6,7 +6,7 @@ Mình ấp ủ ước mơ làm một cái dashboard để so sánh quỹ mở c�
 
 Nay nhờ sự giúp đỡ của Claude Code thì ước mơ này đã thành hiện thực.
 
-Dashboard so sánh hiệu suất các quỹ đầu tư và ETF tại Việt Nam. Dữ liệu cập nhật tự động hàng ngày.
+Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái phiếu, cân bằng) và ETF tại Việt Nam. Dữ liệu cập nhật tự động hàng ngày.
 
 **Demo:** [vn-funds-dashboard.vercel.app](https://vn-funds-dashboard.vercel.app)
 
@@ -28,7 +28,9 @@ Dashboard so sánh hiệu suất các quỹ đầu tư và ETF tại Việt Nam.
 
 ## Dữ liệu
 
-**30 quỹ** (27 quỹ mở + 3 ETF), dữ liệu NAV lịch sử từ 2004.
+**54 quỹ** (27 cổ phiếu + 19 trái phiếu + 5 cân bằng + 3 ETF), dữ liệu NAV lịch sử từ 2004.
+
+### Quỹ cổ phiếu (27)
 
 | Mã quỹ | Quản lý | Từ ngày |
 |---------|---------|---------|
@@ -40,28 +42,67 @@ Dashboard so sánh hiệu suất các quỹ đầu tư và ETF tại Việt Nam.
 | VEOF | VinaCapital | 2014 |
 | VCBFBCF | Vietcombank | 2014 |
 | SSISCA | SSI | 2014 |
-| E1VFVN30 | Dragon Capital | 2014 |
 | MAFEQI | Manulife | 2014 |
 | BVPF | BaoViet Fund | 2017 |
 | VESAF | VinaCapital | 2017 |
 | VNDAF | VNDirect | 2018 |
 | DCAF | Dragon Capital | 2019 |
 | MAGEF | Mirae Asset | 2019 |
-| FUEVFVND | Dragon Capital | 2020 |
 | VCBFMGF | Vietcombank | 2021 |
-| TBLF | SGI Capital | 2021 |
+| TBLF | Thinh Binh Long | 2021 |
 | VLGF | SSI | 2021 |
 | NTPPF | NTP Capital | 2022 |
-| FUEDCMID | Dragon Capital | 2022 |
 | PHVSF | Phu Hung | 2022 |
 | UVEEF | UOB Vietnam | 2022 |
-| BMFF | Bordier MB Capital | 2023 |
+| BMFF | Bordier MB | 2023 |
 | VMEEF | VietinBank | 2023 |
-| VCAMDF | VCAM | 2024 |
-| LHCDF | Lighthouse Capital | 2024 |
-| VDEF | VinaCapital | 2024 |
-| TCGF | TCAM | 2024 |
-| EVESG | Eastspring ESG | 2024 |
+| VCAMDF | VCA Capital | 2024 |
+| LHCDF | Lien Hiep Capital | 2024 |
+| VDEF | VFM | 2024 |
+| TCGF | Techcom Capital | 2024 |
+| EVESG | Eastspring | 2024 |
+
+### Quỹ trái phiếu (19)
+
+| Mã quỹ | Quản lý | Từ ngày |
+|---------|---------|---------|
+| VFF | VinaCapital | 2013 |
+| DCBF | Dragon Capital | 2013 |
+| BVBF | BaoViet Fund | 2016 |
+| SSIBF | SSI | 2017 |
+| DCIP | Dragon Capital | 2019 |
+| VNDBF | VNDirect Asset | 2019 |
+| VCBFFIF | Vietcombank | 2019 |
+| PVBF | PVCom Capital | 2020 |
+| MBBOND | MB Capital | 2020 |
+| ABBF | An Binh Capital | 2020 |
+| DFIX | Dragon Capital | 2021 |
+| ASBF | Amber | 2021 |
+| VLBF | VinaCapital | 2021 |
+| MAFF | Mirae Asset | 2021 |
+| LHBF | Lighthouse | 2022 |
+| HDBOND | HD Capital | 2022 |
+| VCAMFI | BanViet Capital | 2022 |
+| VNDCF | VNDirect Asset | 2023 |
+| MBAM | MB Capital | 2024 |
+
+### Quỹ cân bằng (5)
+
+| Mã quỹ | Quản lý | Từ ngày |
+|---------|---------|---------|
+| VCBFTBF | Vietcombank | 2013 |
+| VCAMBF | BanViet Capital | 2014 |
+| VIBF | VinaCapital | 2019 |
+| MAFBAL | Manulife | 2017 |
+| MDI | Manulife | 2024 |
+
+### ETF (3)
+
+| Mã quỹ | Quản lý | Từ ngày |
+|---------|---------|---------|
+| E1VFVN30 | Dragon Capital | 2014 |
+| FUEVFVND | Dragon Capital | 2020 |
+| FUEDCMID | Dragon Capital | 2022 |
 
 ### Nguồn dữ liệu
 - **Quỹ mở:** [fmarket.vn](https://fmarket.vn) API
