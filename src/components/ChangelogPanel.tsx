@@ -6,7 +6,7 @@ const ENTRIES = [
       'Thêm 24 quỹ mới: 19 quỹ trái phiếu và 5 quỹ cân bằng từ fmarket.vn',
       'Nâng tổng số quỹ từ 30 → 54 (27 cổ phiếu + 19 trái phiếu + 5 cân bằng + 3 ETF)',
       'Cập nhật tên đầy đủ tiếng Việt cho toàn bộ 51 quỹ mở theo dữ liệu chính thức từ fmarket.vn',
-      'Sửa lỗi biểu đồ lợi nhuận tích lũy không hiển thị điểm bắt đầu 0% tại ngày đầu tư',
+      'Sửa lỗi biểu đồ lợi nhuận tích lũy và drawdown không hiển thị điểm bắt đầu 0% tại ngày đầu tư',
     ],
   },
   {

@@ -260,7 +260,7 @@ export function SimulationPanel({ funds }: Props) {
         portfolioReturns.push(simReturns)
 
         const cum = cumulativeReturns(simReturns, startDate)
-        const dd = drawdownSeries(simReturns)
+        const dd = drawdownSeries(simReturns, startDate)
         const yr = yearlyReturns(simReturns)
         const roll = rollingReturns(simReturns, rollingPeriod)
 

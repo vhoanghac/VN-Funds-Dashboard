@@ -86,7 +86,7 @@ export function useMultiComparison(
           id,
           returns,
           cumulative: cumulativeReturns(returns, startDate),
-          drawdown: drawdownSeries(returns),
+          drawdown: drawdownSeries(returns, startDate),
           yearly,
           rolling,
           kpi: {

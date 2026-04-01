@@ -123,10 +123,13 @@ export function maxDrawdown(returns: ReturnPoint[]): number {
 /**
  * Drawdown series over time (for chart).
  */
-export function drawdownSeries(returns: ReturnPoint[]): ReturnPoint[] {
+export function drawdownSeries(returns: ReturnPoint[], startDate?: string): ReturnPoint[] {
   if (returns.length === 0) return []
 
   const result: ReturnPoint[] = []
+  if (startDate) {
+    result.push({ date: startDate, value: 0 })
+  }
   let growth = 1.0
   let peak = 1.0
 
