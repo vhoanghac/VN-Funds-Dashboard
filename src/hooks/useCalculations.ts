@@ -75,6 +75,8 @@ export function useMultiComparison(
       // Compute yearly for all (needed for winRate)
       const allYearly = allReturns.map(r => yearlyReturns(r))
 
+      const startDate = aligned.dates[0]
+
       const funds: FundComparisonData[] = fundIds.map((id, i) => {
         const returns = allReturns[i]!
         const yearly = allYearly[i]!
@@ -83,7 +85,7 @@ export function useMultiComparison(
         return {
           id,
           returns,
-          cumulative: cumulativeReturns(returns),
+          cumulative: cumulativeReturns(returns, startDate),
           drawdown: drawdownSeries(returns),
           yearly,
           rolling,

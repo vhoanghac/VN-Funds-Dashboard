@@ -225,6 +225,7 @@ export function SimulationPanel({ funds }: Props) {
     try {
       // Align ALL series to common date range
       const aligned = alignMultiSeries(allWeekly)
+      const startDate = aligned.dates[0]
       const allReturns = aligned.prices.map(prices =>
         weeklyReturns(aligned.dates, prices),
       )
@@ -258,7 +259,7 @@ export function SimulationPanel({ funds }: Props) {
         const simReturns = simulateMultiFundPortfolio(returns, weights, p.rebalFreq)
         portfolioReturns.push(simReturns)
 
-        const cum = cumulativeReturns(simReturns)
+        const cum = cumulativeReturns(simReturns, startDate)
         const dd = drawdownSeries(simReturns)
         const yr = yearlyReturns(simReturns)
         const roll = rollingReturns(simReturns, rollingPeriod)

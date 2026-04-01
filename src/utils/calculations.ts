@@ -44,12 +44,15 @@ export function weeklyReturns(
 
 /**
  * Cumulative returns: growth_t = cumprod(1 + r) - 1
- * Starts at 0% on the first date.
+ * If startDate is provided, prepends a 0% point at the investment start date.
  */
-export function cumulativeReturns(returns: ReturnPoint[]): ReturnPoint[] {
+export function cumulativeReturns(returns: ReturnPoint[], startDate?: string): ReturnPoint[] {
   if (returns.length === 0) return []
 
   const result: ReturnPoint[] = []
+  if (startDate) {
+    result.push({ date: startDate, value: 0 })
+  }
   let growth = 1.0
 
   for (const r of returns) {
