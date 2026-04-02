@@ -45,7 +45,7 @@ function singleFundMap(fundId: string, prices: PricePoint[]): Map<string, PriceP
 
 /** Single-fund slot at 100% weight. */
 function singleSlot(fundId: string): DCASlot[] {
-  return [{ id: '1', fundId, weight: 100, name: fundId }]
+  return [{ fundId, weight: 100 }]
 }
 
 // ─── computeRollingScenarios ─────────────────────────────────────────────────

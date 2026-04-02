@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import type { ReturnPoint, FundMeta, PricePoint } from '../types'
-import { simulateDCA, dcaMWRR, type DCAFrequency, type DCASlot } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaProfitFactor, type DCAFrequency, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
 import { PortfolioValueChart } from './PortfolioValueChart'
@@ -29,6 +29,7 @@ interface DCAPortfolioResult {
   totalInvested: number
   finalValue: number
   mwrr: number | null
+  profitFactor: number | null
   investedSeries: { date: string; value: number }[]
   valueSeries: { date: string; value: number }[]
 }
@@ -289,7 +290,7 @@ export function DCAPanel({ funds }: Props) {
         portfolioResults.push({
           id: p.id, name: p.name, color,
           cumulative: [],
-          totalInvested: 0, finalValue: 0, mwrr: null,
+          totalInvested: 0, finalValue: 0, mwrr: null, profitFactor: null,
           investedSeries: [], valueSeries: [],
         })
         continue
@@ -301,6 +302,7 @@ export function DCAPanel({ funds }: Props) {
         totalInvested: dcaResult.totalInvested,
         finalValue: dcaResult.finalValue,
         mwrr: dcaMWRR(dcaResult.cashflows),
+        profitFactor: dcaProfitFactor(dcaResult.returns),
         investedSeries: dcaResult.invested,
         valueSeries: dcaResult.values,
       })
@@ -549,6 +551,14 @@ export function DCAPanel({ funds }: Props) {
                     </span>
                     <span className={`dca-summary-value ${(r.mwrr ?? 0) >= 0 ? 'dca-profit' : 'dca-loss'}`}>
                       {r.mwrr !== null ? (r.mwrr * 100).toFixed(2) + '%' : '—'}
+                    </span>
+                  </div>
+                  <div className="dca-summary-row">
+                    <span>Profit Factor
+                      <span className="dca-info-icon" title="Tổng lợi nhuận các tuần tăng ÷ tổng lỗ các tuần giảm. Lớn hơn 1 = tổng lời nhiều hơn tổng lỗ. Ví dụ: 1.5× nghĩa là cứ 1 đồng lỗ thì lời được 1.5 đồng.">?</span>
+                    </span>
+                    <span className={`dca-summary-value ${(r.profitFactor ?? 0) >= 1 ? 'dca-profit' : 'dca-loss'}`}>
+                      {r.profitFactor !== null ? r.profitFactor.toFixed(2) + '×' : '—'}
                     </span>
                   </div>
                 </div>

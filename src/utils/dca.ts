@@ -550,6 +550,25 @@ export function computeDCARolling(
   return result
 }
 
+/**
+ * Compute Profit Factor from weekly TWRR returns.
+ *
+ * Profit Factor = sum(positive returns) / |sum(negative returns)|
+ *
+ * > 1 means total gains exceed total losses.
+ * Returns null when there are no losing periods (no basis for comparison).
+ */
+export function dcaProfitFactor(returns: ReturnPoint[]): number | null {
+  let totalGain = 0
+  let totalLoss = 0
+  for (const r of returns) {
+    if (r.value > 0) totalGain += r.value
+    else if (r.value < 0) totalLoss += Math.abs(r.value)
+  }
+  if (totalLoss === 0) return null
+  return totalGain / totalLoss
+}
+
 function shouldRebalForDCA(
   prevDate: string,
   nextDate: string,
