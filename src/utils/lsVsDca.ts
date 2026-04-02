@@ -182,8 +182,9 @@ export function computeRollingScenarios(
         : 0
     } else if (cashMode === 'fund' && cashFundMap) {
       const endCashPrice = cashFundMap.get(endDate)
-      if (endCashPrice && cashFundUnits > 0) {
-        dcaCashValue = cashFundUnits * endCashPrice
+      const safeUnits = Math.max(0, cashFundUnits)
+      if (endCashPrice && safeUnits > 0) {
+        dcaCashValue = safeUnits * endCashPrice
       }
     }
     // flat: dcaCashValue = 0 (all capital is deployed, cash earns nothing)
@@ -293,6 +294,7 @@ export function computeHeatmap(
   return HEATMAP_HOLDING_YEARS.map(hy =>
     HEATMAP_DCA_MONTHS.map(dm => {
       const holdingMonths = hy * 12
+      // totalCapital=1: win rate is scale-invariant, so any positive value gives the same result
       const scenarios = computeRollingScenarios(
         alignedPrices, slots, 1, dm, freq, cashMode, cashSavingsRate, cashFundPrices, holdingMonths,
       )
@@ -313,8 +315,8 @@ export function buildHistogram(
   if (scenarios.length === 0) return []
 
   const diffs = scenarios.map(s => s.diff)
-  const minD = Math.min(...diffs)
-  const maxD = Math.max(...diffs)
+  const minD = diffs.reduce((a, b) => Math.min(a, b), Infinity)
+  const maxD = diffs.reduce((a, b) => Math.max(a, b), -Infinity)
 
   const bucketMin = Math.floor(minD / bucketWidth) * bucketWidth
   const bucketMax = Math.ceil(maxD / bucketWidth) * bucketWidth
