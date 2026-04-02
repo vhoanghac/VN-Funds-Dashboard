@@ -1177,6 +1177,471 @@ body {
   color: #475569;
 }
 
+/* ─── LS vs DCA Panel ────────────────────────── */
+.lsdca-panel {}
+
+.lsdca-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.lsdca-horizon-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lsdca-horizon-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  transition: all 0.15s;
+}
+
+.lsdca-horizon-btn:hover {
+  border-color: #059669;
+}
+
+.lsdca-horizon-btn-active {
+  background: #059669;
+  border-color: #059669;
+  color: white;
+  font-weight: 600;
+}
+
+.lsdca-freq-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.lsdca-cash-fund-select {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Results */
+.lsdca-results {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lsdca-window-info {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.lsdca-summary-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lsdca-winner-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lsdca-winner-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.lsdca-winner-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.lsdca-winner-sub {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.lsdca-ls-color  { color: #059669; }
+.lsdca-dca-color { color: #2563EB; }
+
+.lsdca-stats-context {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border-left: 3px solid #d1d5db;
+}
+.lsdca-stats-context strong {
+  color: #374151;
+  font-weight: 600;
+}
+
+.lsdca-stats-grid {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.lsdca-stat-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lsdca-stat-header {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lsdca-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.lsdca-stat-row span:last-child {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.lsdca-stat-divider {
+  width: 1px;
+  background: var(--color-border);
+  align-self: stretch;
+  margin: 0 4px;
+}
+
+.lsdca-percentiles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.lsdca-pct-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.lsdca-pct-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 80px;
+  cursor: default;
+}
+
+.lsdca-pct-name {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.lsdca-pct-item span:last-child {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.lsdca-chart-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.lsdca-chart-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.lsdca-chart-sub {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+/* ─── LS vs DCA: Heatmap ─────────────────────── */
+.lsdca-heatmap-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.lsdca-hm-yaxis-title {
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  padding: 4px 0;
+}
+
+.lsdca-heatmap-inner {
+  flex: 1;
+  min-width: 0;
+}
+
+.lsdca-heatmap {
+  display: grid;
+  gap: 4px;
+}
+
+.lsdca-hm-col-header {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 4px 2px 8px;
+}
+
+.lsdca-hm-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-right: 8px;
+}
+
+.lsdca-hm-cell {
+  border-radius: 5px;
+  padding: 14px 4px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: default;
+  user-select: none;
+  transition: filter 0.1s;
+}
+
+.lsdca-hm-cell:hover {
+  filter: brightness(0.88);
+}
+
+.lsdca-hm-n {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 3px;
+  line-height: 1;
+}
+
+.lsdca-hm-cell-lown {
+  opacity: 0.65;
+  outline: 1px dashed rgba(0, 0, 0, 0.25);
+}
+
+/* CAGR toggle */
+.lsdca-stat-cagr-toggle {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-bottom: 4px;
+  grid-column: 1 / -1;
+}
+
+.lsdca-cagr-btn {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: white;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lsdca-cagr-btn:hover {
+  border-color: #2563EB;
+  color: #2563EB;
+}
+
+.lsdca-cagr-btn-active {
+  background: #eff6ff;
+  border-color: #2563EB;
+  color: #2563EB;
+  font-weight: 600;
+}
+
+/* Capital input hint */
+.dca-amount-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.lsdca-capital-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding-left: 2px;
+}
+
+/* Pre-run hint */
+.lsdca-pre-run-hint {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #166534;
+  text-align: center;
+}
+
+/* Mobile responsive */
+@media (max-width: 520px) {
+  .lsdca-pct-item {
+    min-width: 56px;
+    font-size: 0.8rem;
+  }
+  .lsdca-pct-label {
+    font-size: 0.8rem;
+  }
+  .lsdca-heatmap-inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .lsdca-heatmap {
+    min-width: 280px;
+  }
+  .lsdca-hm-cell {
+    padding: 8px 2px;
+    font-size: 0.8rem;
+  }
+  .lsdca-winner-row {
+    gap: 6px;
+  }
+  .lsdca-winner-value {
+    font-size: 2rem;
+  }
+}
+
+/* Compare fund heatmap */
+.lsdca-hm-compare {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.lsdca-hm-compare-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lsdca-heatmap-compare {
+  margin-top: 12px;
+}
+
+.lsdca-heatmap-compare-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2563EB;
+  margin-bottom: 6px;
+  padding: 4px 0;
+  border-bottom: 2px solid #2563EB;
+}
+
+.lsdca-hm-xaxis-title {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+}
+
+.lsdca-hm-legend {
+  margin-top: 16px;
+}
+
+.lsdca-hm-legend-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(to right, hsl(60, 85%, 75%), hsl(90, 65%, 50%), hsl(120, 50%, 30%));
+}
+
+.lsdca-hm-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.lsdca-hm-explainer {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-left: 3px solid #2563EB;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.lsdca-hm-explainer-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+}
+
+.lsdca-hm-explainer ul {
+  margin: 8px 0 8px 16px;
+  padding: 0;
+}
+
+.lsdca-hm-explainer li {
+  margin-bottom: 4px;
+}
+
+.lsdca-hm-explainer p {
+  margin: 6px 0;
+}
+
+.lsdca-hm-explainer-note {
+  margin-top: 10px !important;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  color: #1d4ed8;
+}
+
 /* ─── Responsive: Tablet (≤768px) ────────────── */
 @media (max-width: 768px) {
   .app {

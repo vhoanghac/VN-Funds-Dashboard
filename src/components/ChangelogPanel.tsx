@@ -1,5 +1,14 @@
 const ENTRIES = [
   {
+    version: 'v2.3',
+    date: '02/04/2026',
+    items: [
+      'Thêm tab LS vs DCA: so sánh chiến lược đầu tư một lần (Lump Sum) và rải vốn định kỳ (DCA) qua phân tích rolling kịch bản lịch sử',
+      'Heatmap xác suất chiến thắng: ma trận 4×4 thời gian nắm giữ × thời gian DCA, hiển thị số kịch bản (n=) trên từng ô',
+      'Biểu đồ phân bố chênh lệch LS−DCA và 5 kịch bản percentile (rất xấu → rất tốt)',
+    ],
+  },
+  {
     version: 'v2.2',
     date: '01/04/2026',
     items: [

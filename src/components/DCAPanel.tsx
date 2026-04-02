@@ -1,24 +1,23 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import Select from 'react-select'
-import type {
-  ReturnPoint, RebalanceFrequency, FundMeta, PricePoint,
-} from '../types'
+import type { ReturnPoint, FundMeta, PricePoint } from '../types'
 import { simulateDCA, dcaMWRR, type DCAFrequency, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DCAGlossary } from './DCAGlossary'
+import {
+  PortfolioCard,
+  PORTFOLIO_COLORS,
+  MAX_PORTFOLIOS,
+  MAX_FUNDS_PER_PORTFOLIO,
+  type PortfolioCardState,
+} from './PortfolioCard'
 
 interface Props {
   funds: FundMeta[]
 }
 
-interface DCAPortfolioState {
-  id: string
-  name: string
-  slots: DCASlot[]
-  rebalFreq: RebalanceFrequency
-}
+type DCAPortfolioState = PortfolioCardState
 
 type DateRangeMode = 'all' | 'years'
 
@@ -33,16 +32,6 @@ interface DCAPortfolioResult {
   investedSeries: { date: string; value: number }[]
   valueSeries: { date: string; value: number }[]
 }
-
-const PORTFOLIO_COLORS = ['#059669', '#2563EB', '#DC2626', '#F59E0B', '#8B5CF6']
-const MAX_PORTFOLIOS = 5
-const MAX_FUNDS_PER_PORTFOLIO = 10
-
-const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
-  { value: 'monthly', label: 'Hàng tháng' },
-  { value: 'quarterly', label: 'Hàng quý' },
-  { value: 'yearly', label: 'Hàng năm' },
-]
 
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'daily', label: 'Hàng ngày' },
@@ -453,107 +442,21 @@ export function DCAPanel({ funds }: Props) {
       </div>
 
       {/* ── Portfolio Cards ── */}
-      {portfolios.map((portfolio, pIdx) => {
-        const totalWeight = portfolio.slots.reduce((s, f) => s + f.weight, 0)
-        const isOverUnder = Math.abs(totalWeight - 100) > 0.01
-
-        return (
-          <div key={portfolio.id} className="portfolio-card">
-            <div className="portfolio-card-header">
-              <span
-                className="portfolio-color-dot"
-                style={{ background: PORTFOLIO_COLORS[pIdx % PORTFOLIO_COLORS.length] }}
-              />
-              <input
-                className="portfolio-name-input"
-                value={portfolio.name}
-                onChange={e => updatePortfolio(portfolio.id, { name: e.target.value })}
-              />
-              <div className="portfolio-rebal">
-                <label>Rebalance</label>
-                <select
-                  value={portfolio.rebalFreq}
-                  onChange={e => updatePortfolio(portfolio.id, { rebalFreq: e.target.value as RebalanceFrequency })}
-                >
-                  {REBAL_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="portfolio-actions">
-              <button
-                className="portfolio-add-btn"
-                onClick={() => addSlot(portfolio.id)}
-                disabled={portfolio.slots.length >= MAX_FUNDS_PER_PORTFOLIO}
-                title="Thêm quỹ"
-              >
-                +
-              </button>
-              <button
-                className="portfolio-delete-btn"
-                onClick={() => removePortfolio(portfolio.id)}
-                title="Xoá danh mục"
-              >
-                ✕
-              </button>
-              <button
-                className="portfolio-set-btn"
-                onClick={() => setEqualWeights(portfolio.id)}
-                title="Chia đều tỷ trọng"
-              >
-                SET
-              </button>
-            </div>
-
-            <div className="portfolio-slots">
-              {portfolio.slots.map((slot, idx) => (
-                <div key={idx} className="portfolio-slot-row">
-                  <Select
-                    className="portfolio-fund-select"
-                    classNamePrefix="fund-search"
-                    options={fundOptions}
-                    value={fundOptions.find(o => o.value === slot.fundId) || null}
-                    onChange={opt => updateSlot(portfolio.id, idx, { fundId: opt?.value || '' })}
-                    placeholder="Tìm quỹ..."
-                    noOptionsMessage={() => 'Không tìm thấy'}
-                    isSearchable
-                    styles={dcaSelectStyles}
-                  />
-                  <div className="portfolio-weight-input">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={slot.weight}
-                      onChange={e => updateSlot(portfolio.id, idx, {
-                        weight: Math.max(0, Math.min(100, Number(e.target.value))),
-                      })}
-                    />
-                    <span>%</span>
-                  </div>
-                  <button
-                    className="portfolio-remove-slot-btn"
-                    onClick={() => removeSlot(portfolio.id, idx)}
-                    disabled={portfolio.slots.length <= 1}
-                    title="Xoá"
-                  >
-                    −
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className={`portfolio-total ${isOverUnder ? 'portfolio-total-warn' : ''}`}>
-              <span>Total</span>
-              <span className="portfolio-total-value">{totalWeight}</span>
-              <span>%</span>
-            </div>
-          </div>
-        )
-      })}
+      {portfolios.map((portfolio, pIdx) => (
+        <PortfolioCard
+          key={portfolio.id}
+          portfolio={portfolio}
+          pIdx={pIdx}
+          funds={funds}
+          fundOptions={fundOptions}
+          onUpdate={update => updatePortfolio(portfolio.id, update)}
+          onRemove={() => removePortfolio(portfolio.id)}
+          onAddSlot={() => addSlot(portfolio.id)}
+          onRemoveSlot={idx => removeSlot(portfolio.id, idx)}
+          onUpdateSlot={(idx, update) => updateSlot(portfolio.id, idx, update)}
+          onSetEqualWeights={() => setEqualWeights(portfolio.id)}
+        />
+      ))}
 
       {/* Add portfolio button */}
       {portfolios.length < MAX_PORTFOLIOS && (
@@ -678,23 +581,3 @@ export function DCAPanel({ funds }: Props) {
   )
 }
 
-const dcaSelectStyles = {
-  control: (base: Record<string, unknown>) => ({
-    ...base,
-    minHeight: 36,
-    borderColor: '#e5e7eb',
-    boxShadow: 'none',
-    '&:hover': { borderColor: '#2563EB' },
-    fontSize: '0.9rem',
-  }),
-  menu: (base: Record<string, unknown>) => ({
-    ...base,
-    zIndex: 20,
-  }),
-  option: (base: Record<string, unknown>, state: { isFocused: boolean; isSelected: boolean }) => ({
-    ...base,
-    fontSize: '0.85rem',
-    backgroundColor: state.isSelected ? '#059669' : state.isFocused ? '#ecfdf5' : undefined,
-    color: state.isSelected ? 'white' : '#1a1a1a',
-  }),
-}

@@ -1,28 +1,8 @@
 # TODOS
 
-## Golden Fixture Tests for Calculation Engine
+## ~~Golden Fixture Tests for Calculation Engine~~ ✅ DONE (2026-04-02)
 
-**What:** Unit tests for all financial calculation functions against R-generated golden outputs.
-
-**Why:** JS calculations must match R to 4 decimal places. Currently 0 test coverage on the entire calculation engine. Silent calculation bugs are the highest-risk failure mode for a financial dashboard.
-
-**Where to start:**
-1. Export R fixtures: `write.csv(results, 'src/__tests__/fixtures/fund_A.csv')`
-2. Write Vitest comparisons: `expect(cagr(returns)).toBeCloseTo(r_output, 4)`
-
-**Functions to cover:**
-- `cagr()` — annualized return
-- `maxDrawdown()` — max peak-to-trough decline
-- `drawdownSeries()` — full drawdown time series
-- `rollingReturns()` — sliding window returns
-- `weeklyReturns()` — price → weekly return conversion
-- `cumulativeReturns()` — compounded growth
-- `winRateAmong()` — multi-fund win rate
-- `simulateMultiFundPortfolio()` — rebalancing simulation
-
-**Priority:** P1 — financial accuracy is non-negotiable.
-
-**Depends on:** R environment to export golden fixtures. Already have `src/__tests__/fixtures/` directory ready.
+50/50 hand-calculated unit tests passing in `src/__tests__/calculations.test.ts`.
 
 ---
 
@@ -30,3 +10,9 @@
 
 - **Sharpe/Sortino Ratios** — risk-adjusted return metrics (P2, effort S)
 - **Export Chart as PNG** — download individual charts as images (P3, effort S)
+
+---
+
+## Deferred from Design Review (2026-04-02)
+
+- **DESIGN.md** — Document the design system: màu sắc (#059669 xanh / #2563EB xanh dương), spacing scale, pattern `dca-param-row`, pill button pattern, card layout conventions. Helps keep So Sánh, DCA, LS vs DCA tabs visually consistent as the app grows. (P3, effort S)

@@ -9,6 +9,7 @@ import { YearlyPerformanceChart } from './components/YearlyPerformanceChart'
 import { RollingReturnChart } from './components/RollingReturnChart'
 import { SimulationPanel } from './components/SimulationPanel'
 import { DCAPanel } from './components/DCAPanel'
+import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 import { DateRangePicker } from './components/DateRangePicker'
 import { FUND_COLORS } from './constants'
@@ -108,6 +109,12 @@ export function App() {
           DCA
         </button>
         <button
+          className={`tab ${state.tab === 'lsdca' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'lsdca' })}
+        >
+          LS vs DCA
+        </button>
+        <button
           className={`tab ${state.tab === 'changelog' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'changelog' })}
         >
@@ -170,6 +177,11 @@ export function App() {
       {/* DCA Tab */}
       <div style={{ display: state.tab === 'dca' ? undefined : 'none' }}>
         <DCAPanel funds={metadata} />
+      </div>
+
+      {/* LS vs DCA Tab */}
+      <div style={{ display: state.tab === 'lsdca' ? undefined : 'none' }}>
+        <LumpSumDCAPanel funds={metadata} />
       </div>
 
       {/* Changelog Tab */}
