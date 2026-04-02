@@ -6,6 +6,7 @@ const ENTRIES = [
       'Thêm tab LS vs DCA: so sánh chiến lược đầu tư một lần (Lump Sum) và rải vốn định kỳ (DCA) qua phân tích rolling kịch bản lịch sử',
       'Heatmap xác suất chiến thắng: ma trận 4×4 thời gian nắm giữ × thời gian DCA, hiển thị số kịch bản (n=) trên từng ô',
       'Biểu đồ phân bố chênh lệch LS−DCA và 5 kịch bản percentile (rất xấu → rất tốt)',
+      'Thêm chỉ số Profit Factor vào tab DCA: tổng lợi nhuận các tuần tăng ÷ tổng lỗ các tuần giảm',
       'Sửa một số lỗi nhỏ trong tính toán LS vs DCA, tăng độ ổn định khi số lượng kịch bản lớn',
     ],
   },
