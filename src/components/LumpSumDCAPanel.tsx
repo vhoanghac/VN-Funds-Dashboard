@@ -481,7 +481,9 @@ export function LumpSumDCAPanel({ funds }: Props) {
         )}
 
         <p className="dca-note">
-          * Phân tích tất cả các kịch bản rolling.
+          * Phân tích tất cả các kịch bản rolling.<br />
+          * Nếu bạn DCA từ lương mỗi tháng thì tab này không có ứng dụng với bạn — nó chỉ áp dụng khi có sẵn một cục tiền lớn và đang phân vân nên đầu tư hết luôn hay rải dần.<br />
+          * Về lãi suất tiết kiệm: mỗi kỳ chỉ rút ra đúng phần chia đều để đầu tư, phần còn lại vẫn gửi tiết kiệm sinh lãi nhưng khoản lãi đó không mang vào đầu tư — nhờ vậy tổng vốn LS và DCA luôn bằng nhau.
         </p>
       </div>
 
@@ -574,6 +576,10 @@ export function LumpSumDCAPanel({ funds }: Props) {
                   <span>{showCagr ? 'Lời TB (mỗi năm)' : `Lời TB (${committed!.horizonMonths}th)`}</span>
                   <span>{fmtGrowthOrCagr(results.summary.meanLSGrowth)}</span>
                 </div>
+                <div className="lsdca-stat-row lsdca-stat-row-secondary">
+                  <span>{showCagr ? 'Trung vị (mỗi năm)' : `Trung vị (${committed!.horizonMonths}th)`}</span>
+                  <span>{fmtGrowthOrCagr(results.summary.medianLSGrowth)}</span>
+                </div>
               </div>
 
               <div className="lsdca-stat-divider" />
@@ -583,6 +589,10 @@ export function LumpSumDCAPanel({ funds }: Props) {
                 <div className="lsdca-stat-row">
                   <span>{showCagr ? 'Lời TB (mỗi năm)' : `Lời TB (${committed!.horizonMonths}th)`}</span>
                   <span>{fmtGrowthOrCagr(results.summary.meanDCAGrowth)}</span>
+                </div>
+                <div className="lsdca-stat-row lsdca-stat-row-secondary">
+                  <span>{showCagr ? 'Trung vị (mỗi năm)' : `Trung vị (${committed!.horizonMonths}th)`}</span>
+                  <span>{fmtGrowthOrCagr(results.summary.medianDCAGrowth)}</span>
                 </div>
               </div>
 

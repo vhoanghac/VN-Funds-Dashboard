@@ -15,7 +15,9 @@ export interface LSvsDCASummary {
   totalScenarios: number
   lsWinRate: number       // fraction 0–1
   meanLSGrowth: number    // e.g., 1.15 = +15%
+  medianLSGrowth: number
   meanDCAGrowth: number
+  medianDCAGrowth: number
   meanDiff: number        // mean of (lsGrowth - dcaGrowth)
   medianDiff: number
   p10: number
@@ -235,6 +237,8 @@ export function summarizeScenarios(scenarios: LSvsDCAScenario[]): LSvsDCASummary
   if (scenarios.length === 0) return null
 
   const sorted = scenarios.map(s => s.diff).sort((a, b) => a - b)
+  const sortedLS = scenarios.map(s => s.lsGrowth).sort((a, b) => a - b)
+  const sortedDCA = scenarios.map(s => s.dcaGrowth).sort((a, b) => a - b)
   const lsWins = scenarios.filter(s => s.diff > 0)
   const dcaWins = scenarios.filter(s => s.diff <= 0)
   const n = scenarios.length
@@ -243,7 +247,9 @@ export function summarizeScenarios(scenarios: LSvsDCAScenario[]): LSvsDCASummary
     totalScenarios: n,
     lsWinRate: lsWins.length / n,
     meanLSGrowth: scenarios.reduce((a, s) => a + s.lsGrowth, 0) / n,
+    medianLSGrowth: pctile(sortedLS, 0.5),
     meanDCAGrowth: scenarios.reduce((a, s) => a + s.dcaGrowth, 0) / n,
+    medianDCAGrowth: pctile(sortedDCA, 0.5),
     meanDiff: sorted.reduce((a, b) => a + b, 0) / n,
     medianDiff: pctile(sorted, 0.5),
     p10: pctile(sorted, 0.1),

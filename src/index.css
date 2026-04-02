@@ -1320,6 +1320,12 @@ body {
   color: var(--color-text);
 }
 
+.lsdca-stat-row-secondary {
+  opacity: 0.65;
+  font-size: 0.82rem;
+  margin-top: 2px;
+}
+
 .lsdca-stat-divider {
   width: 1px;
   background: var(--color-border);
