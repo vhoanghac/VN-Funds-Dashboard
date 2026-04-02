@@ -14,6 +14,10 @@ Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái
 
 ![Mô Phỏng](docs/screenshot2.png)
 
+![Tích Lũy Định Kỳ](docs/screenshot3.png)
+
+![LS vs DCA](docs/screenshot4.png)
+
 ## Tính năng
 
 ### So Sánh quỹ
@@ -25,6 +29,18 @@ Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái
 ### Mô Phỏng danh mục
 - Tạo nhiều danh mục đầu tư với tỷ trọng tùy chỉnh
 - Rebalance tự động theo quý hoặc theo năm
+
+### Tích Lũy Định Kỳ (DCA)
+- Mô phỏng đầu tư định kỳ (hàng tháng/hàng tuần) với số tiền cố định
+- So sánh song song nhiều danh mục, hỗ trợ rebalance tự động
+- Chỉ số: lợi nhuận tích lũy, CAGR, MWRR (Money-Weighted Rate of Return)
+- Biểu đồ giá trị danh mục theo thời gian
+
+### Lump Sum vs DCA
+- So sánh hai chiến lược triển khai vốn: đầu tư một lần (Lump Sum) và rải đều định kỳ (DCA)
+- Phân tích rolling trên toàn bộ lịch sử — mỗi ngày hợp lệ là một kịch bản độc lập
+- Heatmap xác suất chiến thắng theo thời gian nắm giữ (2–20 năm) × thời gian DCA (3–18 tháng)
+- Biểu đồ phân bố kết quả và 5 kịch bản percentile (rất xấu → rất tốt)
 
 ## Dữ liệu
 
