@@ -1604,10 +1604,9 @@ body {
 
 .lsdca-hm-explainer {
   margin-top: 20px;
-  padding: 14px 16px;
-  background: #f8fafc;
-  border-left: 3px solid #2563EB;
-  border-radius: 0 6px 6px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
   font-size: 0.85rem;
   line-height: 1.6;
   color: #374151;

@@ -45,6 +45,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
   const [cashFundId, setCashFundId] = useState<string>('')
   const [compareFundId, setCompareFundId] = useState<string>('')  // heatmap comparison
   const [showCagr, setShowCagr] = useState(false)
+  const [showExplainer, setShowExplainer] = useState(false)
 
   // ── Portfolio (single) ──
   const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(null)
@@ -647,23 +648,32 @@ export function LumpSumDCAPanel({ funds }: Props) {
               </div>
             </div>
 
-            {/* Explanation */}
+            {/* Explanation toggle */}
             <div className="lsdca-hm-explainer">
-              <p className="lsdca-hm-explainer-title">Cách đọc bảng này</p>
-              <p>
-                Giả sử bạn có sẵn <strong>100 triệu</strong> và dự định đầu tư trong <strong>2 năm</strong>.
-                Bạn đang cân nhắc giữa hai cách:
-              </p>
-              <ul>
-                <li><strong>Đầu tư một lần:</strong> Bỏ toàn bộ 100 triệu ngay hôm nay, giữ đến hết 2 năm rồi bán.</li>
-                <li><strong>DCA 3 tháng:</strong> Chia ra đầu tư đều mỗi tháng trong 3 tháng đầu (~33 triệu/tháng), sau đó giữ nguyên đến hết 2 năm rồi bán.</li>
-              </ul>
-              <p>
-                Ô <strong>"2 năm / 3 tháng"</strong> cho biết: nhìn lại toàn bộ lịch sử, có <strong>60.4%</strong> số lần mà cách đầu tư một lần mang lại kết quả tốt hơn.
-              </p>
-              <p className="lsdca-hm-explainer-note">
-                💡 Con số càng cao → đầu tư một lần càng có lợi thế. DCA trải càng dài thì vốn ngồi chờ càng lâu, nên lợi thế của đầu tư một lần càng lớn (thể hiện qua màu xanh đậm hơn ở cột bên phải).
-              </p>
+              <button
+                className="dca-glossary-toggle"
+                onClick={() => setShowExplainer(v => !v)}
+              >
+                Cách đọc bảng này {showExplainer ? '▲' : '▼'}
+              </button>
+              {showExplainer && (
+                <div className="dca-glossary-content">
+                  <p>
+                    Giả sử bạn có sẵn <strong>100 triệu</strong> và dự định đầu tư trong <strong>2 năm</strong>.
+                    Bạn đang cân nhắc giữa hai cách:
+                  </p>
+                  <ul>
+                    <li><strong>Đầu tư một lần:</strong> Bỏ toàn bộ 100 triệu ngay hôm nay, giữ đến hết 2 năm rồi bán.</li>
+                    <li><strong>DCA 3 tháng:</strong> Chia ra đầu tư đều mỗi tháng trong 3 tháng đầu (~33 triệu/tháng), sau đó giữ nguyên đến hết 2 năm rồi bán.</li>
+                  </ul>
+                  <p>
+                    Ô <strong>"2 năm / 3 tháng"</strong> cho biết: nhìn lại toàn bộ lịch sử, có <strong>60.4%</strong> số lần mà cách đầu tư một lần mang lại kết quả tốt hơn.
+                  </p>
+                  <p className="lsdca-hm-explainer-note">
+                    💡 Con số càng cao → đầu tư một lần càng có lợi thế. DCA trải càng dài thì vốn ngồi chờ càng lâu, nên lợi thế của đầu tư một lần càng lớn (thể hiện qua màu xanh đậm hơn ở cột bên phải).
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
