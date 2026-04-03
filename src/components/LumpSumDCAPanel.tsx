@@ -74,7 +74,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
   // Bond/balanced funds for cash fund picker
   const cashFundOptions = useMemo(
     () => funds
-      .filter(f => f.type === 'bond' || f.type === 'balanced')
+      .filter(f => ['VFF', 'DCBF', 'BVBF', 'SSIBF', 'DCIP'].includes(f.id))
       .map(f => ({ value: f.id, label: f.name_vi })),
     [funds],
   )
@@ -472,7 +472,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
               options={cashFundOptions}
               value={cashFundOptions.find(o => o.value === cashFundId) || null}
               onChange={opt => setCashFundId(opt?.value || '')}
-              placeholder="Chọn quỹ trái phiếu/cân bằng..."
+              placeholder="Chọn quỹ trái phiếu..."
               noOptionsMessage={() => 'Không tìm thấy'}
               isSearchable
               styles={portfolioSelectStyles}

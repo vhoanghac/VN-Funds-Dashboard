@@ -1,5 +1,14 @@
 const ENTRIES = [
   {
+    version: 'v2.4',
+    date: '03/04/2026',
+    items: [
+      'Sửa lỗi dropdown "Quỹ đầu tư khi chờ" trong tab LS vs DCA không hiển thị danh sách quỹ',
+      'Chỉ hiển thị 5 quỹ trái phiếu lâu đời nhất để làm vốn chờ: VFF, DCBF, BVBF, SSIBF, DCIP',
+      'Cải thiện tính toán vốn chờ: dùng giá gần nhất trước đó khi quỹ trái phiếu bị thiếu data ngày lễ',
+    ],
+  },
+  {
     version: 'v2.3',
     date: '02/04/2026',
     items: [

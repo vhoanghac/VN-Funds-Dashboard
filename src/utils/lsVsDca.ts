@@ -38,6 +38,25 @@ export interface HistogramBucket {
 const WEEKS_PER_YEAR = 52
 
 /**
+ * Return the price at `date`, or the most recent price before `date` if
+ * an exact match doesn't exist (last-observation-carried-forward).
+ * Assumes `prices` is sorted ascending by date.
+ */
+function priceAtOrBefore(prices: PricePoint[], date: string): number | undefined {
+  let lo = 0, hi = prices.length - 1, result: number | undefined
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (prices[mid]!.date <= date) {
+      result = prices[mid]!.price
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  return result
+}
+
+/**
  * Compute rolling Lump Sum vs DCA scenarios.
  *
  * For each valid start date, simulate:
@@ -80,12 +99,9 @@ export function computeRollingScenarios(
   const dates = firstFundPrices.map(p => p.date)
 
   // Cash fund lookup (for cashMode === 'fund')
-  const cashFundMap = (cashMode === 'fund' && cashFundPrices)
-    ? (() => {
-        const m = new Map<string, number>()
-        for (const p of cashFundPrices) m.set(p.date, p.price)
-        return m
-      })()
+  // Uses last-observation-carried-forward so date gaps (e.g. holidays) don't skip scenarios.
+  const getCashPrice = (cashMode === 'fund' && cashFundPrices)
+    ? (date: string) => priceAtOrBefore(cashFundPrices, date)
     : null
 
   // DCA period in weekly data points; holding period may be longer
@@ -128,8 +144,8 @@ export function computeRollingScenarios(
 
     // Cash fund: buy all units at start, sell gradually as contributions are made
     let cashFundUnits = 0
-    if (cashMode === 'fund' && cashFundMap) {
-      const startCashPrice = cashFundMap.get(startDate)
+    if (cashMode === 'fund' && getCashPrice) {
+      const startCashPrice = getCashPrice(startDate)
       if (!startCashPrice || startCashPrice <= 0) continue
       cashFundUnits = totalCapital / startCashPrice
     }
@@ -149,8 +165,8 @@ export function computeRollingScenarios(
       }
 
       // Deploy contribution: remove from cash
-      if (cashMode === 'fund' && cashFundMap) {
-        const cashPrice = cashFundMap.get(date)
+      if (cashMode === 'fund' && getCashPrice) {
+        const cashPrice = getCashPrice(date)
         if (!cashPrice || cashPrice <= 0) continue
         cashFundUnits -= contribution / cashPrice
       } else {
@@ -182,8 +198,8 @@ export function computeRollingScenarios(
       dcaCashValue = residual > 0
         ? residual * Math.pow(1 + cashSavingsRate, weeksToEnd / WEEKS_PER_YEAR)
         : 0
-    } else if (cashMode === 'fund' && cashFundMap) {
-      const endCashPrice = cashFundMap.get(endDate)
+    } else if (cashMode === 'fund' && getCashPrice) {
+      const endCashPrice = getCashPrice(endDate)
       const safeUnits = Math.max(0, cashFundUnits)
       if (endCashPrice && safeUnits > 0) {
         dcaCashValue = safeUnits * endCashPrice
