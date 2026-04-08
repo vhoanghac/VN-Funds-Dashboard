@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v2.5',
+    date: '08/04/2026',
+    items: [
+      'Sửa lỗi 3 quỹ ETF (E1VFVN30, FUEVFVND, FUEDCMID) ngừng cập nhật giá từ 27/03 do thiếu API key khi tự động lấy dữ liệu',
+    ],
+  },
+  {
     version: 'v2.4',
     date: '03/04/2026',
     items: [

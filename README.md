@@ -8,7 +8,7 @@ Nay nhờ sự giúp đỡ của Claude Code thì ước mơ này đã thành hi
 
 Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái phiếu, cân bằng) và ETF tại Việt Nam. Dữ liệu cập nhật tự động hàng ngày.
 
-**Demo:** [vn-funds-dashboard.vercel.app](https://vn-funds-dashboard.vercel.app)
+**Demo:** [fund.vohoanghac.com](https://fund.vohoanghac.com)
 
 ![So Sánh](docs/screenshot1.png)
 
