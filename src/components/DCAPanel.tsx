@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { MoneyInput } from './MoneyInput'
 import type { ReturnPoint, FundMeta, PricePoint } from '../types'
 import { simulateDCA, dcaMWRR, dcaProfitFactor, type DCAFrequency, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
@@ -398,13 +399,7 @@ export function DCAPanel({ funds }: Props) {
         <div className="dca-param-row">
           <label className="dca-label">Số tiền đầu tiên</label>
           <div className="dca-amount-input">
-            <input
-              type="number"
-              min={0}
-              step={1000000}
-              value={initialAmount}
-              onChange={e => setInitialAmount(Math.max(0, Number(e.target.value)))}
-            />
+            <MoneyInput value={initialAmount} onChange={setInitialAmount} min={0} />
             <span className="dca-currency">₫</span>
           </div>
         </div>
@@ -413,13 +408,7 @@ export function DCAPanel({ funds }: Props) {
         <div className="dca-param-row">
           <label className="dca-label">Số tiền đầu tư định kỳ</label>
           <div className="dca-amount-input">
-            <input
-              type="number"
-              min={0}
-              step={500000}
-              value={cashflowAmount}
-              onChange={e => setCashflowAmount(Math.max(0, Number(e.target.value)))}
-            />
+            <MoneyInput value={cashflowAmount} onChange={setCashflowAmount} min={0} />
             <span className="dca-currency">₫</span>
           </div>
         </div>

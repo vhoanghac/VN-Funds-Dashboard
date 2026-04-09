@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v2.6',
+    date: '09/04/2026',
+    items: [
+      'Ô nhập số tiền tự động thêm dấu chấm phân cách hàng nghìn khi nhập (ví dụ: 5.000.000 thay vì 5000000)',
+    ],
+  },
+  {
     version: 'v2.5',
     date: '08/04/2026',
     items: [

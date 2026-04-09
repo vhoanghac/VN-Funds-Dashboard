@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { MoneyInput } from './MoneyInput'
 import Select from 'react-select'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
@@ -387,13 +388,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
           <label className="dca-label">Tổng vốn đầu tư</label>
           <div className="dca-amount-input-wrap">
             <div className="dca-amount-input">
-              <input
-                type="number"
-                min={1_000_000}
-                step={10_000_000}
-                value={totalCapital}
-                onChange={e => setTotalCapital(Math.max(0, Number(e.target.value)))}
-              />
+              <MoneyInput value={totalCapital} onChange={setTotalCapital} min={1_000_000} />
               <span className="dca-currency">₫</span>
             </div>
             <span className="lsdca-capital-hint">= {fmtCapital(totalCapital)}</span>
