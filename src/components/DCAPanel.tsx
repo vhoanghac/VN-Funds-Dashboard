@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { MoneyInput } from './MoneyInput'
+import { ShareButton } from './ShareButton'
+import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import type { ReturnPoint, FundMeta, PricePoint } from '../types'
 import { simulateDCA, dcaMWRR, dcaProfitFactor, type DCAFrequency, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
@@ -48,17 +50,33 @@ const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
 export function DCAPanel({ funds }: Props) {
   const nextIdRef = useRef(1)
 
+  // Read URL params once on mount (shared link restore)
+  const urlParams = parseDcaParams()
+
   // ── DCA Parameters ──
-  const [dateMode, setDateMode] = useState<DateRangeMode>('all')
-  const [yearsBack, setYearsBack] = useState(5)
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
-  const [initialAmount, setInitialAmount] = useState(5000000)
-  const [cashflowAmount, setCashflowAmount] = useState(1000000)
-  const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>('monthly')
+  const [dateMode, setDateMode] = useState<DateRangeMode>(urlParams?.dateMode ?? 'all')
+  const [yearsBack, setYearsBack] = useState(urlParams?.yearsBack ?? 5)
+  const [dateFrom, setDateFrom] = useState<string>(urlParams?.dateFrom ?? '')
+  const [dateTo, setDateTo] = useState<string>(urlParams?.dateTo ?? '')
+  const [initialAmount, setInitialAmount] = useState(urlParams?.initialAmount ?? 5000000)
+  const [cashflowAmount, setCashflowAmount] = useState(urlParams?.cashflowAmount ?? 1000000)
+  const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>(urlParams?.cashflowFreq ?? 'monthly')
 
   // ── Portfolios ──
-  const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>([])
+  const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
+    if (urlParams?.portfolios && urlParams.portfolios.length > 0) {
+      return urlParams.portfolios.map((p, i) => {
+        const id = `dca${nextIdRef.current++}`
+        return {
+          id,
+          name: p.slots[0]?.fundId ?? `Danh mục ${i + 1}`,
+          slots: p.slots,
+          rebalFreq: p.rebalFreq,
+        }
+      })
+    }
+    return []
+  })
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
   // Snapshot at run time
@@ -449,12 +467,21 @@ export function DCAPanel({ funds }: Props) {
         />
       ))}
 
-      {/* Add portfolio button */}
-      {portfolios.length < MAX_PORTFOLIOS && (
-        <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
-          + Thêm Danh Mục
-        </button>
-      )}
+      {/* Add portfolio + Share buttons */}
+      <div className="dca-action-row">
+        {portfolios.length < MAX_PORTFOLIOS && (
+          <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
+            + Thêm Danh Mục
+          </button>
+        )}
+        {portfolios.length > 0 && (
+          <ShareButton getUrl={() => buildDcaUrl({
+            initialAmount, cashflowAmount, cashflowFreq,
+            dateMode, yearsBack, dateFrom, dateTo,
+            portfolios: portfolios.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })),
+          })} />
+        )}
+      </div>
 
       {/* Run button */}
       {portfolios.length > 0 && (

@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { MoneyInput } from './MoneyInput'
+import { ShareButton } from './ShareButton'
+import { buildLsDcaUrl, parseLsDcaParams } from '../utils/shareUrl'
 import Select from 'react-select'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
@@ -37,19 +39,34 @@ export function LumpSumDCAPanel({ funds }: Props) {
   const nextIdRef = useRef(1)
   const hasRunOnceRef = useRef(false)
 
+  // Read URL params once on mount (shared link restore)
+  const urlParams = parseLsDcaParams()
+
   // ── Parameters ──
-  const [totalCapital, setTotalCapital] = useState(100_000_000)
-  const [horizonMonths, setHorizonMonths] = useState(12)
-  const [freq, setFreq] = useState<LSvsDCAFreq>('monthly')
-  const [cashMode, setCashMode] = useState<CashMode>('flat')
-  const [savingsRate, setSavingsRate] = useState(4) // %/year input
-  const [cashFundId, setCashFundId] = useState<string>('')
-  const [compareFundId, setCompareFundId] = useState<string>('')  // heatmap comparison
+  const [totalCapital, setTotalCapital] = useState(urlParams?.totalCapital ?? 100_000_000)
+  const [horizonMonths, setHorizonMonths] = useState(urlParams?.horizonMonths ?? 12)
+  const [freq, setFreq] = useState<LSvsDCAFreq>(urlParams?.freq ?? 'monthly')
+  const [cashMode, setCashMode] = useState<CashMode>(urlParams?.cashMode ?? 'flat')
+  const [savingsRate, setSavingsRate] = useState(urlParams?.savingsRate ?? 4)
+  const [cashFundId, setCashFundId] = useState<string>(urlParams?.cashFundId ?? '')
+  const [compareFundId, setCompareFundId] = useState<string>(urlParams?.compareFundId ?? '')
   const [showCagr, setShowCagr] = useState(false)
   const [showExplainer, setShowExplainer] = useState(false)
 
   // ── Portfolio (single) ──
-  const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(null)
+  const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(() => {
+    if (urlParams?.portfolio) {
+      const id = `lsdca${nextIdRef.current++}`
+      const p = urlParams.portfolio
+      return {
+        id,
+        name: p.slots[0]?.fundId ?? 'Danh mục',
+        slots: p.slots,
+        rebalFreq: p.rebalFreq,
+      }
+    }
+    return null
+  })
 
   // ── Data ──
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
@@ -499,11 +516,20 @@ export function LumpSumDCAPanel({ funds }: Props) {
         />
       )}
 
-      {!portfolio && (
-        <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
-          + Thêm Danh Mục
-        </button>
-      )}
+      <div className="dca-action-row">
+        {!portfolio && (
+          <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
+            + Thêm Danh Mục
+          </button>
+        )}
+        {portfolio && (
+          <ShareButton getUrl={() => buildLsDcaUrl({
+            totalCapital, horizonMonths, freq, cashMode,
+            savingsRate, cashFundId, compareFundId,
+            portfolio: { slots: portfolio.slots, rebalFreq: portfolio.rebalFreq },
+          })} />
+        )}
+      </div>
 
       {portfolio && (
         <button

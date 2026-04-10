@@ -1,5 +1,13 @@
 const ENTRIES = [
   {
+    version: 'v2.7',
+    date: '10/04/2026',
+    items: [
+      'Thêm nút "Copy link" vào tab DCA và LS vs DCA: tạo link chia sẻ chứa toàn bộ thông số hiện tại (quỹ, tần suất, số tiền...)',
+      'Mở link được chia sẻ sẽ tự động khôi phục đúng cấu hình đã lưu',
+    ],
+  },
+  {
     version: 'v2.6',
     date: '09/04/2026',
     items: [

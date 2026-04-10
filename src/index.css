@@ -675,6 +675,18 @@ body {
 }
 
 /* ─── Add Portfolio Button ───────────────────── */
+.dca-action-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.dca-action-row .sim-add-portfolio-btn {
+  flex: 1;
+  margin-bottom: 0;
+}
+
 .sim-add-portfolio-btn {
   display: block;
   width: 100%;
@@ -693,6 +705,29 @@ body {
 .sim-add-portfolio-btn:hover {
   border-color: var(--color-primary);
   background: #eff6ff;
+}
+
+.share-btn {
+  padding: 14px 20px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.share-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.share-btn-copied {
+  border-color: #16a34a;
+  color: #16a34a;
 }
 
 /* ─── Run Simulation Button ─────────────────── */
