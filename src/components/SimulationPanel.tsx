@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { ShareButton } from './ShareButton'
 import Select from 'react-select'
 import type {
   ReturnPoint, RebalanceFrequency, FundMeta, WeeklyPrice,
@@ -327,7 +328,10 @@ export function SimulationPanel({ funds }: Props) {
 
   return (
     <div className="simulation-panel">
-      <h2>Mô Phỏng Danh Mục</h2>
+      <div className="panel-header">
+        <h2>Mô Phỏng Danh Mục</h2>
+        <ShareButton getUrl={() => window.location.href} />
+      </div>
 
       {/* Portfolio cards */}
       {portfolios.map((portfolio, pIdx) => {

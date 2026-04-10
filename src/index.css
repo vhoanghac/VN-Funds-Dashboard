@@ -169,6 +169,13 @@ body {
   cursor: not-allowed;
 }
 
+.fund-selector-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .fund-add-btn {
   display: flex;
   align-items: center;
@@ -441,10 +448,28 @@ body {
   margin-bottom: 20px;
 }
 
-.simulation-panel h2 {
+.simulation-panel h2,
+.compare-content h2 {
   font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 16px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.panel-header h2 {
+  margin-bottom: 0;
+}
+
+.compare-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
 /* ─── Portfolio Card ─────────────────────────── */

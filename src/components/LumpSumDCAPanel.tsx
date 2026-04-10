@@ -391,7 +391,14 @@ export function LumpSumDCAPanel({ funds }: Props) {
   // ── Render ──
   return (
     <div className="simulation-panel lsdca-panel">
-      <h2>Lump Sum vs DCA</h2>
+      <div className="panel-header">
+        <h2>Lump Sum vs DCA</h2>
+        <ShareButton getUrl={() => buildLsDcaUrl({
+          totalCapital, horizonMonths, freq, cashMode,
+          savingsRate, cashFundId, compareFundId,
+          portfolio: portfolio ? { slots: portfolio.slots, rebalFreq: portfolio.rebalFreq } : null,
+        })} />
+      </div>
       <p className="lsdca-subtitle">
         So sánh hai chiến lược triển khai cùng một khoản vốn: đầu tư toàn bộ ngay từ đầu (Lump Sum)
         hay chia đều trong N tháng (DCA).
@@ -516,20 +523,11 @@ export function LumpSumDCAPanel({ funds }: Props) {
         />
       )}
 
-      <div className="dca-action-row">
-        {!portfolio && (
-          <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
-            + Thêm Danh Mục
-          </button>
-        )}
-        {portfolio && (
-          <ShareButton getUrl={() => buildLsDcaUrl({
-            totalCapital, horizonMonths, freq, cashMode,
-            savingsRate, cashFundId, compareFundId,
-            portfolio: { slots: portfolio.slots, rebalFreq: portfolio.rebalFreq },
-          })} />
-        )}
-      </div>
+      {!portfolio && (
+        <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
+          + Thêm Danh Mục
+        </button>
+      )}
 
       {portfolio && (
         <button

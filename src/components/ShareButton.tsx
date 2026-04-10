@@ -27,7 +27,7 @@ export function ShareButton({ getUrl }: Props) {
 
   return (
     <button className={`share-btn ${copied ? 'share-btn-copied' : ''}`} onClick={handleClick}>
-      {copied ? '✓ Đã copy link!' : '🔗 Copy link'}
+      {copied ? '✓ Đã copy link!' : '🔗 Copy link chia sẻ'}
     </button>
   )
 }

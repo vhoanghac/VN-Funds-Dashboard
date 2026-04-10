@@ -1,7 +1,6 @@
 import Select from 'react-select'
 import type { FundMeta } from '../types'
 import { FUND_COLORS, MAX_COMPARE_FUNDS } from '../constants'
-
 interface Props {
   allFunds: FundMeta[]
   selectedFunds: string[]

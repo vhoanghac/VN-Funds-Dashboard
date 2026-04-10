@@ -128,7 +128,7 @@ export function buildLsDcaUrl(s: LsDcaShareState): string {
   if (s.portfolio) {
     const encoded = encodeSlots(s.portfolio.slots)
     if (encoded) {
-      p.set('funds', encoded)
+      p.set('lsfunds', encoded)
       p.set('rebal', s.portfolio.rebalFreq)
     }
   }
@@ -160,7 +160,7 @@ export function parseLsDcaParams(): Partial<LsDcaShareState> | null {
   result.cashFundId = p.get('cfund') ?? ''
   result.compareFundId = p.get('cmp') ?? ''
 
-  const fundsStr = p.get('funds')
+  const fundsStr = p.get('lsfunds')
   if (fundsStr) {
     const slots = decodeSlots(fundsStr)
     if (slots.length > 0) {

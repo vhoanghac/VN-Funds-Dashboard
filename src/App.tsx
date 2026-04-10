@@ -12,6 +12,7 @@ import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 import { DateRangePicker } from './components/DateRangePicker'
+import { ShareButton } from './components/ShareButton'
 import { FUND_COLORS } from './constants'
 import type { ChartSeries } from './types'
 
@@ -124,6 +125,10 @@ export function App() {
 
       {/* Compare Tab — hidden via CSS when inactive to preserve state */}
       <div className="compare-content" style={{ display: state.tab === 'compare' ? undefined : 'none' }}>
+          <div className="panel-header">
+            <h2>So Sánh Các Quỹ</h2>
+            <ShareButton getUrl={() => window.location.href} />
+          </div>
           <FundSelector
             allFunds={metadata}
             selectedFunds={state.funds}

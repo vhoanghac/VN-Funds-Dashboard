@@ -350,7 +350,14 @@ export function DCAPanel({ funds }: Props) {
   // ── Render ──
   return (
     <div className="simulation-panel dca-panel">
-      <h2>Tích Lũy Định Kỳ (DCA)</h2>
+      <div className="panel-header">
+        <h2>Tích Lũy Định Kỳ (DCA)</h2>
+        <ShareButton getUrl={() => buildDcaUrl({
+          initialAmount, cashflowAmount, cashflowFreq,
+          dateMode, yearsBack, dateFrom, dateTo,
+          portfolios: portfolios.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })),
+        })} />
+      </div>
 
       {/* ── Parameters Section ── */}
       <div className="dca-params-card">
@@ -467,21 +474,12 @@ export function DCAPanel({ funds }: Props) {
         />
       ))}
 
-      {/* Add portfolio + Share buttons */}
-      <div className="dca-action-row">
-        {portfolios.length < MAX_PORTFOLIOS && (
-          <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
-            + Thêm Danh Mục
-          </button>
-        )}
-        {portfolios.length > 0 && (
-          <ShareButton getUrl={() => buildDcaUrl({
-            initialAmount, cashflowAmount, cashflowFreq,
-            dateMode, yearsBack, dateFrom, dateTo,
-            portfolios: portfolios.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })),
-          })} />
-        )}
-      </div>
+      {/* Add portfolio button */}
+      {portfolios.length < MAX_PORTFOLIOS && (
+        <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
+          + Thêm Danh Mục
+        </button>
+      )}
 
       {/* Run button */}
       {portfolios.length > 0 && (
