@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
 import { buildLsDcaUrl, parseLsDcaParams } from '../utils/shareUrl'
+import { loadLS, saveLS } from '../utils/localStorage'
 import Select from 'react-select'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
@@ -43,29 +44,41 @@ export function LumpSumDCAPanel({ funds }: Props) {
   const urlParams = parseLsDcaParams()
 
   // ── Parameters ──
-  const [totalCapital, setTotalCapital] = useState(urlParams?.totalCapital ?? 100_000_000)
-  const [horizonMonths, setHorizonMonths] = useState(urlParams?.horizonMonths ?? 12)
-  const [freq, setFreq] = useState<LSvsDCAFreq>(urlParams?.freq ?? 'monthly')
-  const [cashMode, setCashMode] = useState<CashMode>(urlParams?.cashMode ?? 'flat')
-  const [savingsRate, setSavingsRate] = useState(urlParams?.savingsRate ?? 4)
-  const [cashFundId, setCashFundId] = useState<string>(urlParams?.cashFundId ?? '')
-  const [compareFundId, setCompareFundId] = useState<string>(urlParams?.compareFundId ?? '')
+  const [totalCapital, setTotalCapital] = useState(
+    urlParams?.totalCapital ?? loadLS('lsdca_totalCapital', 100_000_000)
+  )
+  const [horizonMonths, setHorizonMonths] = useState(
+    urlParams?.horizonMonths ?? loadLS('lsdca_horizonMonths', 12)
+  )
+  const [freq, setFreq] = useState<LSvsDCAFreq>(
+    urlParams?.freq ?? loadLS('lsdca_freq', 'monthly' as LSvsDCAFreq)
+  )
+  const [cashMode, setCashMode] = useState<CashMode>(
+    urlParams?.cashMode ?? loadLS('lsdca_cashMode', 'flat' as CashMode)
+  )
+  const [savingsRate, setSavingsRate] = useState(
+    urlParams?.savingsRate ?? loadLS('lsdca_savingsRate', 4)
+  )
+  const [cashFundId, setCashFundId] = useState<string>(
+    urlParams?.cashFundId ?? loadLS('lsdca_cashFundId', '')
+  )
+  const [compareFundId, setCompareFundId] = useState<string>(
+    urlParams?.compareFundId ?? loadLS('lsdca_compareFundId', '')
+  )
   const [showCagr, setShowCagr] = useState(false)
   const [showExplainer, setShowExplainer] = useState(false)
 
   // ── Portfolio (single) ──
+  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string } | null
   const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(() => {
-    if (urlParams?.portfolio) {
-      const id = `lsdca${nextIdRef.current++}`
-      const p = urlParams.portfolio
-      return {
-        id,
-        name: p.slots[0]?.fundId ?? 'Danh mục',
-        slots: p.slots,
-        rebalFreq: p.rebalFreq,
-      }
+    const src = urlParams?.portfolio ?? loadLS<SavedPortfolio>('lsdca_portfolio', null)
+    if (!src) return null
+    return {
+      id: `lsdca${nextIdRef.current++}`,
+      name: src.slots[0]?.fundId ?? 'Danh mục',
+      slots: src.slots,
+      rebalFreq: src.rebalFreq as import('../types').RebalanceFrequency,
     }
-    return null
   })
 
   // ── Data ──
@@ -83,6 +96,18 @@ export function LumpSumDCAPanel({ funds }: Props) {
     cashFundId: string
     compareFundId: string
   } | null>(null)
+
+  // ── Persist to localStorage ──
+  useEffect(() => { saveLS('lsdca_totalCapital', totalCapital) }, [totalCapital])
+  useEffect(() => { saveLS('lsdca_horizonMonths', horizonMonths) }, [horizonMonths])
+  useEffect(() => { saveLS('lsdca_freq', freq) }, [freq])
+  useEffect(() => { saveLS('lsdca_cashMode', cashMode) }, [cashMode])
+  useEffect(() => { saveLS('lsdca_savingsRate', savingsRate) }, [savingsRate])
+  useEffect(() => { saveLS('lsdca_cashFundId', cashFundId) }, [cashFundId])
+  useEffect(() => { saveLS('lsdca_compareFundId', compareFundId) }, [compareFundId])
+  useEffect(() => {
+    saveLS('lsdca_portfolio', portfolio ? { slots: portfolio.slots, rebalFreq: portfolio.rebalFreq } : null)
+  }, [portfolio])
 
   const fundOptions = useMemo(
     () => funds.map(f => ({ value: f.id, label: f.name_vi })),

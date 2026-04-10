@@ -4,6 +4,7 @@ const ENTRIES = [
     date: '10/04/2026',
     items: [
       'Thêm nút "Copy link chia sẻ" vào tất cả các tab',
+      'Lưu cấu hình vào bộ nhớ trình duyệt: quỹ đã chọn, số tiền, tần suất... tự động khôi phục khi vào lại',
     ],
   },
   {

@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useCallback, useMemo } from 'react'
 import type { DashboardState } from '../types'
 import { DEFAULT_FUNDS } from '../constants'
+import { loadLS, saveLS } from '../utils/localStorage'
 
 const VALID_TABS = ['compare', 'simulate', 'dca', 'lsdca', 'changelog'] as const
 const VALID_PERIODS = [6, 12, 24, 36, 48]
@@ -18,7 +19,7 @@ export function useUrlState() {
     const tab = searchParams.get('tab')
     const roll = parseInt(searchParams.get('roll') ?? '', 10)
 
-    // Parse funds: comma-separated, or fallback to old a/b params
+    // Parse funds: comma-separated, or fallback to old a/b params, then localStorage
     let funds: string[]
     const fundsParam = searchParams.get('funds')
     if (fundsParam) {
@@ -29,7 +30,7 @@ export function useUrlState() {
       const b = searchParams.get('b')
       if (a && b) funds = [a, b]
       else if (a) funds = [a]
-      else funds = DEFAULT_FUNDS
+      else funds = loadLS('compare_funds', DEFAULT_FUNDS)
     }
 
     return {
@@ -52,6 +53,7 @@ export function useUrlState() {
           // Clean up old params
           next.delete('a')
           next.delete('b')
+          saveLS('compare_funds', updates.funds)
         }
         if (updates.tab !== undefined) next.set('tab', updates.tab)
         if (updates.rollingPeriod !== undefined) next.set('roll', String(updates.rollingPeriod))

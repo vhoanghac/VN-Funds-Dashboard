@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
 import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
+import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint } from '../types'
 import { simulateDCA, dcaMWRR, dcaProfitFactor, type DCAFrequency, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
@@ -54,28 +55,37 @@ export function DCAPanel({ funds }: Props) {
   const urlParams = parseDcaParams()
 
   // ── DCA Parameters ──
-  const [dateMode, setDateMode] = useState<DateRangeMode>(urlParams?.dateMode ?? 'all')
-  const [yearsBack, setYearsBack] = useState(urlParams?.yearsBack ?? 5)
+  const [dateMode, setDateMode] = useState<DateRangeMode>(
+    urlParams?.dateMode ?? loadLS('dca_dateMode', 'all' as DateRangeMode)
+  )
+  const [yearsBack, setYearsBack] = useState(
+    urlParams?.yearsBack ?? loadLS('dca_yearsBack', 5)
+  )
   const [dateFrom, setDateFrom] = useState<string>(urlParams?.dateFrom ?? '')
   const [dateTo, setDateTo] = useState<string>(urlParams?.dateTo ?? '')
-  const [initialAmount, setInitialAmount] = useState(urlParams?.initialAmount ?? 5000000)
-  const [cashflowAmount, setCashflowAmount] = useState(urlParams?.cashflowAmount ?? 1000000)
-  const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>(urlParams?.cashflowFreq ?? 'monthly')
+  const [initialAmount, setInitialAmount] = useState(
+    urlParams?.initialAmount ?? loadLS('dca_initialAmount', 5_000_000)
+  )
+  const [cashflowAmount, setCashflowAmount] = useState(
+    urlParams?.cashflowAmount ?? loadLS('dca_cashflowAmount', 1_000_000)
+  )
+  const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>(
+    urlParams?.cashflowFreq ?? loadLS('dca_cashflowFreq', 'monthly' as DCAFrequency)
+  )
 
   // ── Portfolios ──
+  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string }
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
-    if (urlParams?.portfolios && urlParams.portfolios.length > 0) {
-      return urlParams.portfolios.map((p, i) => {
-        const id = `dca${nextIdRef.current++}`
-        return {
-          id,
-          name: p.slots[0]?.fundId ?? `Danh mục ${i + 1}`,
-          slots: p.slots,
-          rebalFreq: p.rebalFreq,
-        }
-      })
-    }
-    return []
+    const source = urlParams?.portfolios && urlParams.portfolios.length > 0
+      ? urlParams.portfolios
+      : loadLS<SavedPortfolio[]>('dca_portfolios', [])
+    if (source.length === 0) return []
+    return source.map((p, i) => ({
+      id: `dca${nextIdRef.current++}`,
+      name: p.slots[0]?.fundId ?? `Danh mục ${i + 1}`,
+      slots: p.slots,
+      rebalFreq: p.rebalFreq as import('../types').RebalanceFrequency,
+    }))
   })
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
@@ -86,6 +96,16 @@ export function DCAPanel({ funds }: Props) {
     dateFrom: string
     dateTo: string
   } | null>(null)
+
+  // ── Persist to localStorage ──
+  useEffect(() => { saveLS('dca_initialAmount', initialAmount) }, [initialAmount])
+  useEffect(() => { saveLS('dca_cashflowAmount', cashflowAmount) }, [cashflowAmount])
+  useEffect(() => { saveLS('dca_cashflowFreq', cashflowFreq) }, [cashflowFreq])
+  useEffect(() => { saveLS('dca_dateMode', dateMode) }, [dateMode])
+  useEffect(() => { saveLS('dca_yearsBack', yearsBack) }, [yearsBack])
+  useEffect(() => {
+    saveLS('dca_portfolios', portfolios.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })))
+  }, [portfolios])
 
   const fundOptions = useMemo(() =>
     funds.map(f => ({ value: f.id, label: f.name_vi })),
