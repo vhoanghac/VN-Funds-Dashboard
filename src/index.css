@@ -405,6 +405,30 @@ body {
   margin-left: 6px;
 }
 
+.log-scale-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.log-scale-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.log-scale-btn-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
 .chart-empty {
   display: flex;
   align-items: center;

@@ -18,6 +18,7 @@ const CATEGORY_BUTTONS: CategoryButton[] = [
   { value: 'bond', label: 'Trái phiếu' },
   { value: 'balanced', label: 'Cân bằng' },
   { value: 'etf', label: 'ETF' },
+  { value: 'crypto', label: 'Crypto' },
 ]
 
 export function FundCategoryFilter({ activeCategory, onCategoryChange }: Props) {
@@ -61,6 +62,7 @@ export function getCategoryLabel(type: FundMeta['type']): string {
     case 'bond': return 'Trái phiếu'
     case 'balanced': return 'Cân bằng'
     case 'etf': return 'ETF'
+    case 'crypto': return 'Crypto'
     default: return _assertExhaustiveFundType(type)
   }
 }

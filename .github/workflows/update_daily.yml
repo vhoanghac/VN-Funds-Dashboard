@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install vnstock
-        run: pip install vnstock
+        run: pip install vnstock yfinance
 
       - name: Register vnstock API key
         run: python -X utf8 -c "from vnstock import register_user; register_user(api_key='${{ secrets.VNSTOCK_API_KEY }}')"

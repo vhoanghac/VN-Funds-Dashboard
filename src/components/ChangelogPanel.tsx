@@ -1,5 +1,14 @@
 const ENTRIES = [
   {
+    version: 'v2.8',
+    date: '15/04/2026',
+    items: [
+      'Thêm Bitcoin (BTC/VND)',
+      'Dữ liệu BTC/VND tổng hợp từ Yahoo Finance (BTC-USD × USDVND=X), lịch sử từ tháng 9/2014, tự động cập nhật hàng ngày',
+      'Thêm nút "Log" trên biểu đồ Lợi Nhuận Tích Lũy: chuyển sang trục logarithmic để so sánh tài sản có mức tăng trưởng chênh lệch lớn (ví dụ: Bitcoin vs quỹ cổ phiếu)',
+    ],
+  },
+  {
     version: 'v2.7',
     date: '10/04/2026',
     items: [

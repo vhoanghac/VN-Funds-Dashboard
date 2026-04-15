@@ -41,8 +41,8 @@ export function parseFundMetadata(jsonText: string): FundMeta[] {
   return data.map((item: Record<string, unknown>) => ({
     id: String(item.id),
     name_vi: String(item.name_vi),
-    type: (['etf', 'bond', 'balanced'] as const).includes(item.type as never)
-      ? item.type as 'etf' | 'bond' | 'balanced'
+    type: (['etf', 'bond', 'balanced', 'crypto'] as const).includes(item.type as never)
+      ? item.type as 'etf' | 'bond' | 'balanced' | 'crypto'
       : 'mutual_fund' as const,
     start_date: String(item.start_date),
     csv_file: String(item.csv_file),

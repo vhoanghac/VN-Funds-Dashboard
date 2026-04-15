@@ -107,6 +107,55 @@ def update_etf(symbol):
 
 
 
+# ─── BTC/VND via yfinance ────────────────────────────────
+
+def update_btc_vnd():
+    """Update BTC/VND price data using yfinance (BTC-USD × USDVND=X)."""
+    import yfinance as yf
+
+    csv_path = os.path.join(DATA_DIR, 'BTC.csv')
+    last_date = get_last_date(csv_path)
+
+    if last_date:
+        start = (datetime.strptime(last_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+    else:
+        start = '2014-09-17'  # BTC-USD available on Yahoo Finance from this date
+    end = datetime.now().strftime('%Y-%m-%d')
+
+    if start > end:
+        print(f'  ✅ BTC: already up to date (last: {last_date})')
+        return
+
+    try:
+        btc_usd = yf.download('BTC-USD', start=start, end=end, auto_adjust=True, progress=False)['Close']
+        usd_vnd = yf.download('USDVND=X', start=start, end=end, auto_adjust=True, progress=False)['Close']
+
+        df = pd.concat([btc_usd, usd_vnd], axis=1)
+        df.columns = ['btc_usd', 'usd_vnd']
+        # Forward-fill missing USDVND on weekends/holidays, then drop remaining NaN
+        df = df.ffill().dropna()
+
+        df['price'] = (df['btc_usd'] * df['usd_vnd']).round(0).astype(int)
+        df.index = pd.to_datetime(df.index).tz_localize(None)
+        df['date'] = df.index.strftime('%Y-%m-%d')
+
+        result = df[['date', 'price']].reset_index(drop=True)
+
+        if not os.path.exists(csv_path):
+            result.to_csv(csv_path, index=False, lineterminator='\n')
+            print(f'  📈 BTC: created with {len(result)} rows ({result["date"].iloc[0]} → {result["date"].iloc[-1]})')
+        else:
+            count = append_to_csv(csv_path, result)
+            if count > 0:
+                new_last = result['date'].iloc[-1]
+                print(f'  📈 BTC: +{count} rows ({last_date} → {new_last})')
+            else:
+                print(f'  ✅ BTC: already up to date (last: {last_date})')
+
+    except Exception as e:
+        print(f'  ❌ BTC: {e}')
+
+
 # ─── Main ─────────────────────────────────────────────────
 
 def main():
@@ -127,6 +176,11 @@ def main():
     print('📊 Updating ETFs via vnstock Quote (VCI)...')
     for symbol in ETF_FUNDS:
         update_etf(symbol)
+    print()
+
+    # ── 2. BTC/VND ──
+    print('₿  Updating Bitcoin (BTC/VND) via yfinance...')
+    update_btc_vnd()
     print()
 
     print('✅ Done!\n')

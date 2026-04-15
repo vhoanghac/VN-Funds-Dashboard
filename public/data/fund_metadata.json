@@ -52,5 +52,6 @@
   {"id": "MBAM", "name_vi": "MBAM - Quỹ Đầu Tư Trái Phiếu Dòng Tiền Linh Hoạt MB", "type": "bond", "start_date": "2024-05-14", "csv_file": "MBAM.csv"},
   {"id": "VDEF", "name_vi": "VDEF - Quỹ Đầu Tư Cổ Phiếu Cổ Tức Năng Động VinaCapital", "type": "mutual_fund", "start_date": "2024-06-28", "csv_file": "VDEF.csv"},
   {"id": "TCGF", "name_vi": "TCGF - Quỹ Đầu Tư Tăng Trưởng Thành Công", "type": "mutual_fund", "start_date": "2024-10-16", "csv_file": "TCGF.csv"},
-  {"id": "EVESG", "name_vi": "EVESG - Quỹ Đầu Tư Cổ Phiếu ESG Eastspring Investments Việt Nam", "type": "mutual_fund", "start_date": "2024-11-13", "csv_file": "EVESG.csv"}
+  {"id": "EVESG", "name_vi": "EVESG - Quỹ Đầu Tư Cổ Phiếu ESG Eastspring Investments Việt Nam", "type": "mutual_fund", "start_date": "2024-11-13", "csv_file": "EVESG.csv"},
+  {"id": "BTC", "name_vi": "Bitcoin (BTC/VND)", "type": "crypto", "start_date": "2014-09-17", "csv_file": "BTC.csv"}
 ]
