@@ -10,7 +10,7 @@ Usage:  python -X utf8 scripts/update_vnstock.py
 
 import os
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # ─── Config ────────────────────────────────────────────────
 
@@ -107,50 +107,60 @@ def update_etf(symbol):
 
 
 
-# ─── BTC/VND via yfinance ────────────────────────────────
+# ─── BTC/VND via CoinGecko ───────────────────────────────
 
 def update_btc_vnd():
-    """Update BTC/VND price data using yfinance (BTC-USD × USDVND=X)."""
-    import yfinance as yf
+    """Update BTC/VND price data using CoinGecko free API (direct BTC→VND)."""
+    import urllib.request
+    import json
 
     csv_path = os.path.join(DATA_DIR, 'BTC.csv')
     last_date = get_last_date(csv_path)
 
-    if last_date:
-        start = (datetime.strptime(last_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
-    else:
-        start = '2014-09-17'  # BTC-USD available on Yahoo Finance from this date
-    end = datetime.now().strftime('%Y-%m-%d')
+    if not last_date:
+        print(f'  ❌ BTC: CSV file not found — need initial data file')
+        return
 
-    if start > end:
+    # Calculate days since last update
+    last_dt = datetime.strptime(last_date, '%Y-%m-%d')
+    days_diff = (datetime.now() - last_dt).days
+
+    if days_diff <= 0:
         print(f'  ✅ BTC: already up to date (last: {last_date})')
         return
 
+    # CoinGecko free API: market_chart returns daily prices for last N days
+    # Use days_diff + 1 to ensure overlap, then filter by date
+    days_to_fetch = min(days_diff + 2, 365)
+
     try:
-        btc_usd = yf.download('BTC-USD', start=start, end=end, auto_adjust=True, progress=False)['Close']
-        usd_vnd = yf.download('USDVND=X', start=start, end=end, auto_adjust=True, progress=False)['Close']
+        url = f'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=vnd&days={days_to_fetch}&interval=daily'
+        req = urllib.request.Request(url, headers={
+            'Accept': 'application/json',
+            'User-Agent': 'VN-Funds-Dashboard/1.0',
+        })
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
 
-        df = pd.concat([btc_usd, usd_vnd], axis=1)
-        df.columns = ['btc_usd', 'usd_vnd']
-        # Forward-fill missing USDVND on weekends/holidays, then drop remaining NaN
-        df = df.ffill().dropna()
+        prices = data.get('prices', [])
+        if not prices:
+            print(f'  ✅ BTC: no data from CoinGecko')
+            return
 
-        df['price'] = (df['btc_usd'] * df['usd_vnd']).round(0).astype(int)
-        df.index = pd.to_datetime(df.index).tz_localize(None)
-        df['date'] = df.index.strftime('%Y-%m-%d')
+        # CoinGecko returns [[timestamp_ms, price], ...]
+        rows = []
+        for ts_ms, price in prices:
+            date_str = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
+            rows.append({'date': date_str, 'price': int(round(price))})
 
-        result = df[['date', 'price']].reset_index(drop=True)
+        df = pd.DataFrame(rows).drop_duplicates(subset='date', keep='last').sort_values('date').reset_index(drop=True)
 
-        if not os.path.exists(csv_path):
-            result.to_csv(csv_path, index=False, lineterminator='\n')
-            print(f'  📈 BTC: created with {len(result)} rows ({result["date"].iloc[0]} → {result["date"].iloc[-1]})')
+        count = append_to_csv(csv_path, df)
+        if count > 0:
+            new_last = df['date'].iloc[-1]
+            print(f'  📈 BTC: +{count} rows ({last_date} → {new_last})')
         else:
-            count = append_to_csv(csv_path, result)
-            if count > 0:
-                new_last = result['date'].iloc[-1]
-                print(f'  📈 BTC: +{count} rows ({last_date} → {new_last})')
-            else:
-                print(f'  ✅ BTC: already up to date (last: {last_date})')
+            print(f'  ✅ BTC: already up to date (last: {last_date})')
 
     except Exception as e:
         print(f'  ❌ BTC: {e}')
@@ -179,7 +189,7 @@ def main():
     print()
 
     # ── 2. BTC/VND ──
-    print('₿  Updating Bitcoin (BTC/VND) via yfinance...')
+    print('₿  Updating Bitcoin (BTC/VND) via CoinGecko...')
     update_btc_vnd()
     print()
 
