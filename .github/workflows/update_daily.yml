@@ -37,6 +37,11 @@ jobs:
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
+      - name: Update ETF and BTC data
+        run: python -X utf8 scripts/update_vnstock.py
+        env:
+          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
       - name: Check for changes
         id: changes
         run: |
