@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, Area, ComposedChart,
@@ -19,10 +20,33 @@ interface Props {
   portfolios: PortfolioSeries[]
 }
 
+const DIMMED_COLOR = '#CBD5E1'
+const INVESTED_LINE_NAME = 'Đã đầu tư'
+
 export function PortfolioValueChart({ portfolios }: Props) {
+  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
+
+  const seriesKey = portfolios.map(p => p.name).join(',')
+  const prevKeyRef = useRef(seriesKey)
+  if (prevKeyRef.current !== seriesKey) {
+    prevKeyRef.current = seriesKey
+    if (dimmed.size > 0) setDimmed(new Set())
+  }
+
   if (portfolios.length === 0) return null
 
   const data = mergeData(portfolios)
+
+  function handleLegendClick(payload: { value?: string | number }) {
+    const key = typeof payload.value === 'string' ? payload.value : undefined
+    if (!key) return
+    setDimmed(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   return (
     <div className="chart-container">
@@ -30,7 +54,7 @@ export function PortfolioValueChart({ portfolios }: Props) {
         <h3>Giá trị tài sản</h3>
         <span
           className="chart-tooltip-icon"
-          title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Phần tô màu thể hiện lãi/lỗ."
+          title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Phần tô màu thể hiện lãi/lỗ. Bấm vào legend để làm mờ/hiện đường."
         >?</span>
       </div>
       <ResponsiveContainer width="100%" height={350}>
@@ -50,36 +74,60 @@ export function PortfolioValueChart({ portfolios }: Props) {
             width={80}
           />
           <Tooltip
-            formatter={(value: number, name: string) => [formatVNDFull(value), name]}
+            formatter={(value: number, name: string) => {
+              if (dimmed.has(name)) return []
+              return [formatVNDFull(value), name]
+            }}
             labelFormatter={formatTooltipDate}
           />
-          <Legend />
-          {portfolios.map(p => (
-            <Area
-              key={`area-${p.name}`}
-              type="monotone"
-              dataKey={`${p.name}_value`}
-              name={`${p.name} — Giá trị`}
-              stroke={p.color}
-              fill={p.color}
-              fillOpacity={0.1}
-              strokeWidth={2}
-              dot={false}
-              connectNulls={true}
-            />
-          ))}
-          <Line
-            key="invested-shared"
-            type="stepAfter"
-            dataKey={`${portfolios[0]!.name}_invested`}
-            name="Đã đầu tư"
-            stroke="#94a3b8"
-            strokeDasharray="6 3"
-            strokeWidth={1.5}
-            dot={false}
-            opacity={0.7}
-            connectNulls={true}
+          <Legend
+            onClick={handleLegendClick}
+            formatter={(value: string) => (
+              <span style={{
+                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                cursor: 'pointer',
+                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+              }}>
+                {value}
+              </span>
+            )}
           />
+          {portfolios.map(p => {
+            const legendName = `${p.name} — Giá trị`
+            const isDimmed = dimmed.has(legendName)
+            return (
+              <Area
+                key={`area-${p.name}`}
+                type="monotone"
+                dataKey={`${p.name}_value`}
+                name={legendName}
+                stroke={isDimmed ? DIMMED_COLOR : p.color}
+                fill={isDimmed ? DIMMED_COLOR : p.color}
+                fillOpacity={isDimmed ? 0.04 : 0.1}
+                strokeWidth={isDimmed ? 0.75 : 2}
+                opacity={isDimmed ? 0.4 : 1}
+                dot={false}
+                connectNulls={true}
+              />
+            )
+          })}
+          {(() => {
+            const isDimmed = dimmed.has(INVESTED_LINE_NAME)
+            return (
+              <Line
+                key="invested-shared"
+                type="stepAfter"
+                dataKey={`${portfolios[0]!.name}_invested`}
+                name={INVESTED_LINE_NAME}
+                stroke={isDimmed ? DIMMED_COLOR : '#94a3b8'}
+                strokeDasharray="6 3"
+                strokeWidth={isDimmed ? 0.75 : 1.5}
+                opacity={isDimmed ? 0.3 : 0.7}
+                dot={false}
+                connectNulls={true}
+              />
+            )
+          })()}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

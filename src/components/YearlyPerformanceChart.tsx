@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -16,8 +17,29 @@ interface Props {
 }
 
 const BASELINE_COLOR = '#7A7574'
+const DIMMED_COLOR = '#CBD5E1'
 
 export function YearlyPerformanceChart({ series }: Props) {
+  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
+
+  const seriesKey = series.map(s => s.name).join(',')
+  const prevKeyRef = useRef(seriesKey)
+  if (prevKeyRef.current !== seriesKey) {
+    prevKeyRef.current = seriesKey
+    if (dimmed.size > 0) setDimmed(new Set())
+  }
+
+  function handleLegendClick(payload: { value?: string | number }) {
+    const key = typeof payload.value === 'string' ? payload.value : undefined
+    if (!key) return
+    setDimmed(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   // Collect all years
   const yearSet = new Set<number>()
   for (const s of series) {
@@ -44,7 +66,7 @@ export function YearlyPerformanceChart({ series }: Props) {
     <div className="chart-container">
       <div className="chart-header">
         <h3>Hiệu suất theo từng năm</h3>
-        <span className="chart-tooltip-icon" title="So sánh lợi nhuận các quỹ trong mỗi năm. Năm có dấu * là năm chưa đầy đủ dữ liệu.">?</span>
+        <span className="chart-tooltip-icon" title="So sánh lợi nhuận các quỹ trong mỗi năm. Năm có dấu * là năm chưa đầy đủ dữ liệu. Bấm vào legend để làm mờ/hiện cột.">?</span>
       </div>
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
@@ -60,25 +82,50 @@ export function YearlyPerformanceChart({ series }: Props) {
             }}
           />
           <Tooltip
-            formatter={(value: number) => (value * 100).toFixed(2) + '%'}
+            formatter={(value: number, name: string) => {
+              if (dimmed.has(name)) return []
+              return (value * 100).toFixed(2) + '%'
+            }}
           />
-          <Legend />
+          <Legend
+            onClick={handleLegendClick}
+            formatter={(value: string) => (
+              <span style={{
+                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                cursor: 'pointer',
+                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+              }}>
+                {value}
+              </span>
+            )}
+          />
           <ReferenceLine
             y={0}
             stroke={BASELINE_COLOR}
             strokeDasharray="6 3"
             strokeWidth={1.5}
           />
-          {series.map(s => (
-            <Bar key={s.name} dataKey={s.name} fill={s.color} radius={[2, 2, 0, 0]}>
-              <LabelList
+          {series.map(s => {
+            const isDimmed = dimmed.has(s.name)
+            return (
+              <Bar
+                key={s.name}
                 dataKey={s.name}
-                position="top"
-                formatter={(v: number) => v !== null ? (v * 100).toFixed(1) + '%' : ''}
-                style={{ fontSize: 10, fill: '#666' }}
-              />
-            </Bar>
-          ))}
+                fill={isDimmed ? DIMMED_COLOR : s.color}
+                opacity={isDimmed ? 0.35 : 1}
+                radius={[2, 2, 0, 0]}
+              >
+                {!isDimmed && (
+                  <LabelList
+                    dataKey={s.name}
+                    position="top"
+                    formatter={(v: number) => v !== null ? (v * 100).toFixed(1) + '%' : ''}
+                    style={{ fontSize: 10, fill: '#666' }}
+                  />
+                )}
+              </Bar>
+            )
+          })}
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -5,7 +5,9 @@ const ENTRIES = [
     items: [
       'Thêm Bitcoin (BTC/VND)',
       'Dữ liệu BTC/VND tổng hợp từ Yahoo Finance (BTC-USD × USDVND=X), lịch sử từ tháng 9/2014, tự động cập nhật hàng ngày',
+      'Tab Bitcoin: chọn quỹ nền tảng, tự đặt tỷ trọng Bitcoin (3 mức tùy chỉnh, mặc định 1%/2%/3%), so sánh lợi nhuận tích lũy với danh mục thuần quỹ, có tái cân bằng định kỳ',
       'Thêm nút "Log" trên biểu đồ Lợi Nhuận Tích Lũy: chuyển sang trục logarithmic để so sánh tài sản có mức tăng trưởng chênh lệch lớn (ví dụ: Bitcoin vs quỹ cổ phiếu)',
+      'Bấm vào legend trên tất cả biểu đồ để làm mờ đường/cột thay vì ẩn hoàn toàn, giúp dễ quan sát hơn',
     ],
   },
   {

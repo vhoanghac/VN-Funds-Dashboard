@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -11,14 +11,33 @@ interface Props {
 
 const BASELINE_COLOR = '#7A7574'
 
+const DIMMED_COLOR = '#CBD5E1'
+
 export function CumulativeReturnChart({ series }: Props) {
   const [logScale, setLogScale] = useState(false)
+  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
+
+  // Reset dimmed when series change (e.g. user picks a different fund)
+  const seriesKey = series.map(s => s.name).join(',')
+  const prevKeyRef = useRef(seriesKey)
+  if (prevKeyRef.current !== seriesKey) {
+    prevKeyRef.current = seriesKey
+    if (dimmed.size > 0) setDimmed(new Set())
+  }
 
   const rawData = mergeAllSeries(series)
-
-  // For log scale: transform values from decimal return (e.g. 0.5) to growth factor (e.g. 1.5)
-  // so the axis is always positive. 0% = 1×, +100% = 2×, -50% = 0.5×
   const data = logScale ? toGrowthFactor(rawData, series) : rawData
+
+  function handleLegendClick(payload: { value?: string | number }) {
+    const key = typeof payload.value === 'string' ? payload.value : undefined
+    if (!key) return
+    setDimmed(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   return (
     <div className="chart-container">
@@ -32,7 +51,7 @@ export function CumulativeReturnChart({ series }: Props) {
           >
             Log
           </button>
-          <span className="chart-tooltip-icon" title="Biểu đồ thể hiện hiệu suất tích lũy từ thời điểm bắt đầu (0%). Nếu đường ở mức 50% nghĩa là quỹ đã tăng 50% so với ban đầu.">?</span>
+          <span className="chart-tooltip-icon" title="Biểu đồ thể hiện hiệu suất tích lũy từ thời điểm bắt đầu (0%). Nếu đường ở mức 50% nghĩa là quỹ đã tăng 50% so với ban đầu. Bấm vào legend để làm mờ/hiện đường.">?</span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={350}>
@@ -55,29 +74,45 @@ export function CumulativeReturnChart({ series }: Props) {
             width={60}
           />
           <Tooltip
-            formatter={(value: number) =>
-              logScale ? formatGrowthFactorFull(value) : formatPercent(value)
-            }
+            formatter={(value: number, name: string) => {
+              if (dimmed.has(name)) return []   // hide tooltip row for dimmed lines
+              return logScale ? formatGrowthFactorFull(value) : formatPercent(value)
+            }}
             labelFormatter={formatTooltipDate}
           />
-          <Legend />
+          <Legend
+            onClick={handleLegendClick}
+            formatter={(value: string) => (
+              <span style={{
+                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                cursor: 'pointer',
+                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+              }}>
+                {value}
+              </span>
+            )}
+          />
           <ReferenceLine
             y={logScale ? 1 : 0}
             stroke={BASELINE_COLOR}
             strokeDasharray="6 3"
             strokeWidth={1.5}
           />
-          {series.map(s => (
-            <Line
-              key={s.name}
-              type="monotone"
-              dataKey={s.name}
-              stroke={s.color}
-              dot={false}
-              strokeWidth={2}
-              connectNulls
-            />
-          ))}
+          {series.map(s => {
+            const isDimmed = dimmed.has(s.name)
+            return (
+              <Line
+                key={s.name}
+                type="monotone"
+                dataKey={s.name}
+                stroke={isDimmed ? DIMMED_COLOR : s.color}
+                strokeWidth={isDimmed ? 1 : 2}
+                opacity={isDimmed ? 0.4 : 1}
+                dot={false}
+                connectNulls
+              />
+            )
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>

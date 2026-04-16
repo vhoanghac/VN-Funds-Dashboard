@@ -10,6 +10,7 @@ import { RollingReturnChart } from './components/RollingReturnChart'
 import { SimulationPanel } from './components/SimulationPanel'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
+import { BitcoinPanel } from './components/BitcoinPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 import { DateRangePicker } from './components/DateRangePicker'
 import { ShareButton } from './components/ShareButton'
@@ -116,6 +117,12 @@ export function App() {
           LS vs DCA
         </button>
         <button
+          className={`tab ${state.tab === 'bitcoin' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'bitcoin' })}
+        >
+          Bitcoin
+        </button>
+        <button
           className={`tab ${state.tab === 'changelog' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'changelog' })}
         >
@@ -187,6 +194,11 @@ export function App() {
       {/* LS vs DCA Tab */}
       <div style={{ display: state.tab === 'lsdca' ? undefined : 'none' }}>
         <LumpSumDCAPanel funds={metadata} />
+      </div>
+
+      {/* Bitcoin Tab */}
+      <div style={{ display: state.tab === 'bitcoin' ? undefined : 'none' }}>
+        <BitcoinPanel funds={metadata} />
       </div>
 
       {/* Changelog Tab */}

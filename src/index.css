@@ -429,6 +429,220 @@ body {
   color: white;
 }
 
+.bitcoin-description {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  max-width: 720px;
+}
+
+.bitcoin-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.bitcoin-ctrl-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bitcoin-ctrl-fund {
+  flex: 1;
+  min-width: 220px;
+}
+
+.bitcoin-ctrl-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.bitcoin-fund-select {
+  min-width: 220px;
+}
+
+.bitcoin-rebal-select {
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-height: 38px;
+  color: #1a1a1a;
+  appearance: auto;
+}
+
+.bitcoin-rebal-select:hover {
+  border-color: #F97316;
+}
+
+.bitcoin-rebal-select:focus {
+  outline: none;
+  border-color: #F97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+}
+
+.bitcoin-weight-inputs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.bitcoin-weight-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bitcoin-weight-chip:focus-within {
+  border-color: #F97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
+  background: #fff;
+}
+
+.weight-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bitcoin-weight-input {
+  width: 42px;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  background: transparent;
+  color: #1a1a1a;
+  padding: 0;
+}
+
+/* hide spin buttons */
+.bitcoin-weight-input::-webkit-outer-spin-button,
+.bitcoin-weight-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.bitcoin-weight-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.bitcoin-weight-unit {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ─── Performance Stats Table ─────────────────────── */
+
+.perf-table-container {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 16px 20px;
+}
+
+.perf-table-wrap {
+  overflow-x: auto;
+}
+
+.perf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.perf-table thead tr {
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.perf-table th {
+  padding: 9px 16px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: default;
+}
+
+.perf-th-name {
+  text-align: left !important;
+}
+
+.perf-table td {
+  padding: 12px 16px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.perf-td-name {
+  text-align: left !important;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.perf-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.perf-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.12s;
+}
+
+.perf-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.perf-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* value colours */
+.perf-pos     { color: #16a34a; }
+.perf-neg     { color: #dc2626; }
+.perf-neutral { color: #374151; }
+
+/* best-in-column: bold + underline */
+.perf-best {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
 .chart-empty {
   display: flex;
   align-items: center;

@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -9,15 +10,36 @@ interface Props {
 }
 
 const BASELINE_COLOR = '#7A7574'
+const DIMMED_COLOR = '#CBD5E1'
 
 export function DrawdownChart({ series }: Props) {
+  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
+
+  const seriesKey = series.map(s => s.name).join(',')
+  const prevKeyRef = useRef(seriesKey)
+  if (prevKeyRef.current !== seriesKey) {
+    prevKeyRef.current = seriesKey
+    if (dimmed.size > 0) setDimmed(new Set())
+  }
+
   const data = mergeAllSeries(series)
+
+  function handleLegendClick(payload: { value?: string | number }) {
+    const key = typeof payload.value === 'string' ? payload.value : undefined
+    if (!key) return
+    setDimmed(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   return (
     <div className="chart-container">
       <div className="chart-header">
         <h3>Tỷ lệ sụt giảm so với đỉnh</h3>
-        <span className="chart-tooltip-icon" title="Drawdown cho thấy mức giảm giá trị so với đỉnh cao nhất trước đó. Ví dụ: -20% nghĩa là quỹ đã giảm 20% từ đỉnh.">?</span>
+        <span className="chart-tooltip-icon" title="Drawdown cho thấy mức giảm giá trị so với đỉnh cao nhất trước đó. Ví dụ: -20% nghĩa là quỹ đã giảm 20% từ đỉnh. Bấm vào legend để làm mờ/hiện đường.">?</span>
       </div>
       <ResponsiveContainer width="100%" height={350}>
         <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -37,7 +59,10 @@ export function DrawdownChart({ series }: Props) {
             domain={['auto', 0]}
           />
           <Tooltip
-            formatter={(value: number) => (value * 100).toFixed(2) + '%'}
+            formatter={(value: number, name: string) => {
+              if (dimmed.has(name)) return []
+              return (value * 100).toFixed(2) + '%'
+            }}
             labelFormatter={(ts: number) => {
               const d = new Date(ts)
               const dd = d.getDate().toString().padStart(2, '0')
@@ -45,25 +70,40 @@ export function DrawdownChart({ series }: Props) {
               return `${dd}/${mm}/${d.getFullYear()}`
             }}
           />
-          <Legend />
+          <Legend
+            onClick={handleLegendClick}
+            formatter={(value: string) => (
+              <span style={{
+                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                cursor: 'pointer',
+                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+              }}>
+                {value}
+              </span>
+            )}
+          />
           <ReferenceLine
             y={0}
             stroke={BASELINE_COLOR}
             strokeDasharray="6 3"
             strokeWidth={1.5}
           />
-          {series.map(s => (
-            <Area
-              key={s.name}
-              type="monotone"
-              dataKey={s.name}
-              stroke={s.color}
-              fill={s.color}
-              fillOpacity={0.1}
-              dot={false}
-              strokeWidth={1.5}
-            />
-          ))}
+          {series.map(s => {
+            const isDimmed = dimmed.has(s.name)
+            return (
+              <Area
+                key={s.name}
+                type="monotone"
+                dataKey={s.name}
+                stroke={isDimmed ? DIMMED_COLOR : s.color}
+                fill={isDimmed ? DIMMED_COLOR : s.color}
+                fillOpacity={isDimmed ? 0.04 : 0.1}
+                strokeWidth={isDimmed ? 0.75 : 1.5}
+                opacity={isDimmed ? 0.4 : 1}
+                dot={false}
+              />
+            )
+          })}
         </AreaChart>
       </ResponsiveContainer>
     </div>

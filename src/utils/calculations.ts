@@ -92,6 +92,86 @@ export function cagr(returns: ReturnPoint[]): number | null {
   return Math.pow(growth, 1 / years) - 1
 }
 
+// ─── Annualized Standard Deviation ─────────────────────────
+
+/**
+ * Annualized standard deviation from weekly returns.
+ *
+ * Matches R: sqrt(252) * sd(daily_returns)
+ * Adapted for weekly: sqrt(52) * sd(weekly_returns)
+ */
+export function annualizedStdev(returns: ReturnPoint[]): number {
+  if (returns.length < 2) return 0
+  const n = returns.length
+  const mean = returns.reduce((sum, r) => sum + r.value, 0) / n
+  const variance = returns.reduce((sum, r) => sum + (r.value - mean) ** 2, 0) / (n - 1)
+  return Math.sqrt(variance) * Math.sqrt(WEEKS_PER_YEAR)
+}
+
+// ─── Risk Contribution ─────────────────────────────────────
+
+/**
+ * Component risk contribution of each asset in a 2-asset portfolio.
+ *
+ * Matches R function component_matrix():
+ *   cov_matrix       <- cov(returns)
+ *   sd_portfolio     <- sqrt(t(w) %*% cov_matrix %*% w)
+ *   marginal         <- w %*% cov_matrix / sd_portfolio
+ *   component        <- marginal * w
+ *   component_pct    <- component / sd_portfolio   (sums to 1)
+ *
+ * @returns contribA, contribB — percentages of total portfolio risk (sum ≈ 1)
+ */
+export function riskContribution(
+  returnsA: ReturnPoint[],
+  returnsB: ReturnPoint[],
+  weightA: number,
+  weightB: number,
+): { contribA: number; contribB: number } {
+  const n = Math.min(returnsA.length, returnsB.length)
+  if (n < 2 || (weightA === 0 && weightB === 0)) {
+    return { contribA: 0, contribB: 0 }
+  }
+
+  let sumA = 0, sumB = 0
+  for (let i = 0; i < n; i++) {
+    sumA += returnsA[i]!.value
+    sumB += returnsB[i]!.value
+  }
+  const meanA = sumA / n
+  const meanB = sumB / n
+
+  // Sample covariance matrix elements
+  let covAA = 0, covAB = 0, covBB = 0
+  for (let i = 0; i < n; i++) {
+    const da = returnsA[i]!.value - meanA
+    const db = returnsB[i]!.value - meanB
+    covAA += da * da
+    covAB += da * db
+    covBB += db * db
+  }
+  covAA /= (n - 1)
+  covAB /= (n - 1)
+  covBB /= (n - 1)
+
+  // Portfolio std: sqrt(w' Σ w)
+  const portVar = weightA * weightA * covAA
+    + 2 * weightA * weightB * covAB
+    + weightB * weightB * covBB
+  const portSd = Math.sqrt(portVar)
+  if (portSd === 0) return { contribA: 0, contribB: 0 }
+
+  // Marginal contribution: (w Σ) / σ_p
+  const margA = (weightA * covAA + weightB * covAB) / portSd
+  const margB = (weightA * covAB + weightB * covBB) / portSd
+
+  // Component percentage: (marginal * w) / σ_p
+  return {
+    contribA: (margA * weightA) / portSd,
+    contribB: (margB * weightB) / portSd,
+  }
+}
+
 // ─── Max Drawdown ───────────────────────────────────────────
 
 /**
