@@ -16,10 +16,10 @@ interface Props {
   fundId: string
 }
 
-const BTC_WEIGHT_COLOR = '#FCD34D'
-const BTC_RISK_COLOR   = '#F97316'
-const FUND_WEIGHT_COLOR = '#CBD5E1'
-const FUND_RISK_COLOR   = '#64748B'
+const BTC_WEIGHT_COLOR  = '#264653'
+const BTC_RISK_COLOR    = '#2a9d8f'
+const FUND_WEIGHT_COLOR = '#e9c46a'
+const FUND_RISK_COLOR   = '#f4a261'
 
 export function RiskContributionChart({ data, fundId }: Props) {
   if (data.length === 0) return null
@@ -64,7 +64,7 @@ export function RiskContributionChart({ data, fundId }: Props) {
               dataKey="Tỷ trọng Bitcoin"
               position="top"
               formatter={(v: number) => v.toFixed(1) + '%'}
-              style={{ fontSize: 10, fill: '#92400E', fontWeight: 600 }}
+              style={{ fontSize: 10, fill: '#264653', fontWeight: 600 }}
             />
           </Bar>
           <Bar dataKey="Đóng góp Bitcoin" fill={BTC_RISK_COLOR} radius={[3, 3, 0, 0]}>
@@ -72,7 +72,7 @@ export function RiskContributionChart({ data, fundId }: Props) {
               dataKey="Đóng góp Bitcoin"
               position="top"
               formatter={(v: number) => v.toFixed(1) + '%'}
-              style={{ fontSize: 10, fill: '#9A3412', fontWeight: 600 }}
+              style={{ fontSize: 10, fill: '#2a9d8f', fontWeight: 600 }}
             />
           </Bar>
           <Bar dataKey={fundWeightKey} fill={FUND_WEIGHT_COLOR} radius={[3, 3, 0, 0]}>
@@ -80,7 +80,7 @@ export function RiskContributionChart({ data, fundId }: Props) {
               dataKey={fundWeightKey}
               position="top"
               formatter={(v: number) => v.toFixed(1) + '%'}
-              style={{ fontSize: 10, fill: '#64748B', fontWeight: 600 }}
+              style={{ fontSize: 10, fill: '#c9a227', fontWeight: 600 }}
             />
           </Bar>
           <Bar dataKey={fundRiskKey} fill={FUND_RISK_COLOR} radius={[3, 3, 0, 0]}>
@@ -88,7 +88,7 @@ export function RiskContributionChart({ data, fundId }: Props) {
               dataKey={fundRiskKey}
               position="top"
               formatter={(v: number) => v.toFixed(1) + '%'}
-              style={{ fontSize: 10, fill: '#334155', fontWeight: 600 }}
+              style={{ fontSize: 10, fill: '#c07030', fontWeight: 600 }}
             />
           </Bar>
         </BarChart>
