@@ -339,29 +339,38 @@ export function winRateAmong(
 /**
  * Rolling cumulative (total) return over a sliding window.
  *
- * For each endpoint t, computes cumprod(1 + r) - 1 over the
- * preceding windowSizeWeeks weekly returns.
+ * O(n) via log-space sliding window — no array allocations per step.
  *
- * Used for the BTC contribution ribbon chart.
+ * Uses: log(∏(1+rᵢ)) = Σlog(1+rᵢ), slide by adding new log and
+ * subtracting the oldest. Math.log1p / Math.expm1 for precision.
+ *
+ * Equivalent result to the naive O(n×w) cumprod approach.
  */
 export function rollingCumulativeReturns(
   returns: ReturnPoint[],
   windowSizeWeeks: number,
 ): ReturnPoint[] {
-  if (returns.length < windowSizeWeeks) return []
+  const n = returns.length
+  if (n < windowSizeWeeks) return []
+
+  // Precompute log(1+r) once — O(n)
+  const logR = new Float64Array(n)
+  for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
+
+  // Seed the first window sum
+  let logSum = 0
+  for (let i = 0; i < windowSizeWeeks; i++) logSum += logR[i]!
 
   const result: ReturnPoint[] = []
+  result.push({
+    date: returns[windowSizeWeeks - 1]!.date,
+    value: Math.expm1(logSum),
+  })
 
-  for (let i = windowSizeWeeks; i <= returns.length; i++) {
-    const window = returns.slice(i - windowSizeWeeks, i)
-    let growth = 1.0
-    for (const r of window) {
-      growth *= 1 + r.value
-    }
-    result.push({
-      date: window[window.length - 1]!.date,
-      value: growth - 1,
-    })
+  // Slide: O(1) per step
+  for (let i = windowSizeWeeks; i < n; i++) {
+    logSum += logR[i]! - logR[i - windowSizeWeeks]!
+    result.push({ date: returns[i]!.date, value: Math.expm1(logSum) })
   }
 
   return result
@@ -372,27 +381,49 @@ export function rollingCumulativeReturns(
 /**
  * Rolling annualized standard deviation over a sliding window.
  *
- * For each endpoint t, computes the sample stdev of weekly returns
- * in the preceding windowSizeWeeks, then annualizes: sd × sqrt(52).
+ * O(n) via sliding sum + sum-of-squares — no array allocations per step.
+ *
+ * variance = (sumSq - sum²/w) / (w-1)  (Bessel-corrected sample variance)
+ * annualized = sqrt(variance) × sqrt(52)
+ *
+ * Math.max(0, variance) guards against tiny negatives from float rounding.
  */
 export function rollingAnnualizedStdev(
   returns: ReturnPoint[],
   windowSizeWeeks: number,
 ): ReturnPoint[] {
-  if (returns.length < windowSizeWeeks) return []
+  const n = returns.length
+  if (n < windowSizeWeeks || windowSizeWeeks < 2) return []
+
+  const w = windowSizeWeeks
+  const sqrtAnnualize = Math.sqrt(WEEKS_PER_YEAR)
+
+  // Seed first window
+  let sum = 0
+  let sumSq = 0
+  for (let i = 0; i < w; i++) {
+    const v = returns[i]!.value
+    sum += v
+    sumSq += v * v
+  }
 
   const result: ReturnPoint[] = []
+  const variance0 = Math.max(0, (sumSq - (sum * sum) / w) / (w - 1))
+  result.push({
+    date: returns[w - 1]!.date,
+    value: Math.sqrt(variance0) * sqrtAnnualize,
+  })
 
-  for (let i = windowSizeWeeks; i <= returns.length; i++) {
-    const window = returns.slice(i - windowSizeWeeks, i)
-    const n = window.length
-    if (n < 2) continue
-
-    const mean = window.reduce((s, r) => s + r.value, 0) / n
-    const variance = window.reduce((s, r) => s + (r.value - mean) ** 2, 0) / (n - 1)
+  // Slide: O(1) per step
+  for (let i = w; i < n; i++) {
+    const vIn  = returns[i]!.value
+    const vOut = returns[i - w]!.value
+    sum   += vIn - vOut
+    sumSq += vIn * vIn - vOut * vOut
+    const variance = Math.max(0, (sumSq - (sum * sum) / w) / (w - 1))
     result.push({
-      date: window[window.length - 1]!.date,
-      value: Math.sqrt(variance) * Math.sqrt(WEEKS_PER_YEAR),
+      date: returns[i]!.date,
+      value: Math.sqrt(variance) * sqrtAnnualize,
     })
   }
 
@@ -412,30 +443,31 @@ export function rollingAnnualizedStdev(
  * value of growth_t / cummax(growth_t) - 1.
  *
  * Values are negative (or zero): e.g., -0.35 = -35% drawdown.
+ *
+ * O(n×w) — no O(n) shortcut exists for sliding-window max drawdown.
+ * Optimized by using direct index access (no .slice() allocations).
  */
 export function rollingMaxDrawdown(
   returns: ReturnPoint[],
   windowSizeWeeks: number,
 ): ReturnPoint[] {
-  if (returns.length < windowSizeWeeks) return []
+  const n = returns.length
+  if (n < windowSizeWeeks) return []
 
   const result: ReturnPoint[] = []
 
-  for (let i = windowSizeWeeks; i <= returns.length; i++) {
-    const window = returns.slice(i - windowSizeWeeks, i)
+  for (let i = windowSizeWeeks - 1; i < n; i++) {
+    const start = i - windowSizeWeeks + 1
     let growth = 1.0
     let peak = 1.0
     let maxDD = 0
-    for (const r of window) {
-      growth *= 1 + r.value
+    for (let j = start; j <= i; j++) {
+      growth *= 1 + returns[j]!.value
       if (growth > peak) peak = growth
       const dd = growth / peak - 1
       if (dd < maxDD) maxDD = dd
     }
-    result.push({
-      date: window[window.length - 1]!.date,
-      value: maxDD,
-    })
+    result.push({ date: returns[i]!.date, value: maxDD })
   }
 
   return result

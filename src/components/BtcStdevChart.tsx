@@ -5,11 +5,11 @@ import {
 } from 'recharts'
 import type { ReturnPoint, RebalanceFrequency } from '../types'
 import { rollingAnnualizedStdev } from '../utils/calculations'
-import { simulateMultiFundPortfolio } from '../utils/portfolio'
 
 interface Props {
-  btcReturns: ReturnPoint[]
-  fundReturns: ReturnPoint[]
+  // Pre-simulated returns for BTC weights 0%–10% (index 0 = 0%, index 10 = 10%)
+  // Computed once in BitcoinPanel to avoid 3× duplicate simulation across scatter charts.
+  allSimReturns: ReturnPoint[][]
   rebalFreq: RebalanceFrequency
   fundId: string
 }
@@ -43,7 +43,7 @@ const REBAL_LABEL: Record<RebalanceFrequency, string> = {
   yearly:    'hàng năm',
 }
 
-export function BtcStdevChart({ btcReturns, fundReturns, rebalFreq, fundId }: Props) {
+export function BtcStdevChart({ allSimReturns, rebalFreq, fundId }: Props) {
   const [periodIdx, setPeriodIdx] = useState(2) // default: 3 năm
 
   const windowSize  = PERIOD_OPTIONS[periodIdx]!.weeks
@@ -53,40 +53,26 @@ export function BtcStdevChart({ btcReturns, fundReturns, rebalFreq, fundId }: Pr
     allPoints: DataPoint[]
     meanPoints: DataPoint[]
   }>(() => {
-    const minLen = Math.min(btcReturns.length, fundReturns.length)
-    if (minLen < windowSize) return { allPoints: [], meanPoints: [] }
-
     const all: DataPoint[]   = []
     const means: DataPoint[] = []
 
-    for (const w of WEIGHTS) {
-      const btcW = w / 100
-      const fundW = 1 - btcW
-
-      let simReturns: ReturnPoint[]
-      try {
-        simReturns = simulateMultiFundPortfolio(
-          [btcReturns, fundReturns],
-          [btcW, fundW],
-          rebalFreq,
-        )
-      } catch {
-        continue
-      }
+    for (let wIdx = 0; wIdx < WEIGHTS.length; wIdx++) {
+      const simReturns = allSimReturns[wIdx]
+      if (!simReturns || simReturns.length < windowSize) continue
 
       const rolling = rollingAnnualizedStdev(simReturns, windowSize)
       if (rolling.length === 0) continue
 
+      const w = WEIGHTS[wIdx]!
       for (const r of rolling) {
         all.push({ weight: w, sd: +(r.value * 100).toFixed(2) })
       }
-
       const mean = rolling.reduce((s, r) => s + r.value, 0) / rolling.length
       means.push({ weight: w, sd: +(mean * 100).toFixed(2) })
     }
 
     return { allPoints: all, meanPoints: means }
-  }, [btcReturns, fundReturns, rebalFreq, windowSize])
+  }, [allSimReturns, windowSize])
 
   if (allPoints.length === 0) return null
 
@@ -172,16 +158,12 @@ export function BtcStdevChart({ btcReturns, fundReturns, rebalFreq, fundId }: Pr
               )
             }}
           />
-
-          {/* Distribution dots */}
           <Scatter
             data={allPoints}
             shape={<SmallDot />}
             legendType="none"
             isAnimationActive={false}
           />
-
-          {/* Mean trend line */}
           <Scatter
             data={meanPoints}
             fill={MEAN_COLOR}
@@ -196,13 +178,9 @@ export function BtcStdevChart({ btcReturns, fundReturns, rebalFreq, fundId }: Pr
         </ScatterChart>
       </ResponsiveContainer>
 
-      {/* Legend */}
       <div className="btc-contrib-legend" style={{ marginTop: 2 }}>
         <span className="btc-contrib-legend-item">
-          <span
-            className="btc-contrib-legend-swatch"
-            style={{ background: DOT_COLOR, opacity: 0.4 }}
-          />
+          <span className="btc-contrib-legend-swatch" style={{ background: DOT_COLOR, opacity: 0.4 }} />
           Độ lệch chuẩn từng giai đoạn
         </span>
         <span className="btc-contrib-legend-item">

@@ -110,15 +110,21 @@ export function BitcoinPanel({ funds }: Props) {
     return () => { cancelled = true }
   }, [selectedFundId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // BTC weight 0–10% used by scatter charts — computed once here,
+  // passed down so BtcWeightChart / BtcStdevChart / BtcMaxDrawdownChart
+  // don't each independently re-simulate the same 11 portfolios.
+  const SCATTER_WEIGHTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
   // Build 4 portfolio cumulative return series + performance stats + risk contribution
-  const { portfolioSeries, portfolioStats, riskContribData, portfolioReturns, rawReturns } = useMemo<{
+  // + pre-simulate all 11 scatter-chart weights in one pass.
+  const { portfolioSeries, portfolioStats, riskContribData, portfolioReturns, allSimReturns } = useMemo<{
     portfolioSeries: ChartSeries[]
     portfolioStats: PortfolioStats[]
     riskContribData: RiskContribItem[]
     portfolioReturns: ReturnPoint[][]
-    rawReturns: { btcR: ReturnPoint[]; fundR: ReturnPoint[] }
+    allSimReturns: ReturnPoint[][]   // index i → simulated returns for SCATTER_WEIGHTS[i]
   }>(() => {
-    const empty = { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], rawReturns: { btcR: [], fundR: [] } }
+    const empty = { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], allSimReturns: [] }
     if (!applied) return empty
     const btcWeekly = fundData.get(BTC_ID)
     const fundWeekly = fundData.get(applied.fundId)
@@ -137,6 +143,7 @@ export function BitcoinPanel({ funds }: Props) {
       const btcR = btcReturns.slice(btcReturns.length - minLen)
       const fundR = fundReturns.slice(fundReturns.length - minLen)
 
+      // ── Main chart portfolios (0%, w1%, w2%, w3%) ──
       const weights = [0, ...applied.btcPercents.map(p => p / 100)]
       const series: ChartSeries[] = []
       const stats: PortfolioStats[] = []
@@ -174,7 +181,6 @@ export function BitcoinPanel({ funds }: Props) {
           maxDD: maxDrawdown(simReturns),
         })
 
-        // Risk contribution for non-zero BTC portfolios
         if (btcW > 0) {
           const rc = riskContribution(btcR, fundR, btcW, fundW)
           riskData.push({
@@ -187,15 +193,29 @@ export function BitcoinPanel({ funds }: Props) {
         }
       }
 
+      // ── Scatter chart portfolios (0%–10% in 1% steps) — computed once ──
+      const scatterSims: ReturnPoint[][] = []
+      for (const w of SCATTER_WEIGHTS) {
+        try {
+          scatterSims.push(simulateMultiFundPortfolio(
+            [btcR, fundR],
+            [w / 100, 1 - w / 100],
+            applied.rebalFreq,
+          ))
+        } catch {
+          scatterSims.push([])
+        }
+      }
+
       return {
         portfolioSeries: series,
         portfolioStats: stats,
         riskContribData: riskData,
         portfolioReturns: portReturns,
-        rawReturns: { btcR, fundR },
+        allSimReturns: scatterSims,
       }
     } catch {
-      return { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], rawReturns: { btcR: [], fundR: [] } }
+      return { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], allSimReturns: [] }
     }
   }, [fundData, applied])
 
@@ -341,22 +361,19 @@ export function BitcoinPanel({ funds }: Props) {
             fundId={applied.fundId}
           />
           <BtcWeightChart
-            btcReturns={rawReturns.btcR}
-            fundReturns={rawReturns.fundR}
-            rebalFreq={applied.rebalFreq}
+            allSimReturns={allSimReturns}
             fundId={applied.fundId}
+            rebalFreq={applied.rebalFreq}
           />
           <BtcStdevChart
-            btcReturns={rawReturns.btcR}
-            fundReturns={rawReturns.fundR}
-            rebalFreq={applied.rebalFreq}
+            allSimReturns={allSimReturns}
             fundId={applied.fundId}
+            rebalFreq={applied.rebalFreq}
           />
           <BtcMaxDrawdownChart
-            btcReturns={rawReturns.btcR}
-            fundReturns={rawReturns.fundR}
-            rebalFreq={applied.rebalFreq}
+            allSimReturns={allSimReturns}
             fundId={applied.fundId}
+            rebalFreq={applied.rebalFreq}
           />
         </>
       )}
