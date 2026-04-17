@@ -583,7 +583,7 @@ body {
   text-align: right;
   font-weight: 600;
   font-size: 0.72rem;
-  color: #9ca3af;
+  color: #4b5563;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   cursor: default;
@@ -631,9 +631,9 @@ body {
 }
 
 /* value colours */
-.perf-pos     { color: #16a34a; }
-.perf-neg     { color: #dc2626; }
-.perf-neutral { color: #374151; }
+.perf-pos     { color: #111827; }
+.perf-neg     { color: #111827; }
+.perf-neutral { color: #111827; }
 
 /* best-in-column: bold + underline */
 .perf-best {
@@ -2265,4 +2265,203 @@ body {
     padding: 16px 0;
     font-size: 0.75rem;
   }
+}
+
+/* ─── BTC Weight Chart subtitle ──────────────────── */
+.btc-weight-chart-sub {
+  font-size: 0.82rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: 2px 0 0;
+}
+
+/* ─── BTC Contribution Chart Controls ────────────── */
+.btc-contrib-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.btc-contrib-ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btc-contrib-ctrl-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  min-width: 190px;
+}
+
+.btc-contrib-btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.btc-contrib-btn {
+  padding: 5px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #f9fafb;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btc-contrib-btn:hover {
+  border-color: #F97316;
+  color: #F97316;
+}
+
+.btc-contrib-btn--active {
+  background: #F97316;
+  border-color: #F97316;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Bitcoin "Run simulation" button */
+.btc-run-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+
+.btc-run-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: #F97316;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btc-run-btn:hover:not(:disabled) {
+  background: #ea580c;
+}
+
+.btc-run-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btc-run-hint {
+  font-size: 0.82rem;
+  color: #b45309;
+  font-style: italic;
+  text-align: center;
+}
+
+.btc-run-placeholder {
+  padding: 28px 16px;
+  margin-top: 16px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  background: #fafafa;
+}
+
+/* BTC Contribution Chart Description */
+.btc-contrib-desc {
+  font-size: 0.82rem;
+  color: #374151;
+  margin: 0 0 14px;
+  line-height: 1.9;
+}
+
+.btc-contrib-desc-line {
+  display: inline-block;
+  width: 18px;
+  height: 2.5px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin: 0 2px;
+  position: relative;
+  top: -1px;
+}
+
+.btc-contrib-desc-swatch {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin: 0 2px;
+  position: relative;
+  top: -1px;
+}
+
+.btc-contrib-desc-sep {
+  display: none;
+}
+
+/* BTC Contribution Chart Legend */
+.btc-contrib-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.btc-contrib-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btc-contrib-legend-line {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.btc-contrib-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ─── Custom Tooltip ──────────────────────────────── */
+.custom-tooltip {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  line-height: 1.7;
+  min-width: 160px;
+}
+
+.custom-tooltip .ct-date {
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
 }

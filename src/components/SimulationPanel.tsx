@@ -197,6 +197,12 @@ export function SimulationPanel({ funds }: Props) {
     return Math.abs(total - 100) < 0.01 && p.slots.every(s => s.fundId)
   })
 
+  const isDirty = committedPortfolios.length > 0 && (() => {
+    const portKey = (ps: Portfolio[]) =>
+      JSON.stringify(ps.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })))
+    return portKey(portfolios) !== portKey(committedPortfolios)
+  })()
+
   // ── Compute full results for committed portfolios ──────
 
   const results = useMemo<PortfolioResult[] | null>(() => {
@@ -449,13 +455,20 @@ export function SimulationPanel({ funds }: Props) {
 
       {/* Run button */}
       {portfolios.length > 0 && (
-        <button
-          className="sim-run-btn"
-          onClick={runSimulation}
-          disabled={!canRun}
-        >
-          Chạy Mô Phỏng
-        </button>
+        <div className="btc-run-row">
+          <button
+            className="sim-run-btn"
+            onClick={runSimulation}
+            disabled={!canRun}
+          >
+            {committedPortfolios.length > 0 ? 'Chạy lại Mô Phỏng' : 'Chạy Mô Phỏng'}
+          </button>
+          {isDirty && (
+            <span className="btc-run-hint">
+              Thông số đã thay đổi — bấm "Chạy lại Mô Phỏng" để cập nhật biểu đồ.
+            </span>
+          )}
+        </div>
       )}
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}

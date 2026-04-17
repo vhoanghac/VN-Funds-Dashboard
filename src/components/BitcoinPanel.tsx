@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import Select from 'react-select'
-import type { FundMeta, WeeklyPrice, ChartSeries, RebalanceFrequency } from '../types'
+import type { FundMeta, WeeklyPrice, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly } from '../utils/weeklyResample'
 import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution } from '../utils/calculations'
@@ -11,6 +11,10 @@ import { PerformanceTable } from './PerformanceTable'
 import type { PortfolioStats } from './PerformanceTable'
 import { RiskContributionChart } from './RiskContributionChart'
 import type { RiskContribItem } from './RiskContributionChart'
+import { BtcContributionChart } from './BtcContributionChart'
+import { BtcWeightChart } from './BtcWeightChart'
+import { BtcStdevChart } from './BtcStdevChart'
+import { BtcMaxDrawdownChart } from './BtcMaxDrawdownChart'
 import { DateRangePicker } from './DateRangePicker'
 import { loadLS, saveLS } from '../utils/localStorage'
 
@@ -21,7 +25,7 @@ interface Props {
 const BTC_ID = 'BTC'
 const DEFAULT_FUND_ID = 'E1VFVN30'
 const DEFAULT_BTC_PERCENTS: [number, number, number] = [1, 2, 3]
-const PORTFOLIO_COLORS = ['#64748B', '#FCD34D', '#F97316', '#B45309']
+const PORTFOLIO_COLORS = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
 
 const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'monthly', label: 'Hàng tháng' },
@@ -44,6 +48,17 @@ export function BitcoinPanel({ funds }: Props) {
   const [fundData, setFundData] = useState<Map<string, WeeklyPrice[]>>(new Map())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Simulation only runs when user clicks "Chạy mô phỏng".
+  // `applied` snapshots the inputs used for the current on-screen results.
+  interface AppliedConfig {
+    fundId: string
+    rebalFreq: RebalanceFrequency
+    btcPercents: [number, number, number]
+    dateFrom: string | null
+    dateTo: string | null
+  }
+  const [applied, setApplied] = useState<AppliedConfig | null>(null)
 
   // Persist selections
   useEffect(() => { saveLS('btc_fund', selectedFundId) }, [selectedFundId])
@@ -96,19 +111,23 @@ export function BitcoinPanel({ funds }: Props) {
   }, [selectedFundId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build 4 portfolio cumulative return series + performance stats + risk contribution
-  const { portfolioSeries, portfolioStats, riskContribData } = useMemo<{
+  const { portfolioSeries, portfolioStats, riskContribData, portfolioReturns, rawReturns } = useMemo<{
     portfolioSeries: ChartSeries[]
     portfolioStats: PortfolioStats[]
     riskContribData: RiskContribItem[]
+    portfolioReturns: ReturnPoint[][]
+    rawReturns: { btcR: ReturnPoint[]; fundR: ReturnPoint[] }
   }>(() => {
+    const empty = { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], rawReturns: { btcR: [], fundR: [] } }
+    if (!applied) return empty
     const btcWeekly = fundData.get(BTC_ID)
-    const fundWeekly = fundData.get(selectedFundId)
-    if (!btcWeekly || !fundWeekly) return { portfolioSeries: [], portfolioStats: [], riskContribData: [] }
+    const fundWeekly = fundData.get(applied.fundId)
+    if (!btcWeekly || !fundWeekly) return empty
 
     try {
       // Apply date filter before alignment
-      const filteredBtc = filterDateRange(btcWeekly, dateFrom, dateTo)
-      const filteredFund = filterDateRange(fundWeekly, dateFrom, dateTo)
+      const filteredBtc = filterDateRange(btcWeekly, applied.dateFrom, applied.dateTo)
+      const filteredFund = filterDateRange(fundWeekly, applied.dateFrom, applied.dateTo)
 
       const aligned = alignMultiSeries([filteredBtc, filteredFund])
       const startDate = aligned.dates[0]!
@@ -118,10 +137,11 @@ export function BitcoinPanel({ funds }: Props) {
       const btcR = btcReturns.slice(btcReturns.length - minLen)
       const fundR = fundReturns.slice(fundReturns.length - minLen)
 
-      const weights = [0, ...btcPercents.map(p => p / 100)]
+      const weights = [0, ...applied.btcPercents.map(p => p / 100)]
       const series: ChartSeries[] = []
       const stats: PortfolioStats[] = []
       const riskData: RiskContribItem[] = []
+      const portReturns: ReturnPoint[][] = []
 
       for (let i = 0; i < weights.length; i++) {
         const btcW = weights[i]!
@@ -129,16 +149,17 @@ export function BitcoinPanel({ funds }: Props) {
         const simReturns = simulateMultiFundPortfolio(
           [btcR, fundR],
           [btcW, fundW],
-          rebalFreq,
+          applied.rebalFreq,
         )
         const cum = cumulativeReturns(simReturns, startDate)
         const pct = btcW * 100
         const pctStr = Number.isInteger(pct) ? pct.toFixed(0) : pct.toFixed(1)
         const name = btcW === 0
-          ? `100% ${selectedFundId}`
+          ? `100% ${applied.fundId}`
           : `${pctStr}% Bitcoin`
         const color = PORTFOLIO_COLORS[i]!
 
+        portReturns.push(simReturns)
         series.push({ name, color, data: cum })
 
         const cagrVal = cagr(simReturns) ?? 0
@@ -166,14 +187,30 @@ export function BitcoinPanel({ funds }: Props) {
         }
       }
 
-      return { portfolioSeries: series, portfolioStats: stats, riskContribData: riskData }
+      return {
+        portfolioSeries: series,
+        portfolioStats: stats,
+        riskContribData: riskData,
+        portfolioReturns: portReturns,
+        rawReturns: { btcR, fundR },
+      }
     } catch {
-      return { portfolioSeries: [], portfolioStats: [], riskContribData: [] }
+      return { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], rawReturns: { btcR: [], fundR: [] } }
     }
-  }, [fundData, selectedFundId, rebalFreq, dateFrom, dateTo, btcPercents])
+  }, [fundData, applied])
 
   const startDate = portfolioSeries[0]?.data[0]?.date
   const endDate = portfolioSeries[0]?.data[portfolioSeries[0].data.length - 1]?.date
+
+  const isDirty = !!applied && (
+    applied.fundId !== selectedFundId
+    || applied.rebalFreq !== rebalFreq
+    || applied.dateFrom !== dateFrom
+    || applied.dateTo !== dateTo
+    || applied.btcPercents[0] !== btcPercents[0]
+    || applied.btcPercents[1] !== btcPercents[1]
+    || applied.btcPercents[2] !== btcPercents[2]
+  )
 
   return (
     <div className="simulation-panel">
@@ -252,16 +289,43 @@ export function BitcoinPanel({ funds }: Props) {
         onChangeTo={setDateTo}
       />
 
+      <div className="btc-run-row">
+        <button
+          className="btc-run-btn"
+          onClick={() => setApplied({
+            fundId: selectedFundId,
+            rebalFreq,
+            btcPercents: [...btcPercents] as [number, number, number],
+            dateFrom,
+            dateTo,
+          })}
+          disabled={loading || !fundData.has(BTC_ID) || !fundData.has(selectedFundId)}
+        >
+          {applied ? 'Chạy lại mô phỏng' : 'Chạy mô phỏng'}
+        </button>
+        {applied && isDirty && (
+          <span className="btc-run-hint">
+            Thông số đã thay đổi — bấm "Chạy lại mô phỏng" để cập nhật biểu đồ.
+          </span>
+        )}
+      </div>
+
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
       {error && <div className="error-banner">{error}</div>}
 
-      {!loading && !error && portfolioSeries.length === 0 && fundData.has(BTC_ID) && (
+      {!applied && !loading && !error && (
+        <div className="btc-run-placeholder">
+          Bấm "Chạy mô phỏng" để tính toán và hiển thị biểu đồ.
+        </div>
+      )}
+
+      {applied && !loading && !error && portfolioSeries.length === 0 && fundData.has(BTC_ID) && (
         <div className="error-banner">
           Khoảng thời gian được chọn không đủ dữ liệu. Hãy chọn khoảng thời gian dài hơn hoặc nhấn "Tất cả".
         </div>
       )}
 
-      {portfolioSeries.length > 0 && !loading && (
+      {applied && portfolioSeries.length > 0 && !loading && (
         <>
           {startDate && endDate && (
             <div className="comparison-period" style={{ marginBottom: 16 }}>
@@ -270,7 +334,30 @@ export function BitcoinPanel({ funds }: Props) {
           )}
           <CumulativeReturnChart series={portfolioSeries} />
           <PerformanceTable stats={portfolioStats} />
-          <RiskContributionChart data={riskContribData} fundId={selectedFundId} />
+          <RiskContributionChart data={riskContribData} fundId={applied.fundId} />
+          <BtcContributionChart
+            portfolioReturns={portfolioReturns}
+            btcPercents={applied.btcPercents}
+            fundId={applied.fundId}
+          />
+          <BtcWeightChart
+            btcReturns={rawReturns.btcR}
+            fundReturns={rawReturns.fundR}
+            rebalFreq={applied.rebalFreq}
+            fundId={applied.fundId}
+          />
+          <BtcStdevChart
+            btcReturns={rawReturns.btcR}
+            fundReturns={rawReturns.fundR}
+            rebalFreq={applied.rebalFreq}
+            fundId={applied.fundId}
+          />
+          <BtcMaxDrawdownChart
+            btcReturns={rawReturns.btcR}
+            fundReturns={rawReturns.fundR}
+            rebalFreq={applied.rebalFreq}
+            fundId={applied.fundId}
+          />
         </>
       )}
     </div>

@@ -256,6 +256,20 @@ export function DCAPanel({ funds }: Props) {
     return Math.abs(total - 100) < 0.01 && p.slots.every(s => s.fundId)
   }) && (initialAmount > 0 || cashflowAmount > 0)
 
+  const isDirty = !!committed && (() => {
+    const { from, to } = getEffectiveDates()
+    const portKey = (ps: DCAPortfolioState[]) =>
+      JSON.stringify(ps.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })))
+    return (
+      portKey(portfolios) !== portKey(committed.portfolios) ||
+      initialAmount    !== committed.params.initialAmount   ||
+      cashflowAmount   !== committed.params.cashflowAmount  ||
+      cashflowFreq     !== committed.params.cashflowFreq    ||
+      from             !== committed.dateFrom               ||
+      to               !== committed.dateTo
+    )
+  })()
+
   // ── Compute results ──
   const results = useMemo<DCAPortfolioResult[] | null>(() => {
     if (!committed || committed.portfolios.length === 0) return null
@@ -503,13 +517,20 @@ export function DCAPanel({ funds }: Props) {
 
       {/* Run button */}
       {portfolios.length > 0 && (
-        <button
-          className="sim-run-btn"
-          onClick={runSimulation}
-          disabled={!canRun}
-        >
-          Chạy DCA
-        </button>
+        <div className="btc-run-row">
+          <button
+            className="sim-run-btn"
+            onClick={runSimulation}
+            disabled={!canRun}
+          >
+            {committed ? 'Chạy lại DCA' : 'Chạy DCA'}
+          </button>
+          {isDirty && (
+            <span className="btc-run-hint">
+              Thông số đã thay đổi — bấm "Chạy lại DCA" để cập nhật biểu đồ.
+            </span>
+          )}
+        </div>
       )}
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}

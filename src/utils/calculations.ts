@@ -334,6 +334,113 @@ export function winRateAmong(
   return total > 0 ? wins / total : null
 }
 
+// ─── Rolling Cumulative Returns ─────────────────────────────
+
+/**
+ * Rolling cumulative (total) return over a sliding window.
+ *
+ * For each endpoint t, computes cumprod(1 + r) - 1 over the
+ * preceding windowSizeWeeks weekly returns.
+ *
+ * Used for the BTC contribution ribbon chart.
+ */
+export function rollingCumulativeReturns(
+  returns: ReturnPoint[],
+  windowSizeWeeks: number,
+): ReturnPoint[] {
+  if (returns.length < windowSizeWeeks) return []
+
+  const result: ReturnPoint[] = []
+
+  for (let i = windowSizeWeeks; i <= returns.length; i++) {
+    const window = returns.slice(i - windowSizeWeeks, i)
+    let growth = 1.0
+    for (const r of window) {
+      growth *= 1 + r.value
+    }
+    result.push({
+      date: window[window.length - 1]!.date,
+      value: growth - 1,
+    })
+  }
+
+  return result
+}
+
+// ─── Rolling Annualized Std Dev ─────────────────────────────
+
+/**
+ * Rolling annualized standard deviation over a sliding window.
+ *
+ * For each endpoint t, computes the sample stdev of weekly returns
+ * in the preceding windowSizeWeeks, then annualizes: sd × sqrt(52).
+ */
+export function rollingAnnualizedStdev(
+  returns: ReturnPoint[],
+  windowSizeWeeks: number,
+): ReturnPoint[] {
+  if (returns.length < windowSizeWeeks) return []
+
+  const result: ReturnPoint[] = []
+
+  for (let i = windowSizeWeeks; i <= returns.length; i++) {
+    const window = returns.slice(i - windowSizeWeeks, i)
+    const n = window.length
+    if (n < 2) continue
+
+    const mean = window.reduce((s, r) => s + r.value, 0) / n
+    const variance = window.reduce((s, r) => s + (r.value - mean) ** 2, 0) / (n - 1)
+    result.push({
+      date: window[window.length - 1]!.date,
+      value: Math.sqrt(variance) * Math.sqrt(WEEKS_PER_YEAR),
+    })
+  }
+
+  return result
+}
+
+// ─── Rolling Max Drawdown ───────────────────────────────────
+
+/**
+ * Rolling maximum drawdown over a sliding window.
+ *
+ * For each endpoint t, computes the max peak-to-trough decline
+ * over the preceding windowSizeWeeks weekly returns.
+ *
+ * Matches R: rollapply(width = 1095, FUN = maxDrawdown) from
+ * PerformanceAnalytics, where maxDrawdown returns the most negative
+ * value of growth_t / cummax(growth_t) - 1.
+ *
+ * Values are negative (or zero): e.g., -0.35 = -35% drawdown.
+ */
+export function rollingMaxDrawdown(
+  returns: ReturnPoint[],
+  windowSizeWeeks: number,
+): ReturnPoint[] {
+  if (returns.length < windowSizeWeeks) return []
+
+  const result: ReturnPoint[] = []
+
+  for (let i = windowSizeWeeks; i <= returns.length; i++) {
+    const window = returns.slice(i - windowSizeWeeks, i)
+    let growth = 1.0
+    let peak = 1.0
+    let maxDD = 0
+    for (const r of window) {
+      growth *= 1 + r.value
+      if (growth > peak) peak = growth
+      const dd = growth / peak - 1
+      if (dd < maxDD) maxDD = dd
+    }
+    result.push({
+      date: window[window.length - 1]!.date,
+      value: maxDD,
+    })
+  }
+
+  return result
+}
+
 // ─── Rolling Returns ────────────────────────────────────────
 
 /**
