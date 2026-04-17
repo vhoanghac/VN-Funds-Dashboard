@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { memo, useState, useMemo } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -67,7 +67,7 @@ function CustomTooltip({ active, payload, label, fundId, btcLabel }: TooltipProp
   )
 }
 
-export function BtcContributionChart({ portfolioReturns, btcPercents, fundId }: Props) {
+function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Props) {
   const [periodIdx, setPeriodIdx] = useState(0)
   const [weightIdx, setWeightIdx] = useState(0)
 
@@ -265,3 +265,5 @@ export function BtcContributionChart({ portfolioReturns, btcPercents, fundId }: 
     </div>
   )
 }
+
+export const BtcContributionChart = memo(BtcContributionChartImpl)

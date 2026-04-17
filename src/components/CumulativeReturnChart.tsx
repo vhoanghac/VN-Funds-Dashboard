@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { memo, useState, useRef } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -13,7 +13,7 @@ const BASELINE_COLOR = '#7A7574'
 
 const DIMMED_COLOR = '#CBD5E1'
 
-export function CumulativeReturnChart({ series }: Props) {
+function CumulativeReturnChartImpl({ series }: Props) {
   const [logScale, setLogScale] = useState(false)
   const [dimmed, setDimmed] = useState<Set<string>>(new Set())
 
@@ -118,6 +118,8 @@ export function CumulativeReturnChart({ series }: Props) {
     </div>
   )
 }
+
+export const CumulativeReturnChart = memo(CumulativeReturnChartImpl)
 
 /** Convert merged data from decimal returns to growth factors (1 + return) for log scale */
 function toGrowthFactor(

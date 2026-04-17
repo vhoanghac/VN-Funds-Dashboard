@@ -238,12 +238,11 @@ export function BitcoinPanel({ funds }: Props) {
         <h2>Bitcoin</h2>
       </div>
 
-      <p className="bitcoin-description">
-        Chọn một quỹ làm nền tảng, hệ thống sẽ so sánh lợi nhuận tích lũy của danh mục gốc
-        với các danh mục có pha trộn 1%, 2% và 3% Bitcoin. Danh mục được tái cân bằng tỷ trọng định kỳ.
-      </p>
-
       <div className="bitcoin-controls">
+        <p className="bitcoin-description">
+          Chọn một quỹ làm nền tảng, hệ thống sẽ so sánh lợi nhuận tích lũy của danh mục gốc
+          với các danh mục có pha trộn Bitcoin. Danh mục được tái cân bằng tỷ trọng định kỳ.
+        </p>
         <div className="bitcoin-ctrl-group bitcoin-ctrl-fund">
           <label className="bitcoin-ctrl-label">Quỹ nền tảng</label>
           <Select

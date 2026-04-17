@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, LabelList,
@@ -21,7 +22,7 @@ const BTC_RISK_COLOR    = '#2a9d8f'
 const FUND_WEIGHT_COLOR = '#e9c46a'
 const FUND_RISK_COLOR   = '#f4a261'
 
-export function RiskContributionChart({ data, fundId }: Props) {
+function RiskContributionChartImpl({ data, fundId }: Props) {
   if (data.length === 0) return null
 
   const chartData = data.map(d => ({
@@ -96,3 +97,5 @@ export function RiskContributionChart({ data, fundId }: Props) {
     </div>
   )
 }
+
+export const RiskContributionChart = memo(RiskContributionChartImpl)

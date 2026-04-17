@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { memo, useState, useMemo } from 'react'
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -43,7 +43,7 @@ const REBAL_LABEL: Record<RebalanceFrequency, string> = {
   yearly:    'hàng năm',
 }
 
-export function BtcStdevChart({ allSimReturns, rebalFreq, fundId }: Props) {
+function BtcStdevChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
   const [periodIdx, setPeriodIdx] = useState(2) // default: 3 năm
 
   const windowSize  = PERIOD_OPTIONS[periodIdx]!.weeks
@@ -191,3 +191,5 @@ export function BtcStdevChart({ allSimReturns, rebalFreq, fundId }: Props) {
     </div>
   )
 }
+
+export const BtcStdevChart = memo(BtcStdevChartImpl)
