@@ -201,6 +201,46 @@ export function maxDrawdown(returns: ReturnPoint[]): number {
 }
 
 /**
+ * Tệ nhất 1 tuần: min trong toàn bộ weekly returns.
+ * Dùng cho "sleep test" — dịch ra VND để người dùng cảm được pain threshold.
+ */
+export function worstWeeklyReturn(returns: ReturnPoint[]): number {
+  if (returns.length === 0) return 0
+  let worst = 0
+  for (const r of returns) {
+    if (r.value < worst) worst = r.value
+  }
+  return worst
+}
+
+/**
+ * Tệ nhất 1 tháng: rolling 4-week cumulative return, lấy min.
+ * Không phải calendar month mà là any 4-week window — phản ánh
+ * "trong 4 tuần liên tiếp tệ nhất, bạn mất bao nhiêu".
+ */
+export function worstMonthlyReturn(returns: ReturnPoint[]): number {
+  const WEEKS = 4
+  if (returns.length < WEEKS) return 0
+
+  // Log-space sliding window — giống rollingCumulativeReturns
+  const n = returns.length
+  const logR = new Float64Array(n)
+  for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
+
+  let logSum = 0
+  for (let i = 0; i < WEEKS; i++) logSum += logR[i]!
+  let worst = Math.expm1(logSum)
+
+  for (let i = WEEKS; i < n; i++) {
+    logSum += logR[i]! - logR[i - WEEKS]!
+    const v = Math.expm1(logSum)
+    if (v < worst) worst = v
+  }
+
+  return worst
+}
+
+/**
  * Drawdown series over time (for chart).
  */
 export function drawdownSeries(returns: ReturnPoint[], startDate?: string): ReturnPoint[] {
@@ -374,6 +414,42 @@ export function rollingCumulativeReturns(
   }
 
   return result
+}
+
+/**
+ * Rolling win rate: trong tất cả các khoảng rolling window dài `windowWeeks`,
+ * có bao nhiêu khoảng mà portfolio A (BTC) có lợi nhuận tích lũy cao hơn
+ * portfolio B (baseline không BTC)?
+ *
+ * Trả về { wins, total } để UI có thể hiển thị "87/100 lần thắng".
+ *
+ * Dùng rollingCumulativeReturns cho cả hai series rồi match theo date.
+ * Cả hai series phải đã được simulate trên cùng một khoảng thời gian
+ * (kết quả của simulateMultiFundPortfolio với cùng weekly data).
+ */
+export function rollingWinRate(
+  returnsA: ReturnPoint[],
+  returnsB: ReturnPoint[],
+  windowWeeks: number,
+): { wins: number; total: number } {
+  if (returnsA.length < windowWeeks || returnsB.length < windowWeeks) {
+    return { wins: 0, total: 0 }
+  }
+
+  const rollA = rollingCumulativeReturns(returnsA, windowWeeks)
+  const rollB = rollingCumulativeReturns(returnsB, windowWeeks)
+  const mapB = new Map(rollB.map(r => [r.date, r.value]))
+
+  let wins = 0
+  let total = 0
+  for (const r of rollA) {
+    const bVal = mapB.get(r.date)
+    if (bVal === undefined) continue
+    total++
+    if (r.value > bVal) wins++
+  }
+
+  return { wins, total }
 }
 
 // ─── Rolling Annualized Std Dev ─────────────────────────────

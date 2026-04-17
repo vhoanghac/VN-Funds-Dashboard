@@ -6,6 +6,8 @@ export interface PortfolioStats {
   stdev: number
   sharpe: number
   maxDD: number
+  worstWeek: number    // negative return, e.g. -0.12 = -12% in the worst single week
+  worstMonth: number   // negative return, worst 4-week rolling window
 }
 
 interface Props {
@@ -22,6 +24,10 @@ export function PerformanceTable({ stats }: Props) {
   const bestMaxDD    = Math.max(...stats.map(s => s.maxDD))   // gần 0 nhất = tốt hơn
 
   const isBest = (val: number, best: number) => Math.abs(val - best) < 1e-9
+
+  const winnerCagr   = stats.find(s => isBest(s.cagrValue, bestCagr))
+  const winnerSharpe = stats.find(s => isBest(s.sharpe, bestSharpe))
+  const winnerDD     = stats.find(s => isBest(s.maxDD, bestMaxDD))
 
   return (
     <div className="perf-table-container">
@@ -71,6 +77,30 @@ export function PerformanceTable({ stats }: Props) {
           </tbody>
         </table>
       </div>
+      {winnerCagr && winnerSharpe && winnerDD && stats.length > 1 && (
+        <div className="chart-takeaway chart-takeaway--blue">
+          <span className="chart-takeaway-icon">🏆</span>
+          <div className="chart-takeaway-body">
+            {winnerCagr.name === winnerSharpe.name ? (
+              <>
+                <strong>{winnerCagr.name}</strong> thắng cả 2 mặt: lợi nhuận cao nhất (
+                <strong>{fmtPct(winnerCagr.cagrValue)}/năm</strong>) và hiệu quả rủi ro tốt nhất
+                (Sharpe <strong>{winnerSharpe.sharpe.toFixed(2)}</strong>).
+                {' '}Ít sụt giảm nhất là <strong>{winnerDD.name}</strong> (
+                {fmtPct(winnerDD.maxDD)}).
+              </>
+            ) : (
+              <>
+                Lợi nhuận cao nhất: <strong>{winnerCagr.name}</strong> (
+                <strong>{fmtPct(winnerCagr.cagrValue)}/năm</strong>). Nhưng hiệu quả sinh lời
+                trên rủi ro tốt nhất thuộc về <strong>{winnerSharpe.name}</strong> (Sharpe
+                {' '}<strong>{winnerSharpe.sharpe.toFixed(2)}</strong>), ít sụt giảm nhất
+                {' '}<strong>{winnerDD.name}</strong> ({fmtPct(winnerDD.maxDD)}).
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

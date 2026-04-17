@@ -36,6 +36,15 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
   const fundWeightKey = `Tỷ trọng ${fundId}`
   const fundRiskKey = `Đóng góp ${fundId}`
 
+  // Takeaway: find portfolio with highest BTC weight (non-zero) to compute risk/weight ratio
+  const btcPortfolios = data.filter(d => d.btcWeight > 0)
+  const highlight = btcPortfolios.length > 0
+    ? btcPortfolios.reduce((a, b) => (a.btcWeight > b.btcWeight ? a : b))
+    : null
+  const riskMultiplier = highlight && highlight.btcWeight > 0
+    ? highlight.btcRiskPct / highlight.btcWeight
+    : 0
+
   return (
     <div className="perf-table-container">
       <div className="chart-header">
@@ -94,6 +103,19 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      {highlight && riskMultiplier > 1 && (
+        <div className="chart-takeaway chart-takeaway--orange">
+          <span className="chart-takeaway-icon">⚠️</span>
+          <div className="chart-takeaway-body">
+            Ở danh mục <strong>{highlight.name}</strong>, Bitcoin chỉ chiếm
+            {' '}<strong>{(highlight.btcWeight * 100).toFixed(1)}%</strong> vốn nhưng
+            đóng góp <strong>{(highlight.btcRiskPct * 100).toFixed(1)}%</strong> biến
+            động danh mục — <strong>gấp {riskMultiplier.toFixed(1)}×</strong> tỷ trọng vốn.
+            {' '}Đây là đánh đổi cần hiểu khi thêm Bitcoin: tỷ trọng nhỏ nhưng "gánh"
+            phần lớn rủi ro.
+          </div>
+        </div>
+      )}
     </div>
   )
 }

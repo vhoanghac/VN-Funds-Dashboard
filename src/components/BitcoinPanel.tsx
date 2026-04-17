@@ -3,7 +3,7 @@ import Select from 'react-select'
 import type { FundMeta, WeeklyPrice, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly } from '../utils/weeklyResample'
-import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution } from '../utils/calculations'
+import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
 import { alignMultiSeries } from '../utils/dateAlign'
 import { CumulativeReturnChart } from './CumulativeReturnChart'
@@ -16,6 +16,11 @@ import { BtcWeightChart } from './BtcWeightChart'
 import { BtcStdevChart } from './BtcStdevChart'
 import { BtcMaxDrawdownChart } from './BtcMaxDrawdownChart'
 import { DateRangePicker } from './DateRangePicker'
+import { BTC_EVENTS } from '../utils/btcEvents'
+import { MoneyInput } from './MoneyInput'
+import { MoneyMachineBlock } from './MoneyMachineBlock'
+import { SleepTestBlock } from './SleepTestBlock'
+import { WinRateBlock } from './WinRateBlock'
 import { loadLS, saveLS } from '../utils/localStorage'
 
 interface Props {
@@ -25,6 +30,7 @@ interface Props {
 const BTC_ID = 'BTC'
 const DEFAULT_FUND_ID = 'E1VFVN30'
 const DEFAULT_BTC_PERCENTS: [number, number, number] = [1, 2, 3]
+const DEFAULT_INVESTMENT = 100_000_000 // 100 triệu — retail default
 const PORTFOLIO_COLORS = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
 
 const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
@@ -42,6 +48,9 @@ export function BitcoinPanel({ funds }: Props) {
   )
   const [btcPercents, setBtcPercents] = useState<[number, number, number]>(
     () => loadLS<[number, number, number]>('btc_weights', DEFAULT_BTC_PERCENTS),
+  )
+  const [investAmount, setInvestAmount] = useState<number>(
+    () => loadLS<number>('btc_invest_amount', DEFAULT_INVESTMENT),
   )
   const [dateFrom, setDateFrom] = useState<string | null>(null)
   const [dateTo, setDateTo] = useState<string | null>(null)
@@ -64,6 +73,7 @@ export function BitcoinPanel({ funds }: Props) {
   useEffect(() => { saveLS('btc_fund', selectedFundId) }, [selectedFundId])
   useEffect(() => { saveLS('btc_rebal', rebalFreq) }, [rebalFreq])
   useEffect(() => { saveLS('btc_weights', btcPercents) }, [btcPercents])
+  useEffect(() => { saveLS('btc_invest_amount', investAmount) }, [investAmount])
 
   // Fund options (exclude BTC itself)
   const fundOptions = useMemo(
@@ -179,6 +189,8 @@ export function BitcoinPanel({ funds }: Props) {
           stdev: stdevVal,
           sharpe: stdevVal > 0 ? cagrVal / stdevVal : 0,
           maxDD: maxDrawdown(simReturns),
+          worstWeek: worstWeeklyReturn(simReturns),
+          worstMonth: worstMonthlyReturn(simReturns),
         })
 
         if (btcW > 0) {
@@ -256,6 +268,18 @@ export function BitcoinPanel({ funds }: Props) {
             noOptionsMessage={() => 'Không tìm thấy'}
             styles={bitcoinSelectStyles}
           />
+        </div>
+        <div className="bitcoin-ctrl-group">
+          <label className="bitcoin-ctrl-label">Số tiền đầu tư</label>
+          <div className="bitcoin-money-wrap">
+            <MoneyInput
+              value={investAmount}
+              onChange={setInvestAmount}
+              min={1_000_000}
+              className="bitcoin-money-input"
+            />
+            <span className="bitcoin-money-unit">đ</span>
+          </div>
         </div>
         <div className="bitcoin-ctrl-group">
           <label className="bitcoin-ctrl-label">Tái cân bằng</label>
@@ -351,14 +375,41 @@ export function BitcoinPanel({ funds }: Props) {
               Mô phỏng từ {formatDate(startDate)} đến {formatDate(endDate)}
             </div>
           )}
-          <CumulativeReturnChart series={portfolioSeries} />
+          <MoneyMachineBlock
+            investAmount={investAmount}
+            stats={portfolioStats}
+            fundId={applied.fundId}
+            startDate={startDate}
+            endDate={endDate}
+          />
+          <CumulativeReturnChart series={portfolioSeries} events={BTC_EVENTS} />
           <PerformanceTable stats={portfolioStats} />
+          <SleepTestBlock investAmount={investAmount} stats={portfolioStats} />
+
+          <div className="section-divider">
+            <span className="section-divider-label">
+              Vai trò của Bitcoin trong danh mục
+            </span>
+          </div>
+
           <RiskContributionChart data={riskContribData} fundId={applied.fundId} />
           <BtcContributionChart
             portfolioReturns={portfolioReturns}
             btcPercents={applied.btcPercents}
             fundId={applied.fundId}
           />
+          <WinRateBlock
+            portfolioReturns={portfolioReturns}
+            btcPercents={applied.btcPercents}
+            stats={portfolioStats}
+          />
+
+          <div className="section-divider">
+            <span className="section-divider-label">
+              Phân tích chi tiết theo tỷ trọng Bitcoin (0%–10%)
+            </span>
+          </div>
+
           <BtcWeightChart
             allSimReturns={allSimReturns}
             fundId={applied.fundId}

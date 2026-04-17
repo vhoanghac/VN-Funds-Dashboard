@@ -107,6 +107,24 @@ function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Pro
 
   if (chartData.length === 0) return null
 
+  // Takeaway: aggregate "BTC helped" vs "BTC hurt" across all rolling windows
+  let winCount = 0
+  let totalDiff = 0
+  let bestDiff = -Infinity
+  let worstDiff = Infinity
+  for (const pt of chartData) {
+    const diff = pt.btc - pt.base
+    totalDiff += diff
+    if (diff > 0) winCount++
+    if (diff > bestDiff) bestDiff = diff
+    if (diff < worstDiff) worstDiff = diff
+  }
+  const winPct = (winCount / chartData.length) * 100
+  const avgDiff = totalDiff / chartData.length
+  const takeawayVariant: 'green' | 'red' | 'orange' =
+    avgDiff > 1 ? 'green' : avgDiff < -1 ? 'red' : 'orange'
+  const takeawayIcon = takeawayVariant === 'green' ? '🎯' : takeawayVariant === 'red' ? '⚠️' : '⚖️'
+
   // X-axis: sample ~8 ticks evenly
   const maxTicks = 8
   const step = Math.max(1, Math.floor(chartData.length / maxTicks))
@@ -261,6 +279,17 @@ function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Pro
           <span className="btc-contrib-legend-swatch" style={{ background: RED_FILL, border: '1px solid #dc2626' }} />
           BTC kém hơn
         </span>
+      </div>
+      <div className={`chart-takeaway chart-takeaway--${takeawayVariant}`}>
+        <span className="chart-takeaway-icon">{takeawayIcon}</span>
+        <div className="chart-takeaway-body">
+          Với giai đoạn <strong>{PERIOD_OPTIONS[periodIdx]!.label}</strong> và danh mục
+          {' '}<strong>{btcPercents[weightIdx]}% BTC</strong>: BTC giúp danh mục vượt trội
+          {' '}<strong>{winPct.toFixed(0)}%</strong> số giai đoạn, đóng góp trung bình
+          {' '}<strong>{avgDiff >= 0 ? '+' : ''}{avgDiff.toFixed(1)}%</strong> lợi nhuận.
+          {' '}Giai đoạn tốt nhất: <strong>+{bestDiff.toFixed(1)}%</strong>,
+          xấu nhất: <strong>{worstDiff.toFixed(1)}%</strong>.
+        </div>
       </div>
     </div>
   )

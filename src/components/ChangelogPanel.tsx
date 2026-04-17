@@ -1,5 +1,13 @@
 const ENTRIES = [
   {
+    version: 'v2.9',
+    date: '17/04/2026',
+    items: [
+      'Tab Bitcoin được thiết kế lại theo hướng kể chuyện cho nhà đầu tư retail: mỗi biểu đồ kèm một hộp "takeaway" nhỏ giải thích con số có ý nghĩa gì với ví tiền của bạn',
+      'Thêm section divider phân nhóm các biểu đồ trong tab Bitcoin thành 3 khu vực rõ ràng: kết quả & tâm lý → vai trò của Bitcoin trong danh mục → phân tích chi tiết theo tỷ trọng 0%–10%',
+    ],
+  },
+  {
     version: 'v2.8',
     date: '15/04/2026',
     items: [

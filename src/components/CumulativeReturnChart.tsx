@@ -4,18 +4,21 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts'
 import type { ChartSeries } from '../types'
+import type { BtcEvent } from '../utils/btcEvents'
 
 interface Props {
   series: ChartSeries[]
+  events?: BtcEvent[]
 }
 
 const BASELINE_COLOR = '#7A7574'
 
 const DIMMED_COLOR = '#CBD5E1'
 
-function CumulativeReturnChartImpl({ series }: Props) {
+function CumulativeReturnChartImpl({ series, events }: Props) {
   const [logScale, setLogScale] = useState(false)
   const [dimmed, setDimmed] = useState<Set<string>>(new Set())
+  const [showEvents, setShowEvents] = useState(true)
 
   // Reset dimmed when series change (e.g. user picks a different fund)
   const seriesKey = series.map(s => s.name).join(',')
@@ -27,6 +30,15 @@ function CumulativeReturnChartImpl({ series }: Props) {
 
   const rawData = mergeAllSeries(series)
   const data = logScale ? toGrowthFactor(rawData, series) : rawData
+
+  // Filter events within chart date range
+  const firstTs = data[0]?.timestamp as number | undefined
+  const lastTs = data[data.length - 1]?.timestamp as number | undefined
+  const visibleEvents = events && showEvents && firstTs !== undefined && lastTs !== undefined
+    ? events
+        .map(e => ({ ...e, ts: new Date(e.date).getTime() }))
+        .filter(e => e.ts >= firstTs && e.ts <= lastTs)
+    : []
 
   function handleLegendClick(payload: { value?: string | number }) {
     const key = typeof payload.value === 'string' ? payload.value : undefined
@@ -44,6 +56,15 @@ function CumulativeReturnChartImpl({ series }: Props) {
       <div className="chart-header">
         <h3>Lợi nhuận tích lũy</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {events && events.length > 0 && (
+            <button
+              className={`log-scale-btn${showEvents ? ' log-scale-btn-active' : ''}`}
+              onClick={() => setShowEvents(v => !v)}
+              title="Bật/tắt các mốc sự kiện quan trọng trong lịch sử Bitcoin: Covid, đỉnh BTC, FTX, BTC ETF"
+            >
+              Sự kiện
+            </button>
+          )}
           <button
             className={`log-scale-btn${logScale ? ' log-scale-btn-active' : ''}`}
             onClick={() => setLogScale(v => !v)}
@@ -55,7 +76,7 @@ function CumulativeReturnChartImpl({ series }: Props) {
         </div>
       </div>
       <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 22, right: 20, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
           <XAxis
             dataKey="timestamp"
@@ -98,6 +119,24 @@ function CumulativeReturnChartImpl({ series }: Props) {
             strokeDasharray="6 3"
             strokeWidth={1.5}
           />
+          {visibleEvents.map(ev => (
+            <ReferenceLine
+              key={ev.date}
+              x={ev.ts}
+              stroke={ev.color}
+              strokeDasharray="3 3"
+              strokeWidth={1.5}
+              label={{
+                value: ev.label,
+                position: 'top',
+                fill: ev.color,
+                fontSize: 10,
+                fontWeight: 600,
+                offset: 6,
+              }}
+              ifOverflow="extendDomain"
+            />
+          ))}
           {series.map(s => {
             const isDimmed = dimmed.has(s.name)
             return (

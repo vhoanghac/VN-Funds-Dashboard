@@ -372,25 +372,39 @@ export function LumpSumDCAPanel({ funds }: Props) {
               {data.map((row, ri) => (
                 <React.Fragment key={ri}>
                   <div className="lsdca-hm-row-header">{HEATMAP_HOLDING_YEARS[ri]} năm</div>
-                  {row.map((cell, ci) => (
-                    <div
-                      key={ci}
-                      className={`lsdca-hm-cell${cell.winRate !== null && cell.totalScenarios < 30 ? ' lsdca-hm-cell-lown' : ''}`}
-                      style={cell.winRate !== null
-                        ? winRateToStyle(cell.winRate)
-                        : { background: '#f3f4f6', color: '#9ca3af' }}
-                      title={cell.winRate !== null
-                        ? `Giữ ${cell.holdingYears} năm, DCA ${cell.dcaMonths} tháng → LS thắng ${(cell.winRate * 100).toFixed(1)}% (${cell.totalScenarios} kịch bản)`
-                        : 'Không đủ dữ liệu lịch sử'}
-                    >
-                      {cell.winRate !== null ? `${(cell.winRate * 100).toFixed(1)}%` : '—'}
-                      {cell.winRate !== null && (
-                        <span className="lsdca-hm-n">
-                          {cell.totalScenarios < 30 ? `⚠ n=${cell.totalScenarios}` : `n=${cell.totalScenarios}`}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {row.map((cell, ci) => {
+                    if (cell.winRate === null) {
+                      return (
+                        <div
+                          key={ci}
+                          className="lsdca-hm-cell lsdca-hm-cell--na"
+                          title="Không đủ dữ liệu lịch sử"
+                        >—</div>
+                      )
+                    }
+                    const tier = cell.winRate >= 0.70 ? 'strong'
+                               : cell.winRate >= 0.50 ? 'medium'
+                               : 'weak'
+                    const wins = Math.round(cell.winRate * cell.totalScenarios)
+                    const lowN = cell.totalScenarios < 30
+                    return (
+                      <div
+                        key={ci}
+                        className={`lsdca-hm-cell lsdca-hm-cell--${tier}${lowN ? ' lsdca-hm-cell-lown' : ''}`}
+                        title={`Giữ ${cell.holdingYears} năm, DCA ${cell.dcaMonths} tháng → LS thắng ${(cell.winRate * 100).toFixed(1)}% (${wins}/${cell.totalScenarios} kịch bản)`}
+                      >
+                        <div className="lsdca-hm-fraction">
+                          {wins}<span className="lsdca-hm-slash">/</span>{cell.totalScenarios}
+                        </div>
+                        <div className="lsdca-hm-bar-wrap">
+                          <div className="lsdca-hm-bar" style={{ width: `${cell.winRate * 100}%` }} />
+                        </div>
+                        <div className="lsdca-hm-pct">
+                          {lowN && '⚠ '}{(cell.winRate * 100).toFixed(0)}% LS thắng
+                        </div>
+                      </div>
+                    )
+                  })}
                 </React.Fragment>
               ))}
             </div>
@@ -399,18 +413,6 @@ export function LumpSumDCAPanel({ funds }: Props) {
         </div>
       </div>
     )
-  }
-
-  function winRateToStyle(rate: number): { background: string; color: string } {
-    // 50% → yellow, 85%+ → dark green
-    const t = Math.max(0, Math.min(1, (rate - 0.50) / 0.35))
-    const hue = Math.round(60 + t * 60)
-    const sat = Math.round(85 - t * 35)
-    const light = Math.round(75 - t * 45)
-    return {
-      background: `hsl(${hue}, ${sat}%, ${light}%)`,
-      color: t > 0.55 ? 'white' : '#1a1a1a',
-    }
   }
 
   // ── Render ──
@@ -693,13 +695,16 @@ export function LumpSumDCAPanel({ funds }: Props) {
             )}
 
             {/* Legend */}
-            <div className="lsdca-hm-legend">
-              <div className="lsdca-hm-legend-bar" />
-              <div className="lsdca-hm-legend-labels">
-                <span>50% — ngang ngửa</span>
-                <span>LS thắng nhiều hơn →</span>
-                <span>85%+ — LS vượt trội</span>
-              </div>
+            <div className="lsdca-hm-legend-chips">
+              <span className="lsdca-hm-chip lsdca-hm-chip--weak">
+                &lt; 50% — DCA thắng nhiều hơn
+              </span>
+              <span className="lsdca-hm-chip lsdca-hm-chip--medium">
+                50–70% — LS nhỉnh hơn
+              </span>
+              <span className="lsdca-hm-chip lsdca-hm-chip--strong">
+                ≥ 70% — LS vượt trội
+              </span>
             </div>
 
             {/* Explanation toggle */}

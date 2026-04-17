@@ -554,6 +554,469 @@ body {
   font-weight: 500;
 }
 
+/* ─── Money input (Bitcoin tab) ──────────────────── */
+
+.bitcoin-money-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  min-height: 38px;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bitcoin-money-wrap:focus-within {
+  border-color: #F97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
+  background: #fff;
+}
+
+.bitcoin-money-input {
+  width: 120px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: right;
+  padding: 0;
+}
+
+.bitcoin-money-unit {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ─── Money Machine hero block ────────────────────── */
+
+.money-machine-block {
+  margin-bottom: 20px;
+  padding: 22px 24px;
+  background: linear-gradient(135deg, #fffaf5 0%, #fff5e8 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.08);
+}
+
+.money-machine-header h3 {
+  margin: 0 0 18px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.5;
+}
+
+.money-amount-highlight {
+  color: #F97316;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.money-machine-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mm-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-top: 3px solid #264653;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mm-card--base {
+  opacity: 0.85;
+}
+
+.mm-card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mm-card-amount-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mm-card-start {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.mm-card-arrow {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.mm-card-final {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.mm-card-return {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.mm-card-delta {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.mm-card-delta--pos {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.mm-card-delta--neg {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.money-machine-takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #F97316;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+
+.money-machine-takeaway strong {
+  color: #c2410c;
+  font-weight: 700;
+}
+
+.mm-takeaway-emoji {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+/* ─── Sleep Test block ────────────────────────────── */
+
+.sleep-test-container {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 16px 20px;
+}
+
+.sleep-test-intro {
+  font-size: 0.9rem;
+  color: #4b5563;
+  line-height: 1.55;
+  margin: 10px 0 14px 0;
+}
+
+.sleep-test-intro strong {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.sleep-test-table .sleep-cell {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.sleep-pct {
+  font-weight: 600;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.sleep-vnd {
+  font-size: 0.78rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.sleep-test-takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+
+.sleep-test-takeaway strong {
+  color: #991b1b;
+  font-weight: 700;
+}
+
+/* ─── Win Rate block ──────────────────────────────── */
+
+.winrate-container {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 16px 20px;
+}
+
+.winrate-intro {
+  font-size: 0.9rem;
+  color: #4b5563;
+  line-height: 1.55;
+  margin: 10px 0 14px 0;
+}
+
+.winrate-table-wrap {
+  overflow-x: auto;
+}
+
+.winrate-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 8px 8px;
+}
+
+.winrate-table thead tr {
+  /* no borders — use spacing */
+}
+
+.winrate-table th {
+  padding: 4px 10px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.winrate-th-name {
+  text-align: left !important;
+}
+
+.winrate-td-name {
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.winrate-cell {
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  min-width: 110px;
+  vertical-align: middle;
+}
+
+.winrate-cell--strong {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.winrate-cell--medium {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+}
+
+.winrate-cell--weak {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+.winrate-cell--na {
+  background: #f3f4f6;
+  color: #9ca3af;
+  font-size: 1.2rem;
+  border: 1px solid #e5e7eb;
+}
+
+.winrate-fraction {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.winrate-slash {
+  color: #9ca3af;
+  font-weight: 500;
+  margin: 0 1px;
+}
+
+.winrate-bar-wrap {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.winrate-cell--strong .winrate-bar {
+  background: #16a34a;
+}
+
+.winrate-cell--medium .winrate-bar {
+  background: #ca8a04;
+}
+
+.winrate-cell--weak .winrate-bar {
+  background: #dc2626;
+}
+
+.winrate-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.winrate-pct {
+  font-size: 0.72rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.winrate-takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+
+.winrate-takeaway strong {
+  color: #15803d;
+  font-weight: 700;
+}
+
+/* ─── Generic Chart Takeaway (narrative box shown under each chart) ─────────────── */
+
+.chart-takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+
+.chart-takeaway-icon {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.chart-takeaway-body {
+  flex: 1;
+}
+
+.chart-takeaway--green {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+}
+.chart-takeaway--green strong { color: #15803d; font-weight: 700; }
+
+.chart-takeaway--red {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+}
+.chart-takeaway--red strong { color: #b91c1c; font-weight: 700; }
+
+.chart-takeaway--orange {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #ea580c;
+}
+.chart-takeaway--orange strong { color: #c2410c; font-weight: 700; }
+
+.chart-takeaway--blue {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+}
+.chart-takeaway--blue strong { color: #1d4ed8; font-weight: 700; }
+
+/* ─── Section Divider (chapter break between chart groups) ─────────────────────── */
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 32px 0 18px 0;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #d1d5db, transparent);
+}
+
+.section-divider-label {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b5563;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
 /* ─── Performance Stats Table ─────────────────────── */
 
 .perf-table-container {
@@ -1738,32 +2201,120 @@ body {
 }
 
 .lsdca-hm-cell {
-  border-radius: 5px;
-  padding: 14px 4px;
+  border-radius: 8px;
+  padding: 10px 8px;
   text-align: center;
-  font-size: 0.85rem;
-  font-weight: 700;
   cursor: default;
   user-select: none;
-  transition: filter 0.1s;
+  transition: filter 0.15s;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
 }
 
 .lsdca-hm-cell:hover {
-  filter: brightness(0.88);
+  filter: brightness(0.96);
 }
 
-.lsdca-hm-n {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 400;
-  opacity: 0.8;
-  margin-top: 3px;
+.lsdca-hm-cell--strong {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.lsdca-hm-cell--medium {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+}
+
+.lsdca-hm-cell--weak {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+.lsdca-hm-cell--na {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #9ca3af;
+  font-size: 1.2rem;
+  font-weight: 600;
+  align-items: center;
+}
+
+.lsdca-hm-fraction {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a1a;
   line-height: 1;
 }
 
+.lsdca-hm-slash {
+  color: #9ca3af;
+  font-weight: 500;
+  margin: 0 1px;
+}
+
+.lsdca-hm-bar-wrap {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lsdca-hm-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.lsdca-hm-cell--strong .lsdca-hm-bar { background: #16a34a; }
+.lsdca-hm-cell--medium .lsdca-hm-bar { background: #ca8a04; }
+.lsdca-hm-cell--weak   .lsdca-hm-bar { background: #dc2626; }
+
+.lsdca-hm-pct {
+  font-size: 0.7rem;
+  color: #4b5563;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
 .lsdca-hm-cell-lown {
-  opacity: 0.65;
-  outline: 1px dashed rgba(0, 0, 0, 0.25);
+  opacity: 0.75;
+  outline: 1px dashed rgba(0, 0, 0, 0.2);
+}
+
+/* 3-tier legend chips (replaces gradient bar) */
+.lsdca-hm-legend-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 0.72rem;
+}
+
+.lsdca-hm-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lsdca-hm-chip--weak {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.lsdca-hm-chip--medium {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+  color: #854d0e;
+}
+
+.lsdca-hm-chip--strong {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
 }
 
 /* CAGR toggle */
@@ -1839,8 +2390,14 @@ body {
     min-width: 280px;
   }
   .lsdca-hm-cell {
-    padding: 8px 2px;
-    font-size: 0.8rem;
+    padding: 7px 4px;
+    gap: 3px;
+  }
+  .lsdca-hm-fraction {
+    font-size: 0.85rem;
+  }
+  .lsdca-hm-pct {
+    font-size: 0.62rem;
   }
   .lsdca-winner-row {
     gap: 6px;
@@ -1889,23 +2446,6 @@ body {
   margin-top: 8px;
 }
 
-.lsdca-hm-legend {
-  margin-top: 16px;
-}
-
-.lsdca-hm-legend-bar {
-  height: 10px;
-  border-radius: 5px;
-  background: linear-gradient(to right, hsl(60, 85%, 75%), hsl(90, 65%, 50%), hsl(120, 50%, 30%));
-}
-
-.lsdca-hm-legend-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  margin-top: 4px;
-}
 
 .lsdca-hm-explainer {
   margin-top: 20px;

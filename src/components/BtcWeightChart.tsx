@@ -76,6 +76,12 @@ function BtcWeightChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
 
   if (allPoints.length === 0) return null
 
+  // Takeaway: compare mean return at 0% BTC vs 10% BTC, find best weight
+  const ret0  = meanPoints.find(p => p.weight === 0)?.ret
+  const ret10 = meanPoints.find(p => p.weight === 10)?.ret
+  const bestWeight = meanPoints.reduce((a, b) => (a.ret > b.ret ? a : b), meanPoints[0]!)
+  const slope = (ret0 !== undefined && ret10 !== undefined) ? (ret10 - ret0) / 10 : null
+
   return (
     <div className="perf-table-container" style={{ marginTop: 24 }}>
       <div className="chart-header">
@@ -184,6 +190,19 @@ function BtcWeightChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
           Trung bình
         </span>
       </div>
+      {slope !== null && ret0 !== undefined && ret10 !== undefined && (
+        <div className={`chart-takeaway chart-takeaway--${slope > 0 ? 'green' : 'red'}`}>
+          <span className="chart-takeaway-icon">{slope > 0 ? '📈' : '📉'}</span>
+          <div className="chart-takeaway-body">
+            Trong <strong>{periodLabel}</strong>: ở <strong>0% BTC</strong>, lợi nhuận trung bình
+            {' '}<strong>{ret0 >= 0 ? '+' : ''}{ret0.toFixed(1)}%</strong>. Ở
+            {' '}<strong>10% BTC</strong>: <strong>{ret10 >= 0 ? '+' : ''}{ret10.toFixed(1)}%</strong>.
+            {' '}Mỗi 1% BTC tăng thêm <strong>{slope >= 0 ? '+' : ''}{slope.toFixed(2)}%</strong>
+            {' '}lợi nhuận trung bình. Tỷ trọng cho trung bình cao nhất:
+            {' '}<strong>{bestWeight.weight}% BTC</strong> ({bestWeight.ret >= 0 ? '+' : ''}{bestWeight.ret.toFixed(1)}%).
+          </div>
+        </div>
+      )}
     </div>
   )
 }

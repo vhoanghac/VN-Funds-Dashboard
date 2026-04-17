@@ -76,6 +76,11 @@ function BtcStdevChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
 
   if (allPoints.length === 0) return null
 
+  // Takeaway: compare mean stdev at 0% vs 10% BTC
+  const sd0  = meanPoints.find(p => p.weight === 0)?.sd
+  const sd10 = meanPoints.find(p => p.weight === 10)?.sd
+  const sdDelta = (sd0 !== undefined && sd10 !== undefined) ? sd10 - sd0 : null
+
   return (
     <div className="perf-table-container" style={{ marginTop: 24 }}>
       <div className="chart-header">
@@ -188,6 +193,19 @@ function BtcStdevChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
           Trung bình
         </span>
       </div>
+      {sdDelta !== null && sd0 !== undefined && sd10 !== undefined && (
+        <div className="chart-takeaway chart-takeaway--orange">
+          <span className="chart-takeaway-icon">📉</span>
+          <div className="chart-takeaway-body">
+            Trong <strong>{periodLabel}</strong>: ở <strong>0% BTC</strong>, biến động trung bình
+            {' '}<strong>{sd0.toFixed(1)}%/năm</strong>. Ở <strong>10% BTC</strong>:
+            {' '}<strong>{sd10.toFixed(1)}%/năm</strong> — tăng
+            {' '}<strong>{sdDelta >= 0 ? '+' : ''}{sdDelta.toFixed(1)}%</strong>
+            {' '}({sd0 > 0 ? ((sd10 / sd0 - 1) * 100).toFixed(0) : '0'}% cao hơn). Thêm Bitcoin
+            giúp lợi nhuận tăng... nhưng đổi lại danh mục "rung lắc" mạnh hơn đáng kể.
+          </div>
+        </div>
+      )}
     </div>
   )
 }
