@@ -9,6 +9,7 @@ Usage:  python -X utf8 scripts/update_vnstock.py
 """
 
 import os
+import sys
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 
@@ -110,16 +111,22 @@ def update_etf(symbol):
 # ─── BTC/VND via CoinGecko ───────────────────────────────
 
 def update_btc_vnd():
-    """Update BTC/VND price data using CoinGecko free API (direct BTC→VND)."""
+    """Update BTC/VND price data using CoinGecko free API (direct BTC→VND).
+
+    Returns True on success or already-up-to-date, False on failure.
+    Retries up to 3 times with exponential backoff to handle transient
+    rate limits or network errors from GitHub Actions shared IPs.
+    """
     import urllib.request
     import json
+    import time
 
     csv_path = os.path.join(DATA_DIR, 'BTC.csv')
     last_date = get_last_date(csv_path)
 
     if not last_date:
-        print(f'  ❌ BTC: CSV file not found — need initial data file')
-        return
+        print(f'  ❌ BTC: CSV file not found, need initial data file')
+        return False
 
     # Calculate days since last update
     last_dt = datetime.strptime(last_date, '%Y-%m-%d')
@@ -127,43 +134,60 @@ def update_btc_vnd():
 
     if days_diff <= 0:
         print(f'  ✅ BTC: already up to date (last: {last_date})')
-        return
+        return True
 
-    # CoinGecko free API: market_chart returns daily prices for last N days
-    # Use days_diff + 1 to ensure overlap, then filter by date
+    # CoinGecko free API: market_chart returns daily prices for last N days.
+    # Use days_diff + 2 to ensure overlap, then filter by date.
+    # Note: for days <= 90 the API returns hourly granularity regardless of
+    # interval param. We dedup by date (keep last) to get one price per day.
     days_to_fetch = min(days_diff + 2, 365)
 
-    try:
-        url = f'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=vnd&days={days_to_fetch}&interval=daily'
-        req = urllib.request.Request(url, headers={
-            'Accept': 'application/json',
-            'User-Agent': 'VN-Funds-Dashboard/1.0',
-        })
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode())
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            url = (
+                f'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart'
+                f'?vs_currency=vnd&days={days_to_fetch}'
+            )
+            req = urllib.request.Request(url, headers={
+                'Accept': 'application/json',
+                'User-Agent': 'VN-Funds-Dashboard/1.0',
+            })
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode())
 
-        prices = data.get('prices', [])
-        if not prices:
-            print(f'  ✅ BTC: no data from CoinGecko')
-            return
+            prices = data.get('prices', [])
+            if not prices:
+                print(f'  ⚠️  BTC: CoinGecko returned empty prices list')
+                return True
 
-        # CoinGecko returns [[timestamp_ms, price], ...]
-        rows = []
-        for ts_ms, price in prices:
-            date_str = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
-            rows.append({'date': date_str, 'price': int(round(price))})
+            # CoinGecko returns [[timestamp_ms, price], ...]
+            rows = []
+            for ts_ms, price in prices:
+                date_str = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
+                rows.append({'date': date_str, 'price': int(round(price))})
 
-        df = pd.DataFrame(rows).drop_duplicates(subset='date', keep='last').sort_values('date').reset_index(drop=True)
+            df = (pd.DataFrame(rows)
+                    .drop_duplicates(subset='date', keep='last')
+                    .sort_values('date')
+                    .reset_index(drop=True))
 
-        count = append_to_csv(csv_path, df)
-        if count > 0:
-            new_last = df['date'].iloc[-1]
-            print(f'  📈 BTC: +{count} rows ({last_date} → {new_last})')
-        else:
-            print(f'  ✅ BTC: already up to date (last: {last_date})')
+            count = append_to_csv(csv_path, df)
+            if count > 0:
+                new_last = df['date'].iloc[-1]
+                print(f'  📈 BTC: +{count} rows ({last_date} → {new_last})')
+            else:
+                print(f'  ✅ BTC: already up to date (last: {last_date})')
+            return True
 
-    except Exception as e:
-        print(f'  ❌ BTC: {e}')
+        except Exception as e:
+            wait = 2 ** attempt  # 2s, 4s, 8s
+            if attempt < max_retries:
+                print(f'  ⚠️  BTC attempt {attempt}/{max_retries} failed: {e}. Retrying in {wait}s...')
+                time.sleep(wait)
+            else:
+                print(f'  ❌ BTC: all {max_retries} attempts failed. Last error: {e}')
+                return False
 
 
 # ─── Main ─────────────────────────────────────────────────
@@ -190,8 +214,12 @@ def main():
 
     # ── 2. BTC/VND ──
     print('₿  Updating Bitcoin (BTC/VND) via CoinGecko...')
-    update_btc_vnd()
+    btc_ok = update_btc_vnd()
     print()
+
+    if not btc_ok:
+        print('❌ BTC update failed. Exiting with error so GitHub Actions alerts.\n')
+        sys.exit(1)
 
     print('✅ Done!\n')
 

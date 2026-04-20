@@ -2,8 +2,9 @@ name: Update Fund NAV Data
 
 on:
   schedule:
-    # 11:00 UTC = 18:00 Vietnam (after market close), Mon-Fri
-    - cron: '0 11 * * 1-5'
+    # 11:00 UTC = 18:00 Vietnam (after market close)
+    # Run Mon-Fri for fund NAV; also Sat-Sun so Bitcoin (24/7) stays current
+    - cron: '0 11 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
