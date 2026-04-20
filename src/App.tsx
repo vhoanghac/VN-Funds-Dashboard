@@ -7,6 +7,8 @@ import { CumulativeReturnChart } from './components/CumulativeReturnChart'
 import { DrawdownChart } from './components/DrawdownChart'
 import { YearlyPerformanceChart } from './components/YearlyPerformanceChart'
 import { RollingReturnChart } from './components/RollingReturnChart'
+import { CompareStoryBlock } from './components/CompareStoryBlock'
+import { DataQualityBlock } from './components/DataQualityBlock'
 import { SimulationPanel } from './components/SimulationPanel'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
@@ -130,7 +132,7 @@ export function App() {
         </button>
       </div>
 
-      {/* Compare Tab — hidden via CSS when inactive to preserve state */}
+      {/* Compare Tab: hidden via CSS when inactive to preserve state */}
       <div className="compare-content" style={{ display: state.tab === 'compare' ? undefined : 'none' }}>
           <div className="panel-header">
             <h2>So Sánh Các Quỹ</h2>
@@ -164,6 +166,16 @@ export function App() {
 
           {comparison.status === 'ready' && (
             <>
+              <DataQualityBlock
+                fundIds={state.funds}
+                fundData={fundData}
+                colors={FUND_COLORS}
+                dateFrom={state.dateFrom}
+                dateTo={state.dateTo}
+                alignedStart={comparison.data.startDate}
+                alignedEnd={comparison.data.endDate}
+              />
+
               <KPICards funds={kpiFunds} />
 
               <CumulativeReturnChart series={chartSeries} />
@@ -177,11 +189,18 @@ export function App() {
                 period={state.rollingPeriod}
                 onPeriodChange={p => updateState({ rollingPeriod: p })}
               />
+
+              <CompareStoryBlock
+                funds={comparison.data.funds}
+                colors={FUND_COLORS}
+                startDate={comparison.data.startDate}
+                endDate={comparison.data.endDate}
+              />
             </>
           )}
         </div>
 
-      {/* Simulate Tab — always mounted, hidden via CSS when inactive */}
+      {/* Simulate Tab: always mounted, hidden via CSS when inactive */}
       <div style={{ display: state.tab === 'simulate' ? undefined : 'none' }}>
         <SimulationPanel funds={metadata} />
       </div>

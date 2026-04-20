@@ -18,7 +18,7 @@ export const BTC_EVENTS: BtcEvent[] = [
   {
     date: '2020-03-16',
     label: 'Covid',
-    description: 'Covid-19 crash — thị trường toàn cầu rơi mạnh, BTC giảm ~50% trong 2 ngày.',
+    description: 'Covid-19 crash: thị trường toàn cầu rơi mạnh, BTC giảm ~50% trong 2 ngày.',
     color: '#dc2626',
   },
   {
@@ -30,7 +30,7 @@ export const BTC_EVENTS: BtcEvent[] = [
   {
     date: '2022-11-09',
     label: 'FTX sập',
-    description: 'Sàn FTX phá sản, kéo theo làn sóng thanh lý — BTC rơi xuống ~16,000 USD.',
+    description: 'Sàn FTX phá sản, kéo theo làn sóng thanh lý. BTC rơi xuống ~16,000 USD.',
     color: '#dc2626',
   },
   {

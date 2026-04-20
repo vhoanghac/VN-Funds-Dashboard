@@ -528,8 +528,8 @@ export function LumpSumDCAPanel({ funds }: Props) {
 
         <p className="dca-note">
           * Phân tích tất cả các kịch bản rolling.<br />
-          * Nếu bạn DCA từ lương mỗi tháng thì tab này không có ứng dụng với bạn — nó chỉ áp dụng khi có sẵn một cục tiền lớn và đang phân vân nên đầu tư hết luôn hay rải dần.<br />
-          * Về lãi suất tiết kiệm: mỗi kỳ chỉ rút ra đúng phần chia đều để đầu tư, phần còn lại vẫn gửi tiết kiệm sinh lãi nhưng khoản lãi đó không mang vào đầu tư — nhờ vậy tổng vốn LS và DCA luôn bằng nhau.
+          * Nếu bạn DCA từ lương mỗi tháng thì tab này không có ứng dụng với bạn. Nó chỉ áp dụng khi có sẵn một cục tiền lớn và đang phân vân nên đầu tư hết luôn hay rải dần.<br />
+          * Về lãi suất tiết kiệm: mỗi kỳ chỉ rút ra đúng phần chia đều để đầu tư, phần còn lại vẫn gửi tiết kiệm sinh lãi nhưng khoản lãi đó không mang vào đầu tư. Nhờ vậy tổng vốn LS và DCA luôn bằng nhau.
         </p>
       </div>
 
@@ -578,7 +578,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
       {/* ── Results ── */}
       {committed && !results && !loading && (
         <div className="error-banner">
-          Không đủ dữ liệu — horizon dài hơn cửa sổ dữ liệu, hoặc quỹ chưa tải xong.
+          Không đủ dữ liệu. Horizon dài hơn cửa sổ dữ liệu, hoặc quỹ chưa tải xong.
         </div>
       )}
 
@@ -604,7 +604,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
                 onClick={() => setShowCagr(v => !v)}
                 title={showCagr
                   ? 'Đang xem lời/năm (quy đổi). Nhấn để xem tổng lời/lỗ cả kỳ đầu tư'
-                  : `Nhấn để xem lời/năm — nếu mức lãi sau ${committed!.horizonMonths}th này mà đều mỗi năm, thì được bao nhiêu %/năm?`}
+                  : `Nhấn để xem lời/năm: nếu mức lãi sau ${committed!.horizonMonths}th này mà đều mỗi năm, thì được bao nhiêu %/năm?`}
               >
                 {showCagr ? '✓ Lời/năm' : 'Xem lời/năm'}
               </button>
@@ -678,10 +678,10 @@ export function LumpSumDCAPanel({ funds }: Props) {
               <Select
                 className="lsdca-cash-fund-select"
                 classNamePrefix="fund-search"
-                options={[{ value: '', label: '— Không so sánh —' }, ...fundOptions]}
+                options={[{ value: '', label: 'Không so sánh' }, ...fundOptions]}
                 value={compareFundId
                   ? (fundOptions.find(o => o.value === compareFundId) ?? null)
-                  : { value: '', label: '— Không so sánh —' }}
+                  : { value: '', label: 'Không so sánh' }}
                 onChange={opt => setCompareFundId(opt?.value || '')}
                 placeholder="Chọn quỹ để so sánh heatmap..."
                 noOptionsMessage={() => 'Không tìm thấy'}
@@ -697,13 +697,13 @@ export function LumpSumDCAPanel({ funds }: Props) {
             {/* Legend */}
             <div className="lsdca-hm-legend-chips">
               <span className="lsdca-hm-chip lsdca-hm-chip--weak">
-                &lt; 50% — DCA thắng nhiều hơn
+                &lt; 50%: DCA thắng nhiều hơn
               </span>
               <span className="lsdca-hm-chip lsdca-hm-chip--medium">
-                50–70% — LS nhỉnh hơn
+                50–70%: LS nhỉnh hơn
               </span>
               <span className="lsdca-hm-chip lsdca-hm-chip--strong">
-                ≥ 70% — LS vượt trội
+                ≥ 70%: LS vượt trội
               </span>
             </div>
 
@@ -739,7 +739,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
           {/* ── Histogram ── */}
           <div className="lsdca-chart-card">
             <h4 className="lsdca-chart-title">
-              LS vượt DCA bao nhiêu? — Phân bố kết quả các kịch bản lịch sử
+              LS vượt DCA bao nhiêu? Phân bố kết quả các kịch bản lịch sử
             </h4>
             <p className="lsdca-chart-sub">
               Xanh = Lump Sum thắng &nbsp;|&nbsp; Đỏ = DCA thắng

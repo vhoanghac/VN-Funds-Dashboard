@@ -25,7 +25,7 @@ function SleepTestBlockImpl({ investAmount, stats }: Props) {
     stats[1]!,
   )
 
-  // Delta drawdown tệ nhất giữa portfolio BTC cao nhất và baseline — dùng cho takeaway
+  // Delta drawdown tệ nhất giữa portfolio BTC cao nhất và baseline, dùng cho takeaway
   const extraPainVND = investAmount * Math.abs(worstBtc.maxDD - base.maxDD)
   const btcFloor = investAmount * (1 + worstBtc.maxDD)
 

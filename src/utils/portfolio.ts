@@ -48,7 +48,7 @@ export function simulateMultiFundPortfolio(
   let prevTotal = 1.0
 
   for (let i = 0; i < len; i++) {
-    // Apply returns — weights drift naturally
+    // Apply returns, weights drift naturally
     for (let j = 0; j < n; j++) {
       values[j] = values[j]! * (1 + allReturns[j]![i]!.value)
     }

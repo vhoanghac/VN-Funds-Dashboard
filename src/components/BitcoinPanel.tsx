@@ -30,7 +30,7 @@ interface Props {
 const BTC_ID = 'BTC'
 const DEFAULT_FUND_ID = 'E1VFVN30'
 const DEFAULT_BTC_PERCENTS: [number, number, number] = [1, 2, 3]
-const DEFAULT_INVESTMENT = 100_000_000 // 100 triệu — retail default
+const DEFAULT_INVESTMENT = 100_000_000 // 100 triệu, retail default
 const PORTFOLIO_COLORS = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
 
 const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
@@ -120,7 +120,7 @@ export function BitcoinPanel({ funds }: Props) {
     return () => { cancelled = true }
   }, [selectedFundId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // BTC weight 0–10% used by scatter charts — computed once here,
+  // BTC weight 0–10% used by scatter charts, computed once here,
   // passed down so BtcWeightChart / BtcStdevChart / BtcMaxDrawdownChart
   // don't each independently re-simulate the same 11 portfolios.
   const SCATTER_WEIGHTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -205,7 +205,7 @@ export function BitcoinPanel({ funds }: Props) {
         }
       }
 
-      // ── Scatter chart portfolios (0%–10% in 1% steps) — computed once ──
+      // ── Scatter chart portfolios (0%–10% in 1% steps), computed once ──
       const scatterSims: ReturnPoint[][] = []
       for (const w of SCATTER_WEIGHTS) {
         try {
@@ -348,7 +348,7 @@ export function BitcoinPanel({ funds }: Props) {
         </button>
         {applied && isDirty && (
           <span className="btc-run-hint">
-            Thông số đã thay đổi — bấm "Chạy lại mô phỏng" để cập nhật biểu đồ.
+            Thông số đã thay đổi, bấm "Chạy lại mô phỏng" để cập nhật biểu đồ.
           </span>
         )}
       </div>

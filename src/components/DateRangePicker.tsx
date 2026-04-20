@@ -78,7 +78,7 @@ export function DateRangePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo }: 
           value={dateFrom || ''}
           onChange={e => onChangeFrom(e.target.value || null)}
         />
-        <span className="date-separator">—</span>
+        <span className="date-separator">→</span>
         <input
           type="date"
           value={dateTo || ''}

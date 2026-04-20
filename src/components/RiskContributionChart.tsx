@@ -110,7 +110,7 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
             Ở danh mục <strong>{highlight.name}</strong>, Bitcoin chỉ chiếm
             {' '}<strong>{(highlight.btcWeight * 100).toFixed(1)}%</strong> vốn nhưng
             đóng góp <strong>{(highlight.btcRiskPct * 100).toFixed(1)}%</strong> biến
-            động danh mục — <strong>gấp {riskMultiplier.toFixed(1)}×</strong> tỷ trọng vốn.
+            động danh mục, <strong>gấp {riskMultiplier.toFixed(1)}×</strong> tỷ trọng vốn.
             {' '}Đây là đánh đổi cần hiểu khi thêm Bitcoin: tỷ trọng nhỏ nhưng "gánh"
             phần lớn rủi ro.
           </div>

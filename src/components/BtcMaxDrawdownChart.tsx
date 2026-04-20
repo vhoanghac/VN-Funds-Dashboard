@@ -77,14 +77,14 @@ function BtcMaxDrawdownChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
 
   if (allPoints.length === 0) return null
 
-  // Takeaway: worst-case drawdown at 10% BTC (not mean — the scariest dot)
+  // Takeaway: worst-case drawdown at 10% BTC (not mean, the scariest dot)
   const worstAt10 = allPoints
     .filter(p => p.weight === 10)
     .reduce((min, p) => (p.dd < min ? p.dd : min), 0)
   const meanAt0   = meanPoints.find(p => p.weight === 0)?.dd
   const meanAt10  = meanPoints.find(p => p.weight === 10)?.dd
   const ddDelta = (meanAt0 !== undefined && meanAt10 !== undefined) ? meanAt10 - meanAt0 : null
-  // Translate worst drawdown to VND with a 100tr reference — visceral fear
+  // Translate worst drawdown to VND with a 100tr reference: visceral fear
   const REF_INVEST = 100_000_000
   const worstVnd = formatVND(REF_INVEST * (1 + worstAt10 / 100))
 
@@ -206,10 +206,10 @@ function BtcMaxDrawdownChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
           <div className="chart-takeaway-body">
             Trong <strong>{periodLabel}</strong>: ở <strong>0% BTC</strong>, sụt giảm trung bình
             {' '}<strong>{meanAt0.toFixed(1)}%</strong>. Ở <strong>10% BTC</strong>:
-            {' '}<strong>{meanAt10.toFixed(1)}%</strong> — sâu thêm
+            {' '}<strong>{meanAt10.toFixed(1)}%</strong>, sâu thêm
             {' '}<strong>{ddDelta.toFixed(1)}%</strong>.
             {' '}Giai đoạn tệ nhất của 10% BTC chạm đáy
-            {' '}<strong>{worstAt10.toFixed(1)}%</strong> — tức 100 triệu ban đầu còn
+            {' '}<strong>{worstAt10.toFixed(1)}%</strong>, tức 100 triệu ban đầu còn
             {' '}<strong>{worstVnd}</strong>. Bạn có ngủ yên được không?
           </div>
         </div>

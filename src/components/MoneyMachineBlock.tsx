@@ -40,8 +40,8 @@ function MoneyMachineBlockImpl({ investAmount, stats, fundId, startDate, endDate
   const base = stats[0]!
   const baseFinal = investAmount * (1 + base.cumReturn)
 
-  // Pick the most attractive card for the headline takeaway —
-  // chọn card có delta dương lớn nhất để kể câu chuyện.
+  // Pick the most attractive card for the headline takeaway.
+  // Chọn card có delta dương lớn nhất để kể câu chuyện.
   const bestCard = cards.reduce((best, c) => (c.delta > best.delta ? c : best), cards[0]!)
   const bestPct = bestCard.name.match(/([\d.]+)% Bitcoin/)?.[1] ?? ''
   const comparison = vndComparison(bestCard.delta)

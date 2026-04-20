@@ -25,7 +25,7 @@ export interface FundMeta {
   csv_file: string
 }
 
-/** Series data for charts — generic shape shared by all chart components */
+/** Series data for charts: generic shape shared by all chart components */
 export interface ChartSeries {
   name: string
   color: string

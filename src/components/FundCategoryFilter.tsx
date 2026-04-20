@@ -48,7 +48,7 @@ export function filterFundsByCategory(funds: FundMeta[], category: FundCategory)
 }
 
 /**
- * Exhaustive type check — if FundMeta.type gains a new value, this
+ * Exhaustive type check. If FundMeta.type gains a new value, this
  * function will produce a TypeScript compile error until CATEGORY_BUTTONS
  * and filterFundsByCategory are updated to handle it.
  */

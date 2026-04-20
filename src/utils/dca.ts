@@ -56,7 +56,7 @@ export function resampleToWeeklyGrid(
         // Forward-fill: use last known value
         result.push({ date, value: lastValue })
       }
-      // If lastValue is null, this date is before the series starts — skip
+      // If lastValue is null, this date is before the series starts, skip
     }
 
     return result
@@ -93,15 +93,15 @@ export interface DCAParams {
 }
 
 export interface DCAResult {
-  /** Portfolio value over time (absolute VND) — includes cashflows (for MWRR / value chart) */
+  /** Portfolio value over time (absolute VND), includes cashflows (for MWRR / value chart) */
   values: { date: string; value: number }[]
   /** Total money invested over time */
   invested: { date: string; value: number }[]
-  /** Individual cashflow events: { date, amount } — for MWRR/IRR calculation */
+  /** Individual cashflow events: { date, amount }, cho MWRR/IRR calculation */
   cashflows: { date: string; amount: number }[]
-  /** TWRR cumulative return series — ignores cashflows effect */
+  /** TWRR cumulative return series, bỏ qua ảnh hưởng cashflows */
   cumulative: ReturnPoint[]
-  /** TWRR drawdown series — computed from TWRR growth, not raw portfolio value */
+  /** TWRR drawdown series, tính từ TWRR growth, không phải raw portfolio value */
   drawdown: ReturnPoint[]
   /** TWRR daily returns (for rolling, yearly calculations) */
   returns: ReturnPoint[]
@@ -161,21 +161,35 @@ function shouldInvest(
 }
 
 /**
+ * Optional knobs for behavioral variants of DCA (e.g. panic-stop during bear markets).
+ *
+ * - skipContributionWhen: predicate called at each potential contribution date.
+ *   Nhận current TWRR drawdown (âm khi dưới đỉnh, 0 khi ở đỉnh), return true để bỏ
+ *   lần nạp đó. Mô phỏng hành vi retail "thấy đỏ là dừng nạp". Không áp dụng cho
+ *   initial investment (day 0).
+ */
+export interface DCASimulateOptions {
+  skipContributionWhen?: (date: string, currentDrawdown: number) => boolean
+}
+
+/**
  * Simulate DCA for a single portfolio.
  *
  * Uses WEEKLY price data (last trading day of each ISO week).
- * Matches the Compare/Simulate tabs — unified date grid across all tabs.
+ * Matches the Compare/Simulate tabs: unified date grid across all tabs.
  *
  * @param weeklyPrices - Map of fundId → PricePoint[] (weekly prices, sorted by date)
  * @param slots - Fund allocations with weights (must sum to 100)
  * @param params - DCA parameters (initial amount, cashflow, frequency)
  * @param rebalFreq - How often to rebalance weights
+ * @param options - Behavioral knobs (skip predicate for panic-stop variants, etc.)
  */
 export function simulateDCA(
   weeklyPrices: Map<string, PricePoint[]>,
   slots: DCASlot[],
   params: DCAParams,
   rebalFreq: RebalanceFrequency,
+  options?: DCASimulateOptions,
 ): DCAResult {
   const validSlots = slots.filter(s => s.fundId && s.weight > 0)
   if (validSlots.length === 0) {
@@ -232,7 +246,7 @@ export function simulateDCA(
   const invested: { date: string; value: number }[] = []
   const cashflows: { date: string; amount: number }[] = []
 
-  // TWRR series (ignores cashflows effect — pure investment performance)
+  // TWRR series (ignores cashflows effect, pure investment performance)
   const twrrDailyReturns: ReturnPoint[] = []
   const cumulative: ReturnPoint[] = []
   const drawdown: ReturnPoint[] = []
@@ -259,7 +273,7 @@ export function simulateDCA(
     return total
   }
 
-  // Helper: rebalance — sell everything and rebuy at target weights
+  // Helper: rebalance, bán hết rồi mua lại theo target weights
   function rebalance(date: string) {
     const totalValue = getPortfolioValue(date)
     for (let j = 0; j < fundIds.length; j++) {
@@ -308,8 +322,15 @@ export function simulateDCA(
     if (params.cashflowAmount > 0) {
       const investDate = lastInvestDate || allDates[0]!
       if (shouldInvest(investDate, date, params.cashflowFreq)) {
-        buyFunds(params.cashflowAmount, i)
-        cashflows.push({ date, amount: -params.cashflowAmount })
+        // Panic-stop hook: cho biến thể hành vi (vd: dừng nạp khi DD < -20%).
+        // DD dùng ở đây là TWRR drawdown hiện tại (sau khi đã chain-link return hôm nay).
+        // Retail đọc giá đóng cửa, thấy âm, rồi quyết định không nạp.
+        const currentDD = twrrPeak > 0 ? (twrrGrowth / twrrPeak - 1) : 0
+        const shouldSkip = options?.skipContributionWhen?.(date, currentDD) ?? false
+        if (!shouldSkip) {
+          buyFunds(params.cashflowAmount, i)
+          cashflows.push({ date, amount: -params.cashflowAmount })
+        }
       }
     }
 
@@ -337,7 +358,7 @@ export function simulateDCA(
     prevEndValue = portfolioValue
   }
 
-  // Data is already weekly — use period returns directly (no manual resampling needed)
+  // Data is already weekly, use period returns directly (no manual resampling needed)
   const weeklyReturns = twrrDailyReturns
 
   const finalValue = values.length > 0 ? values[values.length - 1]!.value : 0
@@ -480,7 +501,7 @@ export function dcaYearlyReturns(cumulative: ReturnPoint[]): YearlyReturn[] {
 
   for (const p of cumulative) {
     const year = parseInt(p.date.substring(0, 4), 10)
-    // Always overwrite — cumulative is sorted, so last write = last date in year
+    // Always overwrite. Cumulative is sorted, so last write = last date in year
     yearEnd.set(year, 1 + p.value)
     if (year < firstYear) firstYear = year
     if (year > lastYear) lastYear = year
@@ -551,6 +572,101 @@ export function computeDCARolling(
 }
 
 /**
+ * Thống kê "bão" (drawdown) trong hành trình DCA.
+ *
+ * Retail VN không cảm nhận được "TWRR drawdown". Họ cảm nhận trực tiếp:
+ *   "Lúc tệ nhất, tài sản sụt bao nhiêu % so với đỉnh?"
+ *   "Mất bao lâu để hồi phục?"
+ *   "Có rơi vào giai đoạn bear market lịch sử nào không?"
+ *
+ * Dùng TWRR drawdown (đã loại ảnh hưởng cashflow) vì đó mới là "bão thị trường thật",
+ * không phải ảo giác do tiền mới nạp che lấp.
+ */
+export interface DCAStormStats {
+  /** Drawdown tệ nhất (số âm, vd -0.23 = -23%) */
+  maxDrawdown: number
+  /** YYYY-MM-DD ngày chạm đáy drawdown (hoặc '' nếu không có data) */
+  maxDDDate: string
+  /** YYYY-MM-DD ngày peak trước đáy */
+  maxDDPeakDate: string
+  /** Số tháng từ đáy về lại peak cũ (null = chưa hồi phục) */
+  recoveryMonths: number | null
+  /** Số "cơn bão": số lần drawdown chạm ≤ -10% rồi hồi phục về gần peak */
+  stormsCount: number
+  /** Trùng với giai đoạn bear lịch sử VN nào (nếu có) */
+  inBearPeriod: 'bear2018' | 'covid2020' | 'bear2022' | null
+}
+
+export function dcaStormStats(
+  drawdown: ReturnPoint[],
+  cumulative: ReturnPoint[],
+): DCAStormStats {
+  const empty: DCAStormStats = {
+    maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '',
+    recoveryMonths: null, stormsCount: 0, inBearPeriod: null,
+  }
+  if (drawdown.length === 0 || cumulative.length === 0) return empty
+
+  // Tìm drawdown tệ nhất
+  let maxDD = 0
+  let maxDDIdx = 0
+  for (let i = 0; i < drawdown.length; i++) {
+    if (drawdown[i]!.value < maxDD) {
+      maxDD = drawdown[i]!.value
+      maxDDIdx = i
+    }
+  }
+
+  // Peak trước đáy (dùng cumulative để có growth factor)
+  let peakIdx = 0
+  let peakVal = -Infinity
+  for (let i = 0; i <= maxDDIdx; i++) {
+    const g = 1 + cumulative[i]!.value
+    if (g > peakVal) { peakVal = g; peakIdx = i }
+  }
+
+  // Hồi phục: idx đầu tiên sau đáy mà cumulative >= peakVal cũ
+  let recoveryIdx = -1
+  for (let i = maxDDIdx + 1; i < cumulative.length; i++) {
+    if (1 + cumulative[i]!.value >= peakVal) { recoveryIdx = i; break }
+  }
+
+  const recoveryMonths = recoveryIdx >= 0
+    ? monthsBetween(drawdown[maxDDIdx]!.date, cumulative[recoveryIdx]!.date)
+    : null
+
+  // Đếm bão: DD chạm ≤ -10% rồi hồi về ≥ -2% thì đếm 1 cơn
+  let stormsCount = 0
+  let inStorm = false
+  for (const p of drawdown) {
+    if (!inStorm && p.value <= -0.10) { inStorm = true; stormsCount++ }
+    else if (inStorm && p.value >= -0.02) { inStorm = false }
+  }
+
+  // Detect bear period (dựa vào ngày chạm đáy)
+  const ddDate = drawdown[maxDDIdx]!.date
+  let inBearPeriod: DCAStormStats['inBearPeriod'] = null
+  if (ddDate >= '2018-04-01' && ddDate <= '2019-12-31') inBearPeriod = 'bear2018'
+  else if (ddDate >= '2020-02-15' && ddDate <= '2020-06-30') inBearPeriod = 'covid2020'
+  else if (ddDate >= '2022-04-01' && ddDate <= '2023-06-30') inBearPeriod = 'bear2022'
+
+  return {
+    maxDrawdown: maxDD,
+    maxDDDate: drawdown[maxDDIdx]!.date,
+    maxDDPeakDate: cumulative[peakIdx]!.date,
+    recoveryMonths,
+    stormsCount,
+    inBearPeriod,
+  }
+}
+
+function monthsBetween(d1: string, d2: string): number {
+  const a = new Date(d1)
+  const b = new Date(d2)
+  return Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()))
+}
+
+/**
  * Compute Profit Factor from weekly TWRR returns.
  *
  * Profit Factor = sum(positive returns) / |sum(negative returns)|
@@ -588,4 +704,107 @@ function shouldRebalForDCA(
     case 'yearly':
       return prev.getFullYear() !== next.getFullYear()
   }
+}
+
+/**
+ * Tính rolling CAGR cho từng cửa sổ N năm trên TWRR cumulative series.
+ *
+ * Dùng để trả lời: "nếu bạn bắt đầu đầu tư quỹ này ở các thời điểm khác nhau
+ * và giữ N năm, CAGR sẽ như thế nào?", chống luck bias.
+ *
+ * Không phải DCA CAGR (vì DCA có dòng tiền phức tạp), mà là CAGR của chính
+ * quỹ trong mọi chu kỳ N năm. Đủ để cho user thấy phân phối kết quả lịch sử.
+ */
+export interface RollingCAGRPoint {
+  startDate: string
+  endDate: string
+  cagr: number
+}
+
+export function rollingCAGR(
+  cumulative: ReturnPoint[],
+  windowYears: number,
+): RollingCAGRPoint[] {
+  if (cumulative.length === 0 || windowYears <= 0) return []
+
+  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+  const windowMs = windowYears * msPerYear
+
+  // cumulative.value = total return % from day 0 (vd 0.5 = +50%)
+  // growth factor = 1 + value
+  const results: RollingCAGRPoint[] = []
+
+  // Sample mỗi tháng một điểm start để không tạo quá nhiều data points
+  let lastSampledMonth = ''
+  for (let i = 0; i < cumulative.length; i++) {
+    const startPt = cumulative[i]!
+    const startMonth = startPt.date.slice(0, 7)
+    if (startMonth === lastSampledMonth) continue
+    lastSampledMonth = startMonth
+
+    const startTime = new Date(startPt.date).getTime()
+    const targetTime = startTime + windowMs
+
+    // Tìm điểm gần target nhất (không vượt target quá xa)
+    let endIdx = -1
+    for (let j = i + 1; j < cumulative.length; j++) {
+      if (new Date(cumulative[j]!.date).getTime() >= targetTime) {
+        endIdx = j
+        break
+      }
+    }
+    if (endIdx === -1) break // Hết data, không đủ N năm cho các start sau
+
+    const endPt = cumulative[endIdx]!
+    const startGrowth = 1 + startPt.value
+    const endGrowth = 1 + endPt.value
+    if (startGrowth <= 0) continue
+
+    const actualYears =
+      (new Date(endPt.date).getTime() - startTime) / msPerYear
+    if (actualYears <= 0) continue
+
+    const cagr = Math.pow(endGrowth / startGrowth, 1 / actualYears) - 1
+
+    results.push({
+      startDate: startPt.date,
+      endDate: endPt.date,
+      cagr,
+    })
+  }
+
+  return results
+}
+
+/** Gom rolling CAGR thành histogram buckets. */
+export function histogramBuckets(
+  values: number[],
+  bucketSize: number = 0.02, // 2%
+): { min: number; max: number; center: number; count: number }[] {
+  if (values.length === 0) return []
+
+  const minV = Math.min(...values)
+  const maxV = Math.max(...values)
+  const minBucket = Math.floor(minV / bucketSize) * bucketSize
+  const maxBucket = Math.ceil(maxV / bucketSize) * bucketSize
+
+  const buckets: { min: number; max: number; center: number; count: number }[] = []
+  for (let b = minBucket; b < maxBucket + bucketSize / 2; b += bucketSize) {
+    buckets.push({
+      min: b,
+      max: b + bucketSize,
+      center: b + bucketSize / 2,
+      count: 0,
+    })
+  }
+
+  for (const v of values) {
+    const idx = Math.min(
+      buckets.length - 1,
+      Math.max(0, Math.floor((v - minBucket) / bucketSize)),
+    )
+    buckets[idx]!.count++
+  }
+
+  return buckets
 }

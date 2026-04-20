@@ -45,7 +45,7 @@ export function PerformanceTable({ stats }: Props) {
               <th className="perf-th-name">Danh mục</th>
               <th title="Tổng lợi nhuận tích lũy từ đầu kỳ đến cuối kỳ">Lợi nhuận tích lũy</th>
               <th title="Lợi nhuận trung bình mỗi năm, quy về gốc kép (CAGR)">Hiệu suất trung bình năm</th>
-              <th title="Độ biến động giá quy năm — đo mức dao động của danh mục. Thấp hơn = ổn định hơn.">Rủi ro biến động giá (quy năm)</th>
+              <th title="Độ biến động giá quy năm: đo mức dao động của danh mục. Thấp hơn = ổn định hơn.">Rủi ro biến động giá (quy năm)</th>
               <th title="Tỷ số Sharpe quy năm = CAGR ÷ Biến động (Rf = 0%). Cao hơn = hiệu quả sinh lời trên rủi ro tốt hơn.">Tỷ số Sharpe (quy năm)</th>
               <th title="Mức sụt giảm vốn lớn nhất từ đỉnh đến đáy trong toàn bộ kỳ. Gần 0 hơn = ít rủi ro hơn.">Mức độ sụt giảm vốn lớn nhất</th>
             </tr>

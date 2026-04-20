@@ -46,7 +46,7 @@ export function DCAGlossary() {
           <hr className="dca-glossary-divider" />
 
           {/* ── 2. CAGR ── */}
-          <h3>② CAGR — Lợi nhuận tích lũy quy năm</h3>
+          <h3>② CAGR: Lợi nhuận tích lũy quy năm</h3>
           <p>
             CAGR (Compound Annual Growth Rate) lấy lợi nhuận tích lũy ở trên và "quy
             năm" nó: nếu danh mục tăng đều mỗi năm với một tỷ lệ cố định, thì tỷ lệ
@@ -62,14 +62,14 @@ export function DCAGlossary() {
           </p>
           <blockquote className="dca-glossary-note">
             <strong>Lưu ý:</strong> CAGR trong tab này tính theo góc nhìn của nhà đầu
-            tư — tổng vốn bỏ ra so với giá trị cuối kỳ. Đây <em>không phải</em> CAGR
+            tư, tổng vốn bỏ ra so với giá trị cuối kỳ. Đây <em>không phải</em> CAGR
             thuần của quỹ (TWRR), vốn bỏ qua các lần nạp tiền DCA.
           </blockquote>
 
           <hr className="dca-glossary-divider" />
 
           {/* ── 3. MWRR ── */}
-          <h3>③ MWRR — Chỉ số chính cho DCA</h3>
+          <h3>③ MWRR: Chỉ số chính cho DCA</h3>
           <p>
             MWRR (Money-Weighted Rate of Return) là tỷ suất sinh lời thực tế của bạn
             với tư cách là nhà đầu tư, có tính đến <strong>thời điểm và số tiền</strong> của
@@ -123,7 +123,7 @@ export function DCAGlossary() {
           <blockquote className="dca-glossary-note">
             <strong>Quan hệ này có thể đảo chiều:</strong> Nếu bạn nạp một khoản lớn
             ngay trước khi thị trường sụt mạnh (<em>"đu đỉnh"</em>), MWRR sẽ{' '}
-            <strong>thấp hơn</strong> CAGR — phản ánh đúng thiệt hại thực tế mà
+            <strong>thấp hơn</strong> CAGR, phản ánh đúng thiệt hại thực tế mà
             thời điểm nạp tiền gây ra.
           </blockquote>
 

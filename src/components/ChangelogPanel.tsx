@@ -1,5 +1,16 @@
 const ENTRIES = [
   {
+    version: 'v3.0',
+    date: '20/04/2026',
+    items: [
+      'Thiết kế lại toàn bộ giao diện và thêm nhiều mục phân tích trong tab So Sánh, DCA và Bitcoin',
+      'Thêm mục "Kể chuyện so sánh" trong tab So Sánh',
+      'Thêm mục "Chất lượng dữ liệu" ở đầu tab So Sánh: minh bạch khoảng dữ liệu của từng quỹ, phát hiện khoảng trống giữa các tuần, và cảnh báo khi dữ liệu chậm cập nhật quá 10 ngày so với hôm nay',
+      'Thêm chỉ số phục hồi sau sụt giảm và số tuần nằm dưới đỉnh cũ vào thống kê drawdown',
+      'Viết lại lời kể ở tab DCA cho gần retail hơn',
+    ],
+  },
+  {
     version: 'v2.9',
     date: '17/04/2026',
     items: [

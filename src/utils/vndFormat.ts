@@ -26,7 +26,7 @@ export function formatVND(value: number): string {
   return `${sign}${Math.round(v)}`
 }
 
-/** Full VND, ví dụ 2.500.000.000 đ — dùng cho tooltip chi tiết */
+/** Full VND, ví dụ 2.500.000.000 đ, dùng cho tooltip chi tiết */
 export function formatVNDFull(value: number): string {
   return Math.round(value).toLocaleString('vi-VN') + ' đ'
 }
@@ -42,7 +42,7 @@ export function vndComparison(value: number): string | null {
   const v = Math.abs(value)
   if (v < 15_000_000) return null
 
-  // Mốc so sánh — lấy mốc gần nhất với giá trị
+  // Mốc so sánh, lấy mốc gần nhất với giá trị
   const anchors: { min: number; label: string }[] = [
     { min: 15_000_000,     label: 'một chiếc iPhone mới' },
     { min: 35_000_000,     label: 'một chiếc xe SH hoặc Vespa xịn' },

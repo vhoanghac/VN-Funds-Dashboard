@@ -120,7 +120,7 @@ export function annualizedStdev(returns: ReturnPoint[]): number {
  *   component        <- marginal * w
  *   component_pct    <- component / sd_portfolio   (sums to 1)
  *
- * @returns contribA, contribB — percentages of total portfolio risk (sum ≈ 1)
+ * @returns contribA, contribB: percentages of total portfolio risk (sum ≈ 1)
  */
 export function riskContribution(
   returnsA: ReturnPoint[],
@@ -202,7 +202,7 @@ export function maxDrawdown(returns: ReturnPoint[]): number {
 
 /**
  * Tệ nhất 1 tuần: min trong toàn bộ weekly returns.
- * Dùng cho "sleep test" — dịch ra VND để người dùng cảm được pain threshold.
+ * Dùng cho "sleep test", dịch ra VND để người dùng cảm được pain threshold.
  */
 export function worstWeeklyReturn(returns: ReturnPoint[]): number {
   if (returns.length === 0) return 0
@@ -215,14 +215,14 @@ export function worstWeeklyReturn(returns: ReturnPoint[]): number {
 
 /**
  * Tệ nhất 1 tháng: rolling 4-week cumulative return, lấy min.
- * Không phải calendar month mà là any 4-week window — phản ánh
+ * Không phải calendar month mà là any 4-week window. Phản ánh
  * "trong 4 tuần liên tiếp tệ nhất, bạn mất bao nhiêu".
  */
 export function worstMonthlyReturn(returns: ReturnPoint[]): number {
   const WEEKS = 4
   if (returns.length < WEEKS) return 0
 
-  // Log-space sliding window — giống rollingCumulativeReturns
+  // Log-space sliding window, giống rollingCumulativeReturns
   const n = returns.length
   const logR = new Float64Array(n)
   for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
@@ -238,6 +238,119 @@ export function worstMonthlyReturn(returns: ReturnPoint[]): number {
   }
 
   return worst
+}
+
+/**
+ * Thống kê drawdown: đáy sâu nhất + bao nhiêu tuần để hồi phục.
+ *
+ * Walk qua cumulative growth, lock vào drawdown sâu nhất, rồi sau
+ * đáy đó tìm tuần đầu tiên growth >= peak cũ (hồi phục).
+ *
+ * Nếu tới hết chuỗi vẫn chưa về lại peak: recoveryWeeks = null
+ * (quỹ vẫn đang ở "under water").
+ */
+export interface DrawdownStats {
+  maxDrawdown: number        // âm, ví dụ -0.23 nghĩa là -23%
+  peakDate: string | null    // ngày đỉnh trước khi sụp
+  troughDate: string | null  // ngày đáy
+  recoveryDate: string | null  // ngày về lại đỉnh cũ (null nếu chưa)
+  recoveryWeeks: number | null // số tuần từ đáy tới hồi phục (null nếu chưa)
+  underwaterWeeks: number | null // số tuần từ đỉnh tới nay (nếu chưa hồi)
+}
+export function drawdownStats(returns: ReturnPoint[]): DrawdownStats {
+  const empty: DrawdownStats = {
+    maxDrawdown: 0,
+    peakDate: null,
+    troughDate: null,
+    recoveryDate: null,
+    recoveryWeeks: null,
+    underwaterWeeks: null,
+  }
+  if (returns.length === 0) return empty
+
+  // Pass 1: tính growth, peak, và DD series để tìm đáy sâu nhất
+  const n = returns.length
+  const growth = new Float64Array(n)
+  const peakAtT = new Float64Array(n)
+  const peakDateAtT: string[] = new Array(n)
+  let g = 1.0
+  let peak = 1.0
+  let peakDate = returns[0]!.date
+
+  let maxDD = 0
+  let troughIdx = -1
+  let peakIdxForMaxDD = -1
+
+  for (let i = 0; i < n; i++) {
+    g *= 1 + returns[i]!.value
+    if (g > peak) {
+      peak = g
+      peakDate = returns[i]!.date
+    }
+    growth[i] = g
+    peakAtT[i] = peak
+    peakDateAtT[i] = peakDate
+
+    const dd = g / peak - 1
+    if (dd < maxDD) {
+      maxDD = dd
+      troughIdx = i
+      // Walk back to find peak date before trough
+      for (let j = i; j >= 0; j--) {
+        if (growth[j]! >= peakAtT[i]! - 1e-12) {
+          peakIdxForMaxDD = j
+          break
+        }
+      }
+    }
+  }
+
+  if (troughIdx < 0 || peakIdxForMaxDD < 0) return empty
+
+  const troughDate = returns[troughIdx]!.date
+  const peakGrowth = growth[peakIdxForMaxDD]!
+  const peakDateStr = returns[peakIdxForMaxDD]!.date
+
+  // Pass 2: tìm recovery sau đáy
+  let recoveryIdx = -1
+  for (let i = troughIdx + 1; i < n; i++) {
+    if (growth[i]! >= peakGrowth - 1e-12) {
+      recoveryIdx = i
+      break
+    }
+  }
+
+  if (recoveryIdx >= 0) {
+    return {
+      maxDrawdown: maxDD,
+      peakDate: peakDateStr,
+      troughDate,
+      recoveryDate: returns[recoveryIdx]!.date,
+      recoveryWeeks: recoveryIdx - troughIdx,
+      underwaterWeeks: null,
+    }
+  }
+
+  // Chưa hồi phục tính tới cuối series
+  return {
+    maxDrawdown: maxDD,
+    peakDate: peakDateStr,
+    troughDate,
+    recoveryDate: null,
+    recoveryWeeks: null,
+    underwaterWeeks: n - 1 - peakIdxForMaxDD,
+  }
+}
+
+/**
+ * Tỉ lệ rolling windows dương: trong bao nhiêu % khoảng rolling (ví dụ 12 tháng)
+ * quỹ đem lại lợi nhuận dương. Phản ánh "mức độ tin cậy".
+ */
+export function positiveRollingRate(rolling: ReturnPoint[]): number | null {
+  if (rolling.length === 0) return null
+  let pos = 0
+  for (const r of rolling) if (r.value > 0) pos++
+  return pos / rolling.length
 }
 
 /**
@@ -379,7 +492,7 @@ export function winRateAmong(
 /**
  * Rolling cumulative (total) return over a sliding window.
  *
- * O(n) via log-space sliding window — no array allocations per step.
+ * O(n) via log-space sliding window. No array allocations per step.
  *
  * Uses: log(∏(1+rᵢ)) = Σlog(1+rᵢ), slide by adding new log and
  * subtracting the oldest. Math.log1p / Math.expm1 for precision.
@@ -393,7 +506,7 @@ export function rollingCumulativeReturns(
   const n = returns.length
   if (n < windowSizeWeeks) return []
 
-  // Precompute log(1+r) once — O(n)
+  // Precompute log(1+r) once. O(n)
   const logR = new Float64Array(n)
   for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
 
@@ -457,7 +570,7 @@ export function rollingWinRate(
 /**
  * Rolling annualized standard deviation over a sliding window.
  *
- * O(n) via sliding sum + sum-of-squares — no array allocations per step.
+ * O(n) via sliding sum + sum-of-squares. No array allocations per step.
  *
  * variance = (sumSq - sum²/w) / (w-1)  (Bessel-corrected sample variance)
  * annualized = sqrt(variance) × sqrt(52)
@@ -520,7 +633,7 @@ export function rollingAnnualizedStdev(
  *
  * Values are negative (or zero): e.g., -0.35 = -35% drawdown.
  *
- * O(n×w) — no O(n) shortcut exists for sliding-window max drawdown.
+ * O(n×w). No O(n) shortcut exists for sliding-window max drawdown.
  * Optimized by using direct index access (no .slice() allocations).
  */
 export function rollingMaxDrawdown(

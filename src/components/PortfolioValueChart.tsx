@@ -93,7 +93,7 @@ export function PortfolioValueChart({ portfolios }: Props) {
             )}
           />
           {portfolios.map(p => {
-            const legendName = `${p.name} — Giá trị`
+            const legendName = `${p.name}: Giá trị`
             const isDimmed = dimmed.has(legendName)
             return (
               <Area

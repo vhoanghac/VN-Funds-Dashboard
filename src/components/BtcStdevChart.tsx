@@ -199,7 +199,7 @@ function BtcStdevChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
           <div className="chart-takeaway-body">
             Trong <strong>{periodLabel}</strong>: ở <strong>0% BTC</strong>, biến động trung bình
             {' '}<strong>{sd0.toFixed(1)}%/năm</strong>. Ở <strong>10% BTC</strong>:
-            {' '}<strong>{sd10.toFixed(1)}%/năm</strong> — tăng
+            {' '}<strong>{sd10.toFixed(1)}%/năm</strong>, tăng
             {' '}<strong>{sdDelta >= 0 ? '+' : ''}{sdDelta.toFixed(1)}%</strong>
             {' '}({sd0 > 0 ? ((sd10 / sd0 - 1) * 100).toFixed(0) : '0'}% cao hơn). Thêm Bitcoin
             giúp lợi nhuận tăng... nhưng đổi lại danh mục "rung lắc" mạnh hơn đáng kể.

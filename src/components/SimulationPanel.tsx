@@ -66,7 +66,7 @@ export function SimulationPanel({ funds }: Props) {
   const [dateFrom, setDateFrom] = useState<string | null>(null)
   const [dateTo, setDateTo] = useState<string | null>(null)
   const [rollingPeriod, setRollingPeriod] = useState(12)
-  // Snapshot of portfolios at the time user clicks "Run" — only this triggers computation
+  // Snapshot of portfolios at the time user clicks "Run". Only this triggers computation.
   const [committedPortfolios, setCommittedPortfolios] = useState<Portfolio[]>([])
 
   const fundOptions = useMemo(() =>
@@ -465,7 +465,7 @@ export function SimulationPanel({ funds }: Props) {
           </button>
           {isDirty && (
             <span className="btc-run-hint">
-              Thông số đã thay đổi — bấm "Chạy lại Mô Phỏng" để cập nhật biểu đồ.
+              Thông số đã thay đổi. Bấm "Chạy lại Mô Phỏng" để cập nhật biểu đồ.
             </span>
           )}
         </div>
@@ -473,7 +473,7 @@ export function SimulationPanel({ funds }: Props) {
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
-      {/* Date range picker — always visible when portfolios have been run */}
+      {/* Date range picker: always visible when portfolios have been run */}
       {committedPortfolios.length > 0 && (
         <DateRangePicker
           dateFrom={dateFrom}
