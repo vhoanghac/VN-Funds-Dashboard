@@ -14,6 +14,7 @@ import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
+import { DividendNotice } from './components/DividendNotice'
 import { DateRangePicker } from './components/DateRangePicker'
 import { ShareButton } from './components/ShareButton'
 import { FUND_COLORS } from './constants'
@@ -166,6 +167,8 @@ export function App() {
 
           {comparison.status === 'ready' && (
             <>
+              <DividendNotice fundIds={state.funds} />
+
               <DataQualityBlock
                 fundIds={state.funds}
                 fundData={fundData}

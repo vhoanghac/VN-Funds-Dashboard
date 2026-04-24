@@ -14,6 +14,8 @@ import {
 } from '../utils/calculations'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly } from '../utils/weeklyResample'
+import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { DividendNotice } from './DividendNotice'
 import { DateRangePicker } from './DateRangePicker'
 import { KPICards } from './KPICards'
 import { CumulativeReturnChart } from './CumulativeReturnChart'
@@ -97,7 +99,8 @@ export function SimulationPanel({ funds }: Props) {
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()
-        const daily = parseCSV(text)
+        const rawDaily = parseCSV(text)
+        const daily = await loadAdjustedPrices(id, rawDaily)
         const weekly = resampleToWeekly(daily)
         return { id, weekly }
       }),
@@ -499,6 +502,11 @@ export function SimulationPanel({ funds }: Props) {
               Mô phỏng từ {formatDate(startDate)} đến {formatDate(endDate)}
             </div>
           )}
+
+          <DividendNotice fundIds={Array.from(new Set(
+            committedPortfolios.flatMap(p => p.slots.map(s => s.fundId)).filter(Boolean),
+          ))} />
+
 
           {/* KPI Cards */}
           <KPICards funds={kpiFunds} />

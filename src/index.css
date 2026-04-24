@@ -1092,6 +1092,103 @@ body {
 .dca-journey-pos { color: #15803d; font-weight: 600; }
 .dca-journey-neg { color: #b91c1c; font-weight: 600; }
 
+/* ─── Dividend Notice (inline banner for non-DCA tabs) ─────────────────────────── */
+
+.dividend-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-left: 3px solid #0d9488;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #134e4a;
+}
+
+.dividend-notice-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.dividend-notice-body strong {
+  color: #0f766e;
+}
+
+/* ─── Dividend Block (DCDE reinvestment narrative) ─────────────────────────────── */
+/* Palette: neutral. Chỉ background của .dca-journey-block bên ngoài mới có màu. */
+
+.dca-dividend-group {
+  margin-top: 14px;
+}
+
+.dca-dividend-group + .dca-dividend-group {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed #d1d5db;
+}
+
+.dca-dividend-fund-head {
+  font-size: 0.92rem;
+  color: #1f2937;
+  margin-bottom: 10px;
+}
+
+.dca-dividend-muted {
+  color: #6b7280;
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.dca-dividend-portfolio + .dca-dividend-portfolio {
+  margin-top: 14px;
+}
+
+.dca-dividend-portfolio-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.dca-dividend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dca-dividend-table th,
+.dca-dividend-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.dca-dividend-table th {
+  font-weight: 600;
+  color: #4b5563;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #9ca3af;
+}
+
+.dca-dividend-table td.num,
+.dca-dividend-table th.num {
+  text-align: right;
+}
+
+.dca-dividend-table tfoot td {
+  font-weight: 700;
+  color: #111827;
+  border-top: 1px solid #9ca3af;
+  border-bottom: none;
+}
+
 /* ─── Bank Comparison Block ────────────────────────────────────────────────────── */
 
 .dca-bank-compare-block {

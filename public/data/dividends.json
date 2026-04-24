@@ -1,0 +1,16 @@
+{
+  "DCDE": [
+    {
+      "exDate": "2024-06-10",
+      "payDate": "2024-06-26",
+      "amountPerCert": 1300,
+      "taxRate": 0.05
+    },
+    {
+      "exDate": "2025-05-20",
+      "payDate": "2025-06-06",
+      "amountPerCert": 1400,
+      "taxRate": 0.05
+    }
+  ]
+}

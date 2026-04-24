@@ -1,5 +1,14 @@
 const ENTRIES = [
   {
+    version: 'v3.1',
+    date: '24/04/2026',
+    items: [
+      'Sửa đổi cách tính hiệu suất của DCDE vì quỹ có chi trả cổ tức. Dashboard tự điều chỉnh lịch sử giá tại layer CSV loader (Yahoo-style factor: (closePreEx − div × 95%) / closePreEx), áp dụng nhất quán cho toàn bộ các tab So Sánh, Mô Phỏng, LS vs DCA, Bitcoin và DCA. File .csv gốc không thay đổi — adjustment chạy in-memory mỗi lần load.',
+      'Tab DCA có thêm mục "Cổ tức & tái đầu tư" liệt kê các đợt chi trả của DCDE rơi vào kỳ DCA của bạn, kèm giải thích về raw NAV vs adjusted NAV.',
+      'Thiết kế pipeline xử lý cổ tức tách biệt hoàn toàn khỏi dữ liệu gốc: DCDE.csv vẫn là raw NAV từ fmarket, dễ audit và so khớp trực tiếp với fmarket. Khi DCDE chia thêm cổ tức, chỉ cần thêm 1 dòng vào dividends.json — không sửa CSV, không đụng GitHub Actions. Nếu sau này thuế TNCN thay đổi, chỉ cần sửa 1 hàm.',
+    ],
+  },
+  {
     version: 'v3.0',
     date: '20/04/2026',
     items: [

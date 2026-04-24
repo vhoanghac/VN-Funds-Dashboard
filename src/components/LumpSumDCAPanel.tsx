@@ -11,6 +11,8 @@ import type { FundMeta, PricePoint } from '../types'
 import type { DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
+import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { DividendNotice } from './DividendNotice'
 import {
   computeRollingScenarios,
   summarizeScenarios,
@@ -147,7 +149,9 @@ export function LumpSumDCAPanel({ funds }: Props) {
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()
-        const weekly = resampleToWeekly(parseCSV(text))
+        const rawDaily = parseCSV(text)
+        const daily = await loadAdjustedPrices(id, rawDaily)
+        const weekly = resampleToWeekly(daily)
         return { id, data: weekly }
       }),
     ).then(results => {
@@ -584,6 +588,12 @@ export function LumpSumDCAPanel({ funds }: Props) {
 
       {results && (
         <div className="lsdca-results">
+          <DividendNotice fundIds={Array.from(new Set([
+            ...committed!.portfolio.slots.map(s => s.fundId),
+            committed!.cashFundId,
+            committed!.compareFundId,
+          ].filter(Boolean)))} />
+
           <div className="lsdca-window-info">
             Phân tích <strong>{results.summary.totalScenarios}</strong> kịch bản rolling
             &nbsp;({results.effectiveWindow})

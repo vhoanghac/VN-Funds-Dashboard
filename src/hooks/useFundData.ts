@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import type { WeeklyPrice, FundMeta } from '../types'
 import { parseCSV, parseFundMetadata } from '../utils/csvParser'
 import { resampleToWeekly } from '../utils/weeklyResample'
+import { loadAdjustedPrices } from '../utils/dividendAdjust'
 
 interface FundDataState {
   metadata: FundMeta[] | null
@@ -73,18 +74,21 @@ export function useFundSeries(fundId: string | null): FundSeriesState {
 
     let cancelled = false
     setState({ weekly: null, loading: true, error: null })
+    const id = fundId // narrow for closure
 
     async function load() {
       try {
-        const resp = await fetch(`/data/${fundId}.csv`)
+        const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const text = await resp.text()
-        const daily = parseCSV(text)
+        const rawDaily = parseCSV(text)
 
-        if (daily.length === 0) {
+        if (rawDaily.length === 0) {
           throw new Error('Chưa có dữ liệu')
         }
 
+        // Áp dụng dividend adjustment (DCDE...) trước khi resample
+        const daily = await loadAdjustedPrices(id, rawDaily)
         const weekly = resampleToWeekly(daily)
         if (!cancelled) {
           setState({ weekly, loading: false, error: null })
@@ -137,8 +141,9 @@ export function useMultiFundSeries(fundIds: string[]): MultiFundState {
           const resp = await fetch(`/data/${id}.csv`)
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
           const text = await resp.text()
-          const daily = parseCSV(text)
-          if (daily.length === 0) throw new Error('Chưa có dữ liệu')
+          const rawDaily = parseCSV(text)
+          if (rawDaily.length === 0) throw new Error('Chưa có dữ liệu')
+          const daily = await loadAdjustedPrices(id, rawDaily)
           const weekly = resampleToWeekly(daily)
           return { id, weekly, error: null as string | null }
         } catch (err) {

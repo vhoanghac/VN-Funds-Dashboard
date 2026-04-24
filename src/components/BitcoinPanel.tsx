@@ -3,6 +3,8 @@ import Select from 'react-select'
 import type { FundMeta, WeeklyPrice, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly } from '../utils/weeklyResample'
+import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { DividendNotice } from './DividendNotice'
 import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
 import { alignMultiSeries } from '../utils/dateAlign'
@@ -97,7 +99,8 @@ export function BitcoinPanel({ funds }: Props) {
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) throw new Error(`Không tải được ${id} (${resp.status})`)
         const text = await resp.text()
-        const daily = parseCSV(text)
+        const rawDaily = parseCSV(text)
+        const daily = await loadAdjustedPrices(id, rawDaily)
         const weekly = resampleToWeekly(daily)
         return { id, weekly }
       }),
@@ -375,6 +378,8 @@ export function BitcoinPanel({ funds }: Props) {
               Mô phỏng từ {formatDate(startDate)} đến {formatDate(endDate)}
             </div>
           )}
+          <DividendNotice fundIds={[applied.fundId]} />
+
           <MoneyMachineBlock
             investAmount={investAmount}
             stats={portfolioStats}

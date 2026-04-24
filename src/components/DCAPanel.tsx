@@ -4,9 +4,10 @@ import { ShareButton } from './ShareButton'
 import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, trackDividendNarrative, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
 import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
+import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DCAGlossary } from './DCAGlossary'
 import { DcaJourneyBlock } from './DcaJourneyBlock'
@@ -18,6 +19,7 @@ import { ProjectionBlock } from './ProjectionBlock'
 import { GoalPlannerBlock } from './GoalPlannerBlock'
 import { RollingReturnBlock } from './RollingReturnBlock'
 import { DcaConsistencyBlock } from './DcaConsistencyBlock'
+import { DividendBlock } from './DividendBlock'
 import {
   PortfolioCard,
   PORTFOLIO_COLORS,
@@ -57,6 +59,11 @@ interface DCAPortfolioResult {
     params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
     rebalFreq: RebalanceFrequency
   } | null
+  /**
+   * Shadow simulation cổ tức trên RAW NAV — số tiền thật, số ccq thật nhà
+   * đầu tư nhận được trong kỳ. Rỗng nếu danh mục không chứa quỹ chia cổ tức.
+   */
+  dividendNarrative: DividendNarrativeStats[]
 }
 
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
@@ -109,7 +116,26 @@ export function DCAPanel({ funds }: Props) {
     }))
   })
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
+  // Raw (chưa adjust) weekly prices — chỉ dùng cho shadow simulation tính
+  // "số tiền cổ tức thật" và "số ccq mua thêm thật" trong DividendBlock.
+  // Simulation chính dùng fundData (adjusted) để hiệu suất TWRR/MWRR phản ánh
+  // đầy đủ cả cổ tức tái đầu tư.
+  const [rawFundData, setRawFundData] = useState<Map<string, PricePoint[]>>(new Map())
+  // Dividend events per fund (loaded once từ public/data/dividends.json).
+  // Ở VN hiện tại chỉ DCDE chi trả cổ tức; nếu thêm quỹ khác chỉ cần bổ sung vào JSON.
+  // Dùng cho narrative (DividendBlock). Adjustment đã áp dụng sẵn ở CSV
+  // loader cho simulation chính, nên simulation không cần biết về cổ tức nữa.
+  const [dividendsByFund, setDividendsByFund] = useState<Map<string, DividendEvent[]>>(new Map())
   const [loading, setLoading] = useState(false)
+
+  // Load dividends.json một lần lúc mount (cho narrative DividendBlock)
+  useEffect(() => {
+    let cancelled = false
+    loadDividends()
+      .then(map => { if (!cancelled) setDividendsByFund(map) })
+      .catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [])
   // Snapshot at run time
   const [committed, setCommitted] = useState<{
     portfolios: DCAPortfolioState[]
@@ -157,18 +183,29 @@ export function DCAPanel({ funds }: Props) {
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()
-        const daily = parseCSV(text)
-        // Resample to weekly (last trading day of each ISO week)
-        // Same as Compare/Simulate tabs, unifies date grid across all tabs
-        const weekly = resampleToWeekly(daily)
-        return { id, daily: weekly }
+        const rawDaily = parseCSV(text)
+        // Raw weekly: dùng cho shadow simulation cổ tức (số ccq/tiền thật).
+        const rawWeekly = resampleToWeekly(rawDaily)
+        // Adjusted weekly: dùng cho simulation chính. Dividend adjustment
+        // (DCDE...) áp dụng trước khi resample. Tất cả các tab dùng chung
+        // nguồn giá đã adjusted để hiệu suất nhất quán toàn dashboard.
+        const adjustedDaily = await loadAdjustedPrices(id, rawDaily)
+        const adjustedWeekly = resampleToWeekly(adjustedDaily)
+        return { id, raw: rawWeekly, adjusted: adjustedWeekly }
       }),
     ).then(results => {
       if (cancelled) return
       setFundData(prev => {
         const next = new Map(prev)
         for (const r of results) {
-          if (r) next.set(r.id, r.daily)
+          if (r) next.set(r.id, r.adjusted)
+        }
+        return next
+      })
+      setRawFundData(prev => {
+        const next = new Map(prev)
+        for (const r of results) {
+          if (r) next.set(r.id, r.raw)
         }
         return next
       })
@@ -331,12 +368,22 @@ export function DCAPanel({ funds }: Props) {
     // ISO week. Aligning ensures all portfolios share the same date points
     // so chart lines overlap correctly.
     const allFilteredPrices = new Map<string, PricePoint[]>()
+    const allFilteredRawPrices = new Map<string, PricePoint[]>()
     for (const fundId of allFundIds) {
       const prices = fundData.get(fundId)
       if (!prices) return null
       allFilteredPrices.set(fundId, prices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
+      // Raw cho shadow dividend simulation; nếu chưa load thì skip narrative
+      // bằng cách để map rỗng — trackDividendNarrative sẽ trả [] an toàn.
+      const rawPrices = rawFundData.get(fundId)
+      if (rawPrices) {
+        allFilteredRawPrices.set(fundId, rawPrices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
+      }
     }
     const alignedPrices = alignFundsToCommonGrid(allFilteredPrices)
+    const alignedRawPrices = allFilteredRawPrices.size > 0
+      ? alignFundsToCommonGrid(allFilteredRawPrices)
+      : new Map<string, PricePoint[]>()
 
     // ── Step 3: Run DCA for each portfolio with aligned dates ──
     const portfolioResults: DCAPortfolioResult[] = []
@@ -368,9 +415,28 @@ export function DCAPanel({ funds }: Props) {
           storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
           investedSeries: [], valueSeries: [],
           simulationInputs: null,
+          dividendNarrative: [],
         })
         continue
       }
+
+      // Shadow simulation trên RAW NAV để kể "tổng tiền thật, tổng ccq thật"
+      // nhà đầu tư nhận. Chỉ chạy nếu portfolio có ít nhất 1 quỹ chia cổ tức
+      // và raw prices đã sẵn sàng.
+      const portfolioRawPrices = new Map<string, PricePoint[]>()
+      for (const slot of p.slots) {
+        const raw = alignedRawPrices.get(slot.fundId)
+        if (raw) portfolioRawPrices.set(slot.fundId, raw)
+      }
+      const dividendNarrative = portfolioRawPrices.size === p.slots.length
+        ? trackDividendNarrative(
+            portfolioRawPrices,
+            p.slots,
+            committed.params,
+            p.rebalFreq,
+            dividendsByFund,
+          )
+        : []
 
       portfolioResults.push({
         id: p.id, name: p.name, color,
@@ -389,11 +455,12 @@ export function DCAPanel({ funds }: Props) {
           params: committed.params,
           rebalFreq: p.rebalFreq,
         },
+        dividendNarrative,
       })
     }
 
     return portfolioResults
-  }, [committed, fundData])
+  }, [committed, fundData, rawFundData, dividendsByFund])
 
   const validResults = results?.filter(r => r.cumulative.length > 0) ?? []
 
@@ -694,6 +761,24 @@ export function DCAPanel({ funds }: Props) {
               }))}
               startDate={startDate}
               endDate={endDate}
+            />
+          )}
+
+          {/* Cổ tức & tái đầu tư (chỉ hiển thị khi danh mục có quỹ chia cổ tức như DCDE) */}
+          {startDate && endDate && (
+            <DividendBlock
+              fundIds={Array.from(new Set(
+                committed?.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
+              ))}
+              dividendsByFund={dividendsByFund}
+              startDate={startDate}
+              endDate={endDate}
+              narrativeByPortfolio={validResults.map(r => ({
+                portfolioId: r.id,
+                portfolioName: r.name,
+                color: r.color,
+                stats: r.dividendNarrative,
+              }))}
             />
           )}
 

@@ -1,4 +1,5 @@
 import type { PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
+import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
 
 /**
  * Resample multiple ReturnPoint[] series to a common weekly date grid.
@@ -236,7 +237,10 @@ export function simulateDCA(
   }
 
   // ── Run DCA simulation ──
-  // Track units held for each fund
+  // Note: giá weeklyPrices vào đây ĐÃ được dividend-adjusted ở layer CSV loader
+  // (xem src/utils/dividendAdjust.ts). Nên phần hiệu suất TWRR/MWRR tính
+  // trực tiếp trên giá adjusted sẽ tự động phản ánh giả định tái đầu tư cổ
+  // tức sau thuế. Không cần xử lý ex-date/pay-date ở đây nữa.
   const units = new Array(fundIds.length).fill(0)
   let totalInvested = 0
   let lastInvestDate = ''
@@ -807,4 +811,184 @@ export function histogramBuckets(
   }
 
   return buckets
+}
+
+/**
+ * Shadow simulation chỉ để kể chuyện cổ tức.
+ *
+ * Chạy song song với simulateDCA chính (vốn dùng adjusted NAV để tính TWRR/MWRR).
+ * Hàm này dùng RAW NAV từ fmarket nên số ccq, tiền cổ tức, số ccq mua thêm
+ * khớp với sao kê tài khoản thực tế của nhà đầu tư.
+ *
+ * Mô hình:
+ *   - Buy ở giá raw tại cashflow date.
+ *   - Ex-date: ghi nhận pending = units × amountPerCert.
+ *   - Pay-date: nhận gross × (1 - tax) tiền ròng, mua thêm ccq ở raw NAV ngày đó.
+ *   - Rebalance như simulateDCA.
+ *
+ * Chỉ trả về stats cho các quỹ thực sự có chi trả trong kỳ.
+ */
+export function trackDividendNarrative(
+  rawWeeklyPrices: Map<string, PricePoint[]>,
+  slots: DCASlot[],
+  params: DCAParams,
+  rebalFreq: RebalanceFrequency,
+  dividends: Map<string, DividendEvent[]>,
+): DividendNarrativeStats[] {
+  const validSlots = slots.filter(s => s.fundId && s.weight > 0)
+  if (validSlots.length === 0) return []
+
+  const totalWeight = validSlots.reduce((s, x) => s + x.weight, 0)
+  const weights = validSlots.map(s => s.weight / totalWeight)
+  const fundIds = validSlots.map(s => s.fundId)
+
+  // Bỏ qua nếu không quỹ nào trong portfolio có dividend
+  if (!fundIds.some(id => dividends.has(id))) return []
+
+  const priceArrays = fundIds.map(id => rawWeeklyPrices.get(id) || [])
+  if (priceArrays.some(a => a.length === 0)) return []
+
+  const startDates = priceArrays.map(arr => arr[0]?.date || '9999')
+  const endDates = priceArrays.map(arr => arr[arr.length - 1]?.date || '0000')
+  const commonStart = startDates.reduce((a, b) => a > b ? a : b)
+  const commonEnd = endDates.reduce((a, b) => a < b ? a : b)
+  if (commonStart >= commonEnd) return []
+
+  const priceLookups = priceArrays.map(arr => {
+    const m = new Map<string, number>()
+    for (const p of arr) m.set(p.date, p.price)
+    return m
+  })
+
+  const allDates: string[] = []
+  for (const p of priceArrays[0]!) {
+    if (p.date < commonStart || p.date > commonEnd) continue
+    if (fundIds.every((_, i) => priceLookups[i]!.has(p.date))) {
+      allDates.push(p.date)
+    }
+  }
+  if (allDates.length < 2) return []
+
+  // Schedule dividend events trên weekly grid
+  interface ScheduleEntry {
+    fundIdx: number; fundId: string; exIdx: number; payIdx: number
+    exDate: string; payDate: string
+    amountPerCert: number; taxRate: number
+    unitsAtEx: number  // set ở ex-date
+  }
+  const schedule: ScheduleEntry[] = []
+  for (let j = 0; j < fundIds.length; j++) {
+    const evs = dividends.get(fundIds[j]!)
+    if (!evs) continue
+    for (const ev of evs) {
+      if (ev.exDate <= allDates[0]!) continue
+      if (ev.payDate > allDates[allDates.length - 1]!) continue
+      let exIdx = -1
+      for (let i = 0; i < allDates.length; i++) {
+        if (allDates[i]! >= ev.exDate) { exIdx = i; break }
+      }
+      if (exIdx < 1) continue
+      let payIdx = -1
+      for (let i = exIdx; i < allDates.length; i++) {
+        if (allDates[i]! >= ev.payDate) { payIdx = i; break }
+      }
+      if (payIdx === -1) continue
+      schedule.push({
+        fundIdx: j, fundId: fundIds[j]!,
+        exIdx, payIdx,
+        exDate: ev.exDate, payDate: ev.payDate,
+        amountPerCert: ev.amountPerCert, taxRate: ev.taxRate,
+        unitsAtEx: 0,
+      })
+    }
+  }
+  if (schedule.length === 0) return []
+
+  const units = new Array(fundIds.length).fill(0)
+  const pending = new Array(fundIds.length).fill(0)
+  const stats = new Map<string, DividendNarrativeStats>()
+  let totalInvested = 0
+  let lastInvestDate = ''
+
+  function buy(amount: number, dateIdx: number) {
+    const date = allDates[dateIdx]!
+    for (let j = 0; j < fundIds.length; j++) {
+      const price = priceLookups[j]!.get(date)!
+      units[j] += (amount * weights[j]!) / price
+    }
+    totalInvested += amount
+    lastInvestDate = date
+  }
+  function rebal(date: string) {
+    let unitsValue = 0
+    for (let j = 0; j < fundIds.length; j++) {
+      unitsValue += units[j]! * priceLookups[j]!.get(date)!
+    }
+    for (let j = 0; j < fundIds.length; j++) {
+      const price = priceLookups[j]!.get(date)!
+      units[j] = (unitsValue * weights[j]!) / price
+    }
+  }
+
+  if (params.initialAmount > 0) buy(params.initialAmount, 0)
+  let prevDateForRebal = allDates[0]!
+
+  for (let i = 1; i < allDates.length; i++) {
+    const date = allDates[i]!
+
+    // Ex-date: snapshot units (ghi nhận units đúng đợt này để hiển thị per-event)
+    for (const dv of schedule) {
+      if (dv.exIdx === i) {
+        dv.unitsAtEx = units[dv.fundIdx]!
+        pending[dv.fundIdx]! += units[dv.fundIdx]! * dv.amountPerCert
+      }
+    }
+    // Pay-date: trả tiền, trừ thuế, tái đầu tư
+    for (const dv of schedule) {
+      if (dv.payIdx === i) {
+        const gross = dv.unitsAtEx * dv.amountPerCert
+        if (gross > 0) {
+          const tax = gross * dv.taxRate
+          const net = gross - tax
+          const reinvestPrice = priceLookups[dv.fundIdx]!.get(date)!
+          const sharesAdded = net / reinvestPrice
+          units[dv.fundIdx]! += sharesAdded
+          pending[dv.fundIdx]! -= gross
+
+          let s = stats.get(dv.fundId)
+          if (!s) {
+            s = { fundId: dv.fundId, eventCount: 0, events: [], totalGross: 0, totalTax: 0, totalNet: 0, totalSharesAdded: 0 }
+            stats.set(dv.fundId, s)
+          }
+          s.eventCount++
+          s.events.push({
+            exDate: dv.exDate,
+            payDate: dv.payDate,
+            unitsAtEx: dv.unitsAtEx,
+            gross, tax, net, sharesAdded,
+          })
+          s.totalGross += gross
+          s.totalTax += tax
+          s.totalNet += net
+          s.totalSharesAdded += sharesAdded
+        }
+      }
+    }
+
+    // Cashflow
+    if (params.cashflowAmount > 0) {
+      const investDate = lastInvestDate || allDates[0]!
+      if (shouldInvest(investDate, date, params.cashflowFreq)) {
+        buy(params.cashflowAmount, i)
+      }
+    }
+
+    // Rebalance
+    if (totalInvested > 0 && shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
+      rebal(date)
+    }
+    prevDateForRebal = date
+  }
+
+  return Array.from(stats.values())
 }
