@@ -10,6 +10,7 @@
  *   - Portfolio có quỹ chia cổ tức (hiện tại chỉ DCDE)
  *   - Có ít nhất 1 đợt chi trả rơi vào khoảng startDate..endDate
  */
+import { memo } from 'react'
 import type { DividendEvent, DividendNarrativeStats } from '../utils/dividendAdjust'
 import { formatVNDFull } from '../utils/vndFormat'
 
@@ -35,7 +36,7 @@ interface Props {
   narrativeByPortfolio?: PortfolioDividendNarrative[]
 }
 
-export function DividendBlock({ fundIds, dividendsByFund, startDate, endDate, narrativeByPortfolio }: Props) {
+function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narrativeByPortfolio }: Props) {
   // Group events theo fundId, chỉ lấy những đợt ex-date rơi vào kỳ DCA
   const byFund = new Map<string, DividendEvent[]>()
   for (const fundId of fundIds) {
@@ -166,6 +167,8 @@ export function DividendBlock({ fundIds, dividendsByFund, startDate, endDate, na
     </>
   )
 }
+
+export const DividendBlock = memo(DividendBlockImpl)
 
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-')

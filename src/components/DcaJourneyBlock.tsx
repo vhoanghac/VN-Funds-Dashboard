@@ -7,6 +7,7 @@
  * Mental model: retail VN không quen tách net profit khỏi total value. Hero
  * phải kể: "đã nạp X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
  */
+import { memo } from 'react'
 import { formatVND, vndComparison } from '../utils/vndFormat'
 import { dcaYearlyMWRR } from '../utils/dca'
 
@@ -28,7 +29,7 @@ interface Props {
   endDate: string    // YYYY-MM-DD
 }
 
-export function DcaJourneyBlock({ portfolios, startDate, endDate }: Props) {
+function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
   if (portfolios.length === 0) return null
 
   const period = describePeriod(startDate, endDate)
@@ -150,6 +151,8 @@ export function DcaJourneyBlock({ portfolios, startDate, endDate }: Props) {
   )
 }
 
+export const DcaJourneyBlock = memo(DcaJourneyBlockImpl)
+
 /**
  * EOYReturnsTable: hiệu suất DANH MỤC CỦA NHÀ ĐẦU TƯ từng năm (End-of-Year Returns),
  * tính bằng Modified Dietz method (money-weighted, có tính dòng tiền nạp).
@@ -161,7 +164,7 @@ export function DcaJourneyBlock({ portfolios, startDate, endDate }: Props) {
  * Đây là công thức chuẩn GIPS, không cần giải lặp nên luôn ổn định dù mỗi
  * năm chỉ có ~12 lần nạp tiền.
  */
-export function EOYReturnsTable({ portfolios }: { portfolios: JourneyPortfolio[] }) {
+function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] }) {
   const perPortfolio = portfolios.map(p => ({
     id: p.id,
     name: p.name,
@@ -227,6 +230,8 @@ export function EOYReturnsTable({ portfolios }: { portfolios: JourneyPortfolio[]
     </div>
   )
 }
+
+export const EOYReturnsTable = memo(EOYReturnsTableImpl)
 
 /** Mô tả khoảng thời gian: "8 năm 3 tháng", "15 tháng", "45 ngày"... */
 function describePeriod(startDate: string, endDate: string): string {

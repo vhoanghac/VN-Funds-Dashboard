@@ -1132,6 +1132,49 @@ h1, h2, h3 {
   font-weight: 400;
 }
 
+/* ─── DCA Stats Table (horizontal: 1 danh mục / hàng) ── */
+.dca-stats-table-scroll {
+  overflow-x: auto;
+}
+
+.dca-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.dca-stats-table th,
+.dca-stats-table td {
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dca-stats-table th:first-child,
+.dca-stats-table td:first-child {
+  text-align: left;
+}
+
+.dca-stats-table thead th {
+  border-bottom: 2px solid var(--color-border);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.dca-stats-table tbody tr:nth-child(even) {
+  background: var(--color-bg);
+}
+
+.dca-stats-td-name {
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .dca-eoy-footnote {
   margin-top: 6px;
   font-size: 0.78rem;
@@ -2215,6 +2258,26 @@ h1, h2, h3 {
   font-weight: 600;
   margin-bottom: 16px;
   color: var(--color-text);
+}
+
+.dca-subsection {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.dca-subsection-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.dca-subsection-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
 }
 
 .dca-param-row {

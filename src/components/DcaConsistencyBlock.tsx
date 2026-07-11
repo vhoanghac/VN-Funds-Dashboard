@@ -11,7 +11,7 @@
  * Lưu ý: TWRR drawdown invariant với cashflow schedule, nên việc tính DD dựa trên giá
  * quỹ mà không phụ thuộc kịch bản nạp là hợp lệ.
  */
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart,
 } from 'recharts'
@@ -38,7 +38,7 @@ interface Props {
   portfolios: ConsistencyPortfolio[]
 }
 
-export function DcaConsistencyBlock({ portfolios }: Props) {
+function DcaConsistencyBlockImpl({ portfolios }: Props) {
   if (portfolios.length === 0) return null
   const valid = portfolios.filter(p => p.simulationInputs !== null && p.valueSeries.length > 0)
   if (valid.length === 0) return null
@@ -60,6 +60,8 @@ export function DcaConsistencyBlock({ portfolios }: Props) {
     </div>
   )
 }
+
+export const DcaConsistencyBlock = memo(DcaConsistencyBlockImpl)
 
 function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfolio }) {
   const scenarios = useMemo(() => {

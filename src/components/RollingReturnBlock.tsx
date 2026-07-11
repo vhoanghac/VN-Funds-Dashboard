@@ -9,7 +9,7 @@
  * khác thời điểm, rồi buồn/vui vì kết quả lệch nhau. Block này cho thấy
  * phân phối toàn bộ kịch bản có thể xảy ra.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, ReferenceLine, Cell,
 } from 'recharts'
@@ -31,7 +31,7 @@ interface Props {
 
 const WINDOW_OPTIONS = [3, 5, 7, 10]
 
-export function RollingReturnBlock({ portfolios }: Props) {
+function RollingReturnBlockImpl({ portfolios }: Props) {
   const [windowYears, setWindowYears] = useState<number>(5)
 
   if (portfolios.length === 0) return null
@@ -66,6 +66,8 @@ export function RollingReturnBlock({ portfolios }: Props) {
     </div>
   )
 }
+
+export const RollingReturnBlock = memo(RollingReturnBlockImpl)
 
 function RollingForPortfolio({
   portfolio,

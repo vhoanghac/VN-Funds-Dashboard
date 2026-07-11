@@ -7,7 +7,7 @@
  *
  * Default collapsed, user nào tò mò thì mở.
  */
-import { useState } from 'react'
+import { useState, memo } from 'react'
 
 interface ExplainerPortfolio {
   id: string
@@ -21,7 +21,7 @@ interface Props {
   portfolios: ExplainerPortfolio[]
 }
 
-export function DcaReturnExplainer({ portfolios }: Props) {
+function DcaReturnExplainerImpl({ portfolios }: Props) {
   const [open, setOpen] = useState(false)
 
   // Nếu không có portfolio nào có đủ 2 chỉ số thì không render
@@ -130,3 +130,5 @@ export function DcaReturnExplainer({ portfolios }: Props) {
     </div>
   )
 }
+
+export const DcaReturnExplainer = memo(DcaReturnExplainerImpl)

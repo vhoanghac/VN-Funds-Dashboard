@@ -9,6 +9,7 @@ import { parseCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { PortfolioValueChart } from './PortfolioValueChart'
+import { DCAStatsTable } from './DCAStatsTable'
 import { DCAGlossary } from './DCAGlossary'
 import { DcaJourneyBlock, EOYReturnsTable } from './DcaJourneyBlock'
 import { BankComparisonBlock } from './BankComparisonBlock'
@@ -96,7 +97,7 @@ function DCAPanelImpl({ funds }: Props) {
     urlParams?.initialAmount ?? loadLS('dca_initialAmount', 5_000_000)
   )
   const [cashflowAmount, setCashflowAmount] = useState(
-    urlParams?.cashflowAmount ?? loadLS('dca_cashflowAmount', 1_000_000)
+    urlParams?.cashflowAmount ?? loadLS('dca_cashflowAmount', 0)
   )
   const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>(
     urlParams?.cashflowFreq ?? loadLS('dca_cashflowFreq', 'monthly' as DCAFrequency)
@@ -472,18 +473,179 @@ function DCAPanelImpl({ funds }: Props) {
     return portfolioResults
   }, [committed, fundData, rawFundData, dividendsByFund])
 
-  const validResults = results?.filter(r => r.cumulative.length > 0) ?? []
+  // Memo hóa để giữ reference ổn định — nếu không, các block hiển thị kết quả
+  // bên dưới (đã bọc React.memo) sẽ vẫn re-render + tính toán lại mỗi khi gõ
+  // số vào ô nào đó trong panel này, dù kết quả DCA chưa thực sự đổi (chỉ đổi
+  // sau khi bấm "Chạy DCA" — tức khi `results` đổi reference).
+  const validResults = useMemo(
+    () => results?.filter(r => r.cumulative.length > 0) ?? [],
+    [results],
+  )
 
   const startDate = validResults.length > 0
     ? validResults[0]!.cumulative[0]?.date : undefined
   const endDate = validResults.length > 0
     ? validResults[0]!.cumulative[validResults[0]!.cumulative.length - 1]?.date : undefined
 
-  // ── Format helpers ──
-  function formatVND(n: number): string {
-    return n.toLocaleString('vi-VN') + ' ₫'
-  }
+  // ── Props ổn định cho các block hiển thị kết quả bên dưới ──
+  // Tất cả đều đã bọc React.memo; nếu tính .map() trực tiếp trong JSX, mỗi
+  // props sẽ là mảng MỚI mỗi lần DCAPanel re-render (kể cả khi chỉ gõ số ở
+  // ô khác), khiến React.memo vô tác dụng. Tách ra useMemo theo [validResults]
+  // để props chỉ đổi khi kết quả DCA thực sự đổi (sau khi bấm "Chạy DCA").
+  const portfolioValueChartData = useMemo(() => validResults.map(r => ({
+    name: r.name,
+    color: r.color,
+    values: r.valueSeries,
+    invested: r.investedSeries,
+  })), [validResults])
 
+  const dcaStatsTableData = useMemo(() => validResults.map(r => {
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+    const dcaYears = r.cumulative.length >= 2
+      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
+         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
+      : null
+    const investorCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
+      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
+      : null
+    return {
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      finalValue: r.finalValue,
+      totalInvested: r.totalInvested,
+      cagr: investorCagr,
+      mwrr: r.mwrr,
+      maxDrawdown: r.storm.maxDrawdown,
+      profitFactor: r.profitFactor,
+    }
+  }), [validResults])
+
+  // EOYReturnsTable và DcaJourneyBlock dùng chung 1 shape props
+  const journeyPortfolios = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    totalInvested: r.totalInvested,
+    finalValue: r.finalValue,
+    valueSeries: r.valueSeries,
+    cashflows: r.cashflows,
+  })), [validResults])
+
+  const dcaReturnExplainerData = useMemo(() => validResults.map(r => {
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+    const dcaYears = r.cumulative.length >= 2
+      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
+         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
+      : null
+    const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
+      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
+      : null
+    return { id: r.id, name: r.name, color: r.color, cagr, mwrr: r.mwrr }
+  }), [validResults])
+
+  const dividendFundIds = useMemo(() => Array.from(new Set(
+    committed?.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
+  )), [committed])
+
+  const dividendNarrativeData = useMemo(() => validResults.map(r => ({
+    portfolioId: r.id,
+    portfolioName: r.name,
+    color: r.color,
+    stats: r.dividendNarrative,
+  })), [validResults])
+
+  const bankComparisonData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    finalValue: r.finalValue,
+    investedSeries: r.investedSeries,
+  })), [validResults])
+
+  const dcaStormData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    storm: r.storm,
+    drawdown: r.drawdown,
+    valueSeries: r.valueSeries,
+  })), [validResults])
+
+  const dcaConsistencyData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    totalInvested: r.totalInvested,
+    finalValue: r.finalValue,
+    valueSeries: r.valueSeries,
+    simulationInputs: r.simulationInputs,
+  })), [validResults])
+
+  const projectionData = useMemo(() => validResults.map(r => {
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+    const dcaYears = r.cumulative.length >= 2
+      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
+         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
+      : null
+    const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
+      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
+      : null
+    const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
+      ? r.totalInvested / (dcaYears * 12)
+      : 0
+    return {
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      totalInvested: r.totalInvested,
+      finalValue: r.finalValue,
+      cagr,
+      monthlyContribution,
+    }
+  }), [validResults])
+
+  const goalPlannerData = useMemo(() => validResults.map(r => {
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+    const dcaYears = r.cumulative.length >= 2
+      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
+         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
+      : null
+    const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
+      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
+      : null
+    const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
+      ? r.totalInvested / (dcaYears * 12)
+      : 0
+    return {
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      finalValue: r.finalValue,
+      cagr,
+      monthlyContribution,
+    }
+  }), [validResults])
+
+  const rollingReturnData = useMemo(() => validResults.map(r => {
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+    const dcaYears = r.cumulative.length >= 2
+      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
+         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
+      : null
+    const userCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
+      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
+      : null
+    return {
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      cumulative: r.cumulative,
+      userCagr,
+    }
+  }), [validResults])
+
+  // ── Format helpers ──
   function formatDate(dateStr: string): string {
     const [y, m, d] = dateStr.split('-')
     return `${d}/${m}/${y}`
@@ -571,27 +733,35 @@ function DCAPanelImpl({ funds }: Props) {
           </div>
         </div>
 
-        {/* Cashflow Amount */}
-        <div className="dca-param-row">
-          <label className="dca-label">Số tiền đầu tư định kỳ</label>
-          <div className="dca-amount-input">
-            <MoneyInput value={cashflowAmount} onChange={setCashflowAmount} min={0} />
-            <span className="dca-currency">₫</span>
-          </div>
-        </div>
+        {/* DCA Cash Flow subsection — mặc định 0, tức là mô phỏng đầu tư 1 lần */}
+        <div className="dca-subsection">
+          <h4 className="dca-subsection-title">Dòng Tiền DCA</h4>
+          <p className="dca-subsection-hint">
+            Để 0 nếu chỉ muốn mô phỏng đầu tư 1 lần. Nhập số tiền nếu muốn lên kế hoạch DCA định kỳ.
+          </p>
 
-        {/* Cashflow Frequency */}
-        <div className="dca-param-row">
-          <label className="dca-label">Tần suất đầu tư</label>
-          <select
-            className="dca-freq-select"
-            value={cashflowFreq}
-            onChange={e => setCashflowFreq(e.target.value as DCAFrequency)}
-          >
-            {FREQ_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          {/* Cashflow Amount */}
+          <div className="dca-param-row">
+            <label className="dca-label">Số tiền đầu tư định kỳ</label>
+            <div className="dca-amount-input">
+              <MoneyInput value={cashflowAmount} onChange={setCashflowAmount} min={0} />
+              <span className="dca-currency">₫</span>
+            </div>
+          </div>
+
+          {/* Cashflow Frequency */}
+          <div className="dca-param-row">
+            <label className="dca-label">Tần suất đầu tư</label>
+            <select
+              className="dca-freq-select"
+              value={cashflowFreq}
+              onChange={e => setCashflowFreq(e.target.value as DCAFrequency)}
+            >
+              {FREQ_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <p className="dca-note">
@@ -667,110 +837,23 @@ function DCAPanelImpl({ funds }: Props) {
 
           {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
           <PortfolioValueChart
-            portfolios={validResults.map(r => ({
-              name: r.name,
-              color: r.color,
-              values: r.valueSeries,
-              invested: r.investedSeries,
-            }))}
+            portfolios={portfolioValueChartData}
           />
 
-          {/* DCA Summary Cards: hard numbers ngay dưới chart */}
-          <div className="dca-summary-grid">
-            {validResults.map(r => {
-              // CAGR of investor: (finalValue / totalInvested)^(1/years) - 1
-              // Uses actual calendar years from first to last DCA date
-              const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-              const dcaYears = r.cumulative.length >= 2
-                ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-                   new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-                : null
-              const investorCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-                ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-                : null
-
-              return (
-                <div key={r.id} className="dca-summary-card" style={{ borderLeftColor: r.color }}>
-                  <div className="dca-summary-name">{r.name}</div>
-                  <div className="dca-summary-row">
-                    <span>Giá trị cuối kỳ
-                      <span className="dca-info-icon" title="Ending Value: giá trị danh mục tại thời điểm cuối kỳ backtest.">?</span>
-                    </span>
-                    <span className="dca-summary-value">{formatVND(Math.round(r.finalValue))}</span>
-                  </div>
-                  <div className="dca-summary-row">
-                    <span>Tổng đầu tư
-                      <span className="dca-info-icon" title="Total Contributions: tổng số tiền đã nạp vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
-                    </span>
-                    <span className="dca-summary-value">{formatVND(r.totalInvested)}</span>
-                  </div>
-                  <div className="dca-summary-separator" />
-                  <div className="dca-summary-row">
-                    <span>Lợi nhuận tích lũy
-                      <span className="dca-info-icon" title="Lợi nhuận tích lũy trong kỳ backtest (giá trị cuối kỳ ÷ tổng đầu tư − 1).">?</span>
-                    </span>
-                    <span className={`dca-summary-value ${r.finalValue >= r.totalInvested ? 'dca-profit' : 'dca-loss'}`}>
-                      {r.totalInvested > 0
-                        ? ((r.finalValue / r.totalInvested - 1) * 100).toFixed(2) + '%'
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="dca-summary-row">
-                    <span>CAGR
-                      <span className="dca-info-icon" title="Lợi nhuận tích lũy quy năm: (Giá trị cuối ÷ Tổng đầu tư)^(1/số năm) − 1. Cho biết nếu danh mục tăng đều mỗi năm thì mỗi năm lãi bao nhiêu %. Lưu ý: chỉ số này thường thấp hơn MWRR trong DCA vì giả định toàn bộ vốn đã hoạt động từ đầu.">?</span>
-                    </span>
-                    <span className={`dca-summary-value ${(investorCagr ?? 0) >= 0 ? 'dca-profit' : 'dca-loss'}`}>
-                      {investorCagr !== null ? (investorCagr * 100).toFixed(2) + '%' : '—'}
-                    </span>
-                  </div>
-                  <div className="dca-summary-row">
-                    <span>MWRR
-                      <span className="dca-info-icon" title="Money-Weighted Rate of Return: lợi nhuận thực tế của nhà đầu tư, tính đến thời điểm và số tiền từng lần nạp (IRR). Chỉ số chính để đánh giá hiệu quả chiến lược DCA. Thường cao hơn CAGR vì nhận ra rằng phần lớn vốn DCA chỉ hoạt động trong thời gian ngắn hơn toàn kỳ.">?</span>
-                    </span>
-                    <span className={`dca-summary-value ${(r.mwrr ?? 0) >= 0 ? 'dca-profit' : 'dca-loss'}`}>
-                      {r.mwrr !== null ? (r.mwrr * 100).toFixed(2) + '%' : '—'}
-                    </span>
-                  </div>
-                  <div className="dca-summary-row">
-                    <span>Profit Factor
-                      <span className="dca-info-icon" title="Tổng lợi nhuận các tuần tăng ÷ tổng lỗ các tuần giảm. Lớn hơn 1 = tổng lời nhiều hơn tổng lỗ. Ví dụ: 1.5× nghĩa là cứ 1 đồng lỗ thì lời được 1.5 đồng.">?</span>
-                    </span>
-                    <span className={`dca-summary-value ${(r.profitFactor ?? 0) >= 1 ? 'dca-profit' : 'dca-loss'}`}>
-                      {r.profitFactor !== null ? r.profitFactor.toFixed(2) + '×' : '—'}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
+          <DCAStatsTable
+            portfolios={dcaStatsTableData}
+          />
 
           {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
               trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
           <EOYReturnsTable
-            portfolios={validResults.map(r => ({
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              totalInvested: r.totalInvested,
-              finalValue: r.finalValue,
-              valueSeries: r.valueSeries,
-              cashflows: r.cashflows,
-            }))}
+            portfolios={journeyPortfolios}
           />
 
           {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
           <DcaReturnExplainer
-            portfolios={validResults.map(r => {
-              const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-              const dcaYears = r.cumulative.length >= 2
-                ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-                   new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-                : null
-              const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-                ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-                : null
-              return { id: r.id, name: r.name, color: r.color, cagr, mwrr: r.mwrr }
-            })}
+            portfolios={dcaReturnExplainerData}
           />
 
           {/* Journey narrative */}
@@ -781,15 +864,7 @@ function DCAPanelImpl({ funds }: Props) {
           )}
           {startDate && endDate && (
             <DcaJourneyBlock
-              portfolios={validResults.map(r => ({
-                id: r.id,
-                name: r.name,
-                color: r.color,
-                totalInvested: r.totalInvested,
-                finalValue: r.finalValue,
-                valueSeries: r.valueSeries,
-                cashflows: r.cashflows,
-              }))}
+              portfolios={journeyPortfolios}
               startDate={startDate}
               endDate={endDate}
             />
@@ -798,31 +873,18 @@ function DCAPanelImpl({ funds }: Props) {
           {/* Cổ tức & tái đầu tư (chỉ hiển thị khi danh mục có quỹ chia cổ tức như DCDE) */}
           {startDate && endDate && (
             <DividendBlock
-              fundIds={Array.from(new Set(
-                committed?.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
-              ))}
+              fundIds={dividendFundIds}
               dividendsByFund={dividendsByFund}
               startDate={startDate}
               endDate={endDate}
-              narrativeByPortfolio={validResults.map(r => ({
-                portfolioId: r.id,
-                portfolioName: r.name,
-                color: r.color,
-                stats: r.dividendNarrative,
-              }))}
+              narrativeByPortfolio={dividendNarrativeData}
             />
           )}
 
           {/* So sánh với gửi tiết kiệm */}
           {endDate && (
             <BankComparisonBlock
-              results={validResults.map(r => ({
-                id: r.id,
-                name: r.name,
-                color: r.color,
-                finalValue: r.finalValue,
-                investedSeries: r.investedSeries,
-              }))}
+              results={bankComparisonData}
               endDate={endDate}
             />
           )}
@@ -832,26 +894,11 @@ function DCAPanelImpl({ funds }: Props) {
             <span className="section-divider-label">Rủi ro &amp; biến động</span>
           </div>
           <DcaStormBlock
-            portfolios={validResults.map(r => ({
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              storm: r.storm,
-              drawdown: r.drawdown,
-              valueSeries: r.valueSeries,
-            }))}
+            portfolios={dcaStormData}
           />
 
           <DcaConsistencyBlock
-            portfolios={validResults.map(r => ({
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              totalInvested: r.totalInvested,
-              finalValue: r.finalValue,
-              valueSeries: r.valueSeries,
-              simulationInputs: r.simulationInputs,
-            }))}
+            portfolios={dcaConsistencyData}
           />
 
           {/* Endgame: projection + rolling */}
@@ -859,73 +906,15 @@ function DCAPanelImpl({ funds }: Props) {
             <span className="section-divider-label">Endgame</span>
           </div>
           <ProjectionBlock
-            portfolios={validResults.map(r => {
-              const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-              const dcaYears = r.cumulative.length >= 2
-                ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-                   new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-                : null
-              const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-                ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-                : null
-              // Ước lượng monthly contribution từ lịch nạp thực tế
-              const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
-                ? r.totalInvested / (dcaYears * 12)
-                : 0
-              return {
-                id: r.id,
-                name: r.name,
-                color: r.color,
-                totalInvested: r.totalInvested,
-                finalValue: r.finalValue,
-                cagr,
-                monthlyContribution,
-              }
-            })}
+            portfolios={projectionData}
           />
 
           <GoalPlannerBlock
-            portfolios={validResults.map(r => {
-              const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-              const dcaYears = r.cumulative.length >= 2
-                ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-                   new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-                : null
-              const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-                ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-                : null
-              const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
-                ? r.totalInvested / (dcaYears * 12)
-                : 0
-              return {
-                id: r.id,
-                name: r.name,
-                color: r.color,
-                finalValue: r.finalValue,
-                cagr,
-                monthlyContribution,
-              }
-            })}
+            portfolios={goalPlannerData}
           />
 
           <RollingReturnBlock
-            portfolios={validResults.map(r => {
-              const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-              const dcaYears = r.cumulative.length >= 2
-                ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-                   new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-                : null
-              const userCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-                ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-                : null
-              return {
-                id: r.id,
-                name: r.name,
-                color: r.color,
-                cumulative: r.cumulative,
-                userCagr,
-              }
-            })}
+            portfolios={rollingReturnData}
           />
 
         </>

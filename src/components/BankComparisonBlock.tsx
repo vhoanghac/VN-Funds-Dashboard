@@ -11,7 +11,7 @@
  * Lãi suất mặc định 6.5%/năm, gần trung bình tiết kiệm kỳ hạn 12 tháng
  * nhóm ngân hàng lớn VN 2024–2026. Có thể user chỉnh trong tương lai.
  */
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { formatVND } from '../utils/vndFormat'
 
 const DEFAULT_BANK_RATE = 0.065  // 6.5%/năm
@@ -35,7 +35,7 @@ interface Props {
   endDate: string  // YYYY-MM-DD
 }
 
-export function BankComparisonBlock({ results, endDate }: Props) {
+function BankComparisonBlockImpl({ results, endDate }: Props) {
   const [bankRate, setBankRate] = useState<number>(DEFAULT_BANK_RATE)
 
   if (results.length === 0) return null
@@ -184,3 +184,5 @@ function BankTakeaway({ comparisons }: TakeawayProps) {
     </div>
   )
 }
+
+export const BankComparisonBlock = memo(BankComparisonBlockImpl)

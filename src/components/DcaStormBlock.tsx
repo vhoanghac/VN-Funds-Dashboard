@@ -7,7 +7,7 @@
  * Block này kể lại cơn bão tệ nhất trong kỳ DCA, có reference
  * giai đoạn bear lịch sử VN (2018-2019, COVID 3/2020, 2022).
  */
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import {
   Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, ReferenceLine,
@@ -35,7 +35,7 @@ const BEAR_LABEL: Record<NonNullable<DCAStormStats['inBearPeriod']>, string> = {
   bear2022: 'bear market 2022',
 }
 
-export function DcaStormBlock({ portfolios }: Props) {
+function DcaStormBlockImpl({ portfolios }: Props) {
   if (portfolios.length === 0) return null
 
   // Lọc portfolio có bão đáng kể (DD ≤ -10%)
@@ -113,6 +113,8 @@ export function DcaStormBlock({ portfolios }: Props) {
     </div>
   )
 }
+
+export const DcaStormBlock = memo(DcaStormBlockImpl)
 
 /**
  * MarketDrawdownChart: DD của giá quỹ (TWRR, đã loại noise cashflow).

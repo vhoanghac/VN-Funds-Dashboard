@@ -11,7 +11,7 @@
  *       → PMT = (FV − PV × (1 + r)^n) / [((1 + r)^n − 1) / r]
  * với r = monthly rate, n = months, end-of-period contribution.
  */
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { formatVND } from '../utils/vndFormat'
 
 export interface GoalPlannerPortfolio {
@@ -38,7 +38,7 @@ const PRESET_TARGETS = [
 
 const YEAR_OPTIONS = [5, 10, 15, 20, 25, 30]
 
-export function GoalPlannerBlock({ portfolios }: Props) {
+function GoalPlannerBlockImpl({ portfolios }: Props) {
   const [target, setTarget] = useState<number>(1_000_000_000)
   const [years, setYears] = useState<number>(10)
   const [customInput, setCustomInput] = useState<string>('')
@@ -129,6 +129,8 @@ export function GoalPlannerBlock({ portfolios }: Props) {
     </div>
   )
 }
+
+export const GoalPlannerBlock = memo(GoalPlannerBlockImpl)
 
 function GoalForPortfolio({
   portfolio,

@@ -10,7 +10,7 @@
  * Mental model: retail VN hay nghĩ "đầu tư 5 năm là dài". Thực tế chứng khoán
  * là trò chơi 20-30 năm. Block này cho user một góc nhìn về thời gian đúng.
  */
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, ReferenceLine,
 } from 'recharts'
@@ -34,7 +34,7 @@ interface Props {
 
 const HORIZON_OPTIONS = [5, 10, 20, 30]
 
-export function ProjectionBlock({ portfolios }: Props) {
+function ProjectionBlockImpl({ portfolios }: Props) {
   const [years, setYears] = useState<number>(10)
 
   if (portfolios.length === 0) return null
@@ -78,6 +78,8 @@ export function ProjectionBlock({ portfolios }: Props) {
     </div>
   )
 }
+
+export const ProjectionBlock = memo(ProjectionBlockImpl)
 
 function ProjectionForPortfolio({
   portfolio,

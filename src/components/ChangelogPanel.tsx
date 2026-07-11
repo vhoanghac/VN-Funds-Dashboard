@@ -10,6 +10,8 @@ const ENTRIES = [
       'Thêm quỹ ETF: FUESSVFL (Finlead) và FUEVN100 (VN100)',
       'Sửa lỗi tính toán: trước đây một số chỉ số (CAGR, rolling return, sụt giảm tối đa...) dùng dữ liệu đã resample theo tuần nên có sai số nhỏ ở các mốc ngắn hạn. Nay toàn bộ các tab tính trực tiếp trên dữ liệu theo ngày.',
       'Sửa lỗi hiệu năng: chuyển tab đôi khi bị đơ nhẹ và biểu đồ tự vẽ lại dù không có gì thay đổi. Nay các tab không còn tính toán lại mỗi lần chuyển qua chuyển lại, và biểu đồ không animate lại mỗi lần xuất hiện.',
+      'Sửa lỗi giao diện: gõ số vào ô "Số tiền đầu tiên" / "Số tiền đầu tư định kỳ" đôi khi làm con trỏ nhảy lung tung, nhất là khi sửa số ở giữa chứ không phải gõ tiếp ở cuối. Nay con trỏ giữ đúng vị trí khi gõ.',
+      'Sửa lỗi hiệu năng: sau khi bấm "Chạy DCA", gõ số vào bất kỳ ô nào (kể cả không liên quan) có thể làm trang bị đơ nặng trong chốc lát vì toàn bộ biểu đồ, bảng thống kê, hiệu suất từng năm... tự tính lại dù dữ liệu chưa đổi. Nay các mục này chỉ tính lại khi bạn thực sự bấm "Chạy DCA".',
     ],
   },
   {

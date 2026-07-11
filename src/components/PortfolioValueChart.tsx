@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, memo } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, ComposedChart,
@@ -23,7 +23,7 @@ interface Props {
 const DIMMED_COLOR = '#CBD5E1'
 const INVESTED_LINE_NAME = 'Đã đầu tư'
 
-export function PortfolioValueChart({ portfolios }: Props) {
+function PortfolioValueChartImpl({ portfolios }: Props) {
   const [dimmed, setDimmed] = useState<Set<string>>(new Set())
 
   const seriesKey = portfolios.map(p => p.name).join(',')
@@ -133,6 +133,8 @@ export function PortfolioValueChart({ portfolios }: Props) {
     </div>
   )
 }
+
+export const PortfolioValueChart = memo(PortfolioValueChartImpl)
 
 function mergeData(portfolios: PortfolioSeries[]): Record<string, unknown>[] {
   const map = new Map<string, Record<string, unknown>>()
