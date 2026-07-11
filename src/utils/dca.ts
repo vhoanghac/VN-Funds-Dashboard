@@ -1,5 +1,6 @@
 import type { PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
 import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
+import { rollingWindowStarts } from './dateWindow'
 
 /**
  * Resample multiple ReturnPoint[] series to a common weekly date grid.
@@ -78,6 +79,20 @@ export type DCAFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarte
 export interface DCASlot {
   fundId: string
   weight: number // 0-100
+}
+
+/**
+ * Tên mặc định cho danh mục: nếu chỉ có 1 quỹ, hiển thị tên quỹ đó (vd "DCDS").
+ * Nếu có nhiều hơn 1 quỹ, dùng "Portfolio {num}" — num là số cố định gắn với
+ * danh mục lúc tạo (không đổi khi xoá danh mục khác), tránh trùng tên khi
+ * nhiều danh mục đa quỹ xuất hiện trên cùng biểu đồ.
+ *
+ * Chỉ áp dụng khi tên chưa bị người dùng tự sửa tay (xem `isNameCustom`
+ * trong PortfolioCardState).
+ */
+export function derivePortfolioName(slots: DCASlot[], num: number): string {
+  if (slots.length === 1 && slots[0]!.fundId) return slots[0]!.fundId
+  return `Portfolio ${num}`
 }
 
 export interface DCAPortfolio {
@@ -498,20 +513,22 @@ export function dcaMaxDrawdown(cumulative: ReturnPoint[]): number {
 export function dcaYearlyReturns(cumulative: ReturnPoint[]): YearlyReturn[] {
   if (cumulative.length < 2) return []
 
-  // Find last cumulative value for each year
+  // Find first/last date in year + last cumulative value for each year
   const yearEnd = new Map<number, number>() // year → (1 + cumulative.value) at year end
-  let firstYear = Infinity
-  let lastYear = -Infinity
+  const yearFirstDate = new Map<number, string>()
+  const yearLastDate = new Map<number, string>()
 
   for (const p of cumulative) {
     const year = parseInt(p.date.substring(0, 4), 10)
     // Always overwrite. Cumulative is sorted, so last write = last date in year
     yearEnd.set(year, 1 + p.value)
-    if (year < firstYear) firstYear = year
-    if (year > lastYear) lastYear = year
+    yearLastDate.set(year, p.date)
+    if (!yearFirstDate.has(year)) yearFirstDate.set(year, p.date)
   }
 
   const years = Array.from(yearEnd.keys()).sort((a, b) => a - b)
+  const firstYear = years[0]!
+  const lastYear = years[years.length - 1]!
   const result: YearlyReturn[] = []
 
   for (let i = 0; i < years.length; i++) {
@@ -520,13 +537,12 @@ export function dcaYearlyReturns(cumulative: ReturnPoint[]): YearlyReturn[] {
     const growthAtPrevEnd = i === 0 ? 1.0 : yearEnd.get(years[i - 1]!)!
     const yearReturn = growthAtEnd / growthAtPrevEnd - 1
 
-    // Count weekly data points in this year to detect partial years
-    let daysInYear = 0
-    for (const p of cumulative) {
-      if (parseInt(p.date.substring(0, 4), 10) === year) daysInYear++
-    }
-    // A full year has ~52 weekly data points; partial if < 48
-    const isPartial = (year === firstYear || year === lastYear) && daysInYear < 48
+    // Dữ liệu resample theo tuần lẫn daily đều hiếm khi có điểm đúng ngày
+    // 01/01 hoặc 31/12 — chỉ tính "năm chưa trọn" khi lệch nhiều (>20 ngày),
+    // và chỉ xét năm ĐẦU/CUỐI của toàn kỳ (không phụ thuộc mật độ dữ liệu).
+    const isPartial =
+      (year === firstYear && daysBetweenDates(`${year}-01-01`, yearFirstDate.get(year)!) > 20) ||
+      (year === lastYear && daysBetweenDates(yearLastDate.get(year)!, `${year}-12-31`) > 20)
 
     result.push({ year, value: yearReturn, isPartial })
   }
@@ -534,44 +550,133 @@ export function dcaYearlyReturns(cumulative: ReturnPoint[]): YearlyReturn[] {
   return result
 }
 
+export interface YearlyMWRR {
+  year: number
+  /** decimal; null nếu không tính được (mẫu số bằng 0, vd danh mục rỗng suốt năm) */
+  value: number | null
+  isPartial: boolean
+}
+
+/**
+ * Modified Dietz method: return có tính đến dòng tiền (money-weighted) cho
+ * từng năm — đo đúng hiệu suất DANH MỤC CỦA NHÀ ĐẦU TƯ, khác với TWRR
+ * (dcaYearlyReturns) vốn đo hiệu suất bản thân quỹ, bất kể bạn nạp bao
+ * nhiêu/khi nào.
+ *
+ * Ý tưởng: tiền nạp càng sớm trong năm càng được tính trọng số cao (có
+ * nhiều thời gian sinh lời hơn), nạp cuối năm gần như chưa kịp sinh lời.
+ *
+ *   R = (EV − BV − netContrib) / (BV + Σ contrib_i × (1 − t_i/T))
+ *
+ * Đây là công thức chuẩn GIPS để tính return có dòng tiền cho kỳ ngắn,
+ * không cần giải lặp (khác Newton-Raphson của dcaMWRR), nên luôn ra kết
+ * quả ổn định dù mỗi năm chỉ có ~12 lần nạp tiền.
+ *
+ * @param valueSeries Giá trị danh mục theo thời gian (đã gồm cashflow, từ simulateDCA)
+ * @param cashflows Toàn bộ cashflows từ simulateDCA (âm = nạp tiền, dòng cuối
+ *   dương = finalValue tổng — sẽ tự bị loại vì chỉ lọc amount < 0)
+ */
+export function dcaYearlyMWRR(
+  valueSeries: { date: string; value: number }[],
+  cashflows: { date: string; amount: number }[],
+): YearlyMWRR[] {
+  if (valueSeries.length < 2) return []
+
+  const years = Array.from(
+    new Set(valueSeries.map(p => parseInt(p.date.slice(0, 4), 10))),
+  ).sort((a, b) => a - b)
+
+  // Chỉ các đợt nạp tiền thật (âm) — dòng "final value" tổng (dương) tự bị loại
+  const contributions = cashflows.filter(cf => cf.amount < 0)
+
+  const firstYear = years[0]!
+  const lastYear = years[years.length - 1]!
+
+  const results: YearlyMWRR[] = []
+  for (const year of years) {
+    const yearStartStr = `${year}-01-01`
+    const yearEndStr = `${year}-12-31`
+
+    const priorPoints = valueSeries.filter(p => p.date < yearStartStr)
+    const bvPoint = priorPoints.length > 0 ? priorPoints[priorPoints.length - 1]! : null
+    const BV = bvPoint ? bvPoint.value : 0
+    const periodStartDate = bvPoint
+      ? bvPoint.date
+      : (valueSeries.find(p => p.date >= yearStartStr)?.date ?? yearStartStr)
+
+    const yearPoints = valueSeries.filter(p => p.date >= yearStartStr && p.date <= yearEndStr)
+    if (yearPoints.length === 0) continue
+    const EV = yearPoints[yearPoints.length - 1]!.value
+    const periodEndDate = yearPoints[yearPoints.length - 1]!.date
+
+    const totalDays = Math.max(1, daysBetweenDates(periodStartDate, periodEndDate))
+
+    // Dữ liệu resample theo tuần nên hiếm khi có điểm đúng ngày 01/01 hoặc
+    // 31/12 (lệch vài ngày vì cuối tuần/lễ) — chỉ tính là "năm chưa trọn"
+    // khi lệch nhiều (>20 ngày), và chỉ xét năm ĐẦU/CUỐI của toàn kỳ so sánh,
+    // tránh báo nhầm hàng loạt năm giữa kỳ.
+    const isPartial =
+      (year === firstYear && daysBetweenDates(yearStartStr, periodStartDate) > 20) ||
+      (year === lastYear && daysBetweenDates(periodEndDate, yearEndStr) > 20)
+
+    const yearContribs = contributions
+      .filter(cf => cf.date >= periodStartDate && cf.date <= periodEndDate)
+      .map(cf => ({ date: cf.date, amount: -cf.amount })) // dương = tiền thêm vào danh mục
+
+    const netContrib = yearContribs.reduce((s, c) => s + c.amount, 0)
+    const weightedContrib = yearContribs.reduce((s, c) => {
+      const t = daysBetweenDates(periodStartDate, c.date)
+      return s + c.amount * (1 - t / totalDays)
+    }, 0)
+
+    const denominator = BV + weightedContrib
+    const value = denominator !== 0 ? (EV - BV - netContrib) / denominator : null
+
+    results.push({ year, value, isPartial })
+  }
+
+  return results
+}
+
+function daysBetweenDates(a: string, b: string): number {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
+}
+
 export function computeDCARolling(
   cumulative: ReturnPoint[],
   periodMonths: number,
 ): ReturnPoint[] {
-  const WEEKS_PER_YEAR = 52
-  const window = Math.round(periodMonths * (WEEKS_PER_YEAR / 12))
+  if (cumulative.length === 0) return []
 
-  if (cumulative.length <= window) return []
+  const dates = cumulative.map(p => new Date(p.date).getTime())
+  // Two-pointer dùng chung với calculations.ts/lsVsDca.ts (xem dateWindow.ts):
+  // lùi đúng theo LỊCH THÁNG (vd 12 tháng trước 15/03 là 15/03 năm trước),
+  // không dùng số ngày xấp xỉ — tháng thực dài 28-31 ngày khác nhau, xấp xỉ
+  // cố định sẽ lệch dần khi dữ liệu thưa (monthly/quarterly rebalance...).
+  const starts = rollingWindowStarts(dates, periodMonths)
 
-  const result: ReturnPoint[] = []
-  const sampleStep = Math.max(1, Math.min(5, Math.floor((cumulative.length - window) / 200)))
+  const raw: ReturnPoint[] = []
+  for (let i = 0; i < cumulative.length; i++) {
+    const j = starts[i]!
+    if (j < 0) continue // chuỗi chưa lùi xa đủ periodMonths tháng
 
-  for (let i = window; i < cumulative.length; i += sampleStep) {
     const growthNow = 1 + cumulative[i]!.value
-    const growthPast = 1 + cumulative[i - window]!.value
+    const growthPast = 1 + cumulative[j]!.value
     if (growthPast > 0) {
       const periodGrowth = growthNow / growthPast
-      const annualized = Math.pow(periodGrowth, WEEKS_PER_YEAR / window) - 1
-      result.push({ date: cumulative[i]!.date, value: annualized })
+      const annualized = Math.pow(periodGrowth, 12 / periodMonths) - 1
+      raw.push({ date: cumulative[i]!.date, value: annualized })
     }
   }
 
-  // Always include last data point
-  const lastIdx = cumulative.length - 1
-  if (lastIdx >= window) {
-    const lastResult = result[result.length - 1]
-    const lastDate = cumulative[lastIdx]!.date
-    if (!lastResult || lastResult.date !== lastDate) {
-      const growthNow = 1 + cumulative[lastIdx]!.value
-      const growthPast = 1 + cumulative[lastIdx - window]!.value
-      if (growthPast > 0) {
-        const periodGrowth = growthNow / growthPast
-        const annualized = Math.pow(periodGrowth, WEEKS_PER_YEAR / window) - 1
-        result.push({ date: lastDate, value: annualized })
-      }
-    }
+  // Downsample cho chart (tối đa ~200 điểm), luôn giữ điểm cuối cùng
+  if (raw.length <= 200) return raw
+  const sampleStep = Math.max(1, Math.floor(raw.length / 200))
+  const result: ReturnPoint[] = []
+  for (let i = 0; i < raw.length; i += sampleStep) result.push(raw[i]!)
+  if (result[result.length - 1] !== raw[raw.length - 1]) {
+    result.push(raw[raw.length - 1]!)
   }
-
   return result
 }
 

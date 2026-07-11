@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import type { WeeklyPrice, FundMeta } from '../types'
+import type { PricePoint, FundMeta } from '../types'
 import { parseCSV, parseFundMetadata } from '../utils/csvParser'
-import { resampleToWeekly } from '../utils/weeklyResample'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 
 interface FundDataState {
@@ -51,29 +50,29 @@ export function useFundMetadata(): FundDataState {
 }
 
 /**
- * Fetch and parse a single fund's CSV, resampled to weekly.
+ * Fetch and parse a single fund's CSV (daily prices).
  */
 interface FundSeriesState {
-  weekly: WeeklyPrice[] | null
+  prices: PricePoint[] | null
   loading: boolean
   error: string | null
 }
 
 export function useFundSeries(fundId: string | null): FundSeriesState {
   const [state, setState] = useState<FundSeriesState>({
-    weekly: null,
+    prices: null,
     loading: false,
     error: null,
   })
 
   useEffect(() => {
     if (!fundId) {
-      setState({ weekly: null, loading: false, error: null })
+      setState({ prices: null, loading: false, error: null })
       return
     }
 
     let cancelled = false
-    setState({ weekly: null, loading: true, error: null })
+    setState({ prices: null, loading: true, error: null })
     const id = fundId // narrow for closure
 
     async function load() {
@@ -87,16 +86,15 @@ export function useFundSeries(fundId: string | null): FundSeriesState {
           throw new Error('Chưa có dữ liệu')
         }
 
-        // Áp dụng dividend adjustment (DCDE...) trước khi resample
+        // Áp dụng dividend adjustment (DCDE...), giữ nguyên daily cho tính toán
         const daily = await loadAdjustedPrices(id, rawDaily)
-        const weekly = resampleToWeekly(daily)
         if (!cancelled) {
-          setState({ weekly, loading: false, error: null })
+          setState({ prices: daily, loading: false, error: null })
         }
       } catch (err) {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : 'Không tải được dữ liệu quỹ'
-          setState({ weekly: null, loading: false, error: message })
+          setState({ prices: null, loading: false, error: message })
         }
       }
     }
@@ -109,17 +107,17 @@ export function useFundSeries(fundId: string | null): FundSeriesState {
 }
 
 /**
- * Fetch and parse multiple funds' CSVs, resampled to weekly.
+ * Fetch and parse multiple funds' CSVs (daily prices).
  * Caches previously fetched funds so only new funds are fetched.
  */
 interface MultiFundState {
-  data: Map<string, WeeklyPrice[]>
+  data: Map<string, PricePoint[]>
   loading: boolean
   errors: Map<string, string>
 }
 
 export function useMultiFundSeries(fundIds: string[]): MultiFundState {
-  const [data, setData] = useState<Map<string, WeeklyPrice[]>>(new Map())
+  const [data, setData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Map<string, string>>(new Map())
 
@@ -144,10 +142,9 @@ export function useMultiFundSeries(fundIds: string[]): MultiFundState {
           const rawDaily = parseCSV(text)
           if (rawDaily.length === 0) throw new Error('Chưa có dữ liệu')
           const daily = await loadAdjustedPrices(id, rawDaily)
-          const weekly = resampleToWeekly(daily)
-          return { id, weekly, error: null as string | null }
+          return { id, prices: daily, error: null as string | null }
         } catch (err) {
-          return { id, weekly: null as WeeklyPrice[] | null, error: err instanceof Error ? err.message : 'Lỗi' }
+          return { id, prices: null as PricePoint[] | null, error: err instanceof Error ? err.message : 'Lỗi' }
         }
       }),
     ).then(results => {
@@ -155,7 +152,7 @@ export function useMultiFundSeries(fundIds: string[]): MultiFundState {
       setData(prev => {
         const next = new Map(prev)
         for (const r of results) {
-          if (r.weekly) next.set(r.id, r.weekly)
+          if (r.prices) next.set(r.id, r.prices)
         }
         return next
       })

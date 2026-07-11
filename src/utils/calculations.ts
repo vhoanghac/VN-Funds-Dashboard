@@ -1,4 +1,5 @@
 import type { ReturnPoint, YearlyReturn } from '../types'
+import { rollingWindowStarts } from './dateWindow'
 
 /**
  * CALCULATION ENGINE
@@ -95,17 +96,25 @@ export function cagr(returns: ReturnPoint[]): number | null {
 // ─── Annualized Standard Deviation ─────────────────────────
 
 /**
- * Annualized standard deviation from weekly returns.
+ * Annualized standard deviation.
  *
- * Matches R: sqrt(252) * sd(daily_returns)
- * Adapted for weekly: sqrt(52) * sd(weekly_returns)
+ * Matches R: sqrt(252) * sd(daily_returns), adapted cho weekly: sqrt(52) * sd(...).
+ * Số kỳ/năm được SUY RA từ khoảng thời gian thực tế của chuỗi (n điểm trải
+ * trên bao nhiêu năm), thay vì cố định 52 — nên đúng bất kể input là daily
+ * hay weekly.
  */
 export function annualizedStdev(returns: ReturnPoint[]): number {
   if (returns.length < 2) return 0
   const n = returns.length
   const mean = returns.reduce((sum, r) => sum + r.value, 0) / n
   const variance = returns.reduce((sum, r) => sum + (r.value - mean) ** 2, 0) / (n - 1)
-  return Math.sqrt(variance) * Math.sqrt(WEEKS_PER_YEAR)
+
+  const startDate = new Date(returns[0]!.date)
+  const endDate = new Date(returns[n - 1]!.date)
+  const years = (endDate.getTime() - startDate.getTime()) / (365.25 * 24 * 3600 * 1000)
+  const periodsPerYear = years > 0 ? n / years : WEEKS_PER_YEAR
+
+  return Math.sqrt(variance) * Math.sqrt(periodsPerYear)
 }
 
 // ─── Risk Contribution ─────────────────────────────────────
@@ -411,15 +420,23 @@ export function yearlyReturns(returns: ReturnPoint[]): YearlyReturn[] {
       growth *= 1 + r.value
     }
 
-    // A year is partial if it's the first or last year and doesn't
-    // have roughly a full year of data (~48+ weeks)
+    // Dữ liệu resample theo tuần lẫn daily đều hiếm khi có điểm đúng ngày
+    // 01/01 hoặc 31/12 — chỉ tính "năm chưa trọn" khi lệch nhiều (>20 ngày),
+    // và chỉ xét năm ĐẦU/CUỐI (không phụ thuộc mật độ dữ liệu).
+    const firstDate = group[0]!.date
+    const lastDate = group[group.length - 1]!.date
     const isPartial =
-      (year === firstYear || year === lastYear) && group.length < 48
+      (year === firstYear && daysBetweenDates(`${year}-01-01`, firstDate) > 20) ||
+      (year === lastYear && daysBetweenDates(lastDate, `${year}-12-31`) > 20)
 
     result.push({ year, value: growth - 1, isPartial })
   }
 
   return result
+}
+
+function daysBetweenDates(a: string, b: string): number {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
 }
 
 // ─── Win Rate ───────────────────────────────────────────────
@@ -501,28 +518,22 @@ export function winRateAmong(
  */
 export function rollingCumulativeReturns(
   returns: ReturnPoint[],
-  windowSizeWeeks: number,
+  periodMonths: number,
 ): ReturnPoint[] {
   const n = returns.length
-  if (n < windowSizeWeeks) return []
+  if (n === 0) return []
 
-  // Precompute log(1+r) once. O(n)
-  const logR = new Float64Array(n)
-  for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
+  const dates = returns.map(r => new Date(r.date).getTime())
+  // Prefix log-sum: prefix[i] = tổng log(1+r) từ 0..i-1. O(n).
+  const prefix = new Float64Array(n + 1)
+  for (let i = 0; i < n; i++) prefix[i + 1] = prefix[i]! + Math.log1p(returns[i]!.value)
 
-  // Seed the first window sum
-  let logSum = 0
-  for (let i = 0; i < windowSizeWeeks; i++) logSum += logR[i]!
-
+  const starts = rollingWindowStarts(dates, periodMonths)
   const result: ReturnPoint[] = []
-  result.push({
-    date: returns[windowSizeWeeks - 1]!.date,
-    value: Math.expm1(logSum),
-  })
-
-  // Slide: O(1) per step
-  for (let i = windowSizeWeeks; i < n; i++) {
-    logSum += logR[i]! - logR[i - windowSizeWeeks]!
+  for (let i = 0; i < n; i++) {
+    const j = starts[i]!
+    if (j < 0) continue
+    const logSum = prefix[i + 1]! - prefix[j + 1]!
     result.push({ date: returns[i]!.date, value: Math.expm1(logSum) })
   }
 
@@ -543,20 +554,43 @@ export function rollingCumulativeReturns(
 export function rollingWinRate(
   returnsA: ReturnPoint[],
   returnsB: ReturnPoint[],
-  windowWeeks: number,
+  periodMonths: number,
 ): { wins: number; total: number } {
-  if (returnsA.length < windowWeeks || returnsB.length < windowWeeks) {
+  const rolledBMap = rollingCumulativeReturnsMap(returnsB, periodMonths)
+  return winRateAgainstRolledB(returnsA, periodMonths, rolledBMap)
+}
+
+/**
+ * Precompute rollingCumulativeReturns cho 1 series thành Map<date, value>, để
+ * tái sử dụng qua nhiều lần so sánh (winRateAgainstRolledB) mà không phải
+ * tính lại từ đầu mỗi lần — hữu ích khi cùng 1 baseline (vd danh mục không
+ * BTC) được so với NHIỀU danh mục khác ở CÙNG 1 kỳ hạn (xem WinRateBlock:
+ * so 3 tỷ trọng BTC với cùng 1 baseline × 4 kỳ hạn — baseline chỉ cần tính
+ * 4 lần thay vì 12 lần).
+ */
+export function rollingCumulativeReturnsMap(
+  returns: ReturnPoint[],
+  periodMonths: number,
+): Map<string, number> {
+  const rolled = rollingCumulativeReturns(returns, periodMonths)
+  return new Map(rolled.map(r => [r.date, r.value]))
+}
+
+/** Win rate của `returnsA` so với 1 rolling map B đã tính sẵn (xem rollingCumulativeReturnsMap). */
+export function winRateAgainstRolledB(
+  returnsA: ReturnPoint[],
+  periodMonths: number,
+  rolledBMap: Map<string, number>,
+): { wins: number; total: number } {
+  const rollA = rollingCumulativeReturns(returnsA, periodMonths)
+  if (rollA.length === 0 || rolledBMap.size === 0) {
     return { wins: 0, total: 0 }
   }
-
-  const rollA = rollingCumulativeReturns(returnsA, windowWeeks)
-  const rollB = rollingCumulativeReturns(returnsB, windowWeeks)
-  const mapB = new Map(rollB.map(r => [r.date, r.value]))
 
   let wins = 0
   let total = 0
   for (const r of rollA) {
-    const bVal = mapB.get(r.date)
+    const bVal = rolledBMap.get(r.date)
     if (bVal === undefined) continue
     total++
     if (r.value > bVal) wins++
@@ -579,40 +613,37 @@ export function rollingWinRate(
  */
 export function rollingAnnualizedStdev(
   returns: ReturnPoint[],
-  windowSizeWeeks: number,
+  periodMonths: number,
 ): ReturnPoint[] {
   const n = returns.length
-  if (n < windowSizeWeeks || windowSizeWeeks < 2) return []
+  if (n < 2) return []
 
-  const w = windowSizeWeeks
-  const sqrtAnnualize = Math.sqrt(WEEKS_PER_YEAR)
-
-  // Seed first window
-  let sum = 0
-  let sumSq = 0
-  for (let i = 0; i < w; i++) {
+  const dates = returns.map(r => new Date(r.date).getTime())
+  const prefixSum = new Float64Array(n + 1)
+  const prefixSumSq = new Float64Array(n + 1)
+  for (let i = 0; i < n; i++) {
     const v = returns[i]!.value
-    sum += v
-    sumSq += v * v
+    prefixSum[i + 1] = prefixSum[i]! + v
+    prefixSumSq[i + 1] = prefixSumSq[i]! + v * v
   }
 
+  const starts = rollingWindowStarts(dates, periodMonths)
   const result: ReturnPoint[] = []
-  const variance0 = Math.max(0, (sumSq - (sum * sum) / w) / (w - 1))
-  result.push({
-    date: returns[w - 1]!.date,
-    value: Math.sqrt(variance0) * sqrtAnnualize,
-  })
+  for (let i = 0; i < n; i++) {
+    const j = starts[i]!
+    if (j < 0) continue
+    const w = i - j // số return thực tế trong cửa sổ
+    if (w < 2) continue
 
-  // Slide: O(1) per step
-  for (let i = w; i < n; i++) {
-    const vIn  = returns[i]!.value
-    const vOut = returns[i - w]!.value
-    sum   += vIn - vOut
-    sumSq += vIn * vIn - vOut * vOut
+    const sum = prefixSum[i + 1]! - prefixSum[j + 1]!
+    const sumSq = prefixSumSq[i + 1]! - prefixSumSq[j + 1]!
     const variance = Math.max(0, (sumSq - (sum * sum) / w) / (w - 1))
+    // Annualize tự thích ứng theo mật độ dữ liệu thực tế trong cửa sổ,
+    // thay vì cố định sqrt(52) — đúng bất kể input daily hay weekly.
+    const periodsPerYear = w / (periodMonths / 12)
     result.push({
       date: returns[i]!.date,
-      value: Math.sqrt(variance) * sqrtAnnualize,
+      value: Math.sqrt(variance) * Math.sqrt(periodsPerYear),
     })
   }
 
@@ -638,20 +669,23 @@ export function rollingAnnualizedStdev(
  */
 export function rollingMaxDrawdown(
   returns: ReturnPoint[],
-  windowSizeWeeks: number,
+  periodMonths: number,
 ): ReturnPoint[] {
   const n = returns.length
-  if (n < windowSizeWeeks) return []
+  if (n === 0) return []
 
+  const dates = returns.map(r => new Date(r.date).getTime())
+  const starts = rollingWindowStarts(dates, periodMonths)
   const result: ReturnPoint[] = []
 
-  for (let i = windowSizeWeeks - 1; i < n; i++) {
-    const start = i - windowSizeWeeks + 1
+  for (let i = 0; i < n; i++) {
+    const j = starts[i]!
+    if (j < 0) continue
     let growth = 1.0
     let peak = 1.0
     let maxDD = 0
-    for (let j = start; j <= i; j++) {
-      growth *= 1 + returns[j]!.value
+    for (let k = j + 1; k <= i; k++) {
+      growth *= 1 + returns[k]!.value
       if (growth > peak) peak = growth
       const dd = growth / peak - 1
       if (dd < maxDD) maxDD = dd
@@ -678,26 +712,22 @@ export function rollingReturns(
   returns: ReturnPoint[],
   periodMonths: number,
 ): ReturnPoint[] {
-  const windowSize = Math.round(periodMonths * (WEEKS_PER_YEAR / 12))
+  const n = returns.length
+  if (n === 0) return []
 
-  if (returns.length < windowSize) return []
+  const dates = returns.map(r => new Date(r.date).getTime())
+  const prefix = new Float64Array(n + 1)
+  for (let i = 0; i < n; i++) prefix[i + 1] = prefix[i]! + Math.log1p(returns[i]!.value)
 
+  const starts = rollingWindowStarts(dates, periodMonths)
   const result: ReturnPoint[] = []
-
-  for (let i = windowSize; i <= returns.length; i++) {
-    const windowReturns = returns.slice(i - windowSize, i)
-
-    let growth = 1.0
-    for (const r of windowReturns) {
-      growth *= 1 + r.value
-    }
-
-    const annualized = Math.pow(growth, WEEKS_PER_YEAR / windowSize) - 1
-
-    result.push({
-      date: windowReturns[windowReturns.length - 1]!.date,
-      value: annualized,
-    })
+  for (let i = 0; i < n; i++) {
+    const j = starts[i]!
+    if (j < 0) continue
+    const logSum = prefix[i + 1]! - prefix[j + 1]!
+    const growth = Math.exp(logSum)
+    const annualized = Math.pow(growth, 12 / periodMonths) - 1
+    result.push({ date: returns[i]!.date, value: annualized })
   }
 
   return result

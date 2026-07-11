@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { WeeklyPrice, ReturnPoint, KPIData, YearlyReturn } from '../types'
+import type { PricePoint, ReturnPoint, KPIData, YearlyReturn } from '../types'
 import { alignMultiSeries, NoOverlapError } from '../utils/dateAlign'
 import {
   weeklyReturns,
@@ -45,7 +45,7 @@ type ComparisonState =
  */
 export function useMultiComparison(
   fundIds: string[],
-  fundData: Map<string, WeeklyPrice[]>,
+  fundData: Map<string, PricePoint[]>,
   rollingPeriod: number,
   dateFrom: string | null,
   dateTo: string | null,
@@ -57,7 +57,7 @@ export function useMultiComparison(
     if (fundIds.length === 0) return { status: 'idle' as const }
 
     // Check all funds loaded
-    const allSeries: WeeklyPrice[][] = []
+    const allSeries: PricePoint[][] = []
     for (const id of fundIds) {
       const series = fundData.get(id)
       if (!series) return { status: 'idle' as const }
@@ -129,10 +129,10 @@ export function useMultiComparison(
 }
 
 function filterDateRange(
-  series: WeeklyPrice[],
+  series: PricePoint[],
   from: string | null,
   to: string | null,
-): WeeklyPrice[] {
+): PricePoint[] {
   return series.filter(p => {
     if (from && p.date < from) return false
     if (to && p.date > to) return false

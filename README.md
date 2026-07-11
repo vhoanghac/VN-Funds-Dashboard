@@ -44,7 +44,7 @@ Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái
 
 ## Dữ liệu
 
-**54 quỹ** (27 cổ phiếu + 19 trái phiếu + 5 cân bằng + 3 ETF), dữ liệu NAV lịch sử từ 2004.
+**56 quỹ** (27 cổ phiếu + 19 trái phiếu + 5 cân bằng + 5 ETF), dữ liệu NAV lịch sử từ 2004.
 
 ### Quỹ cổ phiếu (27)
 
@@ -112,13 +112,15 @@ Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái
 | VIBF | Quỹ Đầu Tư Cân Bằng Tuệ Sáng VinaCapital | 2019 |
 | MDI | Quỹ Đầu Tư Năng Động Manulife | 2024 |
 
-### ETF (3)
+### ETF (5)
 
 | Mã quỹ | Từ ngày |
 |---------|---------|
 | E1VFVN30 | 2014 |
 | FUEVFVND | 2020 |
 | FUEDCMID | 2022 |
+| FUESSVFL | 2020 |
+| FUEVN100 | 2020 |
 
 ### Nguồn dữ liệu
 - **Quỹ mở:** [fmarket.vn](https://fmarket.vn) API

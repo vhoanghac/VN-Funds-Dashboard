@@ -1,4 +1,18 @@
-import type { WeeklyPrice } from '../types'
+import type { PricePoint } from '../types'
+
+// Tương đương "2 tuần" ban đầu, nhưng tính theo NGÀY THỰC thay vì số bước
+// lặp — nên đúng bất kể chuỗi giá là daily hay weekly.
+//
+// LƯU Ý: giới hạn 14 ngày này CHỦ ĐÍCH khác với alignFundsToCommonGrid(Daily)
+// (weeklyResample.ts, dùng cho tab DCA/LS-vs-DCA) — file đó forward-fill
+// KHÔNG giới hạn gap, vì DCA cần mọi danh mục đầu tư đúng cùng số lần trên
+// cùng lưới ngày (công bằng khi so sánh). Ở đây (tab So Sánh/Mô Phỏng), ưu
+// tiên ngược lại: thà loại bỏ điểm dữ liệu cũ (stale) còn hơn so sánh nhầm.
+const MAX_GAP_DAYS = 14
+
+function daysBetween(a: string, b: string): number {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
+}
 
 export interface AlignedPair {
   dates: string[]
@@ -12,12 +26,12 @@ export interface AlignedPair {
  * End at the last date where both series have data.
  *
  * For dates where one series has data and the other doesn't,
- * forward-fill from the most recent available value (max 2 weeks gap
- * for weekly data, equivalent to ~10 trading days).
+ * forward-fill from the most recent available value (max ~14 ngày
+ * kể từ giá trị hợp lệ gần nhất — đúng bất kể input daily hay weekly).
  */
 export function alignWeeklySeries(
-  seriesA: WeeklyPrice[],
-  seriesB: WeeklyPrice[],
+  seriesA: PricePoint[],
+  seriesB: PricePoint[],
 ): AlignedPair {
   if (seriesA.length === 0 || seriesB.length === 0) {
     throw new NoOverlapError('One or both series are empty')
@@ -54,31 +68,21 @@ export function alignWeeklySeries(
 
   let lastA: number | null = null
   let lastB: number | null = null
-  let gapA = 0
-  let gapB = 0
-  const MAX_GAP_WEEKS = 2
+  let lastDateA: string | null = null
+  let lastDateB: string | null = null
 
   for (const date of rangeDates) {
     const a = mapA.get(date)
     const b = mapB.get(date)
 
-    if (a !== undefined) {
-      lastA = a
-      gapA = 0
-    } else {
-      gapA++
-    }
+    if (a !== undefined) { lastA = a; lastDateA = date }
+    if (b !== undefined) { lastB = b; lastDateB = date }
 
-    if (b !== undefined) {
-      lastB = b
-      gapB = 0
-    } else {
-      gapB++
-    }
-
-    // Skip if gap is too large or no prior value
+    // Skip if gap is too large (theo NGÀY THỰC, không phải số bước lặp —
+    // đúng bất kể input là daily hay weekly) or no prior value
     if (lastA === null || lastB === null) continue
-    if (gapA > MAX_GAP_WEEKS || gapB > MAX_GAP_WEEKS) continue
+    if (daysBetween(lastDateA!, date) > MAX_GAP_DAYS) continue
+    if (daysBetween(lastDateB!, date) > MAX_GAP_DAYS) continue
 
     dates.push(date)
     pricesA.push(lastA)
@@ -99,10 +103,10 @@ export interface AlignedMulti {
 
 /**
  * Align N weekly price series to their common date range.
- * Forward-fill with max 2 week gap for each series.
+ * Forward-fill with max ~14 ngày gap (đúng bất kể input daily hay weekly).
  */
 export function alignMultiSeries(
-  allSeries: WeeklyPrice[][],
+  allSeries: PricePoint[][],
 ): AlignedMulti {
   const n = allSeries.length
   if (n === 0) throw new NoOverlapError('No series provided')
@@ -131,9 +135,8 @@ export function alignMultiSeries(
 
   const rangeDates = allDates.filter(d => d >= commonStart && d <= commonEnd)
 
-  const MAX_GAP_WEEKS = 2
   const lastValues: (number | null)[] = new Array(n).fill(null)
-  const gaps: number[] = new Array(n).fill(0)
+  const lastDates: (string | null)[] = new Array(n).fill(null)
 
   const dates: string[] = []
   const prices: number[][] = Array.from({ length: n }, () => [])
@@ -145,11 +148,9 @@ export function alignMultiSeries(
       const val = maps[j]!.get(date)
       if (val !== undefined) {
         lastValues[j] = val
-        gaps[j] = 0
-      } else {
-        gaps[j]!++
+        lastDates[j] = date
       }
-      if (lastValues[j] === null || gaps[j]! > MAX_GAP_WEEKS) {
+      if (lastValues[j] === null || daysBetween(lastDates[j]!, date) > MAX_GAP_DAYS) {
         valid = false
       }
     }

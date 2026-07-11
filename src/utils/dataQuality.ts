@@ -6,7 +6,7 @@
  * Triết lý: minh bạch giới hạn dữ liệu trước khi hiển thị số liệu đẹp.
  * Nhà đầu tư VN nên biết "data này có lỗ hổng ở đâu" trước khi ra quyết định.
  */
-import type { WeeklyPrice } from '../types'
+import type { PricePoint } from '../types'
 
 /** Một lỗ hổng trong chuỗi giá tuần */
 export interface DataGap {
@@ -24,7 +24,7 @@ export interface DataGap {
  * holiday hoặc slight drift. Threshold mặc định 14 ngày.
  */
 export function detectGaps(
-  weekly: WeeklyPrice[],
+  weekly: PricePoint[],
   thresholdDays = 14,
 ): DataGap[] {
   const gaps: DataGap[] = []
@@ -71,7 +71,7 @@ export interface FundQualityReport {
  */
 export function buildFundQualityReport(
   id: string,
-  weekly: WeeklyPrice[],
+  weekly: PricePoint[],
   requestedFrom: string | null,
   requestedTo: string | null,
   today: Date = new Date(),

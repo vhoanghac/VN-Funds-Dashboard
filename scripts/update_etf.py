@@ -28,7 +28,7 @@ DATA_DIR = os.path.join(SCRIPT_DIR, '..', 'public', 'data')
 METADATA_FILE = os.path.join(DATA_DIR, 'fund_metadata.json')
 
 # ETFs traded on exchange (use Quote from VCI source)
-ETF_TICKERS = ['E1VFVN30', 'FUEVFVND', 'FUEDCMID']
+ETF_TICKERS = ['E1VFVN30', 'FUEVFVND', 'FUEDCMID', 'FUESSVFL', 'FUEVN100']
 
 # Funds with different names on fmarket: our_id → fmarket short_name
 FMARKET_NAME_MAP = {

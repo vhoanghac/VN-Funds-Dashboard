@@ -9,6 +9,13 @@ import {
   winRateAmong,
   rollingReturns,
   rollingAverage,
+  rollingCumulativeReturns,
+  rollingAnnualizedStdev,
+  rollingMaxDrawdown,
+  rollingWinRate,
+  rollingCumulativeReturnsMap,
+  winRateAgainstRolledB,
+  annualizedStdev,
 } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
 import type { ReturnPoint, YearlyReturn } from '../types'
@@ -317,62 +324,67 @@ describe('winRateAmong', () => {
 // ─── rollingReturns ──────────────────────────────────────────
 
 describe('rollingReturns', () => {
-  it('produces (n - windowSize + 1) output points', () => {
-    // period=6 months → windowSize = round(6 * 52/12) = round(26) = 26
-    // 30 returns → 30 - 26 + 1 = 5 points
-    const returns = makeReturns(
-      Array.from({ length: 30 }, (_, i) => `2021-${String(i + 1).padStart(2, '0')}-01`),
-      Array(30).fill(0.01),
-    )
-    const result = rollingReturns(returns, 6)
-    expect(result).toHaveLength(5)
-  })
-
-  it('uses the last date of each window', () => {
-    // period=6 → windowSize=26, 27 returns
-    // First window: returns[0..25], last date = returns[25].date
-    // Second window: returns[1..26], last date = returns[26].date
-    const dates = Array.from({ length: 27 }, (_, i) => `2021-01-${String(i + 1).padStart(2, '0')}`)
-    const returns = makeReturns(dates, Array(27).fill(0))
+  it('looks back periodMonths calendar months, not a fixed index count', () => {
+    // Weekly returns từ 2021-01-01 tới 2022-12-31 (2 năm), toàn +1%/tuần.
+    // Với period=6 tháng, mỗi điểm phải lùi đúng ~6 tháng lịch để tính growth,
+    // bất kể có bao nhiêu điểm dữ liệu rơi vào khoảng đó.
+    const dates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2022-12-31'); d.setDate(d.getDate() + 7)) {
+      dates.push(d.toISOString().slice(0, 10))
+    }
+    const returns = makeReturns(dates, Array(dates.length).fill(0.01))
     const result = rollingReturns(returns, 6)
 
-    expect(result[0]!.date).toBe(dates[25])
-    expect(result[1]!.date).toBe(dates[26])
-  })
-
-  it('annualizes the window return correctly', () => {
-    // period=12 months → windowSize=52
-    // 53 returns all = +1%
-    // window growth = 1.01^52, annualized = growth^(52/52) - 1 = 1.01^52 - 1 ≈ 67.77%
-    const expectedGrowth = Math.pow(1.01, 52) - 1
-    const dates = Array.from({ length: 53 }, (_, i) => {
-      const d = new Date('2021-01-06')
-      d.setDate(d.getDate() + i * 7)
-      return d.toISOString().substring(0, 10)
-    })
-    const returns = makeReturns(dates, Array(53).fill(0.01))
-    const result = rollingReturns(returns, 12)
-
-    expect(result).toHaveLength(2)
-    expect(result[0]!.value).toBeCloseTo(expectedGrowth, 6)
-    expect(result[1]!.value).toBeCloseTo(expectedGrowth, 6)
+    expect(result.length).toBeGreaterThan(0)
+    // growth mỗi tuần +1%, ~26 tuần/6 tháng → annualize về đúng (1.01^52 - 1)
+    const expectedAnnualized = Math.pow(1.01, 52) - 1
+    for (const r of result) {
+      expect(r.value).toBeCloseTo(expectedAnnualized, 1)
+    }
   })
 
   it('returns 0% annualized for all-zero returns', () => {
-    const dates = Array.from({ length: 27 }, (_, i) => `2021-01-${String(i + 1).padStart(2, '0')}`)
-    const returns = makeReturns(dates, Array(27).fill(0))
+    const dates = Array.from({ length: 60 }, (_, i) => `2021-01-${String((i % 27) + 1).padStart(2, '0')}`)
+      .map((_, i) => {
+        const d = new Date('2021-01-01')
+        d.setDate(d.getDate() + i * 7)
+        return d.toISOString().slice(0, 10)
+      })
+    const returns = makeReturns(dates, Array(dates.length).fill(0))
     const result = rollingReturns(returns, 6)
 
+    expect(result.length).toBeGreaterThan(0)
     result.forEach(r => expect(r.value).toBeCloseTo(0, 10))
   })
 
   it('returns empty when not enough data for one window', () => {
-    // period=12 → windowSize=52, only 10 returns → empty
+    // Chỉ 10 tuần dữ liệu (~2.3 tháng), period=12 tháng → chưa đủ lịch sử
     const returns = makeReturns(
       Array.from({ length: 10 }, (_, i) => `2021-01-${String(i + 1).padStart(2, '0')}`),
       Array(10).fill(0.01),
     )
     expect(rollingReturns(returns, 12)).toEqual([])
+  })
+
+  it('gives the same annualized result whether points are daily or weekly (date-based, not index-based)', () => {
+    const weeklyDates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2022-06-30'); d.setDate(d.getDate() + 7)) {
+      weeklyDates.push(d.toISOString().slice(0, 10))
+    }
+    const dailyDates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2022-06-30'); d.setDate(d.getDate() + 1)) {
+      dailyDates.push(d.toISOString().slice(0, 10))
+    }
+    const weeklyReturns_ = makeReturns(weeklyDates, Array(weeklyDates.length).fill(0.01))
+    const dailyReturns_ = makeReturns(dailyDates, Array(dailyDates.length).fill(0.01 / 7))
+
+    const weeklyResult = rollingReturns(weeklyReturns_, 6)
+    const dailyResult = rollingReturns(dailyReturns_, 6)
+
+    expect(weeklyResult.length).toBeGreaterThan(0)
+    expect(dailyResult.length).toBeGreaterThan(0)
+    // Cùng tốc độ tăng trưởng thực (1%/tuần ≈ (1%/7)/ngày), annualized phải ra gần giống nhau
+    expect(dailyResult[dailyResult.length - 1]!.value).toBeCloseTo(weeklyResult[weeklyResult.length - 1]!.value, 1)
   })
 })
 
@@ -386,6 +398,160 @@ describe('rollingAverage', () => {
 
   it('returns null for empty input', () => {
     expect(rollingAverage([])).toBeNull()
+  })
+})
+
+// ─── annualizedStdev ─────────────────────────────────────────
+
+describe('annualizedStdev', () => {
+  it('infers periods/year from the actual date span, not a fixed constant', () => {
+    // 52 điểm weekly trải đúng 1 năm, độ lệch chuẩn mỗi tuần = 0.01
+    const dates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2021-12-31'); d.setDate(d.getDate() + 7)) {
+      dates.push(d.toISOString().slice(0, 10))
+    }
+    const values = dates.map((_, i) => (i % 2 === 0 ? 0.01 : -0.01))
+    const weekly = annualizedStdev(makeReturns(dates, values))
+
+    // Cùng biến động nhưng lấy mẫu DAILY (7x nhiều điểm hơn trong cùng 1 năm)
+    // phải tự thích ứng periodsPerYear ~365 thay vì áp cứng sqrt(52)
+    const dailyDates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2021-12-31'); d.setDate(d.getDate() + 1)) {
+      dailyDates.push(d.toISOString().slice(0, 10))
+    }
+    const dailyValues = dailyDates.map((_, i) => (i % 2 === 0 ? 0.01 : -0.01))
+    const daily = annualizedStdev(makeReturns(dailyDates, dailyValues))
+
+    // periodsPerYear tự suy ra ~52 cho weekly, ~365 cho daily — annualized stdev
+    // của daily phải lớn hơn hẳn weekly vì sqrt(365) > sqrt(52), dù stdev thô như nhau
+    expect(daily).toBeGreaterThan(weekly)
+  })
+
+  it('returns 0 for fewer than 2 points', () => {
+    expect(annualizedStdev([])).toBe(0)
+    expect(annualizedStdev(makeReturns(['2021-01-01'], [0.01]))).toBe(0)
+  })
+})
+
+// ─── rollingCumulativeReturns ────────────────────────────────
+
+describe('rollingCumulativeReturns', () => {
+  it('computes the correct cumulative growth over a calendar-month window', () => {
+    const dates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2022-06-30'); d.setDate(d.getDate() + 7)) {
+      dates.push(d.toISOString().slice(0, 10))
+    }
+    const returns = makeReturns(dates, Array(dates.length).fill(0.01))
+    const result = rollingCumulativeReturns(returns, 6)
+
+    expect(result.length).toBeGreaterThan(0)
+    // ~26 tuần/6 tháng, +1%/tuần → growth ≈ 1.01^26 - 1
+    const expected = Math.pow(1.01, 26) - 1
+    for (const r of result) expect(r.value).toBeCloseTo(expected, 1)
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(rollingCumulativeReturns([], 6)).toEqual([])
+  })
+})
+
+// ─── rollingMaxDrawdown ──────────────────────────────────────
+
+describe('rollingMaxDrawdown', () => {
+  it('finds the worst peak-to-trough decline within each calendar window', () => {
+    // Tăng đều rồi sập 20% ở giữa, rồi tăng lại — chuỗi trải dài hơn 6 tháng
+    // để có điểm đủ lịch sử lùi lại, rolling DD phải bắt được đúng cú sập.
+    const dates = [
+      '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01',
+      '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01',
+    ]
+    const values = [0.05, 0.05, -0.20, 0.05, 0.05, 0.05, 0.05, 0.05]
+    const returns = makeReturns(dates, values)
+    const result = rollingMaxDrawdown(returns, 6)
+
+    expect(result.length).toBeGreaterThan(0)
+    const worst = Math.min(...result.map(r => r.value))
+    expect(worst).toBeLessThan(-0.15) // bắt được cú sập ~20%
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(rollingMaxDrawdown([], 6)).toEqual([])
+  })
+})
+
+// ─── rollingAnnualizedStdev ──────────────────────────────────
+
+describe('rollingAnnualizedStdev', () => {
+  it('produces a positive annualized stdev when returns actually vary', () => {
+    const dates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2022-06-30'); d.setDate(d.getDate() + 7)) {
+      dates.push(d.toISOString().slice(0, 10))
+    }
+    const values = dates.map((_, i) => (i % 2 === 0 ? 0.02 : -0.01))
+    const returns = makeReturns(dates, values)
+    const result = rollingAnnualizedStdev(returns, 6)
+
+    expect(result.length).toBeGreaterThan(0)
+    for (const r of result) expect(r.value).toBeGreaterThan(0)
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(rollingAnnualizedStdev([], 6)).toEqual([])
+  })
+})
+
+// ─── rollingWinRate ───────────────────────────────────────────
+
+describe('rollingWinRate', () => {
+  it('counts windows where A beats B', () => {
+    const dates: string[] = []
+    for (let d = new Date('2021-01-01'); d <= new Date('2022-12-31'); d.setDate(d.getDate() + 7)) {
+      dates.push(d.toISOString().slice(0, 10))
+    }
+    const a = makeReturns(dates, Array(dates.length).fill(0.02)) // A luôn tốt hơn
+    const b = makeReturns(dates, Array(dates.length).fill(0.01))
+    const { wins, total } = rollingWinRate(a, b, 6)
+
+    expect(total).toBeGreaterThan(0)
+    expect(wins).toBe(total) // A thắng B ở mọi cửa sổ
+  })
+
+  it('returns 0/0 when there is not enough history for one window', () => {
+    const returns = makeReturns(['2021-01-01', '2021-01-08'], [0.01, 0.01])
+    expect(rollingWinRate(returns, returns, 12)).toEqual({ wins: 0, total: 0 })
+  })
+})
+
+// ─── rollingCumulativeReturnsMap / winRateAgainstRolledB ─────
+
+describe('rollingCumulativeReturnsMap + winRateAgainstRolledB', () => {
+  const dates: string[] = []
+  for (let d = new Date('2021-01-01'); d <= new Date('2022-12-31'); d.setDate(d.getDate() + 7)) {
+    dates.push(d.toISOString().slice(0, 10))
+  }
+  const a = makeReturns(dates, Array(dates.length).fill(0.02)) // A luôn tốt hơn
+  const b = makeReturns(dates, Array(dates.length).fill(0.01))
+
+  it('gives the same result as rollingWinRate when B is precomputed once', () => {
+    const direct = rollingWinRate(a, b, 6)
+    const rolledBMap = rollingCumulativeReturnsMap(b, 6)
+    const viaPrecomputed = winRateAgainstRolledB(a, 6, rolledBMap)
+    expect(viaPrecomputed).toEqual(direct)
+  })
+
+  it('the same precomputed B map can be reused against multiple A series', () => {
+    const c = makeReturns(dates, Array(dates.length).fill(0.005)) // worse than B
+    const rolledBMap = rollingCumulativeReturnsMap(b, 6)
+
+    const aVsB = winRateAgainstRolledB(a, 6, rolledBMap)
+    const cVsB = winRateAgainstRolledB(c, 6, rolledBMap)
+
+    expect(aVsB.wins).toBe(aVsB.total)   // A always beats B
+    expect(cVsB.wins).toBe(0)            // C always loses to B
+  })
+
+  it('returns 0/0 when the rolled B map is empty', () => {
+    expect(winRateAgainstRolledB(a, 6, new Map())).toEqual({ wins: 0, total: 0 })
   })
 })
 

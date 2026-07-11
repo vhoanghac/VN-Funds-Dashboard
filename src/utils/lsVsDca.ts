@@ -1,5 +1,6 @@
 import type { PricePoint } from '../types'
 import type { DCASlot } from './dca'
+import { monthsAheadIndex } from './dateWindow'
 
 export type CashMode = 'flat' | 'savings' | 'fund'
 export type LSvsDCAFreq = 'weekly' | 'monthly'
@@ -35,8 +36,6 @@ export interface HistogramBucket {
   positive: boolean     // true = LS outperforms in this range
 }
 
-const WEEKS_PER_YEAR = 52
-
 /**
  * Return the price at `date`, or the most recent price before `date` if
  * an exact match doesn't exist (last-observation-carried-forward).
@@ -54,6 +53,10 @@ function priceAtOrBefore(prices: PricePoint[], date: string): number | undefined
     }
   }
   return result
+}
+
+function daysBetween(a: string, b: string): number {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
 }
 
 /**
@@ -97,6 +100,7 @@ export function computeRollingScenarios(
   const firstFundPrices = alignedPrices.get(fundIds[0]!)
   if (!firstFundPrices || firstFundPrices.length === 0) return []
   const dates = firstFundPrices.map(p => p.date)
+  const dateTimes = dates.map(d => new Date(d).getTime())
 
   // Cash fund lookup (for cashMode === 'fund')
   // Uses last-observation-carried-forward so date gaps (e.g. holidays) don't skip scenarios.
@@ -104,22 +108,29 @@ export function computeRollingScenarios(
     ? (date: string) => priceAtOrBefore(cashFundPrices, date)
     : null
 
-  // DCA period in weekly data points; holding period may be longer
-  const horizonPoints = Math.round(horizonMonths * (WEEKS_PER_YEAR / 12))
-  const holdingPoints = holdingPeriodMonths
-    ? Math.round(holdingPeriodMonths * (WEEKS_PER_YEAR / 12))
-    : horizonPoints
-  if (horizonPoints <= 0 || holdingPoints < horizonPoints || dates.length <= holdingPoints) return []
+  // Với mỗi startIdx, tìm index kết thúc kỳ DCA (horizon) và kết thúc kỳ nắm giữ
+  // (holding) bằng lịch thực (calendar month), thay vì cộng số điểm cố định
+  // (giả định lưới tuần đều đặn — sai khi dữ liệu là daily). Dùng chung
+  // monthsAheadIndex với calculations.ts/dca.ts (xem dateWindow.ts).
+  const horizonEndIndices = monthsAheadIndex(dateTimes, horizonMonths)
+  const holdingEndIndices = holdingPeriodMonths
+    ? monthsAheadIndex(dateTimes, holdingPeriodMonths)
+    : horizonEndIndices
+  if (horizonMonths <= 0 || (holdingPeriodMonths ?? horizonMonths) < horizonMonths) return []
 
   const scenarios: LSvsDCAScenario[] = []
 
-  for (let startIdx = 0; startIdx + holdingPoints < dates.length; startIdx++) {
-    const endIdx = startIdx + holdingPoints
+  for (let startIdx = 0; startIdx < dates.length; startIdx++) {
+    const horizonEndIdx = horizonEndIndices[startIdx]!
+    const endIdx = holdingEndIndices[startIdx]!
+    // j tăng đơn điệu theo startIdx (two-pointer) nên một khi hết dữ liệu
+    // tương lai, mọi startIdx lớn hơn cũng sẽ hết — dừng hẳn vòng lặp.
+    if (endIdx >= dates.length) break
     const startDate = dates[startIdx]!
     const endDate = dates[endIdx]!
 
     // Contributions only happen within the DCA period (may end before endIdx)
-    const contribIndices = getContribIndices(dates, startIdx, startIdx + horizonPoints, freq)
+    const contribIndices = getContribIndices(dates, startIdx, horizonEndIdx, freq)
     if (contribIndices.length === 0) continue
 
     const contribution = totalCapital / contribIndices.length
@@ -159,9 +170,9 @@ export function computeRollingScenarios(
 
       // Compound savings interest from previous contribution to this one
       if (cashMode === 'savings' && ci > 0) {
-        const prevIdx = contribIndices[ci - 1]!
-        const weeksElapsed = idx - prevIdx
-        cashRemaining *= Math.pow(1 + cashSavingsRate, weeksElapsed / WEEKS_PER_YEAR)
+        const prevDate = dates[contribIndices[ci - 1]!]!
+        const yearsElapsed = daysBetween(prevDate, date) / 365.25
+        cashRemaining *= Math.pow(1 + cashSavingsRate, yearsElapsed)
       }
 
       // Deploy contribution: remove from cash
@@ -192,11 +203,11 @@ export function computeRollingScenarios(
     // Value of remaining cash at endDate
     let dcaCashValue = 0
     if (cashMode === 'savings') {
-      const lastContribIdx = contribIndices[contribIndices.length - 1]!
-      const weeksToEnd = endIdx - lastContribIdx
+      const lastContribDate = dates[contribIndices[contribIndices.length - 1]!]!
+      const yearsToEnd = daysBetween(lastContribDate, endDate) / 365.25
       const residual = Math.max(0, cashRemaining)
       dcaCashValue = residual > 0
-        ? residual * Math.pow(1 + cashSavingsRate, weeksToEnd / WEEKS_PER_YEAR)
+        ? residual * Math.pow(1 + cashSavingsRate, yearsToEnd)
         : 0
     } else if (cashMode === 'fund' && getCashPrice) {
       const endCashPrice = getCashPrice(endDate)
@@ -222,15 +233,25 @@ export function computeRollingScenarios(
 }
 
 /** Returns the indices (into dates[]) where contributions should be made within [startIdx, endIdx). */
-function getContribIndices(
+export function getContribIndices(
   dates: string[],
   startIdx: number,
   endIdx: number,
   freq: LSvsDCAFreq,
 ): number[] {
   if (freq === 'weekly') {
-    const indices: number[] = []
-    for (let i = startIdx; i < endIdx; i++) indices.push(i)
+    // Chọn điểm cách nhau ~7 ngày thực kể từ lần góp trước (two-pointer),
+    // thay vì "mỗi điểm dữ liệu 1 lần" (đúng khi lưới là tuần đều đặn,
+    // sai khi lưới là daily — sẽ thành góp mỗi ngày thay vì mỗi tuần).
+    const indices: number[] = [startIdx]
+    let lastTime = new Date(dates[startIdx]!).getTime()
+    for (let i = startIdx + 1; i < endIdx; i++) {
+      const t = new Date(dates[i]!).getTime()
+      if (t - lastTime >= 7 * 86400000) {
+        indices.push(i)
+        lastTime = t
+      }
+    }
     return indices
   }
 

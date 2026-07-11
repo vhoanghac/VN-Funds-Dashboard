@@ -1,12 +1,6 @@
-/** Raw price data point from CSV */
+/** Price data point (date, price) — used for both raw daily CSV rows and any resampled/aligned series */
 export interface PricePoint {
   date: string // YYYY-MM-DD
-  price: number
-}
-
-/** Weekly resampled price point */
-export interface WeeklyPrice {
-  date: string // YYYY-MM-DD (Friday or last trading day of week)
   price: number
 }
 
