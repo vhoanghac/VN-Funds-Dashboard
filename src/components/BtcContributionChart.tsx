@@ -13,9 +13,9 @@ interface Props {
 }
 
 const PERIOD_OPTIONS = [
-  { label: '1 năm', weeks: 52 },
-  { label: '2 năm', weeks: 104 },
-  { label: '3 năm', weeks: 156 },
+  { label: '1 năm', months: 12 },
+  { label: '2 năm', months: 24 },
+  { label: '3 năm', months: 36 },
 ]
 
 const BASE_LINE_COLOR = '#264653'
@@ -71,7 +71,7 @@ function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Pro
   const [periodIdx, setPeriodIdx] = useState(0)
   const [weightIdx, setWeightIdx] = useState(0)
 
-  const windowSize = PERIOD_OPTIONS[periodIdx]!.weeks
+  const windowSize = PERIOD_OPTIONS[periodIdx]!.months
   const btcLabel = `Danh mục ${btcPercents[weightIdx]}% BTC`
 
   const chartData = useMemo<ChartPoint[]>(() => {
@@ -167,7 +167,7 @@ function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Pro
           <div className="btc-contrib-btn-group">
             {PERIOD_OPTIONS.map((opt, i) => (
               <button
-                key={opt.weeks}
+                key={opt.months}
                 className={`btc-contrib-btn${periodIdx === i ? ' btc-contrib-btn--active' : ''}`}
                 onClick={() => setPeriodIdx(i)}
               >

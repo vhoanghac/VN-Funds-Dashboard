@@ -116,6 +116,7 @@ export function RollingReturnChart({ series, period, onPeriodChange }: Props) {
                   strokeWidth={isDimmed ? 1 : 2}
                   opacity={isDimmed ? 0.4 : 1}
                   dot={false}
+                  isAnimationActive={false}
                 />
               )
             })}

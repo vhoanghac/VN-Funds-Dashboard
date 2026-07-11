@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, Area, ComposedChart,
+  Tooltip, ResponsiveContainer, Legend, ComposedChart,
 } from 'recharts'
 
 interface ValuePoint {
@@ -54,7 +54,7 @@ export function PortfolioValueChart({ portfolios }: Props) {
         <h3>Giá trị tài sản</h3>
         <span
           className="chart-tooltip-icon"
-          title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Phần tô màu thể hiện lãi/lỗ. Bấm vào legend để làm mờ/hiện đường."
+          title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Bấm vào legend để làm mờ/hiện đường."
         >?</span>
       </div>
       <ResponsiveContainer width="100%" height={350}>
@@ -93,21 +93,20 @@ export function PortfolioValueChart({ portfolios }: Props) {
             )}
           />
           {portfolios.map(p => {
-            const legendName = `${p.name}: Giá trị`
+            const legendName = p.name
             const isDimmed = dimmed.has(legendName)
             return (
-              <Area
-                key={`area-${p.name}`}
+              <Line
+                key={`line-${p.name}`}
                 type="monotone"
                 dataKey={`${p.name}_value`}
                 name={legendName}
                 stroke={isDimmed ? DIMMED_COLOR : p.color}
-                fill={isDimmed ? DIMMED_COLOR : p.color}
-                fillOpacity={isDimmed ? 0.04 : 0.1}
                 strokeWidth={isDimmed ? 0.75 : 2}
                 opacity={isDimmed ? 0.4 : 1}
                 dot={false}
                 connectNulls={true}
+                isAnimationActive={false}
               />
             )
           })}
@@ -125,6 +124,7 @@ export function PortfolioValueChart({ portfolios }: Props) {
                 opacity={isDimmed ? 0.3 : 0.7}
                 dot={false}
                 connectNulls={true}
+                isAnimationActive={false}
               />
             )
           })()}

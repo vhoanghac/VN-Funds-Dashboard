@@ -1,5 +1,18 @@
 const ENTRIES = [
   {
+    version: 'v3.2',
+    date: '10/07/2026',
+    items: [
+      'Sửa cách đặt tên danh mục DCA',
+      'Chỉnh sửa lại thiết kế biểu đồ cho dễ nhìn',
+      'Rút ngắn định dạng đường link chia sẻ',
+      'Cập nhật công thức: nếu danh mục có quỹ bị thiếu dữ liệu trong thời gian lớn hơn 1 tuần (thường xảy ra với các quỹ đời đầu) thì lấy dữ liệu gần nhất của tuần trước đó.',
+      'Thêm quỹ ETF: FUESSVFL (Finlead) và FUEVN100 (VN100)',
+      'Sửa lỗi tính toán: trước đây một số chỉ số (CAGR, rolling return, sụt giảm tối đa...) dùng dữ liệu đã resample theo tuần nên có sai số nhỏ ở các mốc ngắn hạn. Nay toàn bộ các tab tính trực tiếp trên dữ liệu theo ngày.',
+      'Sửa lỗi hiệu năng: chuyển tab đôi khi bị đơ nhẹ và biểu đồ tự vẽ lại dù không có gì thay đổi. Nay các tab không còn tính toán lại mỗi lần chuyển qua chuyển lại, và biểu đồ không animate lại mỗi lần xuất hiện.',
+    ],
+  },
+  {
     version: 'v3.1',
     date: '24/04/2026',
     items: [

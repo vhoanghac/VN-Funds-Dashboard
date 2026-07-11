@@ -147,7 +147,7 @@ function WinnerSection({ stats }: { stats: FundStats[] }) {
                 return [`${v.toFixed(1)}%${finalStr}`, 'Lợi nhuận cộng dồn']
               }}
             />
-            <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+            <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={d.color} />)}
             </Bar>
           </BarChart>
@@ -260,7 +260,7 @@ function ConsistencySection({ stats }: { stats: FundStats[] }) {
             />
             <YAxis type="category" dataKey="id" tick={{ fontSize: 12 }} width={80} />
             <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, 'Rolling 12m dương']} />
-            <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+            <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={d.color} />)}
             </Bar>
           </BarChart>

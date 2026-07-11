@@ -114,6 +114,7 @@ export function YearlyPerformanceChart({ series }: Props) {
                 fill={isDimmed ? DIMMED_COLOR : s.color}
                 opacity={isDimmed ? 0.35 : 1}
                 radius={[2, 2, 0, 0]}
+                isAnimationActive={false}
               >
                 {!isDimmed && (
                   <LabelList

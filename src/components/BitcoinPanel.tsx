@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useDeferredValue, memo } from 'react'
 import Select from 'react-select'
-import type { FundMeta, WeeklyPrice, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
+import type { FundMeta, PricePoint, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
 import { parseCSV } from '../utils/csvParser'
-import { resampleToWeekly } from '../utils/weeklyResample'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { DividendNotice } from './DividendNotice'
 import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn } from '../utils/calculations'
@@ -41,7 +40,7 @@ const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'yearly', label: 'Hàng năm' },
 ]
 
-export function BitcoinPanel({ funds }: Props) {
+function BitcoinPanelImpl({ funds }: Props) {
   const [selectedFundId, setSelectedFundId] = useState(
     () => loadLS<string>('btc_fund', DEFAULT_FUND_ID),
   )
@@ -56,7 +55,7 @@ export function BitcoinPanel({ funds }: Props) {
   )
   const [dateFrom, setDateFrom] = useState<string | null>(null)
   const [dateTo, setDateTo] = useState<string | null>(null)
-  const [fundData, setFundData] = useState<Map<string, WeeklyPrice[]>>(new Map())
+  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -101,8 +100,7 @@ export function BitcoinPanel({ funds }: Props) {
         const text = await resp.text()
         const rawDaily = parseCSV(text)
         const daily = await loadAdjustedPrices(id, rawDaily)
-        const weekly = resampleToWeekly(daily)
-        return { id, weekly }
+        return { id, weekly: daily }
       }),
     )
       .then(results => {
@@ -233,6 +231,16 @@ export function BitcoinPanel({ funds }: Props) {
       return { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], allSimReturns: [] }
     }
   }, [fundData, applied])
+
+  // Phần "phân tích chi tiết" bên dưới (WinRateBlock + 3 chart scatter) tính
+  // toán nặng hơn nhiều (rollingMaxDrawdown là O(n·w), lặp qua 11 kịch bản
+  // tỷ trọng) — dùng useDeferredValue để phần nhanh ở trên (MoneyMachine,
+  // chart chính, bảng hiệu suất...) hiện ngay lập tức, không phải chờ phần
+  // nặng tính xong mới thấy gì cả. React tự lùi phần nặng xuống 1 update có
+  // độ ưu tiên thấp hơn, chạy sau khi phần nhanh đã paint xong.
+  const deferredPortfolioReturns = useDeferredValue(portfolioReturns)
+  const deferredAllSimReturns = useDeferredValue(allSimReturns)
+  const isHeavySectionStale = deferredAllSimReturns !== allSimReturns
 
   const startDate = portfolioSeries[0]?.data[0]?.date
   const endDate = portfolioSeries[0]?.data[portfolioSeries[0].data.length - 1]?.date
@@ -398,45 +406,57 @@ export function BitcoinPanel({ funds }: Props) {
           </div>
 
           <RiskContributionChart data={riskContribData} fundId={applied.fundId} />
-          <BtcContributionChart
-            portfolioReturns={portfolioReturns}
-            btcPercents={applied.btcPercents}
-            fundId={applied.fundId}
-          />
-          <WinRateBlock
-            portfolioReturns={portfolioReturns}
-            btcPercents={applied.btcPercents}
-            stats={portfolioStats}
-          />
 
-          <div className="section-divider">
-            <span className="section-divider-label">
-              Phân tích chi tiết theo tỷ trọng Bitcoin (0%–10%)
-            </span>
+          {/* Phần bên dưới tính nặng hơn — deferred để không chặn phần trên hiện ngay
+              (xem useDeferredValue ở trên). Mờ nhẹ trong lúc React tính phần mới. */}
+          <div style={{ opacity: isHeavySectionStale ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+            <BtcContributionChart
+              portfolioReturns={deferredPortfolioReturns}
+              btcPercents={applied.btcPercents}
+              fundId={applied.fundId}
+            />
+            <WinRateBlock
+              portfolioReturns={deferredPortfolioReturns}
+              btcPercents={applied.btcPercents}
+              stats={portfolioStats}
+            />
+
+            <div className="section-divider">
+              <span className="section-divider-label">
+                Phân tích chi tiết theo tỷ trọng Bitcoin (0%–10%)
+              </span>
+            </div>
+
+            <BtcWeightChart
+              allSimReturns={deferredAllSimReturns}
+              fundId={applied.fundId}
+              rebalFreq={applied.rebalFreq}
+            />
+            <BtcStdevChart
+              allSimReturns={deferredAllSimReturns}
+              fundId={applied.fundId}
+              rebalFreq={applied.rebalFreq}
+            />
+            <BtcMaxDrawdownChart
+              allSimReturns={deferredAllSimReturns}
+              fundId={applied.fundId}
+              rebalFreq={applied.rebalFreq}
+            />
           </div>
-
-          <BtcWeightChart
-            allSimReturns={allSimReturns}
-            fundId={applied.fundId}
-            rebalFreq={applied.rebalFreq}
-          />
-          <BtcStdevChart
-            allSimReturns={allSimReturns}
-            fundId={applied.fundId}
-            rebalFreq={applied.rebalFreq}
-          />
-          <BtcMaxDrawdownChart
-            allSimReturns={allSimReturns}
-            fundId={applied.fundId}
-            rebalFreq={applied.rebalFreq}
-          />
         </>
       )}
     </div>
   )
 }
 
-function filterDateRange(series: WeeklyPrice[], from: string | null, to: string | null): WeeklyPrice[] {
+// Memo hoá: App.tsx luôn mount cả 5 tab (ẩn bằng display:none), nên mỗi lần
+// chuyển tab hoặc đổi state ở tab khác đều khiến App re-render. Không memo,
+// component này (và toàn bộ chart bên trong) sẽ re-render/reconcile lại mỗi
+// lần đó dù props không đổi — với dữ liệu daily (nhiều điểm hơn tuần 5-7 lần)
+// chi phí này đủ lớn để gây "đơ" khi chuyển tab.
+export const BitcoinPanel = memo(BitcoinPanelImpl)
+
+function filterDateRange(series: PricePoint[], from: string | null, to: string | null): PricePoint[] {
   return series.filter(p => {
     if (from && p.date < from) return false
     if (to && p.date > to) return false

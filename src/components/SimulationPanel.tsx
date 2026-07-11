@@ -1,11 +1,12 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { ShareButton } from './ShareButton'
 import Select from 'react-select'
 import type {
-  ReturnPoint, RebalanceFrequency, FundMeta, WeeklyPrice,
+  ReturnPoint, RebalanceFrequency, FundMeta, PricePoint,
   ChartSeries, KPIData, YearlyReturn,
 } from '../types'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
+import { derivePortfolioName } from '../utils/dca'
 import { alignMultiSeries } from '../utils/dateAlign'
 import {
   cumulativeReturns, cagr, maxDrawdown, weeklyReturns,
@@ -13,7 +14,6 @@ import {
   winRateAmong,
 } from '../utils/calculations'
 import { parseCSV } from '../utils/csvParser'
-import { resampleToWeekly } from '../utils/weeklyResample'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { DividendNotice } from './DividendNotice'
 import { DateRangePicker } from './DateRangePicker'
@@ -34,7 +34,9 @@ interface FundSlot {
 
 interface Portfolio {
   id: string
+  num: number
   name: string
+  isNameCustom: boolean
   slots: FundSlot[]
   rebalFreq: RebalanceFrequency
 }
@@ -60,10 +62,10 @@ const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'yearly', label: 'Hàng năm' },
 ]
 
-export function SimulationPanel({ funds }: Props) {
+function SimulationPanelImpl({ funds }: Props) {
   const nextIdRef = useRef(1)
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
-  const [fundData, setFundData] = useState<Map<string, WeeklyPrice[]>>(new Map())
+  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
   const [dateFrom, setDateFrom] = useState<string | null>(null)
   const [dateTo, setDateTo] = useState<string | null>(null)
@@ -101,8 +103,7 @@ export function SimulationPanel({ funds }: Props) {
         const text = await resp.text()
         const rawDaily = parseCSV(text)
         const daily = await loadAdjustedPrices(id, rawDaily)
-        const weekly = resampleToWeekly(daily)
-        return { id, weekly }
+        return { id, weekly: daily }
       }),
     ).then(results => {
       if (cancelled) return
@@ -125,10 +126,13 @@ export function SimulationPanel({ funds }: Props) {
     if (portfolios.length >= MAX_PORTFOLIOS) return
     const num = nextIdRef.current++
     const defaultFundId = funds[0]?.id || ''
+    const slots = [{ fundId: defaultFundId, weight: 100 }]
     const portfolio: Portfolio = {
       id: `p${num}`,
-      name: defaultFundId || `Danh mục ${num}`,
-      slots: [{ fundId: defaultFundId, weight: 100 }],
+      num,
+      name: derivePortfolioName(slots, num),
+      isNameCustom: false,
+      slots,
       rebalFreq: 'quarterly',
     }
     setPortfolios([...portfolios, portfolio])
@@ -147,7 +151,9 @@ export function SimulationPanel({ funds }: Props) {
       if (p.id !== portfolioId || p.slots.length >= MAX_FUNDS_PER_PORTFOLIO) return p
       const used = new Set(p.slots.map(s => s.fundId))
       const available = funds.find(f => !used.has(f.id))
-      return { ...p, slots: [...p.slots, { fundId: available?.id || '', weight: 0 }] }
+      const newSlots = [...p.slots, { fundId: available?.id || '', weight: 0 }]
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
+      return { ...p, name, slots: newSlots }
     }))
   }
 
@@ -155,7 +161,7 @@ export function SimulationPanel({ funds }: Props) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId || p.slots.length <= 1) return p
       const newSlots = p.slots.filter((_, i) => i !== index)
-      const name = newSlots.length === 1 && newSlots[0]!.fundId ? newSlots[0]!.fundId : p.name
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
       return { ...p, name, slots: newSlots }
     }))
   }
@@ -164,7 +170,7 @@ export function SimulationPanel({ funds }: Props) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId) return p
       const newSlots = p.slots.map((s, i) => i === index ? { ...s, ...update } : s)
-      const name = newSlots.length === 1 && update.fundId ? update.fundId : p.name
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
       return { ...p, name, slots: newSlots }
     }))
   }
@@ -224,7 +230,7 @@ export function SimulationPanel({ funds }: Props) {
     }
 
     // Check all data loaded, apply date filter
-    const allWeekly: WeeklyPrice[][] = []
+    const allWeekly: PricePoint[][] = []
     for (const id of allFundIds) {
       const series = fundData.get(id)
       if (!series) return null
@@ -532,6 +538,13 @@ export function SimulationPanel({ funds }: Props) {
   )
 }
 
+// Memo hoá: App.tsx luôn mount cả 5 tab (ẩn bằng display:none), nên mỗi lần
+// chuyển tab hoặc đổi state ở tab khác đều khiến App re-render. Không memo,
+// component này (và toàn bộ chart bên trong) sẽ re-render/reconcile lại mỗi
+// lần đó dù props không đổi — với dữ liệu daily (nhiều điểm hơn tuần 5-7 lần)
+// chi phí này đủ lớn để gây "đơ" khi chuyển tab.
+export const SimulationPanel = memo(SimulationPanelImpl)
+
 const simSelectStyles = {
   control: (base: Record<string, unknown>) => ({
     ...base,
@@ -554,10 +567,10 @@ const simSelectStyles = {
 }
 
 function filterDateRange(
-  series: WeeklyPrice[],
+  series: PricePoint[],
   from: string | null,
   to: string | null,
-): WeeklyPrice[] {
+): PricePoint[] {
   return series.filter(p => {
     if (from && p.date < from) return false
     if (to && p.date > to) return false

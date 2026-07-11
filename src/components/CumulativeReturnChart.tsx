@@ -149,6 +149,7 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
                 opacity={isDimmed ? 0.4 : 1}
                 dot={false}
                 connectNulls
+                isAnimationActive={false}
               />
             )
           })}

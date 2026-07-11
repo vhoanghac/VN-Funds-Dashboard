@@ -101,6 +101,7 @@ export function DrawdownChart({ series }: Props) {
                 strokeWidth={isDimmed ? 0.75 : 1.5}
                 opacity={isDimmed ? 0.4 : 1}
                 dot={false}
+                isAnimationActive={false}
               />
             )
           })}

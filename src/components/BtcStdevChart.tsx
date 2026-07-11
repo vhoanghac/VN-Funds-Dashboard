@@ -15,9 +15,9 @@ interface Props {
 }
 
 const PERIOD_OPTIONS = [
-  { label: '1 năm', weeks: 52 },
-  { label: '2 năm', weeks: 104 },
-  { label: '3 năm', weeks: 156 },
+  { label: '1 năm', months: 12 },
+  { label: '2 năm', months: 24 },
+  { label: '3 năm', months: 36 },
 ]
 
 const WEIGHTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -46,7 +46,7 @@ const REBAL_LABEL: Record<RebalanceFrequency, string> = {
 function BtcStdevChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
   const [periodIdx, setPeriodIdx] = useState(2) // default: 3 năm
 
-  const windowSize  = PERIOD_OPTIONS[periodIdx]!.weeks
+  const windowSize  = PERIOD_OPTIONS[periodIdx]!.months
   const periodLabel = PERIOD_OPTIONS[periodIdx]!.label
 
   const { allPoints, meanPoints } = useMemo<{
@@ -103,7 +103,7 @@ function BtcStdevChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
           <div className="btc-contrib-btn-group">
             {PERIOD_OPTIONS.map((opt, i) => (
               <button
-                key={opt.weeks}
+                key={opt.months}
                 className={`btc-contrib-btn${periodIdx === i ? ' btc-contrib-btn--active' : ''}`}
                 onClick={() => setPeriodIdx(i)}
               >

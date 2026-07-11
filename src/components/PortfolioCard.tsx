@@ -14,7 +14,11 @@ export const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
 
 export interface PortfolioCardState {
   id: string
+  /** Số cố định gắn với danh mục lúc tạo — dùng làm fallback tên "Portfolio {num}" */
+  num: number
   name: string
+  /** true nếu người dùng đã tự gõ tên — khi đó không tự động đổi tên theo quỹ nữa */
+  isNameCustom: boolean
   slots: DCASlot[]
   rebalFreq: RebalanceFrequency
 }
@@ -51,12 +55,22 @@ export function PortfolioCard({
 
   return (
     <div className="portfolio-card">
+      <div className="portfolio-icon-row">
+        <button
+          className="portfolio-delete-btn-corner"
+          onClick={onRemove}
+          title="Xoá danh mục"
+        >
+          ✕
+        </button>
+      </div>
+
       <div className="portfolio-card-header">
         <span className="portfolio-color-dot" style={{ background: color }} />
         <input
           className="portfolio-name-input"
           value={portfolio.name}
-          onChange={e => onUpdate({ name: e.target.value })}
+          onChange={e => onUpdate({ name: e.target.value, isNameCustom: true })}
         />
         {showRebal && (
           <div className="portfolio-rebal">
@@ -81,13 +95,6 @@ export function PortfolioCard({
           title="Thêm quỹ"
         >
           +
-        </button>
-        <button
-          className="portfolio-delete-btn"
-          onClick={onRemove}
-          title="Xoá danh mục"
-        >
-          ✕
         </button>
         <button
           className="portfolio-set-btn"

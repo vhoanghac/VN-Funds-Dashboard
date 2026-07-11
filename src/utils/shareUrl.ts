@@ -1,3 +1,4 @@
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import type { RebalanceFrequency } from '../types'
 import type { DCAFrequency } from './dca'
 import type { CashMode, LSvsDCAFreq } from './lsVsDca'
@@ -40,32 +41,77 @@ export interface DcaShareState {
   portfolios: Array<{ slots: Slot[]; rebalFreq: RebalanceFrequency }>
 }
 
+/**
+ * URL chia sẻ được nén bằng lz-string thành 1 query param duy nhất (?s=...),
+ * thay vì liệt kê từng tham số riêng lẻ. Rút ngắn đáng kể URL khi có nhiều
+ * danh mục/nhiều quỹ, mà vẫn chạy hoàn toàn phía client (không cần backend).
+ */
+interface CompactDca {
+  i?: number; c?: number; f?: DCAFrequency; dm?: 'all' | 'years'; y?: number
+  from?: string; to?: string
+  p?: { s: string; r: RebalanceFrequency }[]
+}
+
 export function buildDcaUrl(s: DcaShareState): string {
-  const p = new URLSearchParams()
-  p.set('tab', 'dca')
-  p.set('init', String(s.initialAmount))
-  p.set('cashflow', String(s.cashflowAmount))
-  p.set('freq', s.cashflowFreq)
-  p.set('datemode', s.dateMode)
-  if (s.dateMode === 'years') p.set('years', String(s.yearsBack))
-  if (s.dateFrom) p.set('from', s.dateFrom)
-  if (s.dateTo) p.set('to', s.dateTo)
-
-  s.portfolios.forEach((portfolio, i) => {
-    const encoded = encodeSlots(portfolio.slots)
-    if (encoded) {
-      p.set(`p${i + 1}`, encoded)
-      p.set(`p${i + 1}r`, portfolio.rebalFreq)
-    }
-  })
-
-  return `${origin()}?${p.toString()}`
+  const compact: CompactDca = {
+    i: s.initialAmount,
+    c: s.cashflowAmount,
+    f: s.cashflowFreq,
+    dm: s.dateMode,
+    y: s.dateMode === 'years' ? s.yearsBack : undefined,
+    from: s.dateFrom || undefined,
+    to: s.dateTo || undefined,
+    p: s.portfolios
+      .map(portfolio => ({ s: encodeSlots(portfolio.slots), r: portfolio.rebalFreq }))
+      .filter(portfolio => portfolio.s),
+  }
+  const encoded = compressToEncodedURIComponent(JSON.stringify(compact))
+  return `${origin()}?tab=dca&s=${encoded}`
 }
 
 export function parseDcaParams(): Partial<DcaShareState> | null {
   const p = new URLSearchParams(window.location.search)
   if (p.get('tab') !== 'dca') return null
 
+  const compressed = p.get('s')
+  if (compressed) return parseCompactDca(compressed)
+
+  // Link cũ (trước khi nén) — vẫn đọc được để không phá link đã chia sẻ.
+  return parseLegacyDcaParams(p)
+}
+
+function parseCompactDca(compressed: string): Partial<DcaShareState> | null {
+  try {
+    const json = decompressFromEncodedURIComponent(compressed)
+    if (!json) return null
+    const c = JSON.parse(json) as CompactDca
+    const result: Partial<DcaShareState> = {}
+
+    if (typeof c.i === 'number' && c.i >= 0) result.initialAmount = c.i
+    if (typeof c.c === 'number' && c.c >= 0) result.cashflowAmount = c.c
+    if (c.f) result.cashflowFreq = c.f
+    if (c.dm === 'all' || c.dm === 'years') result.dateMode = c.dm
+    if (typeof c.y === 'number' && c.y > 0) result.yearsBack = c.y
+    result.dateFrom = c.from ?? ''
+    result.dateTo = c.to ?? ''
+
+    if (Array.isArray(c.p)) {
+      const portfolios: Portfolio[] = []
+      for (const portfolio of c.p) {
+        const slots = decodeSlots(portfolio.s ?? '')
+        if (slots.length === 0) continue
+        portfolios.push({ slots, rebalFreq: portfolio.r ?? 'quarterly' })
+      }
+      if (portfolios.length > 0) result.portfolios = portfolios
+    }
+
+    return result
+  } catch {
+    return null
+  }
+}
+
+function parseLegacyDcaParams(p: URLSearchParams): Partial<DcaShareState> {
   const result: Partial<DcaShareState> = {}
 
   const init = parseInt(p.get('init') ?? '', 10)
@@ -114,32 +160,70 @@ export interface LsDcaShareState {
   portfolio: Portfolio | null
 }
 
-export function buildLsDcaUrl(s: LsDcaShareState): string {
-  const p = new URLSearchParams()
-  p.set('tab', 'lsdca')
-  p.set('capital', String(s.totalCapital))
-  p.set('horizon', String(s.horizonMonths))
-  p.set('freq', s.freq)
-  p.set('cash', s.cashMode)
-  if (s.cashMode === 'savings') p.set('rate', String(s.savingsRate))
-  if (s.cashMode === 'fund' && s.cashFundId) p.set('cfund', s.cashFundId)
-  if (s.compareFundId) p.set('cmp', s.compareFundId)
+interface CompactLsDca {
+  cap?: number; h?: number; f?: LSvsDCAFreq; cash?: CashMode; rate?: number
+  cfund?: string; cmp?: string
+  pf?: { s: string; r: RebalanceFrequency }
+}
 
+export function buildLsDcaUrl(s: LsDcaShareState): string {
+  const compact: CompactLsDca = {
+    cap: s.totalCapital,
+    h: s.horizonMonths,
+    f: s.freq,
+    cash: s.cashMode,
+    rate: s.cashMode === 'savings' ? s.savingsRate : undefined,
+    cfund: s.cashMode === 'fund' && s.cashFundId ? s.cashFundId : undefined,
+    cmp: s.compareFundId || undefined,
+  }
   if (s.portfolio) {
     const encoded = encodeSlots(s.portfolio.slots)
-    if (encoded) {
-      p.set('lsfunds', encoded)
-      p.set('rebal', s.portfolio.rebalFreq)
-    }
+    if (encoded) compact.pf = { s: encoded, r: s.portfolio.rebalFreq }
   }
-
-  return `${origin()}?${p.toString()}`
+  const encoded = compressToEncodedURIComponent(JSON.stringify(compact))
+  return `${origin()}?tab=lsdca&s=${encoded}`
 }
 
 export function parseLsDcaParams(): Partial<LsDcaShareState> | null {
   const p = new URLSearchParams(window.location.search)
   if (p.get('tab') !== 'lsdca') return null
 
+  const compressed = p.get('s')
+  if (compressed) return parseCompactLsDca(compressed)
+
+  // Link cũ (trước khi nén) — vẫn đọc được để không phá link đã chia sẻ.
+  return parseLegacyLsDcaParams(p)
+}
+
+function parseCompactLsDca(compressed: string): Partial<LsDcaShareState> | null {
+  try {
+    const json = decompressFromEncodedURIComponent(compressed)
+    if (!json) return null
+    const c = JSON.parse(json) as CompactLsDca
+    const result: Partial<LsDcaShareState> = {}
+
+    if (typeof c.cap === 'number' && c.cap > 0) result.totalCapital = c.cap
+    if (typeof c.h === 'number' && c.h > 0) result.horizonMonths = c.h
+    if (c.f === 'weekly' || c.f === 'monthly') result.freq = c.f
+    if (c.cash === 'flat' || c.cash === 'savings' || c.cash === 'fund') result.cashMode = c.cash
+    if (typeof c.rate === 'number' && !isNaN(c.rate)) result.savingsRate = c.rate
+    result.cashFundId = c.cfund ?? ''
+    result.compareFundId = c.cmp ?? ''
+
+    if (c.pf) {
+      const slots = decodeSlots(c.pf.s ?? '')
+      if (slots.length > 0) {
+        result.portfolio = { slots, rebalFreq: c.pf.r ?? 'quarterly' }
+      }
+    }
+
+    return result
+  } catch {
+    return null
+  }
+}
+
+function parseLegacyLsDcaParams(p: URLSearchParams): Partial<LsDcaShareState> {
   const result: Partial<LsDcaShareState> = {}
 
   const capital = parseInt(p.get('capital') ?? '', 10)

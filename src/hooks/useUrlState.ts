@@ -15,34 +15,45 @@ const VALID_PERIODS = [6, 12, 24, 36, 48]
 export function useUrlState() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const state: DashboardState = useMemo(() => {
-    const tab = searchParams.get('tab')
-    const roll = parseInt(searchParams.get('roll') ?? '', 10)
+  const tabParam = searchParams.get('tab')
+  const rollParam = searchParams.get('roll')
+  const fundsParam = searchParams.get('funds')
+  const aParam = searchParams.get('a')
+  const bParam = searchParams.get('b')
+  const fromParam = searchParams.get('from')
+  const toParam = searchParams.get('to')
 
-    // Parse funds: comma-separated, or fallback to old a/b params, then localStorage
-    let funds: string[]
-    const fundsParam = searchParams.get('funds')
+  // Chỉ tạo lại mảng funds khi GIÁ TRỊ param thực sự đổi, không phải mỗi khi
+  // searchParams đổi reference vì lý do khác (vd chuyển tab). Nhờ vậy các
+  // component nhận `funds` làm prop (được bọc React.memo) mới thực sự bỏ
+  // qua re-render khi tab khác thay đổi — nếu tạo mảng mới mỗi lần, memo sẽ
+  // luôn thấy props "khác" (so sánh theo reference) dù nội dung y hệt.
+  const funds = useMemo(() => {
+    let result: string[]
     if (fundsParam) {
-      funds = fundsParam.split(',').filter(Boolean)
+      result = fundsParam.split(',').filter(Boolean)
+    } else if (aParam && bParam) {
+      // Backward compat với format cũ ?a=X&b=Y
+      result = [aParam, bParam]
+    } else if (aParam) {
+      result = [aParam]
     } else {
-      // Backward compat with old ?a=X&b=Y format
-      const a = searchParams.get('a')
-      const b = searchParams.get('b')
-      if (a && b) funds = [a, b]
-      else if (a) funds = [a]
-      else funds = loadLS('compare_funds', DEFAULT_FUNDS)
+      result = loadLS('compare_funds', DEFAULT_FUNDS)
     }
+    return result.length > 0 ? result : DEFAULT_FUNDS
+  }, [fundsParam, aParam, bParam])
 
-    return {
-      funds: funds.length > 0 ? funds : DEFAULT_FUNDS,
-      tab: VALID_TABS.includes(tab as typeof VALID_TABS[number])
-        ? (tab as DashboardState['tab'])
-        : 'compare',
-      rollingPeriod: VALID_PERIODS.includes(roll) ? roll : 12,
-      dateFrom: searchParams.get('from') || null,
-      dateTo: searchParams.get('to') || null,
-    }
-  }, [searchParams])
+  const roll = parseInt(rollParam ?? '', 10)
+
+  const state: DashboardState = {
+    funds,
+    tab: VALID_TABS.includes(tabParam as typeof VALID_TABS[number])
+      ? (tabParam as DashboardState['tab'])
+      : 'compare',
+    rollingPeriod: VALID_PERIODS.includes(roll) ? roll : 12,
+    dateFrom: fromParam || null,
+    dateTo: toParam || null,
+  }
 
   const updateState = useCallback(
     (updates: Partial<DashboardState>) => {

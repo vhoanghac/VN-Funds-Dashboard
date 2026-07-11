@@ -145,7 +145,7 @@ function RollingForPortfolio({
             strokeDasharray="3 3"
             label={{ value: `Median ${(stats.median * 100).toFixed(1)}%`, fontSize: 10, fill: '#6b7280', position: 'top' }}
           />
-          <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+          <Bar dataKey="count" radius={[2, 2, 0, 0]} isAnimationActive={false}>
             {chartData.map((d, i) => (
               <Cell key={i} fill={d.highlight ? portfolio.color : '#cbd5e1'} />
             ))}

@@ -69,7 +69,7 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
           />
           <Tooltip formatter={(v: number) => v.toFixed(1) + '%'} />
           <Legend />
-          <Bar dataKey="Tỷ trọng Bitcoin" fill={BTC_WEIGHT_COLOR} radius={[3, 3, 0, 0]}>
+          <Bar dataKey="Tỷ trọng Bitcoin" fill={BTC_WEIGHT_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false}>
             <LabelList
               dataKey="Tỷ trọng Bitcoin"
               position="top"
@@ -77,7 +77,7 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
               style={{ fontSize: 10, fill: '#264653', fontWeight: 600 }}
             />
           </Bar>
-          <Bar dataKey="Đóng góp Bitcoin" fill={BTC_RISK_COLOR} radius={[3, 3, 0, 0]}>
+          <Bar dataKey="Đóng góp Bitcoin" fill={BTC_RISK_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false}>
             <LabelList
               dataKey="Đóng góp Bitcoin"
               position="top"
@@ -85,7 +85,7 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
               style={{ fontSize: 10, fill: '#2a9d8f', fontWeight: 600 }}
             />
           </Bar>
-          <Bar dataKey={fundWeightKey} fill={FUND_WEIGHT_COLOR} radius={[3, 3, 0, 0]}>
+          <Bar dataKey={fundWeightKey} fill={FUND_WEIGHT_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false}>
             <LabelList
               dataKey={fundWeightKey}
               position="top"
@@ -93,7 +93,7 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
               style={{ fontSize: 10, fill: '#c9a227', fontWeight: 600 }}
             />
           </Bar>
-          <Bar dataKey={fundRiskKey} fill={FUND_RISK_COLOR} radius={[3, 3, 0, 0]}>
+          <Bar dataKey={fundRiskKey} fill={FUND_RISK_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false}>
             <LabelList
               dataKey={fundRiskKey}
               position="top"

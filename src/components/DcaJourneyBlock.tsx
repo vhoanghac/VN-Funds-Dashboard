@@ -8,6 +8,7 @@
  * phải kể: "đã nạp X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
  */
 import { formatVND, vndComparison } from '../utils/vndFormat'
+import { dcaYearlyMWRR } from '../utils/dca'
 
 export interface JourneyPortfolio {
   id: string
@@ -15,6 +16,10 @@ export interface JourneyPortfolio {
   color: string
   totalInvested: number
   finalValue: number
+  /** Giá trị danh mục theo thời gian (đã gồm cashflow) — dùng để tính MWRR từng năm */
+  valueSeries: { date: string; value: number }[]
+  /** Toàn bộ cashflows (âm = nạp tiền) — dùng để tính MWRR từng năm */
+  cashflows: { date: string; amount: number }[]
 }
 
 interface Props {
@@ -141,6 +146,84 @@ export function DcaJourneyBlock({ portfolios, startDate, endDate }: Props) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * EOYReturnsTable: hiệu suất DANH MỤC CỦA NHÀ ĐẦU TƯ từng năm (End-of-Year Returns),
+ * tính bằng Modified Dietz method (money-weighted, có tính dòng tiền nạp).
+ *
+ * Khác với TWRR (dcaYearlyReturns, đo hiệu suất bản thân quỹ như thể bỏ tiền
+ * 1 lần từ đầu, bất kể bạn nạp bao nhiêu/khi nào), Modified Dietz đo đúng
+ * trải nghiệm DCA thực tế: tiền nạp sớm trong năm được tính trọng số cao hơn
+ * (nhiều thời gian sinh lời), tiền nạp cuối năm gần như chưa kịp sinh lời.
+ * Đây là công thức chuẩn GIPS, không cần giải lặp nên luôn ổn định dù mỗi
+ * năm chỉ có ~12 lần nạp tiền.
+ */
+export function EOYReturnsTable({ portfolios }: { portfolios: JourneyPortfolio[] }) {
+  const perPortfolio = portfolios.map(p => ({
+    id: p.id,
+    name: p.name,
+    color: p.color,
+    byYear: new Map(dcaYearlyMWRR(p.valueSeries, p.cashflows).map(y => [y.year, y])),
+  }))
+
+  const allYears = Array.from(
+    new Set(perPortfolio.flatMap(p => Array.from(p.byYear.keys()))),
+  ).sort((a, b) => a - b)
+
+  if (allYears.length === 0) return null
+
+  return (
+    <div className="dca-eoy-block">
+      <h4 className="dca-eoy-title">Hiệu suất danh mục của bạn từng năm</h4>
+      <p className="dca-eoy-explainer">
+        Bảng này tính hiệu suất <strong>có tính đến dòng tiền bạn thực sự nạp</strong>
+        {' '}(Modified Dietz method), không phải hiệu suất "nếu bỏ tiền 1 lần từ đầu"
+        của bản thân quỹ. Tiền nạp càng sớm trong năm càng được tính trọng số cao
+        (có nhiều thời gian sinh lời hơn), tiền nạp cuối năm gần như chưa kịp sinh
+        lời. Nhờ vậy con số này phản ánh đúng trải nghiệm DCA thực tế của bạn, thay
+        vì chỉ đo giá quỹ tăng/giảm bao nhiêu.
+      </p>
+      <div className="dca-eoy-table-scroll">
+        <table className="dca-eoy-table">
+          <thead>
+            <tr>
+              <th>Năm</th>
+              {perPortfolio.map(p => (
+                <th key={p.id} style={{ color: p.color }}>{p.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {allYears.map(year => (
+              <tr key={year}>
+                <td className="dca-eoy-year">{year}</td>
+                {perPortfolio.map(p => {
+                  const r = p.byYear.get(year)
+                  if (!r || r.value === null) {
+                    return <td key={p.id} className="dca-eoy-cell dca-eoy-cell--empty">—</td>
+                  }
+                  const pct = r.value * 100
+                  return (
+                    <td
+                      key={p.id}
+                      className={`dca-eoy-cell ${pct >= 0 ? 'dca-eoy-cell--pos' : 'dca-eoy-cell--neg'}`}
+                    >
+                      {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+                      {r.isPartial && <sup className="dca-eoy-partial">*</sup>}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="dca-eoy-footnote">
+        * Năm chưa đủ dữ liệu trọn năm (năm đầu hoặc năm cuối của khoảng so sánh).
+      </div>
     </div>
   )
 }

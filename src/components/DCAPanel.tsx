@@ -1,20 +1,19 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
 import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, trackDividendNarrative, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
-import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
+import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DCAGlossary } from './DCAGlossary'
-import { DcaJourneyBlock } from './DcaJourneyBlock'
+import { DcaJourneyBlock, EOYReturnsTable } from './DcaJourneyBlock'
 import { BankComparisonBlock } from './BankComparisonBlock'
 import { DcaStormBlock } from './DcaStormBlock'
 import { DcaReturnExplainer } from './DcaReturnExplainer'
-import { ContributionGrowthBlock } from './ContributionGrowthBlock'
 import { ProjectionBlock } from './ProjectionBlock'
 import { GoalPlannerBlock } from './GoalPlannerBlock'
 import { RollingReturnBlock } from './RollingReturnBlock'
@@ -49,6 +48,8 @@ interface DCAPortfolioResult {
   profitFactor: number | null
   investedSeries: { date: string; value: number }[]
   valueSeries: { date: string; value: number }[]
+  /** Toàn bộ cashflows (âm = nạp tiền, dòng cuối dương = finalValue) — dùng để tính MWRR theo từng năm */
+  cashflows: { date: string; amount: number }[]
   /**
    * Inputs để re-run simulation cho các biến thể hành vi (panic-stop, skip months...).
    * Null nếu simulation gốc thất bại (data không đủ, portfolio rỗng).
@@ -76,7 +77,7 @@ const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'yearly', label: '1 năm' },
 ]
 
-export function DCAPanel({ funds }: Props) {
+function DCAPanelImpl({ funds }: Props) {
   const nextIdRef = useRef(1)
 
   // Read URL params once on mount (shared link restore)
@@ -108,12 +109,17 @@ export function DCAPanel({ funds }: Props) {
       ? urlParams.portfolios
       : loadLS<SavedPortfolio[]>('dca_portfolios', [])
     if (source.length === 0) return []
-    return source.map((p, i) => ({
-      id: `dca${nextIdRef.current++}`,
-      name: p.slots[0]?.fundId ?? `Danh mục ${i + 1}`,
-      slots: p.slots,
-      rebalFreq: p.rebalFreq as import('../types').RebalanceFrequency,
-    }))
+    return source.map(p => {
+      const num = nextIdRef.current++
+      return {
+        id: `dca${num}`,
+        num,
+        name: derivePortfolioName(p.slots, num),
+        isNameCustom: false,
+        slots: p.slots,
+        rebalFreq: p.rebalFreq as import('../types').RebalanceFrequency,
+      }
+    })
   })
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   // Raw (chưa adjust) weekly prices — chỉ dùng cho shadow simulation tính
@@ -170,8 +176,9 @@ export function DCAPanel({ funds }: Props) {
     return ids
   }, [portfolios])
 
-  // Fetch CSV data, resample to weekly (end-of-week price)
-  // Matches Compare/Simulate tabs so all tabs use the same date grid
+  // Fetch CSV data, giữ nguyên daily cho simulation (không resample tuần nữa)
+  // để lịch nạp tiền hàng tháng bám sát ngày thực tế hơn, và MWRR/EOY từng
+  // năm tính trọng số dòng tiền chính xác hơn.
   useEffect(() => {
     let cancelled = false
     const toFetch = Array.from(neededIds).filter(id => !fundData.has(id))
@@ -184,14 +191,11 @@ export function DCAPanel({ funds }: Props) {
         if (!resp.ok) return null
         const text = await resp.text()
         const rawDaily = parseCSV(text)
-        // Raw weekly: dùng cho shadow simulation cổ tức (số ccq/tiền thật).
-        const rawWeekly = resampleToWeekly(rawDaily)
-        // Adjusted weekly: dùng cho simulation chính. Dividend adjustment
-        // (DCDE...) áp dụng trước khi resample. Tất cả các tab dùng chung
-        // nguồn giá đã adjusted để hiệu suất nhất quán toàn dashboard.
+        // Adjusted daily: dùng cho simulation chính. Dividend adjustment
+        // (DCDE...) áp dụng trước. Tất cả các tab dùng chung nguồn giá đã
+        // adjusted để hiệu suất nhất quán toàn dashboard.
         const adjustedDaily = await loadAdjustedPrices(id, rawDaily)
-        const adjustedWeekly = resampleToWeekly(adjustedDaily)
-        return { id, raw: rawWeekly, adjusted: adjustedWeekly }
+        return { id, raw: rawDaily, adjusted: adjustedDaily }
       }),
     ).then(results => {
       if (cancelled) return
@@ -221,10 +225,13 @@ export function DCAPanel({ funds }: Props) {
     if (portfolios.length >= MAX_PORTFOLIOS) return
     const num = nextIdRef.current++
     const defaultFundId = funds[0]?.id || ''
+    const slots = [{ fundId: defaultFundId, weight: 100 }]
     const portfolio: DCAPortfolioState = {
       id: `dca${num}`,
-      name: defaultFundId || `Danh mục ${num}`,
-      slots: [{ fundId: defaultFundId, weight: 100 }],
+      num,
+      name: derivePortfolioName(slots, num),
+      isNameCustom: false,
+      slots,
       rebalFreq: 'quarterly',
     }
     setPortfolios([...portfolios, portfolio])
@@ -243,7 +250,9 @@ export function DCAPanel({ funds }: Props) {
       if (p.id !== portfolioId || p.slots.length >= MAX_FUNDS_PER_PORTFOLIO) return p
       const used = new Set(p.slots.map(s => s.fundId))
       const available = funds.find(f => !used.has(f.id))
-      return { ...p, slots: [...p.slots, { fundId: available?.id || '', weight: 0 }] }
+      const newSlots = [...p.slots, { fundId: available?.id || '', weight: 0 }]
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
+      return { ...p, name, slots: newSlots }
     }))
   }
 
@@ -251,7 +260,7 @@ export function DCAPanel({ funds }: Props) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId || p.slots.length <= 1) return p
       const newSlots = p.slots.filter((_, i) => i !== index)
-      const name = newSlots.length === 1 && newSlots[0]!.fundId ? newSlots[0]!.fundId : p.name
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
       return { ...p, name, slots: newSlots }
     }))
   }
@@ -260,7 +269,7 @@ export function DCAPanel({ funds }: Props) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId) return p
       const newSlots = p.slots.map((s, i) => i === index ? { ...s, ...update } : s)
-      const name = newSlots.length === 1 && update.fundId ? update.fundId : p.name
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
       return { ...p, name, slots: newSlots }
     }))
   }
@@ -380,9 +389,9 @@ export function DCAPanel({ funds }: Props) {
         allFilteredRawPrices.set(fundId, rawPrices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
       }
     }
-    const alignedPrices = alignFundsToCommonGrid(allFilteredPrices)
+    const alignedPrices = alignFundsToCommonGridDaily(allFilteredPrices)
     const alignedRawPrices = allFilteredRawPrices.size > 0
-      ? alignFundsToCommonGrid(allFilteredRawPrices)
+      ? alignFundsToCommonGridDaily(allFilteredRawPrices)
       : new Map<string, PricePoint[]>()
 
     // ── Step 3: Run DCA for each portfolio with aligned dates ──
@@ -413,7 +422,7 @@ export function DCAPanel({ funds }: Props) {
           cumulative: [], drawdown: [],
           totalInvested: 0, finalValue: 0, mwrr: null, profitFactor: null,
           storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
-          investedSeries: [], valueSeries: [],
+          investedSeries: [], valueSeries: [], cashflows: [],
           simulationInputs: null,
           dividendNarrative: [],
         })
@@ -449,6 +458,7 @@ export function DCAPanel({ funds }: Props) {
         profitFactor: dcaProfitFactor(dcaResult.returns),
         investedSeries: dcaResult.invested,
         valueSeries: dcaResult.values,
+        cashflows: dcaResult.cashflows,
         simulationInputs: {
           filteredPrices,
           slots: p.slots,
@@ -590,28 +600,33 @@ export function DCAPanel({ funds }: Props) {
       </div>
 
       {/* ── Portfolio Cards ── */}
-      {portfolios.map((portfolio, pIdx) => (
-        <PortfolioCard
-          key={portfolio.id}
-          portfolio={portfolio}
-          pIdx={pIdx}
-          funds={funds}
-          fundOptions={fundOptions}
-          onUpdate={update => updatePortfolio(portfolio.id, update)}
-          onRemove={() => removePortfolio(portfolio.id)}
-          onAddSlot={() => addSlot(portfolio.id)}
-          onRemoveSlot={idx => removeSlot(portfolio.id, idx)}
-          onUpdateSlot={(idx, update) => updateSlot(portfolio.id, idx, update)}
-          onSetEqualWeights={() => setEqualWeights(portfolio.id)}
-        />
-      ))}
-
-      {/* Add portfolio button */}
-      {portfolios.length < MAX_PORTFOLIOS && (
-        <button className="sim-add-portfolio-btn" onClick={addPortfolio}>
-          + Thêm Danh Mục
-        </button>
-      )}
+      <div className="dca-portfolios-card">
+        <div className="dca-portfolios-card-header">
+          <h3 className="dca-section-title">Danh mục</h3>
+          {portfolios.length < MAX_PORTFOLIOS && (
+            <button className="dca-add-portfolio-btn" onClick={addPortfolio}>
+              + Thêm Danh Mục
+            </button>
+          )}
+        </div>
+        <div className="dca-portfolio-grid">
+          {portfolios.map((portfolio, pIdx) => (
+            <PortfolioCard
+              key={portfolio.id}
+              portfolio={portfolio}
+              pIdx={pIdx}
+              funds={funds}
+              fundOptions={fundOptions}
+              onUpdate={update => updatePortfolio(portfolio.id, update)}
+              onRemove={() => removePortfolio(portfolio.id)}
+              onAddSlot={() => addSlot(portfolio.id)}
+              onRemoveSlot={idx => removeSlot(portfolio.id, idx)}
+              onUpdateSlot={(idx, update) => updateSlot(portfolio.id, idx, update)}
+              onSetEqualWeights={() => setEqualWeights(portfolio.id)}
+            />
+          ))}
+        </div>
+      </div>
 
       {/* Run button */}
       {portfolios.length > 0 && (
@@ -729,6 +744,20 @@ export function DCAPanel({ funds }: Props) {
             })}
           </div>
 
+          {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
+              trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
+          <EOYReturnsTable
+            portfolios={validResults.map(r => ({
+              id: r.id,
+              name: r.name,
+              color: r.color,
+              totalInvested: r.totalInvested,
+              finalValue: r.finalValue,
+              valueSeries: r.valueSeries,
+              cashflows: r.cashflows,
+            }))}
+          />
+
           {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
           <DcaReturnExplainer
             portfolios={validResults.map(r => {
@@ -758,6 +787,8 @@ export function DCAPanel({ funds }: Props) {
                 color: r.color,
                 totalInvested: r.totalInvested,
                 finalValue: r.finalValue,
+                valueSeries: r.valueSeries,
+                cashflows: r.cashflows,
               }))}
               startDate={startDate}
               endDate={endDate}
@@ -795,22 +826,6 @@ export function DCAPanel({ funds }: Props) {
               endDate={endDate}
             />
           )}
-
-          {/* Vốn của bạn vs Tiền sinh ra */}
-          <div className="section-divider">
-            <span className="section-divider-label">Vốn đẻ vốn</span>
-          </div>
-          <ContributionGrowthBlock
-            portfolios={validResults.map(r => ({
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              totalInvested: r.totalInvested,
-              finalValue: r.finalValue,
-              investedSeries: r.investedSeries,
-              valueSeries: r.valueSeries,
-            }))}
-          />
 
           {/* Kiên trì qua bão */}
           <div className="section-divider">
@@ -927,4 +942,11 @@ export function DCAPanel({ funds }: Props) {
     </div>
   )
 }
+
+// Memo hoá: App.tsx luôn mount cả 5 tab (ẩn bằng display:none), nên mỗi lần
+// chuyển tab hoặc đổi state ở tab khác đều khiến App re-render. Không memo,
+// component này (và toàn bộ chart bên trong) sẽ re-render/reconcile lại mỗi
+// lần đó dù props không đổi — với dữ liệu daily (nhiều điểm hơn tuần 5-7 lần)
+// chi phí này đủ lớn để gây "đơ" khi chuyển tab.
+export const DCAPanel = memo(DCAPanelImpl)
 

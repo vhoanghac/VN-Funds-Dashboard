@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react'
 import type { ReturnPoint } from '../types'
-import { rollingWinRate } from '../utils/calculations'
+import { rollingCumulativeReturnsMap, winRateAgainstRolledB } from '../utils/calculations'
 
 interface Props {
   portfolioReturns: ReturnPoint[][]    // [baseline, btc1, btc2, btc3]
@@ -9,10 +9,10 @@ interface Props {
 }
 
 const HORIZONS = [
-  { weeks: 52,  label: '1 năm' },
-  { weeks: 104, label: '2 năm' },
-  { weeks: 156, label: '3 năm' },
-  { weeks: 260, label: '5 năm' },
+  { months: 12, label: '1 năm' },
+  { months: 24, label: '2 năm' },
+  { months: 36, label: '3 năm' },
+  { months: 60, label: '5 năm' },
 ]
 
 /**
@@ -29,15 +29,22 @@ function WinRateBlockImpl({ portfolioReturns, btcPercents, stats }: Props) {
   const baseReturns = portfolioReturns[0]
   if (!baseReturns) return null
 
-  // Compute all (horizon × btc%) cells
+  // Compute all (horizon × btc%) cells. baseReturns is shared across all 3
+  // weight scenarios, nên chỉ tính rolling map của nó 1 lần/kỳ hạn (4 lần),
+  // thay vì tính lại mỗi lần lặp qua btcPercents (12 lần) — cùng 1 dữ liệu,
+  // cùng 1 kỳ hạn thì kết quả rolling y hệt nhau.
   const grid = useMemo(() => {
     if (!baseReturns) return []
+    const baseRolledByHorizon = new Map(
+      HORIZONS.map(h => [h.months, rollingCumulativeReturnsMap(baseReturns, h.months)]),
+    )
     return btcPercents.map((_, i) => {
       const btcReturns = portfolioReturns[i + 1]
       if (!btcReturns) return null
       return HORIZONS.map(h => {
-        const { wins, total } = rollingWinRate(btcReturns, baseReturns, h.weeks)
-        return { weeks: h.weeks, label: h.label, wins, total }
+        const rolledBMap = baseRolledByHorizon.get(h.months)!
+        const { wins, total } = winRateAgainstRolledB(btcReturns, h.months, rolledBMap)
+        return { months: h.months, label: h.label, wins, total }
       })
     })
   }, [portfolioReturns, btcPercents, baseReturns])
@@ -76,7 +83,7 @@ function WinRateBlockImpl({ portfolioReturns, btcPercents, stats }: Props) {
             <tr>
               <th className="winrate-th-name">Tỷ trọng BTC</th>
               {HORIZONS.map(h => (
-                <th key={h.weeks}>{h.label}</th>
+                <th key={h.months}>{h.label}</th>
               ))}
             </tr>
           </thead>
@@ -92,7 +99,7 @@ function WinRateBlockImpl({ portfolioReturns, btcPercents, stats }: Props) {
                   </td>
                   {row.map(c => {
                     if (c.total === 0) {
-                      return <td key={c.weeks} className="winrate-cell winrate-cell--na">—</td>
+                      return <td key={c.months} className="winrate-cell winrate-cell--na">—</td>
                     }
                     const rate = c.wins / c.total
                     const pctStr = (rate * 100).toFixed(0) + '%'
@@ -100,7 +107,7 @@ function WinRateBlockImpl({ portfolioReturns, btcPercents, stats }: Props) {
                               : rate >= 0.5 ? 'winrate-cell--medium'
                               : 'winrate-cell--weak'
                     return (
-                      <td key={c.weeks} className={`winrate-cell ${cls}`}>
+                      <td key={c.months} className={`winrate-cell ${cls}`}>
                         <div className="winrate-fraction">{c.wins}<span className="winrate-slash">/</span>{c.total}</div>
                         <div className="winrate-bar-wrap">
                           <div className="winrate-bar" style={{ width: `${rate * 100}%` }} />

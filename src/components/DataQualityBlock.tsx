@@ -12,7 +12,7 @@
  * Nếu có vấn đề: hiển thị warning chi tiết, từng quỹ có gì.
  */
 import { useMemo, useState } from 'react'
-import type { WeeklyPrice } from '../types'
+import type { PricePoint } from '../types'
 import { buildFundQualityReport, type FundQualityReport } from '../utils/dataQuality'
 
 /**
@@ -27,7 +27,7 @@ const STALE_DAYS_THRESHOLD = 10
 
 interface Props {
   fundIds: string[]
-  fundData: Map<string, WeeklyPrice[]>
+  fundData: Map<string, PricePoint[]>
   colors: string[]
   dateFrom: string | null
   dateTo: string | null

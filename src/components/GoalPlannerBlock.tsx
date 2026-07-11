@@ -69,9 +69,11 @@ export function GoalPlannerBlock({ portfolios }: Props) {
       <h3 className="dca-goal-title">Để đến đích, bạn cần nạp bao nhiêu mỗi tháng?</h3>
       <p className="dca-goal-sub">
         Giả sử CAGR tương lai loanh quanh mức lịch sử của quỹ, và bạn vẫn đều đặn nạp
-        tiền mỗi tháng. Chọn mục tiêu tài sản và số năm, chúng ta sẽ tính ngược số tiền
-        bạn cần nạp. Đây không phải cam kết, chỉ là phép tính cho bạn cảm nhận khoảng
-        cách giữa hiện tại và đích đến.
+        tiền mỗi tháng. Danh mục hiện tại của bạn cũng tiếp tục sinh lời theo CAGR này,
+        cộng với tiền nạp mới mỗi tháng, cả hai cùng cộng dồn tới mục tiêu. Chọn mục
+        tiêu tài sản và số năm, chúng ta sẽ tính ngược số tiền bạn cần nạp thêm. Đây
+        không phải cam kết, chỉ là phép tính cho bạn cảm nhận khoảng cách giữa hiện tại
+        và đích đến.
       </p>
 
       <div className="dca-goal-controls">
@@ -92,7 +94,7 @@ export function GoalPlannerBlock({ portfolios }: Props) {
               className="dca-goal-custom-input"
               placeholder="hoặc nhập (vd: 500tr, 1.5 tỷ)"
               value={customInput}
-              onChange={(e) => setCustomInput(e.target.value)}
+              onChange={(e) => setCustomInput(formatCustomInput(e.target.value))}
               onBlur={applyCustom}
               onKeyDown={(e) => { if (e.key === 'Enter') applyCustom() }}
             />
@@ -294,14 +296,31 @@ function solveMonthlyContribution(
 }
 
 /**
- * Parse free-form input: "500tr", "1.5 tỷ", "2 tỉ", "2000000000", "1,5ty"
+ * Tự thêm dấu chấm phân cách hàng nghìn khi người dùng gõ số thuần (vd "5000000"
+ * → "5.000.000"), giúp dễ đọc hơn. Nếu chuỗi có chữ (vd "500tr", "1.5 tỷ") thì giữ
+ * nguyên — không format, để không phá cú pháp gõ tắt.
+ */
+function formatCustomInput(raw: string): string {
+  const digitsOnly = raw.replace(/\./g, '')
+  if (digitsOnly !== '' && /^\d+$/.test(digitsOnly)) {
+    return Number(digitsOnly).toLocaleString('de-DE')
+  }
+  return raw
+}
+
+/**
+ * Parse free-form input: "500tr", "1.5 tỷ", "2 tỉ", "2000000000", "1,5ty",
+ * hoặc số thuần đã tự format dấu chấm hàng nghìn "5.000.000".
  */
 function parseCustomTarget(input: string): number | null {
   if (!input) return null
   const s = input.trim().toLowerCase().replace(/,/g, '.').replace(/\s+/g, '')
   const numMatch = s.match(/([\d.]+)/)
   if (!numMatch) return null
-  const plain = Number(numMatch[1])
+  const hasUnit = /(tỷ|ty|tỉ|ti|triệu|trieu|tr|nghìn|nghin|ngan|ngàn|k|m)/.test(s)
+  // Không có đơn vị: dấu chấm là phân cách hàng nghìn (từ auto-format), bỏ hết.
+  // Có đơn vị: dấu chấm duy nhất là thập phân (vd "1.5 tỷ"), giữ nguyên.
+  const plain = hasUnit ? Number(numMatch[1]!) : Number(numMatch[1]!.replace(/\./g, ''))
   if (isNaN(plain) || plain <= 0) return null
 
   if (/(tỷ|ty|tỉ|ti)/.test(s)) return plain * 1_000_000_000

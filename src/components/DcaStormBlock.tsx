@@ -257,10 +257,8 @@ function renderUnderwaterChart(
   floorPct: number,
   keyPrefix: string,
 ) {
-  // Màu đỏ chung cho drawdown, theo convention: DD = loss = red.
-  // Multi-portfolio: các line đều đỏ nhưng dashed khác nhau để phân biệt.
-  const DD_RED = '#dc2626'
-  const DASH_PATTERNS = ['0', '6 3', '2 2', '8 4 2 4']
+  // Mỗi danh mục dùng đúng màu của nó (giống biểu đồ "Giá trị tài sản"),
+  // dễ phân biệt hơn nhiều so với tô đồng loạt màu đỏ + dash pattern.
   const multi = portfolios.length > 1
 
   return (
@@ -268,10 +266,12 @@ function renderUnderwaterChart(
     <ResponsiveContainer width="100%" height={200}>
       <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
         <defs>
-          <linearGradient id={`${keyPrefix}-grad-red`} x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor={DD_RED} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={DD_RED} stopOpacity={0.03} />
-          </linearGradient>
+          {portfolios.map(p => (
+            <linearGradient key={p.id} id={`${keyPrefix}-grad-${p.id}`} x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stopColor={p.color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={p.color} stopOpacity={0.03} />
+            </linearGradient>
+          ))}
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
         <XAxis
@@ -293,15 +293,14 @@ function renderUnderwaterChart(
         />
         <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
         <ReferenceLine y={-10} stroke="#d1d5db" strokeDasharray="2 2" />
-        {portfolios.map((p, i) => (
+        {portfolios.map(p => (
           <Area
             key={p.id}
             type="monotone"
             dataKey={p.name}
-            stroke={DD_RED}
+            stroke={p.color}
             strokeWidth={1.8}
-            strokeDasharray={DASH_PATTERNS[i % DASH_PATTERNS.length]}
-            fill={`url(#${keyPrefix}-grad-red)`}
+            fill={`url(#${keyPrefix}-grad-${p.id})`}
             isAnimationActive={false}
             connectNulls
           />
@@ -310,14 +309,13 @@ function renderUnderwaterChart(
     </ResponsiveContainer>
     {multi && (
       <div className="dca-storm-chart-legend">
-        {portfolios.map((p, i) => (
+        {portfolios.map(p => (
           <div key={p.id} className="dca-storm-chart-legend-item">
             <svg width="22" height="10" aria-hidden="true">
               <line
                 x1="0" y1="5" x2="22" y2="5"
-                stroke={DD_RED}
+                stroke={p.color}
                 strokeWidth="2"
-                strokeDasharray={DASH_PATTERNS[i % DASH_PATTERNS.length]}
               />
             </svg>
             <span>{p.name}</span>

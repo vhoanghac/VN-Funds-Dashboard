@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
 import { buildLsDcaUrl, parseLsDcaParams } from '../utils/shareUrl'
@@ -8,9 +8,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
 } from 'recharts'
 import type { FundMeta, PricePoint } from '../types'
-import type { DCASlot } from '../utils/dca'
+import { derivePortfolioName, type DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
-import { resampleToWeekly, alignFundsToCommonGrid } from '../utils/weeklyResample'
+import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { DividendNotice } from './DividendNotice'
 import {
@@ -38,7 +38,7 @@ interface Props {
 
 const HORIZON_OPTIONS = [3, 6, 12, 18, 24, 36]
 
-export function LumpSumDCAPanel({ funds }: Props) {
+function LumpSumDCAPanelImpl({ funds }: Props) {
   const nextIdRef = useRef(1)
   const hasRunOnceRef = useRef(false)
 
@@ -75,9 +75,12 @@ export function LumpSumDCAPanel({ funds }: Props) {
   const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(() => {
     const src = urlParams?.portfolio ?? loadLS<SavedPortfolio>('lsdca_portfolio', null)
     if (!src) return null
+    const num = nextIdRef.current++
     return {
-      id: `lsdca${nextIdRef.current++}`,
-      name: src.slots[0]?.fundId ?? 'Danh mục',
+      id: `lsdca${num}`,
+      num,
+      name: derivePortfolioName(src.slots, num),
+      isNameCustom: false,
       slots: src.slots,
       rebalFreq: src.rebalFreq as import('../types').RebalanceFrequency,
     }
@@ -151,8 +154,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
         const text = await resp.text()
         const rawDaily = parseCSV(text)
         const daily = await loadAdjustedPrices(id, rawDaily)
-        const weekly = resampleToWeekly(daily)
-        return { id, data: weekly }
+        return { id, data: daily }
       }),
     ).then(results => {
       if (cancelled) return
@@ -174,10 +176,13 @@ export function LumpSumDCAPanel({ funds }: Props) {
     if (portfolio) return
     const num = nextIdRef.current++
     const defaultFundId = funds[0]?.id || ''
+    const slots = [{ fundId: defaultFundId, weight: 100 }]
     setPortfolio({
       id: `lsdca${num}`,
-      name: defaultFundId || 'Danh mục',
-      slots: [{ fundId: defaultFundId, weight: 100 }],
+      num,
+      name: derivePortfolioName(slots, num),
+      isNameCustom: false,
+      slots,
       rebalFreq: 'quarterly',
     })
   }
@@ -190,22 +195,22 @@ export function LumpSumDCAPanel({ funds }: Props) {
     if (!portfolio) return
     const used = new Set(portfolio.slots.map(s => s.fundId))
     const available = funds.find(f => !used.has(f.id))
-    setPortfolio(prev => prev
-      ? { ...prev, slots: [...prev.slots, { fundId: available?.id || '', weight: 0 }] }
-      : null)
+    const newSlots = [...portfolio.slots, { fundId: available?.id || '', weight: 0 }]
+    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, portfolio.num)
+    setPortfolio(prev => prev ? { ...prev, name, slots: newSlots } : null)
   }
 
   function removeSlot(idx: number) {
     if (!portfolio || portfolio.slots.length <= 1) return
     const newSlots = portfolio.slots.filter((_, i) => i !== idx)
-    const name = newSlots.length === 1 && newSlots[0]!.fundId ? newSlots[0]!.fundId : portfolio.name
+    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, portfolio.num)
     setPortfolio(prev => prev ? { ...prev, name, slots: newSlots } : null)
   }
 
   function updateSlot(idx: number, update: Partial<DCASlot>) {
     if (!portfolio) return
     const newSlots = portfolio.slots.map((s, i) => i === idx ? { ...s, ...update } : s)
-    const name = newSlots.length === 1 && update.fundId ? update.fundId : portfolio.name
+    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, portfolio.num)
     setPortfolio(prev => prev ? { ...prev, name, slots: newSlots } : null)
   }
 
@@ -276,7 +281,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
     }
 
     // Align main portfolio funds
-    const aligned = alignFundsToCommonGrid(allPricesRaw)
+    const aligned = alignFundsToCommonGridDaily(allPricesRaw)
 
     // Cash fund prices (if needed)
     const cashFundPrices = (cm === 'fund' && cfId) ? fundData.get(cfId) ?? null : null
@@ -309,7 +314,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
       const comparePrices = fundData.get(cfId2)
       if (comparePrices && comparePrices.length > 0) {
         const compareMap = new Map([[cfId2, comparePrices]])
-        const aligned2 = alignFundsToCommonGrid(compareMap)
+        const aligned2 = alignFundsToCommonGridDaily(compareMap)
         heatmap2 = computeHeatmap(
           aligned2, [{ fundId: cfId2, weight: 100 }],
           committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
@@ -773,7 +778,7 @@ export function LumpSumDCAPanel({ funds }: Props) {
                   formatter={(value: number) => [`${value} kịch bản`, 'Số lần']}
                   labelFormatter={(label: string) => `Chênh lệch: ${label}`}
                 />
-                <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                <Bar dataKey="count" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                   {results.histogram.map((bucket, i) => (
                     <Cell
                       key={i}
@@ -796,3 +801,10 @@ export function LumpSumDCAPanel({ funds }: Props) {
     </div>
   )
 }
+
+// Memo hoá: App.tsx luôn mount cả 5 tab (ẩn bằng display:none), nên mỗi lần
+// chuyển tab hoặc đổi state ở tab khác đều khiến App re-render. Không memo,
+// component này (và toàn bộ chart bên trong) sẽ re-render/reconcile lại mỗi
+// lần đó dù props không đổi — với dữ liệu daily (nhiều điểm hơn tuần 5-7 lần)
+// chi phí này đủ lớn để gây "đơ" khi chuyển tab.
+export const LumpSumDCAPanel = memo(LumpSumDCAPanelImpl)
