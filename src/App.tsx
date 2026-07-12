@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 import { useFundMetadata } from './hooks/useFundData'
 import { useUrlState } from './hooks/useUrlState'
 import { CompareTab } from './components/CompareTab'
-import { SimulationPanel } from './components/SimulationPanel'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
@@ -43,12 +42,6 @@ export function App() {
           So Sánh
         </button>
         <button
-          className={`tab ${state.tab === 'simulate' ? 'tab-active' : ''}`}
-          onClick={() => updateState({ tab: 'simulate' })}
-        >
-          Mô Phỏng
-        </button>
-        <button
           className={`tab ${state.tab === 'dca' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'dca' })}
         >
@@ -87,11 +80,6 @@ export function App() {
           onChangeDateTo={onChangeDateTo}
           onChangeRollingPeriod={onChangeRollingPeriod}
         />
-      </div>
-
-      {/* Simulate Tab: always mounted, hidden via CSS when inactive */}
-      <div style={{ display: state.tab === 'simulate' ? undefined : 'none' }}>
-        <SimulationPanel funds={metadata} />
       </div>
 
       {/* DCA Tab */}

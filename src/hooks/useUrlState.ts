@@ -4,7 +4,7 @@ import type { DashboardState } from '../types'
 import { DEFAULT_FUNDS } from '../constants'
 import { loadLS, saveLS } from '../utils/localStorage'
 
-const VALID_TABS = ['compare', 'simulate', 'dca', 'lsdca', 'bitcoin', 'changelog'] as const
+const VALID_TABS = ['compare', 'dca', 'lsdca', 'bitcoin', 'changelog'] as const
 const VALID_PERIODS = [6, 12, 24, 36, 48]
 
 /**

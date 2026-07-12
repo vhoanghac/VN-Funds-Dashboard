@@ -5,7 +5,7 @@
  * mà đã được điều chỉnh để phản ánh giả định tái đầu tư cổ tức sau thuế.
  * Nếu user thắc mắc "sao số khác fmarket", banner này là câu trả lời đầu tiên.
  *
- * Dùng ở các tab: So Sánh, Mô Phỏng, LS vs DCA, Bitcoin.
+ * Dùng ở các tab: So Sánh, LS vs DCA, Bitcoin.
  * Tab DCA đã có "Cổ tức & tái đầu tư" block riêng nên không cần.
  */
 import { useEffect, useState } from 'react'

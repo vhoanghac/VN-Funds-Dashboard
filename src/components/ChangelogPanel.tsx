@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v3.3',
+    date: '12/07/2026',
+    items: [
+      'Bỏ tab Mô Phỏng: tab DCA giờ đã mô phỏng được cả đầu tư 1 lần (để "Số tiền đầu tư định kỳ" = 0) lẫn định kỳ, nên không cần tách riêng 2 tab nữa.',
+    ],
+  },
+  {
     version: 'v3.2',
     date: '10/07/2026',
     items: [
