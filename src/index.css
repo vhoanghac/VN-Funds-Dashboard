@@ -1071,14 +1071,14 @@ h1, h2, h3 {
 
 .dca-eoy-title {
   margin: 0 0 6px 0;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .dca-eoy-explainer {
   margin: 0 0 12px 0;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   line-height: 1.55;
   color: #5e5d59;
 }
@@ -1112,6 +1112,7 @@ h1, h2, h3 {
 .dca-eoy-table thead th {
   border-bottom: 2px solid #e8e6dc;
   font-weight: 700;
+  font-size: 0.78rem;
 }
 
 .dca-eoy-table tbody tr:nth-child(even) {
@@ -1297,7 +1298,7 @@ h1, h2, h3 {
 .dca-dividend-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1312,7 +1313,7 @@ h1, h2, h3 {
 .dca-dividend-table th {
   font-weight: 600;
   color: #5e5d59;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   border-bottom: 1px solid #87867f;
 }
 
@@ -1370,7 +1371,7 @@ h1, h2, h3 {
 
 .dca-bank-rate-btn {
   padding: 4px 10px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 500;
   background: #faf9f5;
   color: #5e5d59;
@@ -1392,7 +1393,7 @@ h1, h2, h3 {
 }
 
 .dca-bank-compare-sub {
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: #5e5d59;
   line-height: 1.5;
   margin: 0 0 14px 0;
@@ -1775,7 +1776,7 @@ h1, h2, h3 {
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-primary-fg);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
@@ -1877,7 +1878,7 @@ h1, h2, h3 {
 }
 
 .portfolio-rebal label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text-muted);
 }
@@ -1989,12 +1990,12 @@ h1, h2, h3 {
   padding: 7px 8px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-align: right;
 }
 
 .portfolio-weight-input span {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--color-text-muted);
 }
 
@@ -2274,14 +2275,14 @@ h1, h2, h3 {
 }
 
 .dca-subsection-title {
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 4px;
 }
 
 .dca-subsection-hint {
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   color: var(--color-text-muted);
   margin-bottom: 12px;
   line-height: 1.5;
@@ -2396,7 +2397,7 @@ h1, h2, h3 {
   padding: 6px 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   width: 100%;
   max-width: 200px;
   font-variant-numeric: tabular-nums;
@@ -3713,7 +3714,7 @@ h1, h2, h3 {
 
 .dca-storm-calm-text {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.6;
   color: #5e5d59;
 }
@@ -3876,7 +3877,7 @@ h1, h2, h3 {
   background: var(--color-surface);
   border: none;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-text);
   text-align: left;
@@ -3908,7 +3909,7 @@ h1, h2, h3 {
 
 .dca-explainer-body {
   padding: 18px 22px 22px;
-  font-size: 0.93rem;
+  font-size: 0.92rem;
   line-height: 1.65;
   color: var(--color-text);
 }
@@ -4067,7 +4068,7 @@ h1, h2, h3 {
 
 .dca-consist-sub {
   margin: 0 0 14px 0;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: #5e5d59;
   line-height: 1.5;
 }
@@ -4168,7 +4169,7 @@ h1, h2, h3 {
   background: #faf9f5;
   border-left: 3px solid #dc2626;
   border-radius: 4px;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   line-height: 1.55;
   color: #5e5d59;
 }
@@ -4209,7 +4210,7 @@ h1, h2, h3 {
 
 .dca-projection-sub {
   margin: 0 0 14px 0;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: #5e5d59;
   line-height: 1.5;
 }
@@ -4303,7 +4304,7 @@ h1, h2, h3 {
   background: #faf9f5;
   border-left: 3px solid #5e5d59;
   border-radius: 4px;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   line-height: 1.55;
   color: #5e5d59;
 }
@@ -4342,7 +4343,7 @@ h1, h2, h3 {
 
 .dca-goal-sub {
   margin: 0 0 14px 0;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: #5e5d59;
   line-height: 1.5;
 }
@@ -4509,7 +4510,7 @@ h1, h2, h3 {
   background: #faf9f5;
   border-left: 3px solid #5e5d59;
   border-radius: 4px;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   line-height: 1.55;
   color: #5e5d59;
 }
@@ -5119,7 +5120,7 @@ h1, h2, h3 {
 }
 
 .dca-rolling-stat-label {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: #5e5d59;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -5139,7 +5140,7 @@ h1, h2, h3 {
   background: #faf9f5;
   border-left: 3px solid #5e5d59;
   border-radius: 4px;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   line-height: 1.55;
   color: #5e5d59;
 }
