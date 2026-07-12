@@ -34,13 +34,34 @@ function DCAStatsTableImpl({ portfolios }: Props) {
           <thead>
             <tr>
               <th>Danh mục</th>
-              <th>Giá trị cuối kỳ</th>
-              <th>Tổng đầu tư</th>
-              <th>Lợi nhuận tích lũy</th>
-              <th>CAGR</th>
-              <th>MWRR</th>
-              <th>Sụt giảm tối đa</th>
-              <th>Profit Factor</th>
+              <th>
+                Giá trị cuối kỳ
+                <span className="dca-info-icon" title="Giá trị danh mục tại thời điểm cuối kỳ backtest.">?</span>
+              </th>
+              <th>
+                Tổng đầu tư
+                <span className="dca-info-icon" title="Tổng số tiền đã nạp vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
+              </th>
+              <th>
+                Lợi nhuận tích lũy
+                <span className="dca-info-icon" title="Lợi nhuận tích lũy trong kỳ backtest (giá trị cuối kỳ ÷ tổng đầu tư − 1).">?</span>
+              </th>
+              <th>
+                CAGR
+                <span className="dca-info-icon" title="Lợi nhuận tích lũy quy năm: (Giá trị cuối ÷ Tổng đầu tư)^(1/số năm) − 1. Cho biết nếu danh mục tăng đều mỗi năm thì mỗi năm lãi bao nhiêu %. Lưu ý: chỉ số này thường thấp hơn MWRR trong DCA vì giả định toàn bộ vốn đã hoạt động từ đầu.">?</span>
+              </th>
+              <th>
+                MWRR
+                <span className="dca-info-icon" title="Money-Weighted Rate of Return: lợi nhuận thực tế của nhà đầu tư, tính đến thời điểm và số tiền từng lần nạp (IRR). Chỉ số chính để đánh giá hiệu quả chiến lược DCA. Thường cao hơn CAGR vì nhận ra rằng phần lớn vốn DCA chỉ hoạt động trong thời gian ngắn hơn toàn kỳ.">?</span>
+              </th>
+              <th>
+                Sụt giảm tối đa
+                <span className="dca-info-icon" title="Mức sụt giảm tối đa: mức giảm lớn nhất tính từ đỉnh, cho thấy rủi ro lớn nhất khi đầu tư.">?</span>
+              </th>
+              <th>
+                Profit Factor
+                <span className="dca-info-icon" title="Tổng lợi nhuận các tuần tăng ÷ tổng lỗ các tuần giảm. Lớn hơn 1 = tổng lời nhiều hơn tổng lỗ. Ví dụ: 1.5× nghĩa là cứ 1 đồng lỗ thì lời được 1.5 đồng.">?</span>
+              </th>
             </tr>
           </thead>
           <tbody>
