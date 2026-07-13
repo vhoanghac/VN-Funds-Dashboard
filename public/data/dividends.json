@@ -11,6 +11,12 @@
       "payDate": "2025-06-06",
       "amountPerCert": 1400,
       "taxRate": 0.05
+    },
+    {
+      "exDate": "2026-07-13",
+      "payDate": "2026-07-31",
+      "amountPerCert": 1900,
+      "taxRate": 0.025
     }
   ]
 }

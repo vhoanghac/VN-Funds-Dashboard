@@ -4,6 +4,10 @@
  * VN market: fmarket trả về raw NAV. Vào ex-date, NAV rớt đúng bằng số cổ tức.
  * Nếu không adjust, biểu đồ hiệu suất sẽ thiếu phần lợi nhuận từ cổ tức.
  *
+ * Xác nhận chính thức từ DCDE (13/07/2026): từ 14/07/2026, giá NAV công bố
+ * trên app KHÔNG bao gồm cổ tức (ex-dividend) — đúng như giả định code này
+ * vẫn dùng từ trước. Không cần thay đổi gì, chỉ ghi lại làm căn cứ audit.
+ *
  * Cách làm: Yahoo Finance style tax-adjusted factor.
  *   factor = (closePreEx − dividend × (1 − tax)) / closePreEx
  *   Nhân tất cả giá TỪ ex-date TRỞ VỀ TRƯỚC với factor.
