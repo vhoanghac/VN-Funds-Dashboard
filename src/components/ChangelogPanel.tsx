@@ -4,6 +4,10 @@ const ENTRIES = [
     date: '12/07/2026',
     items: [
       'Bỏ tab Mô Phỏng: tab DCA giờ đã mô phỏng được cả đầu tư 1 lần (để "Số tiền đầu tư định kỳ" = 0) lẫn định kỳ, nên không cần tách riêng 2 tab nữa.',
+      'Thêm nhóm "Hiệu suất đầu tư" trong tab DCA, gom biểu đồ Giá trị tài sản, Bảng thống kê và Hiệu suất từng năm vào cùng một mục.',
+      'Thêm bảng "Các đợt sụt giảm lớn nhất" trong mục Kiên trì qua bão: liệt kê top 5 đợt sụt từ 5% trở lên, kèm ngày lập đỉnh, chạm đáy, hồi phục và tổng thời gian dưới đỉnh.',
+      'Bảng thống kê có thêm 3 cột: Sụt giảm trung bình, Dưới đỉnh lâu nhất, và Biến động (độ lệch chuẩn quy năm).',
+      'Thêm nút "Log" cho biểu đồ Giá trị tài sản, giúp nhìn rõ tốc độ tăng trưởng ở giai đoạn đầu khi giá trị còn nhỏ.',
     ],
   },
   {

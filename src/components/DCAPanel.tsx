@@ -5,6 +5,7 @@ import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { avgDrawdown, longestDrawdownDays, annualizedStdev } from '../utils/drawdownStats'
 import { parseCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -517,6 +518,9 @@ function DCAPanelImpl({ funds }: Props) {
       cagr: investorCagr,
       mwrr: r.mwrr,
       maxDrawdown: r.storm.maxDrawdown,
+      avgDrawdown: avgDrawdown(r.drawdown),
+      longestDrawdownDays: longestDrawdownDays(r.drawdown),
+      stdev: annualizedStdev(r.cumulative),
       profitFactor: r.profitFactor,
     }
   }), [validResults])
@@ -828,6 +832,10 @@ function DCAPanelImpl({ funds }: Props) {
       {/* ── Results ── */}
       {validResults.length > 0 && (
         <>
+          <div className="section-divider">
+            <span className="section-divider-label">Hiệu suất đầu tư</span>
+          </div>
+
           {/* Period info */}
           {startDate && endDate && (
             <div className="comparison-period" style={{ marginBottom: 16 }}>

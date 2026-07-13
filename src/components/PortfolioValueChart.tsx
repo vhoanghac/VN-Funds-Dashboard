@@ -25,6 +25,7 @@ const INVESTED_LINE_NAME = 'Đã đầu tư'
 
 function PortfolioValueChartImpl({ portfolios }: Props) {
   const [dimmed, setDimmed] = useState<Set<string>>(new Set())
+  const [logScale, setLogScale] = useState(false)
 
   const seriesKey = portfolios.map(p => p.name).join(',')
   const prevKeyRef = useRef(seriesKey)
@@ -52,10 +53,19 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
     <div className="chart-container">
       <div className="chart-header">
         <h3>Giá trị tài sản</h3>
-        <span
-          className="chart-tooltip-icon"
-          title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Bấm vào legend để làm mờ/hiện đường."
-        >?</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className={`log-scale-btn${logScale ? ' log-scale-btn-active' : ''}`}
+            onClick={() => setLogScale(v => !v)}
+            title="Chuyển sang trục logarithmic. Hữu ích khi xem rõ tốc độ tăng trưởng ở giai đoạn đầu, lúc giá trị còn nhỏ so với giai đoạn sau."
+          >
+            Log
+          </button>
+          <span
+            className="chart-tooltip-icon"
+            title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Bấm vào legend để làm mờ/hiện đường."
+          >?</span>
+        </div>
       </div>
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -69,6 +79,9 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
             tick={{ fontSize: 12 }}
           />
           <YAxis
+            scale={logScale ? 'log' : 'auto'}
+            domain={logScale ? ['auto', 'auto'] : ['auto', 'auto']}
+            allowDataOverflow={false}
             tickFormatter={formatVND}
             tick={{ fontSize: 12 }}
             width={80}

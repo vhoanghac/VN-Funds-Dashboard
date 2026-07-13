@@ -3824,6 +3824,25 @@ h1, h2, h3 {
   color: #141413;
 }
 
+/* Bảng các đợt sụt giảm lớn nhất (trong khối Kiên trì qua bão) */
+.dca-episodes-section {
+  margin-top: 16px;
+}
+
+.dca-episodes-portfolio {
+  margin-bottom: 14px;
+}
+
+.dca-episodes-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
 .dca-storm-takeaway {
   display: flex;
   gap: 12px;

@@ -9,6 +9,9 @@ interface StatsRow {
   cagr: number | null
   mwrr: number | null
   maxDrawdown: number | null
+  avgDrawdown: number | null
+  longestDrawdownDays: number | null
+  stdev: number | null
   profitFactor: number | null
 }
 
@@ -59,6 +62,18 @@ function DCAStatsTableImpl({ portfolios }: Props) {
                 <span className="dca-info-icon" title="Mức sụt giảm tối đa: mức giảm lớn nhất tính từ đỉnh, cho thấy rủi ro lớn nhất khi đầu tư.">?</span>
               </th>
               <th>
+                Sụt giảm TB
+                <span className="dca-info-icon" title="Trung bình mức sụt giảm so với đỉnh, tính trên tất cả các ngày trong kỳ (ngày lập đỉnh mới tính là 0%). Cho biết mức 'chìm dưới đỉnh' điển hình bạn phải chịu đựng, thay vì chỉ nhìn điểm tệ nhất.">?</span>
+              </th>
+              <th>
+                Dưới đỉnh lâu nhất
+                <span className="dca-info-icon" title="Khoảng thời gian dài nhất danh mục nằm dưới đỉnh cũ, tính từ lúc lập đỉnh đến khi vượt lại đỉnh đó. Đây là khoảng thời gian thử thách sự kiên nhẫn nhất của nhà đầu tư.">?</span>
+              </th>
+              <th>
+                Biến động
+                <span className="dca-info-icon" title="Độ lệch chuẩn quy năm của lợi nhuận quỹ (TWRR). Con số càng cao, giá trị danh mục dao động càng mạnh, hành trình càng 'xóc'.">?</span>
+              </th>
+              <th>
                 Profit Factor
                 <span className="dca-info-icon" title="Tổng lợi nhuận các tuần tăng ÷ tổng lỗ các tuần giảm. Lớn hơn 1 = tổng lời nhiều hơn tổng lỗ. Ví dụ: 1.5× nghĩa là cứ 1 đồng lỗ thì lời được 1.5 đồng.">?</span>
               </th>
@@ -81,6 +96,11 @@ function DCAStatsTableImpl({ portfolios }: Props) {
                   <td className={p.maxDrawdown !== null && p.maxDrawdown < 0 ? 'dca-loss' : ''}>
                     {p.maxDrawdown !== null ? (p.maxDrawdown * 100).toFixed(2) + '%' : '—'}
                   </td>
+                  <td className={p.avgDrawdown !== null && p.avgDrawdown < 0 ? 'dca-loss' : ''}>
+                    {p.avgDrawdown !== null ? (p.avgDrawdown * 100).toFixed(2) + '%' : '—'}
+                  </td>
+                  <td>{formatDuration(p.longestDrawdownDays)}</td>
+                  <td>{p.stdev !== null ? (p.stdev * 100).toFixed(2) + '%' : '—'}</td>
                   <td className={p.profitFactor !== null ? (p.profitFactor >= 1 ? 'dca-profit' : 'dca-loss') : ''}>
                     {p.profitFactor !== null ? p.profitFactor.toFixed(2) + '×' : '—'}
                   </td>
@@ -109,4 +129,12 @@ function formatSignedPercent(v: number | null): string {
 
 function formatVND(value: number): string {
   return Math.round(value).toLocaleString('vi-VN') + ' đ'
+}
+
+/** Số ngày → "2.5 năm" / "8 tháng" / "45 ngày" */
+function formatDuration(days: number | null): string {
+  if (days === null) return '—'
+  if (days >= 365) return (days / 365.25).toFixed(1) + ' năm'
+  if (days >= 60) return Math.round(days / 30.44) + ' tháng'
+  return days + ' ngày'
 }

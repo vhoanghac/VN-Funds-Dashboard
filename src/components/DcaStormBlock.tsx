@@ -13,6 +13,7 @@ import {
   AreaChart, ReferenceLine,
 } from 'recharts'
 import type { DCAStormStats } from '../utils/dca'
+import { drawdownEpisodes } from '../utils/drawdownStats'
 
 export interface StormPortfolio {
   id: string
@@ -108,6 +109,8 @@ function DcaStormBlockImpl({ portfolios }: Props) {
 
       <MarketDrawdownChart portfolios={portfolios} />
       <AccountDrawdownChart portfolios={portfolios} worstPortfolioId={worst.id} marketMaxDD={s.maxDrawdown} />
+
+      <DrawdownEpisodesSection portfolios={portfolios} />
 
       <StormTakeaway storm={s} worstName={worst.name} multi={portfolios.length > 1} />
     </div>
@@ -327,6 +330,85 @@ function renderUnderwaterChart(
     )}
     </>
   )
+}
+
+/**
+ * DrawdownEpisodesSection: bảng "Các đợt sụt giảm lớn nhất" kiểu Testfolio.
+ *
+ * Khối stats phía trên chỉ kể về cơn bão TỆ NHẤT; bảng này liệt kê top 5 đợt
+ * sụt ≥ 5% của từng danh mục: sâu bao nhiêu, đỉnh/đáy lúc nào, mất bao lâu để
+ * vượt lại đỉnh cũ. Người mới nhìn vào sẽ thấy: sụt sâu đã từng xảy ra N lần
+ * trong lịch sử, và (đa số) đều đã hồi phục.
+ */
+function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] }) {
+  const perPortfolio = useMemo(() => portfolios.map(p => ({
+    id: p.id,
+    name: p.name,
+    color: p.color,
+    episodes: drawdownEpisodes(p.drawdown).slice(0, 5),
+  })).filter(p => p.episodes.length > 0), [portfolios])
+
+  if (perPortfolio.length === 0) return null
+
+  return (
+    <div className="dca-episodes-section">
+      <div className="dca-storm-chart-title">Các đợt sụt giảm lớn nhất</div>
+      <div className="dca-storm-chart-sub">
+        Top 5 đợt sụt từ 5% trở lên của mỗi danh mục. "Dưới đỉnh" là tổng thời
+        gian từ lúc lập đỉnh đến khi vượt lại đỉnh cũ.
+      </div>
+
+      {perPortfolio.map(p => (
+        <div key={p.id} className="dca-episodes-portfolio">
+          {portfolios.length > 1 && (
+            <div className="dca-episodes-name">
+              <span className="perf-dot" style={{ background: p.color }} />
+              {p.name}
+            </div>
+          )}
+          <div className="dca-stats-table-scroll">
+            <table className="dca-stats-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Sụt giảm</th>
+                  <th>Từ đỉnh</th>
+                  <th>Chạm đáy</th>
+                  <th>Hồi phục</th>
+                  <th>Dưới đỉnh</th>
+                </tr>
+              </thead>
+              <tbody>
+                {p.episodes.map((e, i) => (
+                  <tr key={e.peakDate}>
+                    <td>{i + 1}</td>
+                    <td className="dca-loss">{(e.depth * 100).toFixed(1)}%</td>
+                    <td>{formatMonthYear(e.peakDate)}</td>
+                    <td>{formatMonthYear(e.troughDate)}</td>
+                    <td>{e.recoveryDate ? formatMonthYear(e.recoveryDate) : 'chưa hồi phục'}</td>
+                    <td>{formatEpisodeDuration(e.totalDays)}{e.recoveryDate === null ? ' *' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {perPortfolio.some(p => p.episodes.some(e => e.recoveryDate === null)) && (
+        <div className="dca-eoy-footnote">
+          * Đợt sụt giảm vẫn đang diễn ra, thời gian tính đến ngày dữ liệu gần nhất.
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Số ngày → "2.5 năm" / "8 tháng" / "45 ngày" */
+function formatEpisodeDuration(days: number): string {
+  if (days >= 365) return (days / 365.25).toFixed(1) + ' năm'
+  if (days >= 60) return Math.round(days / 30.44) + ' tháng'
+  return days + ' ngày'
 }
 
 function formatMonthYearShort(dateStr: string): string {
