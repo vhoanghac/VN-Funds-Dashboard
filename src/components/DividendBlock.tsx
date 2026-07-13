@@ -62,7 +62,7 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
         <div className="dca-journey-headline">
           Trong kỳ DCA này, quỹ <strong>{Array.from(byFund.keys()).join(', ')}</strong>{' '}
           đã chi trả cổ tức. Dashboard đã điều chỉnh giá để phản ánh giả định tái đầu
-          tư sau thuế TNCN 5%, nên hiệu suất bạn thấy ở mọi biểu đồ đã bao gồm phần
+          tư sau thuế TNCN, nên hiệu suất bạn thấy ở mọi biểu đồ đã bao gồm phần
           lợi nhuận từ cổ tức.
         </div>
 
@@ -80,7 +80,7 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
             <div key={fundId} className="dca-dividend-group">
               <div className="dca-dividend-fund-head">
                 Quỹ <strong>{fundId}</strong> — {evs.length} đợt chi trả trong kỳ
-                {' '}<span className="dca-dividend-muted">(đã trừ thuế TNCN 5%)</span>
+                {' '}<span className="dca-dividend-muted">(đã trừ thuế TNCN)</span>
               </div>
 
               {portfolioStats.length === 0 && (
@@ -119,7 +119,9 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
                         <th>Ngày nhận</th>
                         <th className="num">Cổ tức/ccq</th>
                         <th className="num">CCQ đang nắm</th>
-                        <th className="num">Bạn nhận</th>
+                        <th className="num">Tiền mặt trước thuế</th>
+                        <th className="num">Thuế TNCN</th>
+                        <th className="num">Tiền mặt thực nhận</th>
                         <th className="num">Mua thêm</th>
                       </tr>
                     </thead>
@@ -128,8 +130,10 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
                         <tr key={ev.exDate}>
                           <td>{formatDate(ev.exDate)}</td>
                           <td>{formatDate(ev.payDate)}</td>
-                          <td className="num">{formatVNDFull(ev.gross / ev.unitsAtEx)} → {formatVNDFull(ev.net / ev.unitsAtEx)}</td>
+                          <td className="num">{formatVNDFull(ev.gross / ev.unitsAtEx)}</td>
                           <td className="num">{formatNumber(ev.unitsAtEx)}</td>
+                          <td className="num">{formatVNDFull(ev.gross)}</td>
+                          <td className="num">{formatPercent(ev.tax / ev.gross)}</td>
                           <td className="num">{formatVNDFull(ev.net)}</td>
                           <td className="num">+{formatNumber(ev.sharesAdded)}</td>
                         </tr>
@@ -138,6 +142,8 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
                     <tfoot>
                       <tr>
                         <td colSpan={4}>Tổng</td>
+                        <td className="num">{formatVNDFull(s.totalGross)}</td>
+                        <td className="num"></td>
                         <td className="num">{formatVNDFull(s.totalNet)}</td>
                         <td className="num">+{formatNumber(s.totalSharesAdded)} ccq</td>
                       </tr>
@@ -160,7 +166,7 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
             làm việc này mà họ chỉ cung cấp raw NAV.
             {' '}Dữ liệu giá trên dashboard đã được điều chỉnh dựa trên các đợt chia cổ
             tức để đảm bảo tính nhất quán. Hệ số điều chỉnh được tính toán dựa trên giá
-            trước ngày chốt quyền và giá trị cổ tức thực nhận (sau thuế 5%).
+            trước ngày chốt quyền và giá trị cổ tức thực nhận (sau thuế TNCN).
           </div>
         </div>
       </div>
@@ -177,4 +183,8 @@ function formatDate(dateStr: string): string {
 
 function formatNumber(n: number): string {
   return n.toLocaleString('vi-VN', { maximumFractionDigits: 2 })
+}
+
+function formatPercent(rate: number): string {
+  return `${(rate * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`
 }

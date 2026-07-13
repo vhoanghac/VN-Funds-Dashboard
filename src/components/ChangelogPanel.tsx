@@ -8,6 +8,7 @@ const ENTRIES = [
       'Thêm bảng "Các đợt sụt giảm lớn nhất" trong mục Kiên trì qua bão: liệt kê top 5 đợt sụt từ 5% trở lên, kèm ngày lập đỉnh, chạm đáy, hồi phục và tổng thời gian dưới đỉnh.',
       'Bảng thống kê có thêm 3 cột: Sụt giảm trung bình, Dưới đỉnh lâu nhất, và Biến động (độ lệch chuẩn quy năm).',
       'Thêm nút "Log" cho biểu đồ Giá trị tài sản, giúp nhìn rõ tốc độ tăng trưởng ở giai đoạn đầu khi giá trị còn nhỏ.',
+      'Cập nhật bảng cổ tức DCDE chi tiết hơn: thêm cột "Thuế TNCN" và "Tiền mặt trước thuế" bên cạnh "Tiền mặt thực nhận", giúp thấy rõ số tiền cổ tức gốc trước khi bị khấu trừ thuế.',
     ],
   },
   {
