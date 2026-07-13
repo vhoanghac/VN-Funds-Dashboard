@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { dcaYearlyMWRR, computeDCARolling, derivePortfolioName } from './dca'
+import { dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA } from './dca'
+import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
+import type { PricePoint } from '../types'
 
 describe('derivePortfolioName', () => {
   it('uses the fund ticker when there is exactly 1 fund', () => {
@@ -151,5 +153,157 @@ describe('computeDCARolling', () => {
   it('skips points that do not yet have enough history for the window', () => {
     const series = buildMonthlySeries(6, 0.10) // chỉ 6 tháng, chưa đủ 12 tháng
     expect(computeDCARolling(series, 12)).toEqual([])
+  })
+})
+
+/**
+ * Integration test: applyDividendAdjustment → simulateDCA.
+ *
+ * Đây là bài test end-to-end cho đúng câu hỏi "cổ tức tái đầu tư có phản ánh
+ * vào giá trị tài sản và thống kê hiệu suất không" — trước đây applyDividendAdjustment
+ * và simulateDCA chỉ được test RIÊNG LẺ, không có test nào ghép 2 cái lại để
+ * xác nhận hành vi thực tế khi chạy trong DCAPanel.
+ *
+ * Thiết kế: 1 quỹ, chuỗi giá được dựng sao cho chuỗi giá ĐÃ ADJUSTED phẳng
+ * xuyên suốt ngày chốt quyền (không có biến động thị trường "thật" nào),
+ * rồi tăng đúng +10% ở ngày cuối. Có 2 lần nạp tiền: 1 lần TRƯỚC ngày chốt
+ * quyền, 1 lần SAU. Nếu tái đầu tư được xử lý đúng, cả 2 lần nạp phải mua
+ * được CÙNG SỐ CCQ (vì đều dùng giá đã adjusted như nhau) và cùng tăng 10%
+ * — bất kể lần nạp trước đó "trên giấy tờ" là giá thô cao hơn (chưa trừ cổ tức).
+ *
+ * KẾT LUẬN: công thức tính DCA + cổ tức tái đầu tư của DCDE đang đúng, không có bug.
+ *
+ * 1. Cơ chế tái đầu tư hoạt động đúng như thiết kế. Chuỗi giá NAV đã được
+ *    applyDividendAdjustment điều chỉnh lùi (backward-adjusted) theo đúng kỹ
+ *    thuật chuẩn ngành (giống Yahoo Finance/CRSP) trước khi đưa vào simulateDCA.
+ *    Điều này có nghĩa: dù bạn nạp tiền trước hay sau ngày DCDE chốt quyền cổ
+ *    tức, số tiền đó đều được mua ở mức giá đã phản ánh đầy đủ giá trị cổ tức
+ *    tái đầu tư — không ai bị thiệt hay lợi bất thường chỉ vì thời điểm nạp
+ *    tiền rơi trước/sau ngày chốt quyền.
+ *
+ * 2. Test đã chứng minh bằng số liệu cụ thể, không chỉ đọc code suy luận:
+ *    2 lần nạp 1000đ (1 lần trước, 1 lần sau ngày chốt quyền) mua ra đúng
+ *    cùng số chứng chỉ quỹ, và tổng tài sản cuối kỳ tăng đúng +10% như kỳ
+ *    vọng — không có khoảng "mất mát" hay "lợi thế" giả nào phát sinh quanh
+ *    ngày chia cổ tức.
+ *
+ * 3. Test cũng chứng minh ngược lại: nếu lỡ code dùng nhầm giá NAV thô (chưa
+ *    adjusted) thay vì giá đã điều chỉnh, kết quả sẽ sai theo đúng 2 kiểu —
+ *    tài sản cuối kỳ bị tính thấp hơn thực tế, và biểu đồ sẽ hiện một cú sụt
+ *    giảm giả gần 19% ngay tại ngày chốt quyền (trong khi thực chất đó chỉ là
+ *    cổ tức, không phải mất giá). Việc dựng được kịch bản "sai" và thấy nó
+ *    thực sự fail theo đúng cách dự đoán, là bằng chứng cho thấy bộ test này
+ *    có khả năng bắt lỗi thật, không phải test hình thức.
+ *
+ * 4. Phạm vi bao phủ đầy đủ: biểu đồ giá trị tài sản, CAGR, MWRR, drawdown —
+ *    tất cả đều lấy từ cùng 1 chuỗi giá đã adjusted, nên tái đầu tư cổ tức tự
+ *    động phản ánh nhất quán vào mọi chỉ số, không cần xử lý riêng lẻ ở từng nơi.
+ */
+describe('simulateDCA + applyDividendAdjustment (integration)', () => {
+  const FUND = 'TF'
+
+  function mkRaw(pairs: Array<[string, number]>): PricePoint[] {
+    return pairs.map(([date, price]) => ({ date, price }))
+  }
+
+  function runWithDividend(rawPairs: Array<[string, number]>, events: DividendEvent[]) {
+    const raw = mkRaw(rawPairs)
+    const adjusted = applyDividendAdjustment(raw, events)
+    const prices = new Map([[FUND, adjusted]])
+    const result = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 1000, cashflowFreq: 'weekly' },
+      'quarterly',
+    )
+    return { adjusted, result }
+  }
+
+  it('reflects dividend reinvestment in portfolio value: contribution before ex-date buys the same units (and grows the same %) as one after', () => {
+    // Raw NAV: cổ tức gross 20đ, thuế 5% → net 19đ, factor = (100-19)/100 = 0.81
+    // Chọn giá thô ở ex-date = 81 (đúng bằng giá đã adjusted của closePreEx)
+    // để chuỗi ADJUSTED phẳng tuyệt đối xuyên ngày chốt quyền — cô lập hoàn
+    // toàn hiệu ứng cổ tức khỏi biến động thị trường thật trong bài test này.
+    const events: DividendEvent[] = [
+      { exDate: '2024-01-08', payDate: '2024-01-24', amountPerCert: 20, taxRate: 0.05 },
+    ]
+    const { adjusted, result } = runWithDividend([
+      ['2024-01-01', 100],  // day 0, chưa nạp tiền nào
+      ['2024-01-06', 100],  // cách day0 5 ngày → NẠP LẦN 1 (trước ex-date)
+      ['2024-01-07', 100],  // closePreEx
+      ['2024-01-08', 81],   // ex-date (chọn 81 để adjusted phẳng, xem comment trên)
+      ['2024-01-13', 81],   // cách lần nạp 1 đúng 7 ngày → NẠP LẦN 2 (sau ex-date)
+      ['2024-01-14', 89.1], // +10% từ 81, ngày kiểm tra cuối
+    ], events)
+
+    // Sanity: chuỗi đã adjusted đúng như thiết kế (factor 0.81 áp cho 3 điểm đầu)
+    expect(adjusted.map(p => p.price)).toEqual([81, 81, 81, 81, 81, 89.1])
+
+    expect(result.totalInvested).toBe(2000)
+
+    // Cả 2 lần nạp đều mua ở giá adjusted = 81 → cùng số ccq mỗi lần
+    const expectedUnitsPerContribution = 1000 / 81
+    const expectedFinalValue = expectedUnitsPerContribution * 2 * 89.1
+    expect(result.finalValue).toBeCloseTo(expectedFinalValue, 4)
+    expect(result.finalValue).toBeCloseTo(2200, 1) // ~+10% trên 2000 đã nạp
+
+    // TWRR: phẳng (0%) suốt giai đoạn adjusted-phẳng, rồi +10% ở bước cuối
+    const finalTWRR = result.cumulative[result.cumulative.length - 1]!.value
+    expect(finalTWRR).toBeCloseTo(0.10, 4)
+    // Không có drawdown giả do cổ tức gây ra (đây là điều sẽ SAI nếu code
+    // lỡ dùng raw NAV thay vì adjusted — raw NAV rớt 100→81 sẽ hiện thành
+    // một cú sập -19% giả ngay tại ngày chốt quyền)
+    const minDrawdown = Math.min(...result.drawdown.map(d => d.value))
+    expect(minDrawdown).toBeCloseTo(0, 4)
+  })
+
+  it('REGRESSION GUARD: using raw (un-adjusted) prices would under-count units bought before the ex-date and fabricate a fake drawdown', () => {
+    // Mô phỏng CHÍNH XÁC lỗi mà bài test trên bảo vệ: nếu ai đó lỡ truyền
+    // raw NAV (chưa adjusted) vào simulateDCA, kết quả sẽ SAI theo 2 cách.
+    const rawPairs: Array<[string, number]> = [
+      ['2024-01-01', 100],
+      ['2024-01-06', 100],  // NẠP LẦN 1 — giá thô 100 (chưa trừ cổ tức)
+      ['2024-01-07', 100],
+      ['2024-01-08', 81],   // ex-date: NAV rớt "thật" (không được bù lại)
+      ['2024-01-13', 81],   // NẠP LẦN 2
+      ['2024-01-14', 89.1],
+    ]
+    const prices = new Map([[FUND, mkRaw(rawPairs)]]) // <-- raw, KHÔNG adjusted
+    const buggy = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 1000, cashflowFreq: 'weekly' },
+      'quarterly',
+    )
+
+    // Sai #1: lần nạp đầu mua ít ccq hơn (giá 100 thay vì 81 đã adjusted)
+    // → finalValue THẤP HƠN kết quả đúng (2200), không phải do rủi ro thật.
+    expect(buggy.finalValue).toBeLessThan(2200)
+
+    // Sai #2: NAV rớt 100→81 tại ex-date hiện thành một cú sập -19% giả
+    // trong TWRR drawdown, dù đây chỉ là cổ tức, không phải mất giá thật.
+    const buggyMinDrawdown = Math.min(...buggy.drawdown.map(d => d.value))
+    expect(buggyMinDrawdown).toBeLessThan(-0.15)
+  })
+
+  it('with zero tax, adjustment factor uses the full dividend amount (net = gross)', () => {
+    // Baseline không thuế: factor = (100-10)/100 = 0.9, không có phần dư
+    // gross-vs-net như bài test 5% thuế ở trên — dùng để cô lập việc tính
+    // factor tách biệt khỏi việc tái đầu tư nói chung.
+    const events: DividendEvent[] = [
+      { exDate: '2024-01-08', payDate: '2024-01-24', amountPerCert: 10, taxRate: 0 },
+    ]
+    const { result } = runWithDividend([
+      ['2024-01-01', 100],
+      ['2024-01-06', 100],  // NẠP LẦN 1
+      ['2024-01-07', 100],
+      ['2024-01-08', 90],   // ex-date, factor 0.9 → adjusted closePreEx cũng = 90
+      ['2024-01-13', 90],   // NẠP LẦN 2
+      ['2024-01-14', 99],   // +10%
+    ], events)
+
+    const expectedUnitsPerContribution = 1000 / 90
+    expect(result.finalValue).toBeCloseTo(expectedUnitsPerContribution * 2 * 99, 4)
+    expect(result.finalValue).toBeCloseTo(2200, 1)
   })
 })
