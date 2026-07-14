@@ -5,6 +5,7 @@ import { CompareTab } from './components/CompareTab'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
+import { WallOfWorryPanel } from './components/WallOfWorryPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 
 export function App() {
@@ -60,6 +61,12 @@ export function App() {
           Bitcoin
         </button>
         <button
+          className={`tab ${state.tab === 'wallofworry' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'wallofworry' })}
+        >
+          Wall of Worry
+        </button>
+        <button
           className={`tab ${state.tab === 'changelog' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'changelog' })}
         >
@@ -95,6 +102,11 @@ export function App() {
       {/* Bitcoin Tab */}
       <div style={{ display: state.tab === 'bitcoin' ? undefined : 'none' }}>
         <BitcoinPanel funds={metadata} />
+      </div>
+
+      {/* Wall of Worry Tab */}
+      <div style={{ display: state.tab === 'wallofworry' ? undefined : 'none' }}>
+        <WallOfWorryPanel />
       </div>
 
       {/* Changelog Tab */}

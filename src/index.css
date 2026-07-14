@@ -445,6 +445,12 @@ h1, h2, h3 {
   font-weight: 600;
 }
 
+/* :hover có specificity cao hơn .log-scale-btn-active nên phải ghi đè riêng,
+   nếu không chữ sẽ thành cam-trên-cam (tàng hình) khi hover nút đang active */
+.log-scale-btn-active:hover {
+  color: var(--color-primary-fg);
+}
+
 .bitcoin-description {
   color: var(--color-text-muted);
   font-size: 0.9rem;
@@ -5170,3 +5176,227 @@ h1, h2, h3 {
 
 
 
+
+/* ── Wall of Worry tab ── */
+
+.wow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 2px 18px;
+}
+
+.wow-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #5e5d59;
+}
+
+.wow-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.wow-events-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.wow-events-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: #faf9f5;
+}
+
+.wow-events-header-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7A7574;
+}
+
+.wow-hide-all-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 2px;
+}
+
+.wow-hide-all-btn:hover {
+  color: #8a3d24;
+}
+
+.wow-events-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wow-event-row {
+  border-bottom: 1px solid #eeece4;
+}
+
+.wow-event-row:last-child {
+  border-bottom: none;
+}
+
+.wow-event-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+}
+
+.wow-event-row:hover .wow-event-row-main {
+  background: #faf9f5;
+}
+
+.wow-event-date {
+  flex-shrink: 0;
+  width: 76px;
+  font-size: 0.8rem;
+  color: #7A7574;
+  font-variant-numeric: tabular-nums;
+}
+
+.wow-event-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.wow-event-title-btn {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #141413;
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+}
+
+.wow-event-title-btn:hover {
+  border-bottom-color: var(--color-border);
+}
+
+.wow-event-title-btn[aria-expanded="true"] {
+  color: var(--color-primary);
+}
+
+.wow-event-checkbox {
+  flex-shrink: 0;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.wow-event-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.wow-event-checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-border);
+  display: inline-block;
+  position: relative;
+}
+
+.wow-event-checkbox input:checked + .wow-event-checkbox-box {
+  background: #141413;
+  border-color: #141413;
+}
+
+.wow-event-checkbox input:checked + .wow-event-checkbox-box::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.wow-event-checkbox input:focus-visible + .wow-event-checkbox-box {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.wow-shown-count {
+  font-size: 0.78rem;
+  color: #7A7574;
+  white-space: nowrap;
+}
+
+.wow-event-desc {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #5e5d59;
+  padding: 0 14px 12px calc(76px + 10px + 8px + 10px);
+}
+
+.wow-about p {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: #141413;
+  margin: 0 0 12px;
+}
+
+.wow-about .wow-disclaimer {
+  font-size: 0.85rem;
+  color: #7A7574;
+  font-style: italic;
+  margin-bottom: 0;
+}
+
+.wow-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wow-event-source {
+  font-size: 0.8rem;
+  color: #7A7574;
+  text-decoration: none;
+  border-bottom: 1px dashed #b5b1a8;
+  white-space: nowrap;
+}
+
+.wow-event-source:hover {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.wow-hidden-note {
+  margin: 10px 2px 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #7A7574;
+}
