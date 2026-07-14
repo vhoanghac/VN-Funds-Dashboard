@@ -239,7 +239,7 @@ function GoalTakeaway({
   if (ratio === null || currentMonthly <= 0) {
     ratioText = 'Đây là con số cần nạp đều đặn mỗi tháng trong suốt kỳ hạn trên.'
   } else if (ratio <= 1.2) {
-    ratioText = `So với mức bạn đang nạp bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), con số này gần tương đương. Bạn đang đi đúng hướng, chỉ cần giữ kỷ luật nạp đều đặn.`
+    ratioText = `So với mức bạn đang nạp bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), con số này gần tương đương. Bạn đang đi đúng hướng, chỉ cần tiếp tục nạp đều đặn qua từng tháng.`
   } else if (ratio <= 2) {
     ratioText = `So với mức bạn đang nạp bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), gấp khoảng ${ratio.toFixed(1)} lần. Khoảng cách này có thể thu hẹp bằng cách kéo dài thời gian, hoặc tăng dần số tiền nạp mỗi khi lương tăng.`
   } else {

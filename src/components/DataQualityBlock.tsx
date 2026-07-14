@@ -119,8 +119,8 @@ export function DataQualityBlock({
           <p className="dq-intro">
             Mỗi quỹ có lịch sử dữ liệu khác nhau. Một số quỹ mới lập chỉ có vài
             năm, một số quỹ cũ có thể bị thiếu giá trong các đợt đặc biệt như
-            COVID. Dashboard này công bố giới hạn để bạn cẩn thận hơn trong
-            việc ra quyết định dựa trên sự thiếu sót của dữ liệu.
+            COVID. Dashboard này công khai những giới hạn đó để bạn cẩn thận
+            hơn khi đọc các con số bên dưới.
           </p>
 
           <div className="dq-timelines">

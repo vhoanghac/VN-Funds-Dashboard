@@ -166,8 +166,8 @@ function WinnerSection({ stats }: { stats: FundStats[] }) {
             tương đương {(gap * 100).toFixed(1)} điểm phần trăm.{' '}
           </>
         ) : null}
-        Con số đẹp. Nhưng "dẫn đầu" trong quá khứ chưa kể hết câu chuyện. Đọc
-        tiếp 4 phần dưới.
+        Con số ấn tượng, nhưng "dẫn đầu" trong quá khứ chưa kể hết câu chuyện.
+        Đọc tiếp 4 phần dưới để thấy bức tranh đầy đủ hơn.
       </p>
     </section>
   )
@@ -186,8 +186,8 @@ function EfficiencySection({ stats }: { stats: FundStats[] }) {
       <p className="cmp-sec-lead">
         Cùng một mức lãi hàng năm, quỹ nào có đường đi ít gập ghềnh hơn thì
         "chất lượng" hơn. Tỉ số CAGR chia cho volatility (biến động quy năm)
-        cho bạn một điểm số gọn để so sánh. Số càng lớn nghĩa là mỗi 1% rủi ro
-        bạn gánh đang được đền bằng càng nhiều lợi nhuận.
+        cho bạn một con số gọn để so sánh: số càng lớn nghĩa là mỗi 1% rủi ro
+        bạn gánh đang được đền đáp bằng càng nhiều lợi nhuận.
       </p>
 
       <div className="cmp-table">
@@ -241,11 +241,11 @@ function ConsistencySection({ stats }: { stats: FundStats[] }) {
 
   return (
     <section className="cmp-sec">
-      <h3 className="cmp-sec-title">3. Nếu tôi giữ 12 tháng, xác suất có lãi là bao nhiêu?</h3>
+      <h3 className="cmp-sec-title">3. Nếu bạn giữ 12 tháng, xác suất có lãi là bao nhiêu?</h3>
       <p className="cmp-sec-lead">
-        Lấy tất cả các khoảng 12 tháng liên tiếp trong lịch sử quỹ. Trong bao nhiêu
-        phần trăm số đó, bạn kết thúc với lợi nhuận dương? Đây là thước đo "mức độ
-        tin cậy" dễ cảm nhận nhất cho nhà đầu tư giữ dài hạn.
+        Giả sử bạn xét tất cả các khoảng 12 tháng liên tiếp trong lịch sử quỹ:
+        trong bao nhiêu phần trăm số đó, bạn kết thúc với lợi nhuận dương? Đây
+        là thước đo "mức độ tin cậy" dễ cảm nhận nhất cho nhà đầu tư giữ dài hạn.
       </p>
 
       <div className="cmp-chart">
@@ -278,9 +278,9 @@ function ConsistencySection({ stats }: { stats: FundStats[] }) {
             {(worst.posRate * 100).toFixed(0)}%.{' '}
           </>
         ) : null}
-        Con số cao không đảm bảo tương lai sẽ giống. Nhưng nó cho bạn biết quỹ
-        có quen với việc "đi lên trong 1 năm" hay chưa. Nếu bạn là nhà đầu tư
-        mới, con số này quan trọng hơn CAGR.
+        Con số cao không đảm bảo tương lai sẽ giống, nhưng nó cho bạn biết
+        trong quá khứ quỹ có thường xuyên đi lên trong vòng 1 năm hay không.
+        Nếu bạn là nhà đầu tư mới, con số này quan trọng hơn CAGR.
       </p>
     </section>
   )
@@ -343,8 +343,8 @@ function DrawdownSection({ stats }: { stats: FundStats[] }) {
         {' '}Đỡ nhất là <strong>{best.id}</strong>{' '}
         ({(best.maxDD * 100).toFixed(1)}%
         {best.recoveryWeeks !== null ? `, hồi trong ${formatRecovery(best.recoveryWeeks)}` : ''}).
-        {' '}Trước khi quyết định, hãy tự hỏi: tôi có chịu nổi mức lỗ tạm thời như
-        vậy mà không bán tháo không?
+        {' '}Trước khi quyết định, hãy tự hỏi: liệu bạn có chịu nổi mức lỗ tạm
+        thời như vậy mà không bán tháo?
       </p>
     </section>
   )
