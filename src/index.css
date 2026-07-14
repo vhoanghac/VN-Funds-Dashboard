@@ -5400,3 +5400,13 @@ h1, h2, h3 {
   line-height: 1.55;
   color: #7A7574;
 }
+
+.btc-contrib-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btc-contrib-btn:disabled:hover {
+  border-color: #e8e6dc;
+  color: #5e5d59;
+}

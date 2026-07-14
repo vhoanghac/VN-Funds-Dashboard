@@ -6,6 +6,7 @@ const ENTRIES = [
       'Thêm tab "Wall of Worry": biểu đồ giá E1VFVN30 từ ngày niêm yết, đánh dấu 25 sự kiện bất ổn lớn (thế giới, vĩ mô Việt Nam, doanh nghiệp Việt Nam) từng khiến nhà đầu tư tin rằng thị trường sẽ giảm.',
       'Danh sách sự kiện có checkbox bật/tắt hiện từng sự kiện trên biểu đồ, bấm vào tên để xem mô tả kèm link nguồn báo chí chính thống.',
       'Sửa lỗi hiển thị: nút "Log"/"Sự kiện" đang bật (nền cam) mà rê chuột vào thì chữ bị chìm vào nền (chữ cam trên nền cam).',
+      'Sửa lỗi biểu đồ "Đóng góp của Bitcoin vào lợi nhuận tích lũy" trong tab Bitcoin.',
     ],
   },
   {

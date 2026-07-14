@@ -74,6 +74,15 @@ function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Pro
   const windowSize = PERIOD_OPTIONS[periodIdx]!.months
   const btcLabel = `Danh mục ${btcPercents[weightIdx]}% BTC`
 
+  // Rolling window P tháng chỉ ra kết quả nếu khoảng thời gian đang chọn ở
+  // panel cha ("Thời hạn") dài HƠN P tháng. Disable nút period nào không đủ
+  // dữ liệu để người dùng không bấm được vào trạng thái rỗng.
+  const periodAvailability = useMemo(() => {
+    const baseReturns = portfolioReturns[0]
+    if (!baseReturns) return PERIOD_OPTIONS.map(() => false)
+    return PERIOD_OPTIONS.map(opt => rollingCumulativeReturns(baseReturns, opt.months).length > 0)
+  }, [portfolioReturns])
+
   const chartData = useMemo<ChartPoint[]>(() => {
     const baseReturns = portfolioReturns[0]
     const btcReturns  = portfolioReturns[weightIdx + 1]
@@ -165,15 +174,20 @@ function BtcContributionChartImpl({ portfolioReturns, btcPercents, fundId }: Pro
         <div className="btc-contrib-ctrl-row">
           <span className="btc-contrib-ctrl-label">Rolling cumulative returns</span>
           <div className="btc-contrib-btn-group">
-            {PERIOD_OPTIONS.map((opt, i) => (
-              <button
-                key={opt.months}
-                className={`btc-contrib-btn${periodIdx === i ? ' btc-contrib-btn--active' : ''}`}
-                onClick={() => setPeriodIdx(i)}
-              >
-                {opt.label}
-              </button>
-            ))}
+            {PERIOD_OPTIONS.map((opt, i) => {
+              const available = periodAvailability[i]
+              return (
+                <button
+                  key={opt.months}
+                  className={`btc-contrib-btn${periodIdx === i ? ' btc-contrib-btn--active' : ''}`}
+                  onClick={() => setPeriodIdx(i)}
+                  disabled={!available}
+                  title={available ? undefined : `Khoảng thời gian đang chọn chưa đủ dài để tính rolling ${opt.label}. Hãy chọn "Thời hạn" dài hơn ở phần trên.`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
