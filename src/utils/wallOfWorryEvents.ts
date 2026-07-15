@@ -184,6 +184,14 @@ export const WOW_EVENTS: WowEvent[] = [
     sourceUrl: 'https://vi.wikipedia.org/wiki/%C4%90%E1%BA%A1i_d%E1%BB%8Bch_COVID-19',
   },
   {
+    date: '2021-01-28',
+    label: 'Phiên giảm mạnh nhất lịch sử 20 năm, làn sóng COVID thứ 2',
+    shortLabel: 'Làn sóng COVID thứ 2',
+    description: 'VN-Index giảm 73,23 điểm (-6,67%) xuống 1.023,94 điểm, tại thời điểm đó là phiên giảm mạnh nhất kể từ khi thị trường vận hành hơn 20 năm, mạnh hơn cả khủng hoảng tài chính 2008 và thương chiến Mỹ-Trung 2018. Hơn 500 mã giảm sàn, toàn bộ rổ VN30 trắng bên mua. Nguyên nhân: Bộ Y tế công bố ca lây nhiễm cộng đồng mới tại Hải Dương và Quảng Ninh, mở đầu làn sóng COVID thứ 2.',
+    category: 'vn',
+    sourceUrl: 'https://tuoitre.vn/ban-thao-co-phieu-sau-tin-covid-19-chung-khoan-viet-giam-manh-nhat-the-gioi-2021012816275227.htm',
+  },
+  {
     date: '2021-07-09',
     label: 'Phong tỏa TP.HCM, làn sóng Delta',
     shortLabel: 'Phong tỏa TP.HCM (Delta)',
@@ -244,6 +252,22 @@ export const WOW_EVENTS: WowEvent[] = [
     sourceUrl: 'https://en.wikipedia.org/wiki/October_7_attacks',
   },
   {
+    date: '2024-04-15',
+    label: 'Hơn 150 mã giảm sàn, VN-Index mất 60 điểm',
+    shortLabel: 'Fed trì hoãn hạ lãi suất',
+    description: 'VN-Index giảm 60 điểm (4,7%), phiên giảm sâu nhất kể từ 18/8/2023. Toàn thị trường 886 mã giảm, hơn 150 mã giảm sàn. Nguyên nhân: CPI Mỹ tăng cao khiến kỳ vọng Fed hạ lãi suất bị trì hoãn, USD mạnh lên, tỷ giá trong nước căng thẳng, khối ngoại bán ròng liên tục.',
+    category: 'world',
+    sourceUrl: 'https://vietnambiz.vn/vi-sao-chung-khoan-viet-nam-bat-ngo-lao-doc-voi-hang-tram-ma-giam-san-2024415153614115.htm',
+  },
+  {
+    date: '2024-08-05',
+    label: 'Hoảng loạn khắp châu Á, VN-Index thủng 1.200 điểm',
+    shortLabel: 'Yên Nhật tăng giá, carry trade sập',
+    description: 'Nikkei giảm 13,47%, Kospi giảm 8,77% sau khi BOJ tăng lãi suất cuối tháng 7 khiến dòng vốn carry trade bằng yen đảo chiều ồ ạt. VN-Index giảm 48 điểm, thủng mốc 1.200, toàn thị trường 845 mã đỏ với 127 mã giảm sàn. Căng thẳng Iran-Israel leo thang cùng lúc làm trầm trọng thêm tâm lý.',
+    category: 'world',
+    sourceUrl: 'https://vneconomy.vn/hoang-loan-khap-chau-a-vn-index-thung-1-200-diem-co-san-la-liet-da-den-luc-vao-viec.htm',
+  },
+  {
     date: '2024-09-07',
     label: 'Siêu bão Yagi',
     description: 'Cơn bão mạnh nhất 30 năm đổ bộ miền Bắc, thiệt hại ước tính hơn 3 tỷ USD, ảnh hưởng nặng đến sản xuất và bảo hiểm.',
@@ -278,6 +302,14 @@ export const WOW_EVENTS: WowEvent[] = [
     ],
   },
   {
+    date: '2025-10-20',
+    label: 'Phiên giảm mạnh nhất lịch sử: VN-Index mất hơn 94 điểm',
+    shortLabel: 'Thanh tra trái phiếu doanh nghiệp',
+    description: 'VN-Index giảm hơn 94 điểm, phiên giảm mạnh nhất lịch sử tại thời điểm đó. 108 mã giảm sàn, 325/326 mã trên HoSE giảm giá. Ngòi nổ là kết luận thanh tra của Chính phủ về hoạt động phát hành trái phiếu doanh nghiệp, nhưng mức độ giảm bị giới phân tích đánh giá là do tâm lý hoảng loạn bán theo đám đông nhiều hơn là vấn đề nền tảng.',
+    category: 'vn',
+    sourceUrl: 'https://cafef.vn/dang-sau-cu-lao-doc-manh-nhat-lich-su-chung-khoan-vua-xay-ra-188251020231143711.chn',
+  },
+  {
     date: '2025-12-19',
     label: 'Vingroup khởi công đồng loạt 11 công trình trọng điểm quốc gia',
     shortLabel: 'Vingroup khởi công 11 công trình',
@@ -297,6 +329,14 @@ export const WOW_EVENTS: WowEvent[] = [
     description: 'Mỹ và Israel mở ba đợt không kích vào Iran rạng sáng 28/2. Xung đột lan rộng khắp Trung Đông trong nhiều tuần trước khi có thỏa thuận ngừng bắn.',
     category: 'world',
     sourceUrl: 'https://vnexpress.net/7-ngay-ruc-lua-rung-chuyen-trung-dong-5047534.html',
+  },
+  {
+    date: '2026-03-09',
+    label: 'Giá dầu vượt 100 USD/thùng, VN-Index lập kỷ lục giảm mới',
+    shortLabel: 'Dầu vượt 100 USD, kỷ lục giảm mới',
+    description: 'Giá dầu thế giới vượt mốc 100 USD/thùng lần đầu tiên sau gần 4 năm giữa căng thẳng địa chính trị và gián đoạn chuỗi cung ứng năng lượng. VN-Index giảm kỷ lục 115 điểm xuống 1.652 điểm, hơn 300 mã giảm sàn, vượt qua kỷ lục giảm điểm hồi tháng 10/2025. Thị trường Hàn Quốc, Nhật Bản cũng giảm mạnh cùng lúc.',
+    category: 'world',
+    sourceUrl: 'https://dantri.com.vn/kinh-doanh/hon-300-co-phieu-nam-san-chung-khoan-viet-giam-ky-luc-115-diem-20260309104533885.htm',
   },
   {
     date: '2026-05-26',
