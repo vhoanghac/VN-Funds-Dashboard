@@ -30,7 +30,8 @@ export interface WowEvent {
   shortLabel?: string   // tên rút gọn hiển thị trên biểu đồ (mặc định dùng label)
   description: string   // mô tả 1-2 câu
   category: WowCategory
-  sourceUrl: string     // bài báo chính thống / Wikipedia về sự kiện
+  sourceUrl: string     // bài báo chính thống / Wikipedia về sự kiện (nguồn chính)
+  extraSources?: { label: string; url: string }[]  // nguồn bổ sung khi có nhiều báo cùng đưa tin
 }
 
 export const WOW_CATEGORY_META: Record<WowCategory, { name: string; color: string }> = {
@@ -250,6 +251,14 @@ export const WOW_EVENTS: WowEvent[] = [
     sourceUrl: 'https://vi.wikipedia.org/wiki/B%C3%A3o_Yagi_(2024)',
   },
   {
+    date: '2025-01-27',
+    label: 'DeepSeek chấn động Nvidia, bốc hơi gần 600 tỷ USD',
+    shortLabel: 'DeepSeek chấn động Nvidia',
+    description: 'Startup Trung Quốc DeepSeek ra mắt mô hình AI R1 hiệu năng tương đương nhưng chi phí huấn luyện chỉ khoảng 5,6 triệu USD, đánh thẳng vào luận điểm "hào lũy công nghệ" của Nvidia. Cổ phiếu Nvidia giảm 17% trong một phiên, kỷ lục mất giá lớn nhất lịch sử chứng khoán Mỹ của một công ty đơn lẻ.',
+    category: 'world',
+    sourceUrl: 'https://www.cnbc.com/2025/01/27/nvidia-sheds-almost-600-billion-in-market-cap-biggest-drop-ever.html',
+  },
+  {
     date: '2025-04-02',
     label: 'Mỹ công bố thuế đối ứng 46% với Việt Nam',
     shortLabel: 'Thuế đối ứng 46%',
@@ -258,11 +267,51 @@ export const WOW_EVENTS: WowEvent[] = [
     sourceUrl: 'https://vnexpress.net/ong-trump-ky-sac-lenh-ap-thue-doi-ung-voi-hang-chuc-nen-kinh-te-4869288.html',
   },
   {
+    date: '2025-08-21',
+    label: 'Vingroup: đế chế nợ vay, so sánh với Evergrande',
+    shortLabel: 'Vingroup nợ 31 tỷ USD',
+    description: 'Asia Times công bố phân tích: Vingroup gánh 31 tỷ USD nợ vay, chiếm 86% tổng tài sản, phải trả lãi khoảng 3,2 triệu USD mỗi ngày, nợ tăng thêm 4,7 tỷ USD chỉ trong nửa đầu 2025. Bài viết so sánh mô hình dùng lợi nhuận bất động sản tài trợ cho các mảng chưa có lãi (như VinFast) với Evergrande, đặt câu hỏi liệu Vingroup có trở thành rủi ro "quá lớn để sụp đổ" mà nhà nước buộc phải cứu nếu có biến.',
+    category: 'corp',
+    sourceUrl: 'https://asiatimes.com/2025/08/vingroups-debt-driven-empire-on-shaky-global-ground/',
+    extraSources: [
+      { label: 'The Vietnamese Magazine', url: 'https://thevietnamese.org/2025/08/a-debt-driven-empire-vingroup-operates-with-86-of-assets-on-loan/' },
+    ],
+  },
+  {
+    date: '2025-12-19',
+    label: 'Vingroup khởi công đồng loạt 11 công trình trọng điểm quốc gia',
+    shortLabel: 'Vingroup khởi công 11 công trình',
+    description: 'Sáng 19/12, Vingroup đồng loạt khởi công 11 dự án lớn khắp cả nước (đô thị Olympic, Hạ Long Xanh, đường sắt Bến Thành - Cần Giờ, nhà máy điện gió, thép...), tổng vốn đầu tư ước hơn 3,4 triệu tỷ đồng. Quy mô hạ tầng trọng điểm quốc gia dồn vào một tập đoàn tư nhân duy nhất khiến nhiều nhà đầu tư lo ngại về mức độ tập trung quyền lực kinh tế.',
+    category: 'corp',
+    sourceUrl: 'https://tuoitre.vn/vingroup-dong-loat-khoi-cong-khai-truong-11-du-an-lon-tren-ca-nuoc-20251220100321195.htm',
+    extraSources: [
+      { label: 'Dân Trí', url: 'https://dantri.com.vn/kinh-doanh/tap-doan-cua-ty-phu-pham-nhat-vuong-dong-loat-khoi-cong-11-du-an-20251219101108366.htm' },
+      { label: 'VnExpress', url: 'https://vnexpress.net/vingroup-trien-khai-dong-loat-11-du-an-trong-diem-tren-ca-nuoc-4996001.html' },
+      { label: 'Vingroup', url: 'https://vingroup.net/tin-tuc-su-kien/bai-viet/3750/vingroup-dong-loat-khoi-dong-khai-truong-11-cong-trinh-trong-diem-tren-toan-quoc' },
+    ],
+  },
+  {
     date: '2026-02-28',
     label: 'Mỹ và Israel không kích Iran',
     shortLabel: 'Mỹ-Israel không kích Iran',
     description: 'Mỹ và Israel mở ba đợt không kích vào Iran rạng sáng 28/2. Xung đột lan rộng khắp Trung Đông trong nhiều tuần trước khi có thỏa thuận ngừng bắn.',
     category: 'world',
     sourceUrl: 'https://vnexpress.net/7-ngay-ruc-lua-rung-chuyen-trung-dong-5047534.html',
+  },
+  {
+    date: '2026-05-26',
+    label: 'VN-Index phân hóa "hình chữ K", một mình Vingroup gánh chỉ số',
+    shortLabel: 'Phân hóa "hình chữ K"',
+    description: 'VN-Index tăng mạnh nhưng gần như toàn bộ động lực đến từ nhóm Vingroup, phần lớn cổ phiếu còn lại chỉ đi ngang hoặc tích lũy. Thanh khoản giảm từ 30.169 tỷ đồng/phiên (quý 1) xuống 21.701 tỷ đồng/phiên (tháng 4), dấu hiệu dòng tiền thận trọng dần với một rally quá hẹp.',
+    category: 'vn',
+    sourceUrl: 'https://cafef.vn/vn-index-tang-manh-nhung-phan-hoa-hinh-chu-k-chuyen-gia-chi-ten-5-nhom-nganh-dang-chu-y-nua-cuoi-nam-2026-188260526102054296.chn',
+  },
+  {
+    date: '2026-07-02',
+    label: 'NHNN loại nợ Vingroup, Sun Group, Masterise khỏi room tín dụng',
+    shortLabel: 'Vingroup được ưu ái room tín dụng',
+    description: 'Ngân hàng Nhà nước công bố cơ chế loại nợ vay của 18 dự án trọng điểm quốc gia - dẫn đầu bởi Vingroup, Sun Group, Masterise - khỏi cách tính room tín dụng ngân hàng, cho phép các tập đoàn này vay thêm mà không bị tính vào hạn mức chung. Doanh nghiệp nhỏ hơn phải cạnh tranh trong phần room còn lại, dấy lên câu hỏi về sự ưu ái dành cho nhóm doanh nghiệp lớn.',
+    category: 'vn',
+    sourceUrl: 'https://dantri.com.vn/kinh-doanh/nhnn-noi-ve-co-che-von-dac-biet-cho-vingroup-sun-group-masterise-20260702101105038.htm',
   },
 ]

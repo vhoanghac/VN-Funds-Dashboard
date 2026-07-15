@@ -411,6 +411,17 @@ function WallOfWorryPanelImpl() {
                       >
                         Nguồn ↗
                       </a>
+                      {ev.extraSources?.map(src => (
+                        <a
+                          key={src.url}
+                          className="wow-event-source"
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {' · '}{src.label} ↗
+                        </a>
+                      ))}
                     </div>
                   )}
                 </li>
