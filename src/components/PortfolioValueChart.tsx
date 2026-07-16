@@ -1,8 +1,9 @@
 import { useState, useRef, memo } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, ComposedChart,
+  Tooltip, ResponsiveContainer, Legend, ComposedChart, ReferenceLine,
 } from 'recharts'
+import { WOW_EVENTS, WOW_CATEGORY_META } from '../utils/wallOfWorryEvents'
 
 interface ValuePoint {
   date: string
@@ -26,6 +27,7 @@ const INVESTED_LINE_NAME = 'Đã đầu tư'
 function PortfolioValueChartImpl({ portfolios }: Props) {
   const [dimmed, setDimmed] = useState<Set<string>>(new Set())
   const [logScale, setLogScale] = useState(false)
+  const [showEvents, setShowEvents] = useState(false)
 
   const seriesKey = portfolios.map(p => p.name).join(',')
   const prevKeyRef = useRef(seriesKey)
@@ -37,6 +39,22 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
   if (portfolios.length === 0) return null
 
   const data = mergeData(portfolios)
+
+  // Sự kiện Wall of Worry nằm trong khoảng thời gian của biểu đồ.
+  // Đánh số 1..n để marker trên chart gọn, tên đầy đủ nằm ở chú giải dưới.
+  const minDate = data.length > 0 ? (data[0]!.date as string) : ''
+  const maxDate = data.length > 0 ? (data[data.length - 1]!.date as string) : ''
+  const chartEvents = showEvents
+    ? WOW_EVENTS
+        .filter(ev => ev.date >= minDate && ev.date <= maxDate)
+        .map((ev, i) => ({
+          num: i + 1,
+          ts: new Date(ev.date).getTime(),
+          date: ev.date,
+          label: ev.shortLabel ?? ev.label,
+          color: WOW_CATEGORY_META[ev.category].color,
+        }))
+    : []
 
   function handleLegendClick(payload: { value?: string | number }) {
     const key = typeof payload.value === 'string' ? payload.value : undefined
@@ -54,6 +72,13 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
       <div className="chart-header">
         <h3>Giá trị tài sản</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className={`log-scale-btn${showEvents ? ' log-scale-btn-active' : ''}`}
+            onClick={() => setShowEvents(v => !v)}
+            title="Hiện các sự kiện Wall of Worry (chiến tranh, đại dịch, khủng hoảng...) trên biểu đồ, để thấy giá trị tài sản của bạn đã đi qua những giai đoạn nào."
+          >
+            Sự kiện
+          </button>
           <button
             className={`log-scale-btn${logScale ? ' log-scale-btn-active' : ''}`}
             onClick={() => setLogScale(v => !v)}
@@ -105,6 +130,16 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
               </span>
             )}
           />
+          {chartEvents.map(ev => (
+            <ReferenceLine
+              key={`wow-${ev.date}`}
+              x={ev.ts}
+              stroke={ev.color}
+              strokeDasharray="3 3"
+              strokeOpacity={0.4}
+              label={renderEventMarker(ev.num, ev.color)}
+            />
+          ))}
           {portfolios.map(p => {
             const legendName = p.name
             const isDimmed = dimmed.has(legendName)
@@ -143,11 +178,46 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
           })()}
         </ComposedChart>
       </ResponsiveContainer>
+      {chartEvents.length > 0 && (
+        <div className="pvc-events-legend">
+          {chartEvents.map(ev => (
+            <span key={ev.date} className="pvc-events-item">
+              <span className="pvc-events-num" style={{ background: ev.color }}>{ev.num}</span>
+              {formatLegendDate(ev.date)} · {ev.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 export const PortfolioValueChart = memo(PortfolioValueChartImpl)
+
+/**
+ * Marker số thứ tự trên đầu mỗi đường sự kiện. Recharts truyền viewBox của
+ * ReferenceLine (x = vị trí đường, y = mép trên vùng vẽ). Đánh số so le
+ * 2 tầng để các sự kiện gần nhau không đè lên nhau.
+ */
+function renderEventMarker(num: number, color: string) {
+  return (props: { viewBox?: { x?: number; y?: number } }) => {
+    const x = props.viewBox?.x ?? 0
+    const y = (props.viewBox?.y ?? 0) + (num % 2 === 0 ? 26 : 8)
+    return (
+      <g>
+        <circle cx={x} cy={y} r={8} fill={color} opacity={0.9} />
+        <text x={x} y={y + 3} textAnchor="middle" fontSize={9} fontWeight={700} fill="#fff">
+          {num}
+        </text>
+      </g>
+    )
+  }
+}
+
+function formatLegendDate(dateStr: string): string {
+  const [y, m] = dateStr.split('-')
+  return `${m}/${y}`
+}
 
 function mergeData(portfolios: PortfolioSeries[]): Record<string, unknown>[] {
   const map = new Map<string, Record<string, unknown>>()

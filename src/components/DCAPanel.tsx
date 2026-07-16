@@ -10,6 +10,7 @@ import { parseCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { PortfolioValueChart } from './PortfolioValueChart'
+import { DcaRatioChart } from './DcaRatioChart'
 import { DCAStatsTable } from './DCAStatsTable'
 import { DCAGlossary } from './DCAGlossary'
 import { DcaJourneyBlock, EOYReturnsTable } from './DcaJourneyBlock'
@@ -500,6 +501,13 @@ function DCAPanelImpl({ funds }: Props) {
     invested: r.investedSeries,
   })), [validResults])
 
+  const ratioChartData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    values: r.valueSeries,
+  })), [validResults])
+
   const dcaStatsTableData = useMemo(() => validResults.map(r => {
     const msPerYear = 365.25 * 24 * 60 * 60 * 1000
     const dcaYears = r.cumulative.length >= 2
@@ -847,6 +855,11 @@ function DCAPanelImpl({ funds }: Props) {
           <PortfolioValueChart
             portfolios={portfolioValueChartData}
           />
+
+          {/* Tỷ số sức mạnh tương đối giữa 2 danh mục (chỉ hiện khi có từ 2 danh mục) */}
+          {validResults.length >= 2 && (
+            <DcaRatioChart portfolios={ratioChartData} />
+          )}
 
           {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
           <DCAStatsTable

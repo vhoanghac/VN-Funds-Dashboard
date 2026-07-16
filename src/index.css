@@ -2430,6 +2430,81 @@ h1, h2, h3 {
   line-height: 1.5;
 }
 
+/* ── Biểu đồ tỷ số sức mạnh tương đối giữa 2 danh mục (DcaRatioChart) ── */
+
+.dca-ratio-sub {
+  margin: 0 0 12px 0;
+  font-size: 0.88rem;
+  color: #5e5d59;
+  line-height: 1.5;
+}
+
+.dca-ratio-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.dca-ratio-vs {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.dca-ratio-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.dca-ratio-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dca-ratio-narrative {
+  margin: 14px 0 0;
+  font-size: 0.88rem;
+  color: #5e5d59;
+  line-height: 1.6;
+}
+
+/* ── Chú giải sự kiện Wall of Worry overlay trên PortfolioValueChart ── */
+
+.pvc-events-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 3px 14px;
+  margin-top: 10px;
+  font-size: 0.74rem;
+  color: #5e5d59;
+  line-height: 1.5;
+}
+
+.pvc-events-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pvc-events-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
 /* DCA Summary Cards */
 .dca-summary-grid {
   display: grid;
