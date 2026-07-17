@@ -2473,6 +2473,49 @@ h1, h2, h3 {
   line-height: 1.6;
 }
 
+/* ── Pill chọn section kết quả DCA (kiểu hl.eco) ── */
+
+.dca-anchor-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dca-anchor-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.dca-anchor-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.dca-anchor-btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+/* :hover có specificity cao hơn nên phải ghi đè riêng cho nút đang active,
+   nếu không chữ sẽ thành cam-trên-cam (tàng hình) khi hover — cùng bài học
+   với .log-scale-btn-active:hover */
+.dca-anchor-btn--active:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
 /* ── Chú giải sự kiện Wall of Worry overlay trên PortfolioValueChart ── */
 
 .pvc-events-legend {

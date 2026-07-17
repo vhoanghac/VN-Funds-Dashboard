@@ -11,6 +11,7 @@ import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DcaRatioChart } from './DcaRatioChart'
+import { DcaReturnPainChart } from './DcaReturnPainChart'
 import { DCAStatsTable } from './DCAStatsTable'
 import { DCAGlossary } from './DCAGlossary'
 import { DcaJourneyBlock, EOYReturnsTable } from './DcaJourneyBlock'
@@ -70,6 +71,22 @@ interface DCAPortfolioResult {
   dividendNarrative: DividendNarrativeStats[]
 }
 
+/**
+ * Các section kết quả, kiểu hl.eco: bấm pill để chỉ hiện section đó.
+ * "Tất cả" (mặc định) giữ nguyên mạch kể chuyện đọc từ trên xuống.
+ * Ẩn/hiện bằng display:none để các block (đã bọc React.memo) không phải
+ * mount lại khi chuyển qua lại.
+ */
+type DcaSectionId = 'all' | 'perf' | 'journey' | 'risk' | 'endgame'
+
+const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'perf', label: 'Hiệu suất đầu tư' },
+  { id: 'journey', label: 'Hành trình của bạn' },
+  { id: 'risk', label: 'Rủi ro & biến động' },
+  { id: 'endgame', label: 'Endgame' },
+]
+
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'daily', label: 'Hàng ngày' },
   { value: 'weekly', label: '1 tuần' },
@@ -104,6 +121,10 @@ function DCAPanelImpl({ funds }: Props) {
   const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>(
     urlParams?.cashflowFreq ?? loadLS('dca_cashflowFreq', 'monthly' as DCAFrequency)
   )
+  // Section kết quả đang hiện ('all' = toàn bộ, giữ mạch kể chuyện)
+  const [activeSection, setActiveSection] = useState<DcaSectionId>('all')
+  const showSection = (id: DcaSectionId) =>
+    activeSection === 'all' || activeSection === id ? undefined : 'none'
 
   // ── Portfolios ──
   type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string }
@@ -575,6 +596,15 @@ function DCAPanelImpl({ funds }: Props) {
     investedSeries: r.investedSeries,
   })), [validResults])
 
+  const returnPainData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    finalValue: r.finalValue,
+    totalInvested: r.totalInvested,
+    maxDrawdown: r.storm.maxDrawdown * 100,
+  })), [validResults])
+
   const dcaStormData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -828,6 +858,21 @@ function DCAPanelImpl({ funds }: Props) {
         </div>
       )}
 
+      {/* Chọn section kết quả muốn xem (kiểu hl.eco) */}
+      {validResults.length > 0 && (
+        <div className="dca-anchor-nav">
+          {DCA_SECTIONS.map(s => (
+            <button
+              key={s.id}
+              className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
+              onClick={() => setActiveSection(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
       {/* Error when no results */}
@@ -837,107 +882,121 @@ function DCAPanelImpl({ funds }: Props) {
         </div>
       )}
 
-      {/* ── Results ── */}
+      {/* ── Results ──
+          Mỗi section bọc trong div ẩn/hiện theo pill đang chọn. Dùng
+          display:none (không unmount) để chuyển section không phải render
+          lại các chart nặng. */}
       {validResults.length > 0 && (
         <>
-          <div className="section-divider">
-            <span className="section-divider-label">Hiệu suất đầu tư</span>
-          </div>
-
-          {/* Period info */}
-          {startDate && endDate && (
-            <div className="comparison-period" style={{ marginBottom: 16 }}>
-              DCA từ {formatDate(startDate)} đến {formatDate(endDate)}
-            </div>
-          )}
-
-          {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
-          <PortfolioValueChart
-            portfolios={portfolioValueChartData}
-          />
-
-          {/* Tỷ số sức mạnh tương đối giữa 2 danh mục (chỉ hiện khi có từ 2 danh mục) */}
-          {validResults.length >= 2 && (
-            <DcaRatioChart portfolios={ratioChartData} />
-          )}
-
-          {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
-          <DCAStatsTable
-            portfolios={dcaStatsTableData}
-          />
-
-          {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
-              trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
-          <EOYReturnsTable
-            portfolios={journeyPortfolios}
-          />
-
-          {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
-          <DcaReturnExplainer
-            portfolios={dcaReturnExplainerData}
-          />
-
-          {/* Journey narrative */}
-          {startDate && endDate && (
+          <div style={{ display: showSection('perf') }}>
             <div className="section-divider">
-              <span className="section-divider-label">Hành trình của bạn</span>
+              <span className="section-divider-label">Hiệu suất đầu tư</span>
             </div>
-          )}
-          {startDate && endDate && (
-            <DcaJourneyBlock
+
+            {/* Period info */}
+            {startDate && endDate && (
+              <div className="comparison-period" style={{ marginBottom: 16 }}>
+                DCA từ {formatDate(startDate)} đến {formatDate(endDate)}
+              </div>
+            )}
+
+            {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
+            <PortfolioValueChart
+              portfolios={portfolioValueChartData}
+            />
+
+            {/* Tỷ số sức mạnh tương đối giữa 2 danh mục (chỉ hiện khi có từ 2 danh mục) */}
+            {validResults.length >= 2 && (
+              <DcaRatioChart portfolios={ratioChartData} />
+            )}
+
+            {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
+            <DCAStatsTable
+              portfolios={dcaStatsTableData}
+            />
+
+            {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
+                trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
+            <EOYReturnsTable
               portfolios={journeyPortfolios}
-              startDate={startDate}
-              endDate={endDate}
             />
-          )}
 
-          {/* Cổ tức & tái đầu tư (chỉ hiển thị khi danh mục có quỹ chia cổ tức như DCDE) */}
-          {startDate && endDate && (
-            <DividendBlock
-              fundIds={dividendFundIds}
-              dividendsByFund={dividendsByFund}
-              startDate={startDate}
-              endDate={endDate}
-              narrativeByPortfolio={dividendNarrativeData}
+            {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
+            <DcaReturnExplainer
+              portfolios={dcaReturnExplainerData}
             />
-          )}
-
-          {/* So sánh với gửi tiết kiệm */}
-          {endDate && (
-            <BankComparisonBlock
-              results={bankComparisonData}
-              endDate={endDate}
-            />
-          )}
-
-          {/* Kiên trì qua bão */}
-          <div className="section-divider">
-            <span className="section-divider-label">Rủi ro &amp; biến động</span>
           </div>
-          <DcaStormBlock
-            portfolios={dcaStormData}
-          />
 
-          <DcaConsistencyBlock
-            portfolios={dcaConsistencyData}
-          />
+          <div style={{ display: showSection('journey') }}>
+            {/* Journey narrative */}
+            {startDate && endDate && (
+              <div className="section-divider">
+                <span className="section-divider-label">Hành trình của bạn</span>
+              </div>
+            )}
+            {startDate && endDate && (
+              <DcaJourneyBlock
+                portfolios={journeyPortfolios}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            )}
 
-          {/* Endgame: projection + rolling */}
-          <div className="section-divider">
-            <span className="section-divider-label">Endgame</span>
+            {/* Cổ tức & tái đầu tư (chỉ hiển thị khi danh mục có quỹ chia cổ tức như DCDE) */}
+            {startDate && endDate && (
+              <DividendBlock
+                fundIds={dividendFundIds}
+                dividendsByFund={dividendsByFund}
+                startDate={startDate}
+                endDate={endDate}
+                narrativeByPortfolio={dividendNarrativeData}
+              />
+            )}
+
+            {/* So sánh với gửi tiết kiệm */}
+            {endDate && (
+              <BankComparisonBlock
+                results={bankComparisonData}
+                endDate={endDate}
+              />
+            )}
           </div>
-          <ProjectionBlock
-            portfolios={projectionData}
-          />
 
-          <GoalPlannerBlock
-            portfolios={goalPlannerData}
-          />
+          <div style={{ display: showSection('risk') }}>
+            {/* Kiên trì qua bão */}
+            <div className="section-divider">
+              <span className="section-divider-label">Rủi ro &amp; biến động</span>
+            </div>
 
-          <RollingReturnBlock
-            portfolios={rollingReturnData}
-          />
+            {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
+            <DcaReturnPainChart portfolios={returnPainData} />
 
+            <DcaStormBlock
+              portfolios={dcaStormData}
+            />
+
+            <DcaConsistencyBlock
+              portfolios={dcaConsistencyData}
+            />
+          </div>
+
+          <div style={{ display: showSection('endgame') }}>
+            {/* Endgame: projection + rolling */}
+            <div className="section-divider">
+              <span className="section-divider-label">Endgame</span>
+            </div>
+            <ProjectionBlock
+              portfolios={projectionData}
+            />
+
+            <GoalPlannerBlock
+              portfolios={goalPlannerData}
+            />
+
+            <RollingReturnBlock
+              portfolios={rollingReturnData}
+            />
+          </div>
         </>
       )}
 

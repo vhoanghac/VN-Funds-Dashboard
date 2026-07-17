@@ -1,5 +1,15 @@
 const ENTRIES = [
   {
+    version: 'v3.5',
+    date: '17/07/2026',
+    items: [
+      'Thêm mục "Sự kiện" trên biểu đồ "Giá trị tài sản" trong tab DCA: bật lên để xem các sự kiện Wall of Worry (chiến tranh, đại dịch, khủng hoảng...) đè lên đúng thời điểm trong hành trình DCA của bạn.',
+      'Thêm biểu đồ "Danh mục nào đang dẫn trước?" trong tab DCA: tỷ số giá trị giữa 2 danh mục theo thời gian, giúp thấy giai đoạn nào danh mục nào mạnh hơn thay vì nhìn 2 đường chồng lên nhau.',
+      'Thêm biểu đồ "Bản đồ lợi nhuận và rủi ro" trong tab DCA: đặt lợi nhuận cạnh mức sụt giảm tối đa của từng danh mục trên cùng một biểu đồ, kèm nhận xét danh mục nào đang hiệu quả nhất.',
+      'Thêm nút chọn nhanh từng phần kết quả (Hiệu suất đầu tư / Hành trình của bạn / Rủi ro & biến động / Endgame) ngay dưới nút "Chạy DCA", giúp xem đúng phần cần mà không phải cuộn qua toàn bộ trang.',
+    ],
+  },
+  {
     version: 'v3.4',
     date: '13/07/2026',
     items: [
