@@ -79,6 +79,9 @@ function DcaStormBlockImpl({ portfolios }: Props) {
           <div className="dca-storm-stat-value dca-storm-stat-value--neg">
             {(s.maxDrawdown * 100).toFixed(1)}%
           </div>
+          <div className="dca-storm-stat-sub">
+            cần +{recoveryNeededPct(s.maxDrawdown).toFixed(0)}% để hòa vốn
+          </div>
           {portfolios.length > 1 && (
             <div className="dca-storm-stat-sub" style={{ color: worst.color }}>
               ở {worst.name}
@@ -404,6 +407,15 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
   )
 }
 
+/**
+ * % cần tăng để hòa vốn sau 1 đợt sụt giảm. Toán học bất đối xứng của
+ * drawdown: -42% cần +72% mới về lại đỉnh cũ, -82% cần +456%. Vì vậy
+ * drawdown quan trọng ngang lợi nhuận, không chỉ là con số phụ.
+ */
+function recoveryNeededPct(maxDrawdown: number): number {
+  return (1 / (1 - Math.abs(maxDrawdown)) - 1) * 100
+}
+
 /** Số ngày → "2.5 năm" / "8 tháng" / "45 ngày" */
 function formatEpisodeDuration(days: number): string {
   if (days >= 365) return (days / 365.25).toFixed(1) + ' năm'
@@ -435,6 +447,7 @@ function StormTakeaway({ storm, worstName, multi }: TakeawayProps) {
   const s = storm
   const bearName = s.inBearPeriod ? BEAR_LABEL[s.inBearPeriod] : null
   const ddPct = Math.abs(s.maxDrawdown * 100).toFixed(1)
+  const recoveryPct = recoveryNeededPct(s.maxDrawdown).toFixed(0)
 
   // Case 1: Đã hồi phục, message kiên trì được đền đáp
   if (s.recoveryMonths !== null) {
@@ -442,13 +455,19 @@ function StormTakeaway({ storm, worstName, multi }: TakeawayProps) {
       <div className="dca-storm-takeaway">
         <span className="dca-storm-takeaway-icon">⚓</span>
         <div>
-          Đáy sâu nhất là <strong>-{ddPct}%</strong> vào{' '}
+          {multi ? (
+            <>Đáy sâu nhất của danh mục <strong>{worstName}</strong> là</>
+          ) : (
+            <>Đáy sâu nhất là</>
+          )}
+          {' '}<strong>-{ddPct}%</strong> vào{' '}
           <strong>{formatMonthYear(s.maxDDDate)}</strong>
-          {bearName && <>, đúng vào {bearName}</>}. Nếu bạn hoảng loạn bán lúc đó,
-          toàn bộ khoản lỗ sẽ hiện thực hóa. Nhưng bạn đã kiên trì nạp tiền thêm,
-          và thị trường hồi phục về đỉnh cũ sau <strong>{s.recoveryMonths} tháng</strong>.
-          Đó là lý do vì sao đầu tư đều đặn qua từng tháng quan trọng hơn đoán đỉnh
-          đoán đáy thị trường.
+          {bearName && <>, đúng vào {bearName}</>}. Từ đáy đó, giá cần tăng{' '}
+          <strong>+{recoveryPct}%</strong> chỉ để hòa vốn, sụt càng sâu thì càng khó gỡ lại.
+          Nếu bạn hoảng loạn bán lúc đó, toàn bộ khoản lỗ sẽ hiện thực hóa. Nhưng bạn đã
+          kiên trì nạp tiền thêm, và thị trường hồi phục về đỉnh cũ sau{' '}
+          <strong>{s.recoveryMonths} tháng</strong>. Đó là lý do vì sao đầu tư đều đặn qua
+          từng tháng quan trọng hơn đoán đỉnh đoán đáy thị trường.
         </div>
       </div>
     )
@@ -465,8 +484,10 @@ function StormTakeaway({ storm, worstName, multi }: TakeawayProps) {
           <>Danh mục chạm đáy</>
         )}
         {' '}<strong>-{ddPct}%</strong> vào <strong>{formatMonthYear(s.maxDDDate)}</strong>
-        {bearName && <>, đúng vào {bearName}</>} và hiện vẫn chưa hồi phục về đỉnh cũ.
-        Thị trường Việt Nam là thị trường cận biên, từ bull sang bear diễn ra chóng vánh.
+        {bearName && <>, đúng vào {bearName}</>} và hiện vẫn chưa hồi phục về đỉnh cũ. Để
+        hòa vốn từ đáy này, giá cần tăng <strong>+{recoveryPct}%</strong>, một lời nhắc
+        rằng sụt càng sâu thì càng khó gỡ lại. Thị trường Việt Nam là thị trường cận biên,
+        từ bull sang bear diễn ra chóng vánh.
         {' '}Có thể bạn đang trong giai đoạn bão. Hãy kiên trì nạp tiền đều đặn qua từng
         tháng, mua được nhiều chứng chỉ quỹ hơn khi giá thấp. Lịch sử cho thấy các bear
         market trước đây (2018-2019, 2022) đều đã hồi phục.

@@ -2473,6 +2473,18 @@ h1, h2, h3 {
   line-height: 1.6;
 }
 
+/* ── "Cùng 100 triệu, vào ở thời điểm khác nhau" (DcaEntryPointBlock) ── */
+
+.dca-entry-date {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.dca-entry-mult {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
 /* ── Pill chọn section kết quả DCA (kiểu hl.eco) ── */
 
 .dca-anchor-nav {

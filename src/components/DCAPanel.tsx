@@ -12,6 +12,7 @@ import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNar
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DcaRatioChart } from './DcaRatioChart'
 import { DcaReturnPainChart } from './DcaReturnPainChart'
+import { DcaEntryPointBlock } from './DcaEntryPointBlock'
 import { DCAStatsTable } from './DCAStatsTable'
 import { DCAGlossary } from './DCAGlossary'
 import { DcaJourneyBlock, EOYReturnsTable } from './DcaJourneyBlock'
@@ -596,6 +597,16 @@ function DCAPanelImpl({ funds }: Props) {
     investedSeries: r.investedSeries,
   })), [validResults])
 
+  const entryPointPortfolios = useMemo(() => validResults
+    .filter(r => r.simulationInputs !== null)
+    .map(r => ({
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      slots: r.simulationInputs!.slots,
+      rebalFreq: r.simulationInputs!.rebalFreq,
+    })), [validResults])
+
   const returnPainData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -978,10 +989,20 @@ function DCAPanelImpl({ funds }: Props) {
             <DcaConsistencyBlock
               portfolios={dcaConsistencyData}
             />
+
+            {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
+            <DcaEntryPointBlock
+              portfolios={entryPointPortfolios}
+              fundData={fundData}
+            />
+
+            <RollingReturnBlock
+              portfolios={rollingReturnData}
+            />
           </div>
 
           <div style={{ display: showSection('endgame') }}>
-            {/* Endgame: projection + rolling */}
+            {/* Endgame: projection */}
             <div className="section-divider">
               <span className="section-divider-label">Endgame</span>
             </div>
@@ -991,10 +1012,6 @@ function DCAPanelImpl({ funds }: Props) {
 
             <GoalPlannerBlock
               portfolios={goalPlannerData}
-            />
-
-            <RollingReturnBlock
-              portfolios={rollingReturnData}
             />
           </div>
         </>

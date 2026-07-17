@@ -140,11 +140,16 @@ function DcaReturnPainChartImpl({ portfolios }: Props) {
               {' '}
             </>
           )}
-          Nếu tính lợi nhuận đổi lấy mỗi 1% sụt giảm phải chịu,{' '}
-          <strong style={{ color: narrative.bestEfficiency.color }}>{narrative.bestEfficiency.name}</strong>{' '}
-          đang hiệu quả nhất: cứ mỗi 1% đau mang về khoảng {narrative.bestEfficiency.efficiency.toFixed(1)}%
-          lợi nhuận.
-          {' '}
+          {narrative.tradeoff && (
+            <>
+              So với <strong style={{ color: narrative.bestReturn.color }}>{narrative.bestReturn.name}</strong>,{' '}
+              <strong style={{ color: narrative.tradeoff.point.color }}>{narrative.tradeoff.point.name}</strong>{' '}
+              giữ được khoảng {narrative.tradeoff.captureUps.toFixed(0)}% lợi nhuận trong khi né được{' '}
+              {narrative.tradeoff.painAvoided.toFixed(0)}% mức sụt giảm, một đánh đổi đáng cân nhắc nếu
+              bạn ưu tiên sự yên tâm hơn lợi nhuận tối đa.
+              {' '}
+            </>
+          )}
           Giả sử bạn đang phải chọn giữa các danh mục này, câu hỏi không phải "cái nào lời nhất" mà là
           "bạn chịu được mức đau nào". Đã gọi là đầu tư thì sẽ luôn có rủi ro, và quá khứ không đảm bảo
           cho tương lai.
@@ -160,14 +165,32 @@ interface ReturnPainNarrative {
   bestReturn: ScatterPoint
   safest: ScatterPoint
   bestEfficiency: ScatterPoint
+  /** Đánh đổi lợi nhuận/rủi ro của danh mục hiệu quả nhất so với danh mục lời nhất */
+  tradeoff: { point: ScatterPoint; captureUps: number; painAvoided: number } | null
 }
 
-/** Tìm danh mục lời nhất, ít đau nhất, và hiệu quả nhất (lời/đau) để kể chuyện. */
+/**
+ * Tìm danh mục lời nhất, ít đau nhất, và hiệu quả nhất (lời/đau) để kể chuyện.
+ * "Upside capture / pain avoided" mượn từ cách trình bày của Pramana: so
+ * bestEfficiency với bestReturn xem giữ được bao nhiêu % lợi nhuận (theo
+ * thang log, công bằng hơn % tuyệt đối) và né được bao nhiêu % cú đau.
+ * Chỉ tính khi đó là 2 danh mục khác nhau, nếu không sẽ ra 100%/0% vô nghĩa.
+ */
 function buildNarrative(data: ScatterPoint[]): ReturnPainNarrative {
   const bestReturn = data.reduce((a, b) => (b.returnPct > a.returnPct ? b : a))
   const safest = data.reduce((a, b) => (b.pain < a.pain ? b : a))
   const bestEfficiency = data.reduce((a, b) => (b.efficiency > a.efficiency ? b : a))
-  return { bestReturn, safest, bestEfficiency }
+
+  let tradeoff: ReturnPainNarrative['tradeoff'] = null
+  if (bestEfficiency.id !== bestReturn.id && bestReturn.returnX > 1 && bestReturn.pain > 0) {
+    tradeoff = {
+      point: bestEfficiency,
+      captureUps: (Math.log(Math.max(bestEfficiency.returnX, 1.0001)) / Math.log(bestReturn.returnX)) * 100,
+      painAvoided: (1 - bestEfficiency.pain / bestReturn.pain) * 100,
+    }
+  }
+
+  return { bestReturn, safest, bestEfficiency, tradeoff }
 }
 
 function renderPoint(props: { cx?: number; cy?: number; payload?: ScatterPoint }) {

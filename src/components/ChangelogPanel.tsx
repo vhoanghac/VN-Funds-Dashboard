@@ -7,6 +7,10 @@ const ENTRIES = [
       'Thêm biểu đồ "Danh mục nào đang dẫn trước?" trong tab DCA: tỷ số giá trị giữa 2 danh mục theo thời gian, giúp thấy giai đoạn nào danh mục nào mạnh hơn thay vì nhìn 2 đường chồng lên nhau.',
       'Thêm biểu đồ "Bản đồ lợi nhuận và rủi ro" trong tab DCA: đặt lợi nhuận cạnh mức sụt giảm tối đa của từng danh mục trên cùng một biểu đồ, kèm nhận xét danh mục nào đang hiệu quả nhất.',
       'Thêm nút chọn nhanh từng phần kết quả (Hiệu suất đầu tư / Hành trình của bạn / Rủi ro & biến động / Endgame) ngay dưới nút "Chạy DCA", giúp xem đúng phần cần mà không phải cuộn qua toàn bộ trang.',
+      'Thêm mục "Cùng 100 triệu, vào ở thời điểm khác nhau" trong phần Rủi ro & biến động: mô phỏng mua một lần 100 triệu tại 5 mốc thời gian (10 năm/5 năm/3 năm/1 năm/6 tháng trước) rồi giữ đến nay, xem mỗi khoản hiện thành bao nhiêu.',
+      'Mục "Kiên trì qua bão" ghi thêm mức tăng cần thiết để hòa vốn sau mỗi lần sụt giảm (vd -42% cần tăng +73% mới về lại đỉnh cũ), nhấn mạnh sụt càng sâu thì càng khó gỡ lại.',
+      'Biểu đồ "Bản đồ lợi nhuận và rủi ro" bổ sung nhận xét về đánh đổi giữa các danh mục: giữ được bao nhiêu % lợi nhuận và né được bao nhiêu % sụt giảm so với danh mục lời nhất.',
+      'Sắp xếp lại tab DCA: chuyển mục "Cùng 100 triệu..." và "Nếu bạn bắt đầu ở thời điểm khác thì sao?" (rolling returns) vào phần Rủi ro & biến động; Endgame giờ chỉ còn phần dự phóng tương lai.',
     ],
   },
   {
