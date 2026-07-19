@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v3.6',
+    date: '19/07/2026',
+    items: [
+      'Thêm tab "Tái Cân Bằng": kiểm tra chọn lịch tái cân bằng nào (hàng ngày, hàng tuần, theo ngưỡng lệch tỷ trọng...) cho kết quả tốt hơn, thử tự động hàng trăm biến thể trên cùng một danh mục.',
+    ],
+  },
+  {
     version: 'v3.5',
     date: '17/07/2026',
     items: [

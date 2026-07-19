@@ -4,6 +4,7 @@ import { useUrlState } from './hooks/useUrlState'
 import { CompareTab } from './components/CompareTab'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
+import { RebalanceSensitivityPanel } from './components/RebalanceSensitivityPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
@@ -55,6 +56,12 @@ export function App() {
           LS vs DCA
         </button>
         <button
+          className={`tab ${state.tab === 'rebalance' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'rebalance' })}
+        >
+          Tái Cân Bằng
+        </button>
+        <button
           className={`tab ${state.tab === 'bitcoin' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'bitcoin' })}
         >
@@ -97,6 +104,11 @@ export function App() {
       {/* LS vs DCA Tab */}
       <div style={{ display: state.tab === 'lsdca' ? undefined : 'none' }}>
         <LumpSumDCAPanel funds={metadata} />
+      </div>
+
+      {/* Tái Cân Bằng Tab */}
+      <div style={{ display: state.tab === 'rebalance' ? undefined : 'none' }}>
+        <RebalanceSensitivityPanel funds={metadata} />
       </div>
 
       {/* Bitcoin Tab */}

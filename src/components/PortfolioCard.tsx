@@ -35,6 +35,7 @@ interface Props {
   onUpdateSlot: (idx: number, update: Partial<DCASlot>) => void
   onSetEqualWeights: () => void
   showRebal?: boolean
+  showRemove?: boolean
 }
 
 export function PortfolioCard({
@@ -48,6 +49,7 @@ export function PortfolioCard({
   onUpdateSlot,
   onSetEqualWeights,
   showRebal = true,
+  showRemove = true,
 }: Props) {
   const totalWeight = portfolio.slots.reduce((s, f) => s + f.weight, 0)
   const isOverUnder = Math.abs(totalWeight - 100) > 0.01
@@ -55,15 +57,17 @@ export function PortfolioCard({
 
   return (
     <div className="portfolio-card">
-      <div className="portfolio-icon-row">
-        <button
-          className="portfolio-delete-btn-corner"
-          onClick={onRemove}
-          title="Xoá danh mục"
-        >
-          ✕
-        </button>
-      </div>
+      {showRemove && (
+        <div className="portfolio-icon-row">
+          <button
+            className="portfolio-delete-btn-corner"
+            onClick={onRemove}
+            title="Xoá danh mục"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="portfolio-card-header">
         <span className="portfolio-color-dot" style={{ background: color }} />
