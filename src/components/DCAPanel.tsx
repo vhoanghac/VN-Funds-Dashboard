@@ -911,6 +911,11 @@ function DCAPanelImpl({ funds }: Props) {
               </div>
             )}
 
+            {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
+            <DCAStatsTable
+              portfolios={dcaStatsTableData}
+            />
+
             {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
             <PortfolioValueChart
               portfolios={portfolioValueChartData}
@@ -920,11 +925,6 @@ function DCAPanelImpl({ funds }: Props) {
             {validResults.length >= 2 && (
               <DcaRatioChart portfolios={ratioChartData} />
             )}
-
-            {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
-            <DCAStatsTable
-              portfolios={dcaStatsTableData}
-            />
 
             {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
                 trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
