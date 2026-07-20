@@ -33,36 +33,45 @@ export function formatVNDFull(value: number): string {
 
 /**
  * Trả về câu so sánh đời thực cho một khoản tiền (thường là delta).
- * Null nếu số tiền quá nhỏ hoặc quá lớn để có câu phù hợp.
+ * Null nếu số tiền quá nhỏ để có câu phù hợp.
  *
- * Pool đã được hiệu chỉnh theo giá thực tế VN 2026 (retail-friendly):
- * tập trung vào xe máy → ô tô → nghỉ hưu.
+ * Mỗi mốc gắn với giá thực tế VN 2026 của món đồ đó (retail-friendly):
+ * xe máy → ô tô → nghỉ hưu. Chọn mốc có giá gần nhất theo tỷ lệ (log-scale)
+ * thay vì "vượt ngưỡng nào thì lấy ngưỡng đó", để tránh trường hợp một số tiền
+ * gần gấp đôi giá thực của món đồ vẫn bị gán nhãn món đồ đó.
  */
 export function vndComparison(value: number): string | null {
   const v = Math.abs(value)
   if (v < 15_000_000) return null
 
-  // Mốc so sánh, lấy mốc gần nhất với giá trị
-  const anchors: { min: number; label: string }[] = [
-    { min: 15_000_000,     label: 'một chiếc iPhone mới' },
-    { min: 35_000_000,     label: 'một chiếc xe SH hoặc Vespa xịn' },
-    { min: 80_000_000,     label: 'một chiếc xe mô tô phân khối lớn' },
-    { min: 200_000_000,    label: 'một chiếc ô tô cũ cho gia đình' },
-    { min: 400_000_000,    label: 'một chiếc Toyota Vios hoặc Honda City mới' },
-    { min: 800_000_000,    label: 'một chiếc Mazda CX-5 hoặc Honda CR-V' },
-    { min: 1_800_000_000,  label: 'một chiếc Mercedes C-Class hoặc BMW 3-Series' },
-    { min: 4_000_000_000,  label: 'vốn để mở một quán cà phê hoặc cửa hàng nhỏ' },
-    { min: 8_000_000_000,  label: 'nghỉ hưu sớm với lãi gửi ngân hàng ~400 triệu/năm' },
-    { min: 20_000_000_000, label: 'nghỉ hưu sớm 15-20 năm' },
+  // Giá thực tế ước tính của từng món đồ (không phải ngưỡng tối thiểu)
+  const anchors: { price: number; label: string }[] = [
+    { price: 20_000_000,     label: 'một chiếc xe máy số phổ thông (Honda Wave, Wave Alpha)' },
+    { price: 30_000_000,     label: 'một chiếc iPhone mới' },
+    { price: 45_000_000,     label: 'một chiếc xe tay ga phổ thông (Honda Vision, Air Blade)' },
+    { price: 100_000_000,    label: 'một chiếc xe SH hoặc Vespa xịn' },
+    { price: 250_000_000,    label: 'một chiếc mô tô phân khối lớn (Royal Enfield, Kawasaki Z-series)' },
+    { price: 400_000_000,    label: 'một chiếc ô tô cũ cho gia đình' },
+    { price: 550_000_000,    label: 'một chiếc Toyota Vios hoặc Honda City mới' },
+    { price: 1_000_000_000,  label: 'một chiếc Mazda CX-5 hoặc Honda CR-V' },
+    { price: 2_000_000_000,  label: 'một chiếc Mercedes C-Class hoặc BMW 3-Series' },
+    { price: 5_000_000_000,  label: 'vốn để mở một quán cà phê hoặc cửa hàng nhỏ' },
+    { price: 10_000_000_000, label: 'nghỉ hưu sớm với lãi gửi ngân hàng ~400 triệu/năm' },
+    { price: 25_000_000_000, label: 'nghỉ hưu sớm 15-20 năm' },
   ]
 
-  // Chọn mốc cao nhất mà value vẫn vượt qua
-  let chosen: string | null = null
+  // Chọn mốc có tỷ lệ giá/value gần 1 nhất (so sánh trên thang log để công bằng
+  // giữa các bậc độ lớn khác nhau)
+  let chosen = anchors[0]!
+  let bestDist = Infinity
   for (const a of anchors) {
-    if (v >= a.min) chosen = a.label
-    else break
+    const dist = Math.abs(Math.log(v / a.price))
+    if (dist < bestDist) {
+      bestDist = dist
+      chosen = a
+    }
   }
-  return chosen
+  return chosen.label
 }
 
 /** Xác định dấu cho delta, ví dụ +250 triệu / -30 triệu */
