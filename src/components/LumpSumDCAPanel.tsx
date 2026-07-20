@@ -71,7 +71,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
   const [showExplainer, setShowExplainer] = useState(false)
 
   // ── Portfolio (single) ──
-  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string } | null
+  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string; name?: string } | null
   const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(() => {
     const src = urlParams?.portfolio ?? loadLS<SavedPortfolio>('lsdca_portfolio', null)
     if (!src) return null
@@ -79,8 +79,8 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     return {
       id: `lsdca${num}`,
       num,
-      name: derivePortfolioName(src.slots, num),
-      isNameCustom: false,
+      name: src.name || derivePortfolioName(src.slots, num),
+      isNameCustom: !!src.name,
       slots: src.slots,
       rebalFreq: src.rebalFreq as import('../types').RebalanceFrequency,
     }
@@ -111,7 +111,10 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
   useEffect(() => { saveLS('lsdca_cashFundId', cashFundId) }, [cashFundId])
   useEffect(() => { saveLS('lsdca_compareFundId', compareFundId) }, [compareFundId])
   useEffect(() => {
-    saveLS('lsdca_portfolio', portfolio ? { slots: portfolio.slots, rebalFreq: portfolio.rebalFreq } : null)
+    saveLS('lsdca_portfolio', portfolio ? {
+      slots: portfolio.slots, rebalFreq: portfolio.rebalFreq,
+      name: portfolio.isNameCustom ? portfolio.name : undefined,
+    } : null)
   }, [portfolio])
 
   const fundOptions = useMemo(
@@ -432,7 +435,10 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
         <ShareButton getUrl={() => buildLsDcaUrl({
           totalCapital, horizonMonths, freq, cashMode,
           savingsRate, cashFundId, compareFundId,
-          portfolio: portfolio ? { slots: portfolio.slots, rebalFreq: portfolio.rebalFreq } : null,
+          portfolio: portfolio ? {
+            slots: portfolio.slots, rebalFreq: portfolio.rebalFreq,
+            name: portfolio.isNameCustom ? portfolio.name : undefined,
+          } : null,
         })} />
       </div>
       <p className="lsdca-subtitle">

@@ -6,7 +6,8 @@ import type { CashMode, LSvsDCAFreq } from './lsVsDca'
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
 interface Slot { fundId: string; weight: number }
-interface Portfolio { slots: Slot[]; rebalFreq: RebalanceFrequency }
+/** name chỉ có khi người dùng tự đặt tên (isNameCustom) — tên tự sinh từ mã quỹ không cần lưu vào URL/localStorage */
+interface Portfolio { slots: Slot[]; rebalFreq: RebalanceFrequency; name?: string }
 
 function encodeSlots(slots: Slot[]): string {
   return slots
@@ -38,7 +39,7 @@ export interface DcaShareState {
   yearsBack: number
   dateFrom: string
   dateTo: string
-  portfolios: Array<{ slots: Slot[]; rebalFreq: RebalanceFrequency }>
+  portfolios: Portfolio[]
 }
 
 /**
@@ -49,7 +50,7 @@ export interface DcaShareState {
 interface CompactDca {
   i?: number; c?: number; f?: DCAFrequency; dm?: 'all' | 'years'; y?: number
   from?: string; to?: string
-  p?: { s: string; r: RebalanceFrequency }[]
+  p?: { s: string; r: RebalanceFrequency; n?: string }[]
 }
 
 export function buildDcaUrl(s: DcaShareState): string {
@@ -62,7 +63,7 @@ export function buildDcaUrl(s: DcaShareState): string {
     from: s.dateFrom || undefined,
     to: s.dateTo || undefined,
     p: s.portfolios
-      .map(portfolio => ({ s: encodeSlots(portfolio.slots), r: portfolio.rebalFreq }))
+      .map(portfolio => ({ s: encodeSlots(portfolio.slots), r: portfolio.rebalFreq, n: portfolio.name || undefined }))
       .filter(portfolio => portfolio.s),
   }
   const encoded = compressToEncodedURIComponent(JSON.stringify(compact))
@@ -100,7 +101,7 @@ function parseCompactDca(compressed: string): Partial<DcaShareState> | null {
       for (const portfolio of c.p) {
         const slots = decodeSlots(portfolio.s ?? '')
         if (slots.length === 0) continue
-        portfolios.push({ slots, rebalFreq: portfolio.r ?? 'quarterly' })
+        portfolios.push({ slots, rebalFreq: portfolio.r ?? 'quarterly', name: portfolio.n || undefined })
       }
       if (portfolios.length > 0) result.portfolios = portfolios
     }
@@ -163,7 +164,7 @@ export interface LsDcaShareState {
 interface CompactLsDca {
   cap?: number; h?: number; f?: LSvsDCAFreq; cash?: CashMode; rate?: number
   cfund?: string; cmp?: string
-  pf?: { s: string; r: RebalanceFrequency }
+  pf?: { s: string; r: RebalanceFrequency; n?: string }
 }
 
 export function buildLsDcaUrl(s: LsDcaShareState): string {
@@ -178,7 +179,7 @@ export function buildLsDcaUrl(s: LsDcaShareState): string {
   }
   if (s.portfolio) {
     const encoded = encodeSlots(s.portfolio.slots)
-    if (encoded) compact.pf = { s: encoded, r: s.portfolio.rebalFreq }
+    if (encoded) compact.pf = { s: encoded, r: s.portfolio.rebalFreq, n: s.portfolio.name || undefined }
   }
   const encoded = compressToEncodedURIComponent(JSON.stringify(compact))
   return `${origin()}?tab=lsdca&s=${encoded}`
@@ -213,7 +214,7 @@ function parseCompactLsDca(compressed: string): Partial<LsDcaShareState> | null 
     if (c.pf) {
       const slots = decodeSlots(c.pf.s ?? '')
       if (slots.length > 0) {
-        result.portfolio = { slots, rebalFreq: c.pf.r ?? 'quarterly' }
+        result.portfolio = { slots, rebalFreq: c.pf.r ?? 'quarterly', name: c.pf.n || undefined }
       }
     }
 

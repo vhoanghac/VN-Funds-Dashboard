@@ -128,7 +128,7 @@ function DCAPanelImpl({ funds }: Props) {
     activeSection === 'all' || activeSection === id ? undefined : 'none'
 
   // ── Portfolios ──
-  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string }
+  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string; name?: string }
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
     const source = urlParams?.portfolios && urlParams.portfolios.length > 0
       ? urlParams.portfolios
@@ -139,8 +139,8 @@ function DCAPanelImpl({ funds }: Props) {
       return {
         id: `dca${num}`,
         num,
-        name: derivePortfolioName(p.slots, num),
-        isNameCustom: false,
+        name: p.name || derivePortfolioName(p.slots, num),
+        isNameCustom: !!p.name,
         slots: p.slots,
         rebalFreq: p.rebalFreq as import('../types').RebalanceFrequency,
       }
@@ -182,7 +182,10 @@ function DCAPanelImpl({ funds }: Props) {
   useEffect(() => { saveLS('dca_dateMode', dateMode) }, [dateMode])
   useEffect(() => { saveLS('dca_yearsBack', yearsBack) }, [yearsBack])
   useEffect(() => {
-    saveLS('dca_portfolios', portfolios.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })))
+    saveLS('dca_portfolios', portfolios.map(p => ({
+      slots: p.slots, rebalFreq: p.rebalFreq,
+      name: p.isNameCustom ? p.name : undefined,
+    })))
   }, [portfolios])
 
   const fundOptions = useMemo(() =>
@@ -712,7 +715,10 @@ function DCAPanelImpl({ funds }: Props) {
         <ShareButton getUrl={() => buildDcaUrl({
           initialAmount, cashflowAmount, cashflowFreq,
           dateMode, yearsBack, dateFrom, dateTo,
-          portfolios: portfolios.map(p => ({ slots: p.slots, rebalFreq: p.rebalFreq })),
+          portfolios: portfolios.map(p => ({
+            slots: p.slots, rebalFreq: p.rebalFreq,
+            name: p.isNameCustom ? p.name : undefined,
+          })),
         })} />
       </div>
 
