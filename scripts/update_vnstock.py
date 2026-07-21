@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'public', 'data')
 
 # ETFs — use Quote(source='VCI') to get stock prices
-ETF_FUNDS = ['E1VFVN30', 'FUEVFVND', 'FUEDCMID']
+ETF_FUNDS = ['E1VFVN30', 'FUEVFVND', 'FUEDCMID', 'FUESSVFL', 'FUEVN100']
 
 
 
