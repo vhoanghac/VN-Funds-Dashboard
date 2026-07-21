@@ -72,6 +72,7 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
       finalValue: portfolio.finalValue,
       valueSeries: portfolio.valueSeries,
       skippedCount: 0,
+      skippedCash: 0,
     }
     const panic15 = runPanicStop(inputs, -0.15)
     const panic25 = runPanicStop(inputs, -0.25)
@@ -100,8 +101,15 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
   const baseProfit = scenarios.baseline.finalValue - scenarios.baseline.totalInvested
   const p15Profit = scenarios.panic15.finalValue - scenarios.panic15.totalInvested
   const p25Profit = scenarios.panic25.finalValue - scenarios.panic25.totalInvested
-  const gap15 = scenarios.baseline.finalValue - scenarios.panic15.finalValue
-  const gap25 = scenarios.baseline.finalValue - scenarios.panic25.finalValue
+
+  // "Chi phí cơ hội" — KHÔNG phải so trực tiếp giá trị cuối, vì panic bỏ nạp
+  // nên vốn ít hơn hẳn, làm chênh lệch bị thổi phồng bởi phần "chưa đầu tư"
+  // chứ không phải do đầu tư kém. Giả định số tiền bị bỏ nạp vẫn nằm trong
+  // túi bạn dưới dạng tiền mặt (không sinh lời, không mất) — cộng nó lại vào
+  // giá trị cuối của kịch bản panic rồi mới so với baseline, để ra đúng phần
+  // thiệt hại do mua sai thời điểm + mất lãi kép, tách khỏi việc có ít vốn hơn.
+  const gap15 = scenarios.baseline.finalValue - (scenarios.panic15.finalValue + scenarios.panic15.skippedCash)
+  const gap25 = scenarios.baseline.finalValue - (scenarios.panic25.finalValue + scenarios.panic25.skippedCash)
 
   // % lợi nhuận tích lũy (giá trị cuối ÷ đã đầu tư − 1) — cùng công thức với
   // cột "Lợi nhuận tích lũy" ở Bảng thống kê, để 2 nơi nhất quán với nhau.
@@ -157,7 +165,13 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
             <th>Giá trị cuối</th>
             <th>Lời ròng</th>
             <th>% Lợi nhuận</th>
-            <th>So với đầu tư đều đặn</th>
+            <th>
+              Chi phí cơ hội
+              <span
+                className="dca-info-icon"
+                title="Panic bỏ nạp nên đầu tư ít tiền hơn hẳn — nếu so thẳng giá trị cuối, chênh lệch sẽ bị thổi phồng bởi phần 'chưa đầu tư', không phải do đầu tư kém. Cột này giả định số tiền bị bỏ nạp vẫn nằm trong túi bạn (tiền mặt, không sinh lời), cộng lại vào giá trị cuối của panic rồi mới so với kịch bản nạp đều đặn — ra đúng phần thiệt hại do mua sai thời điểm và mất lãi kép."
+              >?</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -170,7 +184,12 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
             <td>baseline</td>
           </tr>
           <tr>
-            <td>Panic -15% <span className="dca-consist-skip">({scenarios.panic15.skippedCount} lần bỏ)</span></td>
+            <td>
+              Panic -15%{' '}
+              <span className="dca-consist-skip">
+                ({scenarios.panic15.skippedCount} lần bỏ · giữ {formatVND(scenarios.panic15.skippedCash)} tiền mặt)
+              </span>
+            </td>
             <td>{formatVND(scenarios.panic15.totalInvested)}</td>
             <td>{formatVND(Math.round(scenarios.panic15.finalValue))}</td>
             <td>{formatVND(Math.round(p15Profit))}</td>
@@ -180,7 +199,12 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
             </td>
           </tr>
           <tr>
-            <td>Panic -25% <span className="dca-consist-skip">({scenarios.panic25.skippedCount} lần bỏ)</span></td>
+            <td>
+              Panic -25%{' '}
+              <span className="dca-consist-skip">
+                ({scenarios.panic25.skippedCount} lần bỏ · giữ {formatVND(scenarios.panic25.skippedCash)} tiền mặt)
+              </span>
+            </td>
             <td>{formatVND(scenarios.panic25.totalInvested)}</td>
             <td>{formatVND(Math.round(scenarios.panic25.finalValue))}</td>
             <td>{formatVND(Math.round(p25Profit))}</td>
@@ -192,12 +216,20 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
         </tbody>
       </table>
 
+      <p className="dca-note">
+        * "Chi phí cơ hội" đã cộng lại phần tiền bị bỏ nạp (giả định giữ làm tiền mặt, không
+        sinh lời) trước khi so với kịch bản đầu tư đều đặn — nên đây là thiệt hại thực do mua
+        sai thời điểm và mất lãi kép, không lẫn với việc panic đơn giản là có ít vốn hơn.
+      </p>
+
       <ConsistencyTakeaway
         baseFinal={scenarios.baseline.finalValue}
         gap15={gap15}
         gap25={gap25}
         skipped15={scenarios.panic15.skippedCount}
         skipped25={scenarios.panic25.skippedCount}
+        skippedCash15={scenarios.panic15.skippedCash}
+        skippedCash25={scenarios.panic25.skippedCash}
       />
     </div>
   )
@@ -215,13 +247,15 @@ function LegendItem({ color, dash, label }: { color: string; dash: string; label
 }
 
 function ConsistencyTakeaway({
-  baseFinal, gap15, gap25, skipped15, skipped25,
+  baseFinal, gap15, gap25, skipped15, skipped25, skippedCash15, skippedCash25,
 }: {
   baseFinal: number
   gap15: number
   gap25: number
   skipped15: number
   skipped25: number
+  skippedCash15: number
+  skippedCash25: number
 }) {
   // Case 1: Panic không skip lần nào (không có DD vượt -15%) -> thị trường êm ả
   if (skipped15 === 0 && skipped25 === 0) {
@@ -240,8 +274,9 @@ function ConsistencyTakeaway({
     return (
       <div className="dca-consist-takeaway">
         Trong kỳ này, việc dừng đầu tư khi quỹ giảm sâu <strong>-25%</strong> lại cho kết quả
-        tốt hơn đầu tư đều đặn một chút (hơn <strong>{formatVND(Math.abs(Math.round(gap25)))}</strong>).
-        Lý do: kỳ này quỹ có xu hướng đi xuống kéo dài, mua thêm ở vùng giảm bị lỗ tiếp.
+        tốt hơn đầu tư đều đặn một chút (hơn <strong>{formatVND(Math.abs(Math.round(gap25)))}</strong>,
+        đã tính cả phần tiền mặt giữ lại chứ không chỉ nhờ đầu tư ít hơn). Lý do: kỳ này quỹ có
+        xu hướng đi xuống kéo dài, mua thêm ở vùng giảm bị lỗ tiếp.
         Nhưng cẩn thận trước khi kết luận rằng panic tốt. Chiến lược này chỉ thắng khi bạn
         đoán đúng rằng thị trường sẽ tiếp tục giảm, điều không ai đoán được trước. Với phần
         lớn chu kỳ dài hạn của thị trường Việt Nam, đầu tư đều đặn qua đáy là cách duy nhất
@@ -254,18 +289,22 @@ function ConsistencyTakeaway({
   const worstGap = Math.max(gap15, gap25)
   const worstLabel = gap15 >= gap25 ? '-15%' : '-25%'
   const worstSkipped = gap15 >= gap25 ? skipped15 : skipped25
+  const worstSkippedCash = gap15 >= gap25 ? skippedCash15 : skippedCash25
   const gapPct = baseFinal > 0 ? (worstGap / baseFinal) * 100 : 0
 
   return (
     <div className="dca-consist-takeaway">
       Đầu tư đều đặn qua bão là kịch bản tốt nhất. Nếu bạn dừng đầu tư khi quỹ giảm{' '}
       <strong>{worstLabel}</strong> từ đỉnh, bạn đã bỏ lỡ{' '}
-      <strong>{worstSkipped}</strong> lần đầu tư, đổi lại mất{' '}
-      <strong>{formatVND(Math.round(worstGap))}</strong> so với kịch bản đầu tư đều đặn
-      (tức khoảng <strong>{gapPct.toFixed(1)}%</strong> giá trị cuối). Lý do đơn giản:
-      những lần đầu tư trong giai đoạn giảm sâu là những lần mua được giá rẻ nhất, và khi
-      hồi phục chính các đơn vị đó đẻ nhiều lãi nhất. Dừng đầu tư đúng lúc đỏ là bỏ lỡ đáy.
-      Đó là cái giá rất cụ thể của việc để cảm xúc điều khiển lệnh đầu tư.
+      <strong>{worstSkipped}</strong> lần đầu tư (giữ lại{' '}
+      <strong>{formatVND(worstSkippedCash)}</strong> tiền mặt, không mất). Nhưng dù đã cộng lại
+      đúng số tiền mặt đó, danh mục vẫn kém hơn kịch bản đầu tư đều đặn{' '}
+      <strong>{formatVND(Math.round(worstGap))}</strong> (tức khoảng{' '}
+      <strong>{gapPct.toFixed(1)}%</strong> giá trị cuối) — đây mới là phần thiệt hại thực,
+      không tính phần vốn ít hơn. Lý do đơn giản: những lần đầu tư trong giai đoạn giảm sâu là
+      những lần mua được giá rẻ nhất, và khi hồi phục chính các đơn vị đó đẻ nhiều lãi nhất.
+      Dừng đầu tư đúng lúc đỏ là bỏ lỡ đáy. Đó là cái giá rất cụ thể của việc để cảm xúc điều
+      khiển lệnh đầu tư.
       {gap25 > 0 && gap15 > 0 && Math.abs(gap15 - gap25) > 0 && (
         <> Chú ý: panic -25% (bỏ {skipped25} lần) thậm chí mất{' '}
         <strong>{formatVND(Math.round(gap25))}</strong>,
@@ -289,6 +328,9 @@ function runPanicStop(
   finalValue: number
   valueSeries: { date: string; value: number }[]
   skippedCount: number
+  /** Tiền bị bỏ nạp, giả định vẫn giữ làm tiền mặt (không sinh lời) — dùng để
+   * tính "chi phí cơ hội" công bằng thay vì so thẳng giá trị cuối. */
+  skippedCash: number
 } {
   let skippedCount = 0
   const result = simulateDCA(
@@ -312,6 +354,7 @@ function runPanicStop(
     finalValue: result.finalValue,
     valueSeries: result.values,
     skippedCount,
+    skippedCash: skippedCount * inputs.params.cashflowAmount,
   }
 }
 

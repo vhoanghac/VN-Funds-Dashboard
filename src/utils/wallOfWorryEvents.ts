@@ -354,4 +354,12 @@ export const WOW_EVENTS: WowEvent[] = [
     category: 'vn',
     sourceUrl: 'https://dantri.com.vn/kinh-doanh/nhnn-noi-ve-co-che-von-dac-biet-cho-vingroup-sun-group-masterise-20260702101105038.htm',
   },
+  {
+    date: '2026-07-15',
+    label: 'Dự thảo Thông tư thay thế Thông tư số 22/2019/TT-NHNN',
+    shortLabel: 'Dự thảo siết vốn ngân hàng',
+    description: 'NHNN họp bàn dự thảo thay thế Thông tư 22/2019 - quy định giới hạn, tỷ lệ an toàn quan trọng bậc nhất ngành ngân hàng - nhằm siết chuẩn theo Basel III. Mới chỉ là dự thảo xin ý kiến, chưa ban hành, nhưng giới đầu tư lo ngại yêu cầu vốn và quản trị rủi ro chặt hơn sẽ ảnh hưởng lợi nhuận và khả năng cho vay của nhóm cổ phiếu ngân hàng.',
+    category: 'vn',
+    sourceUrl: 'https://cafef.vn/ngan-hang-nha-nuoc-ban-viec-thay-the-thong-tu-quan-trong-bac-nhat-nganh-ngan-hang-188260719092130966.chn',
+  },
 ]

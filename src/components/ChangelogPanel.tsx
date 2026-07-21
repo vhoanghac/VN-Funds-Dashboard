@@ -5,6 +5,7 @@ const ENTRIES = [
     items: [
       'Thêm dữ liệu giá vàng SJC (lấy từ nguồn sjc.com.vn), chọn được như một quỹ trong tab DCA và So Sánh.',
       'Sửa lỗi tính toán trong tab DCA, mục "Nếu bạn hoảng loạn dừng nạp khi thấy đỏ?": số lần bỏ nạp bị đếm trùng nhiều lần cho cùng một đợt sụt giảm.',
+      'Chỉnh sửa table kết quả kịch bản trong mục "Hoảng loạn dừng đầu tư" cho dễ hiểu hơn.',
     ],
   },
   {
