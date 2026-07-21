@@ -31,6 +31,7 @@ export interface ConsistencyPortfolio {
     slots: DCASlot[]
     params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
     rebalFreq: RebalanceFrequency
+    purchasePrices: Map<string, PricePoint[]>
   } | null
 }
 
@@ -45,12 +46,12 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
 
   return (
     <div className="dca-consist-block">
-      <h3 className="dca-consist-title">Nếu bạn hoảng loạn dừng nạp khi thấy đỏ?</h3>
+      <h3 className="dca-consist-title">Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?</h3>
       <p className="dca-consist-sub">
-        Retail Việt Nam điển hình không bỏ nạp tháng ngẫu nhiên. Họ đóng băng lệnh nạp
-        đúng lúc quỹ giảm sâu vì sợ mất thêm, rồi chần chừ không dám nạp lại cho đến khi
-        hồi phục. Đây là phép đối chứng bằng chính dữ liệu quỹ của bạn: so sánh nạp đều
-        đặn bất chấp biến động với hai biến thể hành vi dừng nạp khi quỹ giảm <strong>-15%</strong>{' '}
+        Retail Việt Nam điển hình không bỏ đầu tư tháng ngẫu nhiên. Họ đóng băng lệnh đầu tư
+        đúng lúc quỹ giảm sâu vì sợ mất thêm, rồi chần chừ không dám đầu tư lại cho đến khi
+        hồi phục. Đây là phép đối chứng bằng chính dữ liệu quỹ của bạn: so sánh đầu tư đều
+        đặn bất chấp biến động với hai biến thể hành vi dừng đầu tư khi quỹ giảm <strong>-15%</strong>{' '}
         và <strong>-25%</strong> từ đỉnh.
       </p>
 
@@ -102,6 +103,15 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
   const gap15 = scenarios.baseline.finalValue - scenarios.panic15.finalValue
   const gap25 = scenarios.baseline.finalValue - scenarios.panic25.finalValue
 
+  // % lợi nhuận tích lũy (giá trị cuối ÷ đã đầu tư − 1) — cùng công thức với
+  // cột "Lợi nhuận tích lũy" ở Bảng thống kê, để 2 nơi nhất quán với nhau.
+  const baseReturn = scenarios.baseline.totalInvested > 0
+    ? scenarios.baseline.finalValue / scenarios.baseline.totalInvested - 1 : null
+  const p15Return = scenarios.panic15.totalInvested > 0
+    ? scenarios.panic15.finalValue / scenarios.panic15.totalInvested - 1 : null
+  const p25Return = scenarios.panic25.totalInvested > 0
+    ? scenarios.panic25.finalValue / scenarios.panic25.totalInvested - 1 : null
+
   return (
     <div className="dca-consist-card">
       <div className="dca-consist-card-header">
@@ -134,27 +144,29 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
       </ResponsiveContainer>
 
       <div className="dca-consist-chart-legend">
-        <LegendItem color="#111827" dash="" label="Nạp đều đặn" />
-        <LegendItem color="#f97316" dash="4 2" label="Dừng nạp khi DD < -15%" />
-        <LegendItem color="#dc2626" dash="2 2" label="Dừng nạp khi DD < -25%" />
+        <LegendItem color="#111827" dash="" label="Đầu tư đều đặn" />
+        <LegendItem color="#f97316" dash="4 2" label="Dừng đầu tư khi DD < -15%" />
+        <LegendItem color="#dc2626" dash="2 2" label="Dừng đầu tư khi DD < -25%" />
       </div>
 
       <table className="dca-consist-table">
         <thead>
           <tr>
             <th>Kịch bản</th>
-            <th>Đã nạp</th>
+            <th>Đã đầu tư</th>
             <th>Giá trị cuối</th>
             <th>Lời ròng</th>
-            <th>So với nạp đều đặn</th>
+            <th>% Lợi nhuận</th>
+            <th>So với đầu tư đều đặn</th>
           </tr>
         </thead>
         <tbody>
           <tr className="dca-consist-row--baseline">
-            <td><strong>Nạp đều đặn</strong></td>
+            <td><strong>Đầu tư đều đặn</strong></td>
             <td>{formatVND(scenarios.baseline.totalInvested)}</td>
             <td>{formatVND(Math.round(scenarios.baseline.finalValue))}</td>
             <td>{formatVND(Math.round(baseProfit))}</td>
+            <td className={signClass(baseReturn)}>{formatSignedPercent(baseReturn)}</td>
             <td>baseline</td>
           </tr>
           <tr>
@@ -162,6 +174,7 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
             <td>{formatVND(scenarios.panic15.totalInvested)}</td>
             <td>{formatVND(Math.round(scenarios.panic15.finalValue))}</td>
             <td>{formatVND(Math.round(p15Profit))}</td>
+            <td className={signClass(p15Return)}>{formatSignedPercent(p15Return)}</td>
             <td className={gap15 > 0 ? 'dca-consist-gap--neg' : 'dca-consist-gap--pos'}>
               {formatGap(gap15)}
             </td>
@@ -171,6 +184,7 @@ function ConsistencyForPortfolio({ portfolio }: { portfolio: ConsistencyPortfoli
             <td>{formatVND(scenarios.panic25.totalInvested)}</td>
             <td>{formatVND(Math.round(scenarios.panic25.finalValue))}</td>
             <td>{formatVND(Math.round(p25Profit))}</td>
+            <td className={signClass(p25Return)}>{formatSignedPercent(p25Return)}</td>
             <td className={gap25 > 0 ? 'dca-consist-gap--neg' : 'dca-consist-gap--pos'}>
               {formatGap(gap25)}
             </td>
@@ -225,12 +239,12 @@ function ConsistencyTakeaway({
   if (gap25 < 0 && Math.abs(gap25) > baseFinal * 0.02) {
     return (
       <div className="dca-consist-takeaway">
-        Trong kỳ này, việc dừng nạp khi quỹ giảm sâu <strong>-25%</strong> lại cho kết quả
-        tốt hơn nạp đều đặn một chút (hơn <strong>{formatVND(Math.abs(Math.round(gap25)))}</strong>).
+        Trong kỳ này, việc dừng đầu tư khi quỹ giảm sâu <strong>-25%</strong> lại cho kết quả
+        tốt hơn đầu tư đều đặn một chút (hơn <strong>{formatVND(Math.abs(Math.round(gap25)))}</strong>).
         Lý do: kỳ này quỹ có xu hướng đi xuống kéo dài, mua thêm ở vùng giảm bị lỗ tiếp.
         Nhưng cẩn thận trước khi kết luận rằng panic tốt. Chiến lược này chỉ thắng khi bạn
         đoán đúng rằng thị trường sẽ tiếp tục giảm, điều không ai đoán được trước. Với phần
-        lớn chu kỳ dài hạn của thị trường Việt Nam, nạp đều đặn qua đáy là cách duy nhất
+        lớn chu kỳ dài hạn của thị trường Việt Nam, đầu tư đều đặn qua đáy là cách duy nhất
         tận dụng lãi kép sau hồi phục.
       </div>
     )
@@ -244,14 +258,14 @@ function ConsistencyTakeaway({
 
   return (
     <div className="dca-consist-takeaway">
-      Nạp đều đặn qua bão là kịch bản tốt nhất. Nếu bạn dừng nạp khi quỹ giảm{' '}
+      Đầu tư đều đặn qua bão là kịch bản tốt nhất. Nếu bạn dừng đầu tư khi quỹ giảm{' '}
       <strong>{worstLabel}</strong> từ đỉnh, bạn đã bỏ lỡ{' '}
-      <strong>{worstSkipped}</strong> lần nạp, đổi lại mất{' '}
-      <strong>{formatVND(Math.round(worstGap))}</strong> so với kịch bản nạp đều đặn
+      <strong>{worstSkipped}</strong> lần đầu tư, đổi lại mất{' '}
+      <strong>{formatVND(Math.round(worstGap))}</strong> so với kịch bản đầu tư đều đặn
       (tức khoảng <strong>{gapPct.toFixed(1)}%</strong> giá trị cuối). Lý do đơn giản:
-      những lần nạp trong giai đoạn giảm sâu là những lần mua được giá rẻ nhất, và khi
-      hồi phục chính các đơn vị đó đẻ nhiều lãi nhất. Dừng nạp đúng lúc đỏ là bỏ lỡ đáy.
-      Đó là cái giá rất cụ thể của việc để cảm xúc điều khiển lệnh nạp.
+      những lần đầu tư trong giai đoạn giảm sâu là những lần mua được giá rẻ nhất, và khi
+      hồi phục chính các đơn vị đó đẻ nhiều lãi nhất. Dừng đầu tư đúng lúc đỏ là bỏ lỡ đáy.
+      Đó là cái giá rất cụ thể của việc để cảm xúc điều khiển lệnh đầu tư.
       {gap25 > 0 && gap15 > 0 && Math.abs(gap15 - gap25) > 0 && (
         <> Chú ý: panic -25% (bỏ {skipped25} lần) thậm chí mất{' '}
         <strong>{formatVND(Math.round(gap25))}</strong>,
@@ -290,6 +304,7 @@ function runPanicStop(
         }
         return false
       },
+      purchasePrices: inputs.purchasePrices,
     },
   )
   return {
@@ -301,7 +316,7 @@ function runPanicStop(
 }
 
 function labelForKey(key: string): string {
-  if (key === 'base') return 'Nạp đều đặn'
+  if (key === 'base') return 'Đầu tư đều đặn'
   if (key === 'p15') return 'Panic -15%'
   if (key === 'p25') return 'Panic -25%'
   return key
@@ -311,6 +326,17 @@ function formatGap(gap: number): string {
   if (Math.abs(gap) < 1) return '0'
   if (gap > 0) return `-${formatVND(Math.round(gap))}`
   return `+${formatVND(Math.abs(Math.round(gap)))}`
+}
+
+function signClass(v: number | null): string {
+  if (v === null) return ''
+  return v >= 0 ? 'dca-profit' : 'dca-loss'
+}
+
+function formatSignedPercent(v: number | null): string {
+  if (v === null) return '—'
+  const pct = v * 100
+  return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'
 }
 
 function formatMillions(v: number): string {

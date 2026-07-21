@@ -186,6 +186,19 @@ function shouldInvest(
  */
 export interface DCASimulateOptions {
   skipContributionWhen?: (date: string, currentDrawdown: number) => boolean
+  /**
+   * Giá dùng để QUY ĐỔI TIỀN THÀNH ĐƠN VỊ khi mua (initial amount + mỗi lần DCA),
+   * CHỈ cho những fundId có mặt trong map này — các quỹ khác (không có entry,
+   * tức tuyệt đại đa số quỹ mở/ETF) vẫn dùng đúng `weeklyPrices` như trước,
+   * hành vi không đổi.
+   *
+   * Dùng cho tài sản có 2 giá mua/bán như vàng miếng SJC: mua ở giá "bán ra"
+   * (sell — cái nhà đầu tư phải trả), còn `weeklyPrices` (dùng để định giá danh
+   * mục / rebalance / so sánh hiệu suất xuyên suốt) là giá "mua vào" (buy —
+   * cái nhà đầu tư nhận được nếu bán). Bắt đúng chi phí chênh lệch mua-bán thật,
+   * thay vì giả định vàng cũng chỉ có 1 giá như quỹ mở/ETF.
+   */
+  purchasePrices?: Map<string, PricePoint[]>
 }
 
 /**
@@ -237,6 +250,17 @@ export function simulateDCA(
     return map
   })
 
+  // Purchase-time price lookups: falls back to priceLookups (weeklyPrices) for
+  // any fundId not present in options.purchasePrices — so funds/ETFs without
+  // a buy/sell spread are completely unaffected.
+  const purchaseLookups = fundIds.map((id, j) => {
+    const override = options?.purchasePrices?.get(id)
+    if (!override) return priceLookups[j]!
+    const map = new Map<string, number>()
+    for (const p of override) map.set(p.date, p.price)
+    return map
+  })
+
   // Collect all common dates (dates where ALL funds have prices)
   const allDates: string[] = []
   const firstPrices = priceArrays[0]!
@@ -270,11 +294,12 @@ export function simulateDCA(
   const cumulative: ReturnPoint[] = []
   const drawdown: ReturnPoint[] = []
 
-  // Helper: buy funds with a given amount
+  // Helper: buy funds with a given amount (dùng giá MUA-VÀO của người mua —
+  // tức priceLookups cho quỹ thường, purchaseLookups/giá "bán ra" cho vàng)
   function buyFunds(amount: number, dateIdx: number) {
     const date = allDates[dateIdx]!
     for (let j = 0; j < fundIds.length; j++) {
-      const price = priceLookups[j]!.get(date)!
+      const price = purchaseLookups[j]!.get(date)!
       const allocation = amount * weights[j]!
       units[j] += allocation / price
     }
@@ -349,6 +374,13 @@ export function simulateDCA(
         if (!shouldSkip) {
           buyFunds(params.cashflowAmount, i)
           cashflows.push({ date, amount: -params.cashflowAmount })
+        } else {
+          // Vẫn phải dời mốc "kỳ nạp gần nhất" tới ngày hôm nay dù bỏ qua lần
+          // này — nếu không, investDate ở trên cứ đứng yên tại lần nạp thành
+          // công gần nhất, khiến shouldInvest() cứ trả về true MỌI NGÀY còn
+          // lại trong cả giai đoạn sụt giảm (không chỉ 1 lần/kỳ), làm
+          // skippedCount bị đếm trùng hàng chục lần cho một đợt bão duy nhất.
+          lastInvestDate = date
         }
       }
     }

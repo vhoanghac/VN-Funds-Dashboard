@@ -307,3 +307,192 @@ describe('simulateDCA + applyDividendAdjustment (integration)', () => {
     expect(result.finalValue).toBeCloseTo(2200, 1)
   })
 })
+
+/**
+ * `purchasePrices` option: hỗ trợ tài sản 2 giá mua/bán (vàng miếng SJC).
+ *
+ * Quy ước: `weeklyPrices` (tham số chính) = giá "mua vào" của tiệm vàng
+ * (buy — cái nhà đầu tư nhận được nếu bán), dùng để ĐỊNH GIÁ danh mục xuyên
+ * suốt. `options.purchasePrices` = giá "bán ra" (sell — cái nhà đầu tư phải
+ * trả), CHỈ dùng lúc quy đổi tiền → đơn vị khi mua (initial + mỗi lần DCA).
+ */
+describe('simulateDCA purchasePrices option (gold buy/sell spread)', () => {
+  const GOLD = 'GOLD_SJC'
+
+  it('buys units at the sell price but marks the portfolio to market at the buy price', () => {
+    // Giá mua vào (valuation): 100 → 110 (+10%)
+    // Giá bán ra (purchase, cao hơn 10% so với giá mua vào): 110 → 121 (+10%)
+    // Tăng cùng % để cô lập hiệu ứng "spread" khỏi biến động thị trường thật.
+    const valuationPrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 110 },
+    ]]])
+    const purchasePrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 110 },
+      { date: '2024-01-02', price: 121 },
+    ]]])
+
+    const result = simulateDCA(
+      valuationPrices,
+      [{ fundId: GOLD, weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+      { purchasePrices },
+    )
+
+    // Mua ở giá BÁN (110), không phải giá mua vào (100)
+    const expectedUnits = 1000 / 110
+
+    // Ngay sau khi mua, định giá lại ở giá MUA VÀO (100) → "lỗ" tức thì đúng
+    // bằng khoảng chênh lệch mua-bán — đây là chi phí spread thật, không phải
+    // rủi ro thị trường.
+    expect(result.values[0]!.value).toBeCloseTo(expectedUnits * 100, 4)
+    expect(result.values[0]!.value).toBeCloseTo(909.09, 2)
+
+    // Cuối kỳ: định giá ở giá mua vào mới (110) — vừa đủ hoà vốn, vì giá phải
+    // tăng đúng bằng spread mới bù lại được chi phí lúc mua.
+    expect(result.finalValue).toBeCloseTo(expectedUnits * 110, 4)
+    expect(result.finalValue).toBeCloseTo(1000, 1)
+
+    // TWRR đo đúng biến động thị trường thuần túy của chuỗi ĐỊNH GIÁ (100→110,
+    // +10%), không lẫn khoản "lỗ" do spread lúc mua — 2 khái niệm tách bạch.
+    const finalTWRR = result.cumulative[result.cumulative.length - 1]!.value
+    expect(finalTWRR).toBeCloseTo(0.10, 4)
+  })
+
+  it('REGRESSION GUARD: without purchasePrices, buying at the (lower) valuation price overstates both day-0 value and final return', () => {
+    const valuationPrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 110 },
+    ]]])
+
+    // Không truyền purchasePrices — mô phỏng lỗi "quên" gắn giá bán cho vàng
+    const buggy = simulateDCA(
+      valuationPrices,
+      [{ fundId: GOLD, weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+    )
+
+    // Sai #1: mua ở giá 100 thay vì 110 → không thấy khoản "lỗ spread" ngay lúc mua
+    expect(buggy.values[0]!.value).toBeCloseTo(1000, 4)
+
+    // Sai #2: finalValue thổi phồng lên +10% thay vì hoà vốn ~0% — bỏ qua
+    // hoàn toàn chi phí chênh lệch mua-bán thật của vàng.
+    expect(buggy.finalValue).toBeCloseTo(1100, 4)
+  })
+
+  it('funds without a purchasePrices entry are completely unaffected (fallback to weeklyPrices)', () => {
+    // Đảm bảo tính năng vàng không ảnh hưởng đến quỹ thường: nếu purchasePrices
+    // được truyền vào nhưng KHÔNG có entry cho fundId này, hành vi phải giống
+    // hệt như không truyền purchasePrices gì cả.
+    const FUND = 'DCDS'
+    const prices = new Map([[FUND, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 110 },
+    ]]])
+    const unrelatedPurchasePrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 999 },
+      { date: '2024-01-02', price: 999 },
+    ]]])
+
+    const withEmptyOption = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+      { purchasePrices: unrelatedPurchasePrices },
+    )
+    const withoutOption = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+    )
+
+    expect(withEmptyOption.finalValue).toBeCloseTo(withoutOption.finalValue, 8)
+    expect(withEmptyOption.values[0]!.value).toBeCloseTo(withoutOption.values[0]!.value, 8)
+    expect(withEmptyOption.finalValue).toBeCloseTo(1100, 4) // quỹ thường: mua & định giá cùng 1 giá
+  })
+})
+
+/**
+ * `skipContributionWhen` (panic-stop): mốc "kỳ nạp gần nhất" phải dời tới
+ * ngày hiện tại NGAY CẢ KHI bỏ qua lần nạp đó, không chỉ khi mua thành công.
+ *
+ * Bug đã phát hiện: `lastInvestDate` (mốc cadence) chỉ được cập nhật bên
+ * trong `buyFunds()`. Khi một lần nạp bị bỏ (panic), `lastInvestDate` đứng
+ * yên tại lần nạp thành công gần nhất — khiến `shouldInvest()` (so sánh
+ * tháng) tiếp tục trả về true ở MỌI NGÀY còn lại trong cùng một đợt sụt
+ * giảm, thay vì chỉ 1 lần/kỳ như logic "hàng tháng" phải có. Kết quả:
+ * skippedCount bị đếm trùng theo SỐ NGÀY dữ liệu trong đợt bão, chứ không
+ * phải số kỳ nạp thực sự bị bỏ lỡ (vd hiển thị "54 lần bỏ" cho một đợt
+ * bão chỉ kéo dài 1-2 tháng).
+ */
+describe('simulateDCA skipContributionWhen cadence (panic-stop skip counting)', () => {
+  const FUND = 'TF'
+
+  it('only re-evaluates the skip decision once per period, not once per day inside a drawdown', () => {
+    // Nhiều điểm giá TRONG CÙNG tháng 2 (sau khi đã bỏ 1 lần nạp ở đầu
+    // tháng) — nếu cadence không dời đúng, mỗi điểm này sẽ bị tính thêm
+    // 1 lần bỏ nữa dù vẫn cùng 1 kỳ "hàng tháng".
+    const prices = new Map([[FUND, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-15', price: 100 },
+      { date: '2024-01-31', price: 100 },
+      { date: '2024-02-01', price: 100 }, // kỳ nạp tháng 2 bắt đầu — bỏ lần này
+      { date: '2024-02-05', price: 100 }, // vẫn tháng 2, KHÔNG được tính thêm 1 lần bỏ
+      { date: '2024-02-10', price: 100 }, // vẫn tháng 2, KHÔNG được tính thêm 1 lần bỏ
+      { date: '2024-02-15', price: 100 }, // vẫn tháng 2, KHÔNG được tính thêm 1 lần bỏ
+    ]]])
+
+    let skipCallCount = 0
+    simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 100, cashflowFreq: 'monthly' },
+      'quarterly',
+      {
+        // Luôn bỏ qua (mô phỏng "kẹt" trong 1 đợt sụt giảm dài) — cô lập
+        // hoàn toàn việc đếm cadence khỏi logic ngưỡng drawdown thật.
+        skipContributionWhen: () => { skipCallCount++; return true },
+      },
+    )
+
+    // Chỉ 1 kỳ "hàng tháng" thực sự bắt đầu trong chuỗi này (ranh giới
+    // 01→02), nên chỉ được gọi skipContributionWhen đúng 1 lần — không phải
+    // 4 lần (số điểm dữ liệu trong tháng 2).
+    expect(skipCallCount).toBe(1)
+  })
+
+  it('REGRESSION GUARD: resumes normal monthly cadence after the drawdown ends, not stuck skipping or double-firing on later days', () => {
+    // Tháng 1 (day 0, chưa có kỳ nạp nào để so sánh) → tháng 2 sụt sâu, bỏ
+    // nạp → tháng 3, tháng 4 hồi phục, nạp lại bình thường mỗi tháng 1 lần.
+    const prices = new Map([[FUND, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-15', price: 100 },
+      { date: '2024-02-01', price: 100 },
+      { date: '2024-02-15', price: 100 },
+      { date: '2024-03-01', price: 100 },
+      { date: '2024-03-15', price: 100 },
+      { date: '2024-04-01', price: 100 },
+      { date: '2024-04-15', price: 100 },
+    ]]])
+
+    const skipMonths = new Set(['2024-02']) // chỉ bỏ đúng kỳ tháng 2
+    const result = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 100, cashflowFreq: 'monthly' },
+      'quarterly',
+      {
+        skipContributionWhen: (date) => skipMonths.has(date.slice(0, 7)),
+      },
+    )
+
+    // Tháng 2 bị bỏ (không nạp). Tháng 3 và tháng 4 nạp lại bình thường,
+    // MỖI THÁNG ĐÚNG 1 LẦN (không bị merge/double-fire do cadence "kẹt").
+    expect(result.totalInvested).toBe(200)
+    expect(result.cashflows.filter(cf => cf.amount < 0)).toHaveLength(2)
+  })
+})

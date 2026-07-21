@@ -37,6 +37,8 @@ export interface EntryPointPortfolio {
 interface Props {
   portfolios: EntryPointPortfolio[]
   fundData: Map<string, PricePoint[]>
+  /** Giá "bán ra" — chỉ có entry cho quỹ 2-giá (vàng miếng SJC). Xem simulateDCA's purchasePrices option. */
+  purchasePriceData: Map<string, PricePoint[]>
 }
 
 interface EntryCell {
@@ -52,7 +54,7 @@ interface EntryRow {
   cells: EntryCell[]
 }
 
-function DcaEntryPointBlockImpl({ portfolios, fundData }: Props) {
+function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Props) {
   const rows = useMemo<EntryRow[]>(() => {
     if (portfolios.length === 0) return []
 
@@ -78,21 +80,32 @@ function DcaEntryPointBlockImpl({ portfolios, fundData }: Props) {
           }
         }
         const filtered = new Map<string, PricePoint[]>()
+        const filteredPurchase = new Map<string, PricePoint[]>()
         for (const s of p.slots) {
-          filtered.set(s.fundId, fundData.get(s.fundId)!.filter(pt => pt.date >= entryDate))
+          const prices = fundData.get(s.fundId)!.filter(pt => pt.date >= entryDate)
+          filtered.set(s.fundId, prices)
+          // Phải có entry cho MỌI fundId trong danh mục (fallback về `prices`
+          // nếu quỹ không có giá bán riêng) — nếu không, khi danh mục trộn
+          // vàng + quỹ thường, 2 map sẽ có tập fundId khác nhau khiến
+          // alignFundsToCommonGridDaily merge ra 2 lưới ngày khác nhau, làm
+          // vàng thiếu giá đúng ngày cần mua → NaN.
+          const purchase = purchasePriceData.get(s.fundId)
+          filteredPurchase.set(s.fundId, purchase ? purchase.filter(pt => pt.date >= entryDate) : prices)
         }
         const aligned = alignFundsToCommonGridDaily(filtered)
+        const alignedPurchase = alignFundsToCommonGridDaily(filteredPurchase)
         const sim = simulateDCA(
           aligned,
           p.slots,
           { initialAmount: AMOUNT, cashflowAmount: 0, cashflowFreq: 'monthly' },
           p.rebalFreq,
+          { purchasePrices: alignedPurchase },
         )
         return { portfolio: p, value: sim.cumulative.length > 0 ? sim.finalValue : null }
       })
       return { label: ep.label, months: ep.months, entryDate, cells }
     }).filter(r => r.cells.some(c => c.value !== null))
-  }, [portfolios, fundData])
+  }, [portfolios, fundData, purchasePriceData])
 
   if (rows.length === 0) return null
 

@@ -1,5 +1,13 @@
 const ENTRIES = [
   {
+    version: 'v3.7',
+    date: '21/07/2026',
+    items: [
+      'Thêm dữ liệu giá vàng SJC (lấy từ nguồn sjc.com.vn), chọn được như một quỹ trong tab DCA và So Sánh.',
+      'Sửa lỗi tính toán trong tab DCA, mục "Nếu bạn hoảng loạn dừng nạp khi thấy đỏ?": số lần bỏ nạp bị đếm trùng nhiều lần cho cùng một đợt sụt giảm.',
+    ],
+  },
+  {
     version: 'v3.6',
     date: '19/07/2026',
     items: [

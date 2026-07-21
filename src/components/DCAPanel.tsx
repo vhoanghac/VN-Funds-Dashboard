@@ -6,7 +6,7 @@ import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdev } from '../utils/drawdownStats'
-import { parseCSV } from '../utils/csvParser'
+import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { PortfolioValueChart } from './PortfolioValueChart'
@@ -64,6 +64,8 @@ interface DCAPortfolioResult {
     slots: DCASlot[]
     params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
     rebalFreq: RebalanceFrequency
+    /** Giá "bán ra" cho các slot là quỹ 2-giá (vàng) — xem simulateDCA's purchasePrices option. */
+    purchasePrices: Map<string, PricePoint[]>
   } | null
   /**
    * Shadow simulation cổ tức trên RAW NAV — số tiền thật, số ccq thật nhà
@@ -152,6 +154,11 @@ function DCAPanelImpl({ funds }: Props) {
   // Simulation chính dùng fundData (adjusted) để hiệu suất TWRR/MWRR phản ánh
   // đầy đủ cả cổ tức tái đầu tư.
   const [rawFundData, setRawFundData] = useState<Map<string, PricePoint[]>>(new Map())
+  // Giá "bán ra" (sell) — CHỈ có entry cho các quỹ 2-giá như vàng miếng SJC
+  // (type: 'gold'). Dùng làm giá mua khi quy đổi tiền → đơn vị lúc DCA/mua
+  // ban đầu; `fundData` (giá "mua vào"/buy) vẫn là giá định giá xuyên suốt.
+  // Xem simulateDCA's `purchasePrices` option (utils/dca.ts).
+  const [purchasePriceData, setPurchasePriceData] = useState<Map<string, PricePoint[]>>(new Map())
   // Dividend events per fund (loaded once từ public/data/dividends.json).
   // Ở VN hiện tại chỉ DCDE chi trả cổ tức; nếu thêm quỹ khác chỉ cần bổ sung vào JSON.
   // Dùng cho narrative (DividendBlock). Adjustment đã áp dụng sẵn ở CSV
@@ -193,6 +200,13 @@ function DCAPanelImpl({ funds }: Props) {
     [funds],
   )
 
+  // Quỹ 2-giá (mua/bán khác nhau, vd vàng miếng SJC) — xem giải thích ở
+  // purchasePriceData phía trên.
+  const dualPriceFundIds = useMemo(() =>
+    new Set(funds.filter(f => f.type === 'gold').map(f => f.id)),
+    [funds],
+  )
+
   // Collect all needed fund IDs
   const neededIds = useMemo(() => {
     const ids = new Set<string>()
@@ -218,12 +232,23 @@ function DCAPanelImpl({ funds }: Props) {
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()
+
+        // Vàng miếng SJC (và tài sản 2-giá tương tự): CSV có cột buy/sell
+        // riêng, không qua dividend adjustment (không có cổ tức). "buy" (giá
+        // tiệm vàng mua vào) đóng vai trò giá định giá xuyên suốt — giống mọi
+        // quỹ khác dùng 1 giá NAV; "sell" (giá bán ra) chỉ dùng làm giá mua
+        // lúc DCA/mua ban đầu, xem purchasePriceData.
+        if (dualPriceFundIds.has(id)) {
+          const { buy, sell } = parseGoldCSV(text)
+          return { id, raw: buy, adjusted: buy, purchase: sell }
+        }
+
         const rawDaily = parseCSV(text)
         // Adjusted daily: dùng cho simulation chính. Dividend adjustment
         // (DCDE...) áp dụng trước. Tất cả các tab dùng chung nguồn giá đã
         // adjusted để hiệu suất nhất quán toàn dashboard.
         const adjustedDaily = await loadAdjustedPrices(id, rawDaily)
-        return { id, raw: rawDaily, adjusted: adjustedDaily }
+        return { id, raw: rawDaily, adjusted: adjustedDaily, purchase: null }
       }),
     ).then(results => {
       if (cancelled) return
@@ -241,11 +266,18 @@ function DCAPanelImpl({ funds }: Props) {
         }
         return next
       })
+      setPurchasePriceData(prev => {
+        const next = new Map(prev)
+        for (const r of results) {
+          if (r && r.purchase) next.set(r.id, r.purchase)
+        }
+        return next
+      })
       setLoading(false)
     })
 
     return () => { cancelled = true }
-  }, [neededIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [neededIds, dualPriceFundIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Portfolio CRUD ──
 
@@ -406,6 +438,7 @@ function DCAPanelImpl({ funds }: Props) {
     // so chart lines overlap correctly.
     const allFilteredPrices = new Map<string, PricePoint[]>()
     const allFilteredRawPrices = new Map<string, PricePoint[]>()
+    const allFilteredPurchasePrices = new Map<string, PricePoint[]>()
     for (const fundId of allFundIds) {
       const prices = fundData.get(fundId)
       if (!prices) return null
@@ -416,10 +449,21 @@ function DCAPanelImpl({ funds }: Props) {
       if (rawPrices) {
         allFilteredRawPrices.set(fundId, rawPrices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
       }
+      // Giá "bán ra" — chỉ khác với giá định giá (fundData) ở quỹ 2-giá (vàng).
+      // QUAN TRỌNG: phải có entry cho MỌI fundId (fallback về `prices` nếu quỹ
+      // không có giá bán riêng), không chỉ riêng vàng — nếu không, map này có
+      // ít fundId hơn allFilteredPrices, alignFundsToCommonGridDaily sẽ merge
+      // lưới ngày khác nhau giữa 2 map, khiến vàng thiếu giá đúng ngày cần mua
+      // khi so sánh chung với quỹ khác (portfolio khác) → NaN.
+      const purchasePrices = purchasePriceData.get(fundId) ?? prices
+      allFilteredPurchasePrices.set(fundId, purchasePrices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
     }
     const alignedPrices = alignFundsToCommonGridDaily(allFilteredPrices)
     const alignedRawPrices = allFilteredRawPrices.size > 0
       ? alignFundsToCommonGridDaily(allFilteredRawPrices)
+      : new Map<string, PricePoint[]>()
+    const alignedPurchasePrices = allFilteredPurchasePrices.size > 0
+      ? alignFundsToCommonGridDaily(allFilteredPurchasePrices)
       : new Map<string, PricePoint[]>()
 
     // ── Step 3: Run DCA for each portfolio with aligned dates ──
@@ -431,10 +475,13 @@ function DCAPanelImpl({ funds }: Props) {
 
       // Pick this portfolio's fund prices from the aligned grid
       const filteredPrices = new Map<string, PricePoint[]>()
+      const portfolioPurchasePrices = new Map<string, PricePoint[]>()
       for (const slot of p.slots) {
         const prices = alignedPrices.get(slot.fundId)
         if (!prices) return null
         filteredPrices.set(slot.fundId, prices)
+        const purchasePrices = alignedPurchasePrices.get(slot.fundId)
+        if (purchasePrices) portfolioPurchasePrices.set(slot.fundId, purchasePrices)
       }
 
       const dcaResult = simulateDCA(
@@ -442,6 +489,7 @@ function DCAPanelImpl({ funds }: Props) {
         p.slots,
         committed.params,
         p.rebalFreq,
+        { purchasePrices: portfolioPurchasePrices },
       )
 
       if (dcaResult.cumulative.length === 0) {
@@ -492,13 +540,14 @@ function DCAPanelImpl({ funds }: Props) {
           slots: p.slots,
           params: committed.params,
           rebalFreq: p.rebalFreq,
+          purchasePrices: portfolioPurchasePrices,
         },
         dividendNarrative,
       })
     }
 
     return portfolioResults
-  }, [committed, fundData, rawFundData, dividendsByFund])
+  }, [committed, fundData, rawFundData, purchasePriceData, dividendsByFund])
 
   // Memo hóa để giữ reference ổn định — nếu không, các block hiển thị kết quả
   // bên dưới (đã bọc React.memo) sẽ vẫn re-render + tính toán lại mỗi khi gõ
@@ -1000,6 +1049,7 @@ function DCAPanelImpl({ funds }: Props) {
             <DcaEntryPointBlock
               portfolios={entryPointPortfolios}
               fundData={fundData}
+              purchasePriceData={purchasePriceData}
             />
 
             <RollingReturnBlock
