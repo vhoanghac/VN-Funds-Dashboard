@@ -4,7 +4,7 @@ import { ShareButton } from './ShareButton'
 import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdev } from '../utils/drawdownStats'
 import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
@@ -694,9 +694,10 @@ function DCAPanelImpl({ funds }: Props) {
       ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
          new Date(r.cumulative[0]!.date).getTime()) / msPerYear
       : null
-    const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-      : null
+    // CAGR của danh mục (TWRR, tách khỏi thời điểm dòng tiền) — dùng làm base
+    // rate chiếu tương lai, KHÔNG dùng finalValue/totalInvested (bị kéo thấp
+    // vì phần lớn vốn DCA chỉ mới nạp gần đây, chưa kịp sinh lời).
+    const cagr = dcaCagr(r.cumulative)
     const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
       ? r.totalInvested / (dcaYears * 12)
       : 0
@@ -717,9 +718,8 @@ function DCAPanelImpl({ funds }: Props) {
       ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
          new Date(r.cumulative[0]!.date).getTime()) / msPerYear
       : null
-    const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-      : null
+    // CAGR của danh mục (TWRR) — xem giải thích ở projectionData phía trên.
+    const cagr = dcaCagr(r.cumulative)
     const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
       ? r.totalInvested / (dcaYears * 12)
       : 0

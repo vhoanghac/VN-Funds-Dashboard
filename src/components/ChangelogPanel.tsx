@@ -8,6 +8,8 @@ const ENTRIES = [
       'Chỉnh sửa table kết quả kịch bản trong mục "Hoảng loạn dừng đầu tư" cho dễ hiểu hơn.',
       'Thêm dữ liệu giá vàng nhẫn SJC 99,99% (1/2/5 chỉ), chọn được như một quỹ riêng bên cạnh vàng miếng SJC trong tab DCA và So Sánh.',
       'Thêm cảnh báo trong tab DCA: kiểm tra số tiền đầu tư vào vàng (ban đầu hoặc định kỳ) có đủ mua ít nhất 1 lô ngoài đời (0,5 chỉ) hay không — vì mô phỏng vẫn giả định mua được đúng số tiền đó mỗi kỳ, kể cả khi thực tế chưa đủ.',
+      <>Sửa lỗi phần Endgame bị sai do sử dụng CAGR của danh mục thay vì CAGR của chính tài sản (đóng góp bởi bạn{' '}
+        <a href="https://substack.com/@trinhlecong94" target="_blank" rel="noopener noreferrer">@trinhlecong94</a>).</>
     ],
   },
   {
