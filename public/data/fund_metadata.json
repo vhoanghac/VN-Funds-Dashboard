@@ -56,5 +56,6 @@
   {"id": "TCGF", "name_vi": "TCGF - Quỹ Đầu Tư Tăng Trưởng Thành Công", "type": "mutual_fund", "start_date": "2024-10-16", "csv_file": "TCGF.csv"},
   {"id": "EVESG", "name_vi": "EVESG - Quỹ Đầu Tư Cổ Phiếu ESG Eastspring Investments Việt Nam", "type": "mutual_fund", "start_date": "2024-11-13", "csv_file": "EVESG.csv"},
   {"id": "BTC", "name_vi": "Bitcoin (BTC/VND)", "type": "crypto", "start_date": "2014-09-17", "csv_file": "BTC.csv"},
-  {"id": "GOLD_SJC", "name_vi": "Vàng miếng SJC", "type": "gold", "start_date": "2009-07-22", "csv_file": "GOLD_SJC.csv"}
+  {"id": "GOLD_SJC", "name_vi": "Vàng miếng SJC", "type": "gold", "start_date": "2009-07-22", "csv_file": "GOLD_SJC.csv"},
+  {"id": "GOLD_NHAN_SJC", "name_vi": "Vàng nhẫn SJC 99,99%", "type": "gold", "start_date": "2016-01-05", "csv_file": "GOLD_NHAN_SJC.csv"}
 ]

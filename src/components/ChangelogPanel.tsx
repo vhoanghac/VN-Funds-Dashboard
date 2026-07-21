@@ -6,6 +6,8 @@ const ENTRIES = [
       'Thêm dữ liệu giá vàng SJC (lấy từ nguồn sjc.com.vn), chọn được như một quỹ trong tab DCA và So Sánh.',
       'Sửa lỗi tính toán trong tab DCA, mục "Nếu bạn hoảng loạn dừng nạp khi thấy đỏ?": số lần bỏ nạp bị đếm trùng nhiều lần cho cùng một đợt sụt giảm.',
       'Chỉnh sửa table kết quả kịch bản trong mục "Hoảng loạn dừng đầu tư" cho dễ hiểu hơn.',
+      'Thêm dữ liệu giá vàng nhẫn SJC 99,99% (1/2/5 chỉ), chọn được như một quỹ riêng bên cạnh vàng miếng SJC trong tab DCA và So Sánh.',
+      'Thêm cảnh báo trong tab DCA: kiểm tra số tiền đầu tư vào vàng (ban đầu hoặc định kỳ) có đủ mua ít nhất 1 lô ngoài đời (0,5 chỉ) hay không — vì mô phỏng vẫn giả định mua được đúng số tiền đó mỗi kỳ, kể cả khi thực tế chưa đủ.',
     ],
   },
   {

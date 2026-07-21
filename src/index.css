@@ -5036,6 +5036,11 @@ h1, h2, h3 {
   }
 }
 
+.dq-highlight {
+  color: #dc2626;
+  font-weight: 700;
+}
+
 /* ─── Compare Story Block ───────────────────────────────────────────────────── */
 
 .cmp-story {

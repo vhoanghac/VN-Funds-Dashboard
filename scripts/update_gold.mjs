@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 /**
- * Daily update of SJC gold price data (Hồ Chí Minh, vàng miếng SJC 1L/10L/1KG).
+ * Daily update of SJC gold price data — loops over every asset in GOLD_ASSETS
+ * below (currently: vàng miếng SJC 1L/10L/1KG, vàng nhẫn SJC 99,99%).
  *
- * - Reads the last date in public/data/GOLD_SJC.csv
+ * Per asset:
+ * - Reads the last date in its CSV
  * - Fetches only newer prices, primary source: sjc.com.vn PriceService.ashx
  *   (same endpoint as scripts/backfill_gold_sjc.mjs, <90-day window per call)
- * - Fallback source: giavang.org homepage (server-rendered Highcharts series,
- *   last ~30 days of buy/sell ticks) — used when SJC fails/returns nothing
+ * - Fallback source: giavang.org's homepage, used when SJC fails/returns
+ *   nothing. Vàng miếng đọc chuỗi Highcharts (~30 ngày gần nhất, nhiều điểm
+ *   cùng lúc); vàng nhẫn KHÔNG có chuỗi lịch sử trên giavang.org, chỉ có bảng
+ *   so sánh giá TRONG NGÀY (mục "Bảng so sánh giá Vàng Nhẫn") — nhưng vì cập
+ *   nhật hàng đêm chỉ cần đúng 1 dòng của HÔM NAY (lịch sử cũ đã có sẵn), bảng
+ *   này vẫn dùng được làm fallback, chỉ trả về đúng 1 ngày thay vì cả chuỗi.
  * - Appends new rows (date,buy,sell) — never rewrites existing data
- * - Exits 0 even when both sources fail, so the daily NAV workflow still
- *   commits fund updates (same tolerance as update_nav.mjs's per-fund errors)
+ * - Failures are logged and skipped per-asset, never thrown — the daily NAV
+ *   workflow must still commit fund updates even if gold fails entirely
+ *   (same tolerance as update_nav.mjs's per-fund errors)
  *
  * Usage:  node scripts/update_gold.mjs
  */
@@ -23,14 +30,35 @@ import { promisify } from 'util'
 const execFileAsync = promisify(execFile)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CSV_FILE = path.join(__dirname, '..', 'public', 'data', 'GOLD_SJC.csv')
+const DATA_DIR = path.join(__dirname, '..', 'public', 'data')
 
 const PRICE_SERVICE_URL = 'https://sjc.com.vn/GoldPrice/Services/PriceService.ashx'
 const GIAVANG_URL = 'https://giavang.org/'
-const GOLD_PRICE_ID = '1' // Vàng SJC 1L, 10L, 1KG — Hồ Chí Minh
 const CHUNK_DAYS = 85 // API caps each request at under 90 days
-
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+/**
+ * Mỗi loại vàng SJC theo dõi: goldPriceId khớp với PriceService.ashx
+ * (xem GetCurrentGoldPriceByBranch để tra Id ↔ TypeName nếu SJC thêm sản
+ * phẩm mới). `fallback` trỏ tới hàm đọc giavang.org tương ứng — null nếu
+ * chưa tìm được nguồn dự phòng cho loại vàng đó.
+ */
+const GOLD_ASSETS = [
+  {
+    id: 'GOLD_SJC',
+    label: 'Vàng miếng SJC',
+    goldPriceId: '1',
+    csvFile: path.join(DATA_DIR, 'GOLD_SJC.csv'),
+    fallback: fetchMieuFromGiavang,
+  },
+  {
+    id: 'GOLD_NHAN_SJC',
+    label: 'Vàng nhẫn SJC 99,99%',
+    goldPriceId: '49',
+    csvFile: path.join(DATA_DIR, 'GOLD_NHAN_SJC.csv'),
+    fallback: fetchNhanFromGiavang,
+  },
+]
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -47,26 +75,26 @@ function toDateStr(d) {
 }
 
 /** Last date (YYYY-MM-DD) already in the CSV, or null if missing/empty. */
-function getLastDate() {
-  if (!fs.existsSync(CSV_FILE)) return null
-  const lines = fs.readFileSync(CSV_FILE, 'utf-8').trim().split('\n')
+function getLastDate(csvFile) {
+  if (!fs.existsSync(csvFile)) return null
+  const lines = fs.readFileSync(csvFile, 'utf-8').trim().split('\n')
   if (lines.length <= 1) return null
   return lines[lines.length - 1].split(',')[0] || null
 }
 
-function appendRows(rows) {
+function appendRows(csvFile, rows) {
   if (rows.length === 0) return 0
-  const existing = fs.readFileSync(CSV_FILE, 'utf-8')
+  const existing = fs.readFileSync(csvFile, 'utf-8')
   const prefix = existing.endsWith('\n') ? '' : '\n'
   const lines = rows.map(r => `${r.date},${r.buy},${r.sell}`).join('\n')
-  fs.appendFileSync(CSV_FILE, prefix + lines + '\n')
+  fs.appendFileSync(csvFile, prefix + lines + '\n')
   return rows.length
 }
 
 // NOTE: sjc.com.vn sits behind Cloudflare, which fingerprints Node's native
 // fetch()/undici TLS handshake and serves a JS challenge instead of JSON
 // (curl's TLS fingerprint isn't flagged). Shelling out to curl sidesteps this
-// without a headless browser — same approach as backfill_gold_sjc.mjs.
+// without a headless browser — same approach as the backfill scripts.
 async function curlGet(url, postData) {
   const args = [
     '-s', '--max-time', '20',
@@ -96,7 +124,7 @@ function dedupeByDay(ticks) {
 
 // ─── Primary: sjc.com.vn ──────────────────────────────────
 
-async function fetchFromSJC(fromDate, toDate) {
+async function fetchFromSJC(goldPriceId, fromDate, toDate) {
   const ticks = []
   let cur = new Date(fromDate)
   const end = new Date(toDate)
@@ -108,7 +136,7 @@ async function fetchFromSJC(fromDate, toDate) {
 
     const params = new URLSearchParams({
       method: 'GetGoldPriceHistory',
-      goldPriceId: GOLD_PRICE_ID,
+      goldPriceId,
       fromDate: fmtDDMMYYYY(cur),
       toDate: fmtDDMMYYYY(to),
     })
@@ -133,12 +161,12 @@ async function fetchFromSJC(fromDate, toDate) {
 // ─── Fallback: giavang.org ────────────────────────────────
 
 /**
- * giavang.org's homepage embeds the last ~30 days of SJC buy/sell ticks as a
- * server-rendered Highcharts series:
+ * Vàng miếng: giavang.org's homepage embeds the last ~30 days of SJC MIẾNG
+ * buy/sell ticks as a server-rendered Highcharts series:
  *   seriesOptions = [{name:"Mua vào",data:[[ms,145.7],...]},{name:"Bán ra",data:[...]}]
  * Prices are in TRIỆU đồng/lượng → ×1,000,000 to match our CSV unit.
  */
-async function fetchFromGiavang() {
+async function fetchMieuFromGiavang() {
   const html = await curlGet(GIAVANG_URL)
 
   function extractSeries(name) {
@@ -163,55 +191,98 @@ async function fetchFromGiavang() {
   return dedupeByDay(ticks)
 }
 
-// ─── Main ─────────────────────────────────────────────────
+/**
+ * Vàng nhẫn: giavang.org KHÔNG có chuỗi lịch sử cho nhẫn, nhưng có mục
+ * "Bảng so sánh giá Vàng Nhẫn 1 Chỉ" (id="gia_vang_nhan") — bảng so sánh giá
+ * TRONG NGÀY của nhiều thương hiệu (SJC, PNJ, DOJI...). Chỉ lấy đúng dòng SJC
+ * đầu tiên trong bảng đó, trả về 1 dòng duy nhất cho HÔM NAY — đủ dùng cho
+ * cập nhật hàng đêm (lịch sử cũ đã có sẵn trong CSV, chỉ cần nối thêm 1 ngày).
+ * Giá ghi dạng "141.900" (đơn vị x1000đ/lượng, dấu chấm là phân cách nghìn)
+ * → bỏ dấu chấm rồi ×1000 ra VND, khớp đơn vị CSV.
+ */
+async function fetchNhanFromGiavang() {
+  const html = await curlGet(GIAVANG_URL)
 
-async function main() {
-  console.log('🏅 SJC Gold Price Updater\n')
+  const sectionIdx = html.indexOf('id="gia_vang_nhan"')
+  if (sectionIdx === -1) throw new Error('giavang.org: gia_vang_nhan section not found')
+  const section = html.slice(sectionIdx, sectionIdx + 5000)
 
-  const lastDate = getLastDate()
+  const m = /title="Giá vàng SJC"[^>]*><strong>SJC<\/strong><\/a><\/td><td class="">([\d.,]+)<\/td><td class="">([\d.,]+)<\/td>/.exec(section)
+  if (!m) throw new Error('giavang.org: SJC row not found in gia_vang_nhan table')
+
+  const parseThousands = (s) => parseInt(s.replace(/[.,]/g, ''), 10) * 1000
+  const buy = parseThousands(m[1])
+  const sell = parseThousands(m[2])
+  if (isNaN(buy) || isNaN(sell) || buy <= 0 || sell <= 0) {
+    throw new Error(`giavang.org: unparseable SJC ring gold price (${m[1]}/${m[2]})`)
+  }
+
+  return [{ date: toDateStr(new Date()), buy, sell }]
+}
+
+// ─── Per-asset update ─────────────────────────────────────
+
+async function updateAsset(asset) {
+  const lastDate = getLastDate(asset.csvFile)
   if (!lastDate) {
-    console.error('❌ GOLD_SJC.csv missing or empty — run scripts/backfill_gold_sjc.mjs first')
+    console.error(`❌ ${asset.id}: CSV missing or empty — run the matching backfill script first`)
     return
   }
 
   const today = toDateStr(new Date())
   if (lastDate >= today) {
-    console.log(`✅ GOLD_SJC: already up to date (last: ${lastDate})`)
+    console.log(`✅ ${asset.id}: already up to date (last: ${lastDate})`)
     return
   }
 
   // Refetch từ chính ngày lastDate (không phải hôm sau): giá SJC cập nhật nhiều
   // lần trong ngày, dòng cuối CSV có thể là tick giữa phiên — lấy lại cả ngày
   // đó rồi lọc `> lastDate` để chỉ append ngày mới, ngày cũ giữ nguyên.
-  const from = new Date(lastDate)
-
   let rows = null
   try {
-    rows = await fetchFromSJC(from, new Date())
-    console.log(`📡 sjc.com.vn: fetched ${rows.length} daily rows`)
+    rows = await fetchFromSJC(asset.goldPriceId, new Date(lastDate), new Date())
+    console.log(`📡 ${asset.id}: sjc.com.vn fetched ${rows.length} daily rows`)
   } catch (err) {
-    console.error(`⚠️  sjc.com.vn failed (${err.message}), falling back to giavang.org...`)
+    console.error(`⚠️  ${asset.id}: sjc.com.vn failed (${err.message})`)
+    if (!asset.fallback) {
+      console.error(`❌ ${asset.id}: no update this run (no fallback source configured)`)
+      return
+    }
+    console.error(`   falling back to giavang.org...`)
     try {
-      rows = await fetchFromGiavang()
-      console.log(`📡 giavang.org: fetched ${rows.length} daily rows`)
+      rows = await asset.fallback()
+      console.log(`📡 ${asset.id}: giavang.org fetched ${rows.length} daily rows`)
     } catch (err2) {
-      console.error(`❌ giavang.org also failed: ${err2.message}`)
-      console.error('❌ GOLD_SJC: no update this run (both sources failed)')
-      return // exit 0: don't block the fund NAV commit
+      console.error(`❌ ${asset.id}: giavang.org also failed (${err2.message})`)
+      console.error(`❌ ${asset.id}: no update this run (both sources failed)`)
+      return
     }
   }
 
   const newRows = rows.filter(r => r.date > lastDate)
   if (newRows.length === 0) {
-    console.log(`✅ GOLD_SJC: no new dates (last: ${lastDate})`)
+    console.log(`✅ ${asset.id}: no new dates (last: ${lastDate})`)
     return
   }
 
-  const count = appendRows(newRows)
-  console.log(`📈 GOLD_SJC: +${count} rows (${lastDate} → ${newRows[newRows.length - 1].date})`)
+  const count = appendRows(asset.csvFile, newRows)
+  console.log(`📈 ${asset.id}: +${count} rows (${lastDate} → ${newRows[newRows.length - 1].date})`)
+}
+
+// ─── Main ─────────────────────────────────────────────────
+
+async function main() {
+  console.log('🏅 SJC Gold Price Updater\n')
+  for (const asset of GOLD_ASSETS) {
+    try {
+      await updateAsset(asset)
+    } catch (err) {
+      // Không fail cả script — các loại vàng khác và giá quỹ vẫn phải được commit
+      console.error(`❌ ${asset.id}: unexpected error: ${err.message}`)
+    }
+  }
 }
 
 main().catch(err => {
-  // Không fail workflow — giá quỹ vẫn phải được commit dù vàng lỗi
   console.error('❌ Gold update error:', err.message)
 })

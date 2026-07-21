@@ -1,5 +1,5 @@
 /**
- * GoalPlannerBlock: "Để đến đích, bạn cần nạp bao nhiêu mỗi tháng?"
+ * GoalPlannerBlock: "Để đến đích, bạn cần đầu tư bao nhiêu mỗi tháng?"
  *
  * Reverse compound calc: cho target FV + horizon, solve PMT (monthly contribution).
  * Dùng CAGR lịch sử làm base rate, +/- 3% cho 3 kịch bản.
@@ -22,7 +22,7 @@ export interface GoalPlannerPortfolio {
   finalValue: number
   /** CAGR đã quy năm từ backtest */
   cagr: number | null
-  /** Số tiền nạp mỗi tháng ước lượng, dùng để so sánh mức hiện tại vs mức cần */
+  /** Số tiền đầu tư mỗi tháng ước lượng, dùng để so sánh mức hiện tại vs mức cần */
   monthlyContribution: number
 }
 
@@ -66,12 +66,12 @@ function GoalPlannerBlockImpl({ portfolios }: Props) {
 
   return (
     <div className="dca-goal-block">
-      <h3 className="dca-goal-title">Để đến đích, bạn cần nạp bao nhiêu mỗi tháng?</h3>
+      <h3 className="dca-goal-title">Để đến đích, bạn cần đầu tư bao nhiêu mỗi tháng?</h3>
       <p className="dca-goal-sub">
-        Giả sử CAGR tương lai loanh quanh mức lịch sử của quỹ, và bạn vẫn đều đặn nạp
+        Giả sử CAGR tương lai loanh quanh mức lịch sử của quỹ, và bạn vẫn đều đặn đầu tư
         tiền mỗi tháng. Danh mục hiện tại của bạn cũng tiếp tục sinh lời theo CAGR này,
-        cộng với tiền nạp mới mỗi tháng, cả hai cùng cộng dồn tới mục tiêu. Chọn mục
-        tiêu tài sản và số năm, chúng ta sẽ tính ngược số tiền bạn cần nạp thêm. Đây
+        cộng với tiền đầu tư mới mỗi tháng, cả hai cùng cộng dồn tới mục tiêu. Chọn mục
+        tiêu tài sản và số năm, chúng ta sẽ tính ngược số tiền bạn cần đầu tư thêm. Đây
         không phải cam kết, chỉ là phép tính cho bạn cảm nhận khoảng cách giữa hiện tại
         và đích đến.
       </p>
@@ -205,7 +205,7 @@ function ScenarioRow({
       </div>
       <div className="dca-goal-scenario-sub">{sub}</div>
       <div className="dca-goal-scenario-pmt">
-        {pmt <= 0 ? 'Đã đủ, không cần nạp thêm' : `${formatVND(Math.round(pmt))}/tháng`}
+        {pmt <= 0 ? 'Đã đủ, không cần đầu tư thêm' : `${formatVND(Math.round(pmt))}/tháng`}
       </div>
     </div>
   )
@@ -226,7 +226,7 @@ function GoalTakeaway({
     return (
       <div className="dca-goal-takeaway">
         Với CAGR lịch sử <strong>{(cagr * 100).toFixed(1)}%/năm</strong>, bạn không
-        cần nạp thêm đồng nào. Chỉ cần giữ nguyên danh mục hiện tại{' '}
+        cần đầu tư thêm đồng nào. Chỉ cần giữ nguyên danh mục hiện tại{' '}
         <strong>{formatVND(Math.round(currentValue))}</strong> qua{' '}
         <strong>{years} năm nữa</strong> là vượt qua mục tiêu{' '}
         <strong>{formatVND(target)}</strong>. Dĩ nhiên phép tính này giả định CAGR
@@ -237,13 +237,13 @@ function GoalTakeaway({
 
   let ratioText: string
   if (ratio === null || currentMonthly <= 0) {
-    ratioText = 'Đây là con số cần nạp đều đặn mỗi tháng trong suốt kỳ hạn trên.'
+    ratioText = 'Đây là con số cần đầu tư đều đặn mỗi tháng trong suốt kỳ hạn trên.'
   } else if (ratio <= 1.2) {
-    ratioText = `So với mức bạn đang nạp bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), con số này gần tương đương. Bạn đang đi đúng hướng, chỉ cần tiếp tục nạp đều đặn qua từng tháng.`
+    ratioText = `So với mức bạn đang đầu tư bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), con số này gần tương đương. Bạn đang đi đúng hướng, chỉ cần tiếp tục đầu tư đều đặn qua từng tháng.`
   } else if (ratio <= 2) {
-    ratioText = `So với mức bạn đang nạp bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), gấp khoảng ${ratio.toFixed(1)} lần. Khoảng cách này có thể thu hẹp bằng cách kéo dài thời gian, hoặc tăng dần số tiền nạp mỗi khi lương tăng.`
+    ratioText = `So với mức bạn đang đầu tư bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), gấp khoảng ${ratio.toFixed(1)} lần. Khoảng cách này có thể thu hẹp bằng cách kéo dài thời gian, hoặc tăng dần số tiền đầu tư mỗi khi lương tăng.`
   } else {
-    ratioText = `So với mức bạn đang nạp bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), gấp hơn ${ratio.toFixed(1)} lần. Mục tiêu này hơi xa. Có ba đòn bẩy: kéo dài thời gian, tăng thu nhập để nạp nhiều hơn, hoặc xem lại mục tiêu cho thực tế. Thời gian là đòn bẩy rẻ nhất.`
+    ratioText = `So với mức bạn đang đầu tư bây giờ (${formatVND(Math.round(currentMonthly))}/tháng), gấp hơn ${ratio.toFixed(1)} lần. Mục tiêu này hơi xa. Có ba đòn bẩy: kéo dài thời gian, tăng thu nhập để đầu tư nhiều hơn, hoặc xem lại mục tiêu cho thực tế. Thời gian là đòn bẩy rẻ nhất.`
   }
 
   return (
@@ -251,7 +251,7 @@ function GoalTakeaway({
       Giả sử CAGR tương lai loanh quanh mức lịch sử{' '}
       <strong>{(cagr * 100).toFixed(1)}%/năm</strong>, để có{' '}
       <strong>{formatVND(target)}</strong> sau <strong>{years} năm</strong>, bạn cần
-      nạp <strong>{formatVND(Math.round(basePmt))}/tháng</strong> đều đặn. {ratioText}
+      đầu tư <strong>{formatVND(Math.round(basePmt))}/tháng</strong> đều đặn. {ratioText}
     </div>
   )
 }

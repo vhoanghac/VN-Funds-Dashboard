@@ -24,6 +24,7 @@ import { GoalPlannerBlock } from './GoalPlannerBlock'
 import { RollingReturnBlock } from './RollingReturnBlock'
 import { DcaConsistencyBlock } from './DcaConsistencyBlock'
 import { DividendBlock } from './DividendBlock'
+import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import {
   PortfolioCard,
   PORTFOLIO_COLORS,
@@ -757,6 +758,7 @@ function DCAPanelImpl({ funds }: Props) {
   }
 
   // ── Render ──
+  const effectiveDates = getEffectiveDates()
   return (
     <div className="simulation-panel dca-panel">
       <div className="panel-header">
@@ -923,6 +925,16 @@ function DCAPanelImpl({ funds }: Props) {
           )}
         </div>
       )}
+
+      <GoldLotWarningBlock
+        portfolios={portfolios}
+        initialAmount={initialAmount}
+        cashflowAmount={cashflowAmount}
+        funds={funds}
+        purchasePriceData={purchasePriceData}
+        dateFrom={effectiveDates.from}
+        dateTo={effectiveDates.to}
+      />
 
       {/* Chọn section kết quả muốn xem (kiểu hl.eco) */}
       {validResults.length > 0 && (
