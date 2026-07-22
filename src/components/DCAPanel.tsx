@@ -4,7 +4,7 @@ import { ShareButton } from './ShareButton'
 import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdev } from '../utils/drawdownStats'
 import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
@@ -20,7 +20,7 @@ import { BankComparisonBlock } from './BankComparisonBlock'
 import { DcaStormBlock } from './DcaStormBlock'
 import { DcaReturnExplainer } from './DcaReturnExplainer'
 import { ProjectionBlock } from './ProjectionBlock'
-import { GoalPlannerBlock } from './GoalPlannerBlock'
+import { MonteCarloBlock } from './MonteCarloBlock'
 import { RollingReturnBlock } from './RollingReturnBlock'
 import { DcaConsistencyBlock } from './DcaConsistencyBlock'
 import { DividendBlock } from './DividendBlock'
@@ -689,18 +689,16 @@ function DCAPanelImpl({ funds }: Props) {
   })), [validResults])
 
   const projectionData = useMemo(() => validResults.map(r => {
-    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-    const dcaYears = r.cumulative.length >= 2
-      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-      : null
     // CAGR của danh mục (TWRR, tách khỏi thời điểm dòng tiền) — dùng làm base
     // rate chiếu tương lai, KHÔNG dùng finalValue/totalInvested (bị kéo thấp
     // vì phần lớn vốn DCA chỉ mới nạp gần đây, chưa kịp sinh lời).
     const cagr = dcaCagr(r.cumulative)
-    const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
-      ? r.totalInvested / (dcaYears * 12)
-      : 0
+    // Số tiền nạp mỗi tháng: quy đổi trực tiếp từ cashflowAmount/cashflowFreq
+    // NGƯỜI DÙNG ĐÃ NHẬP — không suy ra từ totalInvested/số tháng backtest,
+    // vì cách đó lẫn cả "Số tiền đầu tiên" (nạp 1 lần) vào trung bình, khiến
+    // con số cao hơn mức nạp định kỳ thực tế.
+    const params = r.simulationInputs!.params
+    const monthlyContribution = monthlyEquivalentContribution(params.cashflowAmount, params.cashflowFreq)
     return {
       id: r.id,
       name: r.name,
@@ -712,24 +710,17 @@ function DCAPanelImpl({ funds }: Props) {
     }
   }), [validResults])
 
-  const goalPlannerData = useMemo(() => validResults.map(r => {
-    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-    const dcaYears = r.cumulative.length >= 2
-      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-      : null
-    // CAGR của danh mục (TWRR) — xem giải thích ở projectionData phía trên.
-    const cagr = dcaCagr(r.cumulative)
-    const monthlyContribution = (dcaYears && dcaYears > 0 && r.totalInvested > 0)
-      ? r.totalInvested / (dcaYears * 12)
-      : 0
+  const monteCarloData = useMemo(() => validResults.map(r => {
+    const params = r.simulationInputs!.params
+    const monthlyContribution = monthlyEquivalentContribution(params.cashflowAmount, params.cashflowFreq)
     return {
       id: r.id,
       name: r.name,
       color: r.color,
       finalValue: r.finalValue,
-      cagr,
       monthlyContribution,
+      cumulative: r.cumulative,
+      cagr: dcaCagr(r.cumulative),
     }
   }), [validResults])
 
@@ -1078,8 +1069,8 @@ function DCAPanelImpl({ funds }: Props) {
               portfolios={projectionData}
             />
 
-            <GoalPlannerBlock
-              portfolios={goalPlannerData}
+            <MonteCarloBlock
+              portfolios={monteCarloData}
             />
           </div>
         </>

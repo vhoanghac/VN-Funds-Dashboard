@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA } from './dca'
+import {
+  dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
+  dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
+} from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
-import type { PricePoint } from '../types'
+import type { PricePoint, ReturnPoint } from '../types'
 
 describe('derivePortfolioName', () => {
   it('uses the fund ticker when there is exactly 1 fund', () => {
@@ -494,5 +497,145 @@ describe('simulateDCA skipContributionWhen cadence (panic-stop skip counting)', 
     // MỖI THÁNG ĐÚNG 1 LẦN (không bị merge/double-fire do cadence "kẹt").
     expect(result.totalInvested).toBe(200)
     expect(result.cashflows.filter(cf => cf.amount < 0)).toHaveLength(2)
+  })
+})
+
+describe('dcaMonthlyReturns', () => {
+  it('returns [] for fewer than 2 points', () => {
+    expect(dcaMonthlyReturns([])).toEqual([])
+    expect(dcaMonthlyReturns([{ date: '2024-01-01', value: 0 }])).toEqual([])
+  })
+
+  it('computes month-end-to-month-end growth, dropping the first month (no prior anchor)', () => {
+    const cumulative: ReturnPoint[] = [
+      { date: '2024-01-01', value: 0 },
+      { date: '2024-01-15', value: 0.02 },
+      { date: '2024-01-31', value: 0.05 }, // Jan month-end growth = 1.05
+      { date: '2024-02-15', value: 0.10 },
+      { date: '2024-02-28', value: 0.15 }, // Feb month-end growth = 1.15
+      { date: '2024-03-31', value: 0.20 }, // Mar month-end growth = 1.20
+    ]
+    const result = dcaMonthlyReturns(cumulative)
+    expect(result).toHaveLength(2) // Jan dropped, chỉ còn Feb + Mar
+    expect(result[0]!.date).toBe('2024-02')
+    expect(result[0]!.value).toBeCloseTo(1.15 / 1.05 - 1, 10)
+    expect(result[1]!.date).toBe('2024-03')
+    expect(result[1]!.value).toBeCloseTo(1.20 / 1.15 - 1, 10)
+  })
+})
+
+describe('monteCarloProjection', () => {
+  it('returns null for an empty return pool', () => {
+    const result = monteCarloProjection({
+      monthlyReturnPool: [],
+      startValue: 1000,
+      monthlyContribution: 0,
+      horizonMonths: 12,
+    })
+    expect(result).toBeNull()
+  })
+
+  it('returns null for a non-positive horizon', () => {
+    const result = monteCarloProjection({
+      monthlyReturnPool: new Array(12).fill(0.01),
+      startValue: 1000,
+      monthlyContribution: 0,
+      horizonMonths: 0,
+    })
+    expect(result).toBeNull()
+  })
+
+  it('collapses to a single deterministic value when every pool entry is identical (no variance possible)', () => {
+    const pool = new Array(12).fill(0.01) // 12 tháng, tất cả cùng +1%
+    const result = monteCarloProjection({
+      monthlyReturnPool: pool,
+      startValue: 1000,
+      monthlyContribution: 0,
+      horizonMonths: 12,
+      iterations: 50,
+      blockSize: 12,
+    })
+    expect(result).not.toBeNull()
+    const expected = 1000 * Math.pow(1.01, 12)
+    const last = result!.path[12]!
+    // Mọi percentile phải bằng nhau vì pool không có biến thiên để xáo trộn ra khác biệt.
+    expect(last.p10).toBeCloseTo(expected, 6)
+    expect(last.p50).toBeCloseTo(expected, 6)
+    expect(last.p90).toBeCloseTo(expected, 6)
+    expect(result!.finalValues.every(v => Math.abs(v - expected) < 1e-6)).toBe(true)
+  })
+
+  it('samples blocks starting at the index implied by rng, wrapping circularly past the end of the pool', () => {
+    // rng luôn trả 0.9999 → start = floor(0.9999 * poolLen). poolLen=3 → start=2.
+    // blockSize=5 > poolLen=3 nên phải vòng lại từ đầu pool (circular wrap).
+    const pool = [0.01, 0.02, 0.03]
+    const result = monteCarloProjection({
+      monthlyReturnPool: pool,
+      startValue: 1000,
+      monthlyContribution: 0,
+      horizonMonths: 5,
+      iterations: 1,
+      blockSize: 5,
+      rng: () => 0.9999,
+    })
+    expect(result).not.toBeNull()
+    // Thứ tự áp dụng: pool[2], pool[0], pool[1], pool[2], pool[0] (vòng lại theo modulo).
+    let v = 1000
+    for (const r of [0.03, 0.01, 0.02, 0.03, 0.01]) v = v * (1 + r)
+    expect(result!.finalValues[0]!).toBeCloseTo(v, 6)
+    expect(result!.path[5]!.p50).toBeCloseTo(v, 6)
+  })
+
+  it('adds monthlyContribution every month on top of growth', () => {
+    const result = monteCarloProjection({
+      monthlyReturnPool: new Array(12).fill(0), // 0% lợi nhuận, chỉ còn ảnh hưởng của tiền nạp
+      startValue: 0,
+      monthlyContribution: 100,
+      horizonMonths: 3,
+      iterations: 1,
+      blockSize: 12,
+      rng: () => 0,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.finalValues[0]!).toBeCloseTo(300, 6)
+  })
+})
+
+describe('probabilityAtLeast', () => {
+  it('returns 0 for an empty array', () => {
+    expect(probabilityAtLeast([], 100)).toBe(0)
+  })
+
+  it('computes the fraction of values >= target (inclusive)', () => {
+    const sorted = [10, 20, 30, 40, 50]
+    expect(probabilityAtLeast(sorted, 25)).toBeCloseTo(3 / 5, 10) // 30,40,50
+    expect(probabilityAtLeast(sorted, 30)).toBeCloseTo(3 / 5, 10) // inclusive: 30,40,50
+  })
+
+  it('returns 1 when target is below every value, 0 when above every value', () => {
+    const sorted = [10, 20, 30]
+    expect(probabilityAtLeast(sorted, 0)).toBe(1)
+    expect(probabilityAtLeast(sorted, 1000)).toBe(0)
+  })
+})
+
+describe('monthlyEquivalentContribution', () => {
+  it('returns the amount unchanged for monthly cadence', () => {
+    expect(monthlyEquivalentContribution(6_000_000, 'monthly')).toBe(6_000_000)
+  })
+
+  it('divides down for lower-frequency cadences (quarterly/semiannual/yearly)', () => {
+    expect(monthlyEquivalentContribution(18_000_000, 'quarterly')).toBeCloseTo(6_000_000, 6)
+    expect(monthlyEquivalentContribution(36_000_000, 'semiannual')).toBeCloseTo(6_000_000, 6)
+    expect(monthlyEquivalentContribution(72_000_000, 'yearly')).toBeCloseTo(6_000_000, 6)
+  })
+
+  it('scales up for higher-frequency cadences (daily/weekly/biweekly)', () => {
+    // ~30.44 ngày/tháng, ~4.35 tuần/tháng, ~2.17 kỳ 2-tuần/tháng
+    expect(monthlyEquivalentContribution(200_000, 'daily')).toBeCloseTo(200_000 * (365.25 / 12), 6)
+    expect(monthlyEquivalentContribution(1_000_000, 'weekly')).toBeGreaterThan(4_000_000)
+    expect(monthlyEquivalentContribution(1_000_000, 'weekly')).toBeLessThan(4_500_000)
+    expect(monthlyEquivalentContribution(2_000_000, 'biweekly')).toBeGreaterThan(4_000_000)
+    expect(monthlyEquivalentContribution(2_000_000, 'biweekly')).toBeLessThan(4_500_000)
   })
 })

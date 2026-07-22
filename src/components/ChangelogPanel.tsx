@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v3.8',
+    date: '22/07/2026',
+    items: [
+      'Thêm chức năng mô phỏng Monte Carlo trong mục Endgame của tab DCA.',
+    ],
+  },
+  {
     version: 'v3.7',
     date: '21/07/2026',
     items: [

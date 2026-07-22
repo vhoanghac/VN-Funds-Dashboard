@@ -15,6 +15,7 @@ import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, ReferenceLine,
 } from 'recharts'
 import { formatVND } from '../utils/vndFormat'
+import { MoneyInput } from './MoneyInput'
 
 export interface ProjectionPortfolio {
   id: string
@@ -36,12 +37,19 @@ const HORIZON_OPTIONS = [5, 10, 20, 30]
 
 function ProjectionBlockImpl({ portfolios }: Props) {
   const [years, setYears] = useState<number>(10)
+  const [contribOverride, setContribOverride] = useState<number | null>(null)
 
   if (portfolios.length === 0) return null
 
   // Chỉ project được cho portfolio có CAGR dương và > 0
   const valid = portfolios.filter(p => p.cagr !== null && p.finalValue > 0)
   if (valid.length === 0) return null
+
+  // Mặc định = số tiền đầu tư định kỳ thật (ở phần "Thông số" trên đầu tab).
+  // Override ở đây chỉ đổi giả định cho TƯƠNG LAI, không đụng tới lịch sử/giá
+  // trị hiện tại của danh mục — trả lời "nếu tôi tăng tiền đầu tư từ nay".
+  const defaultContribution = valid[0]?.monthlyContribution ?? 0
+  const effectiveContribution = contribOverride ?? defaultContribution
 
   return (
     <div className="dca-projection-block">
@@ -65,8 +73,27 @@ function ProjectionBlockImpl({ portfolios }: Props) {
         ))}
       </div>
 
+      <div className="dca-projection-controls">
+        <span className="dca-projection-controls-label">Nạp/tháng:</span>
+        <MoneyInput
+          value={effectiveContribution}
+          onChange={setContribOverride}
+          className="dca-projection-custom-input"
+        />
+        {contribOverride !== null && contribOverride !== defaultContribution && (
+          <button className="dca-projection-btn" onClick={() => setContribOverride(null)}>
+            ↺ Về mặc định ({formatVND(defaultContribution)})
+          </button>
+        )}
+      </div>
+      <div className="dca-projection-hint">
+        Mặc định đúng bằng số tiền đầu tư định kỳ ở phần "Thông số" phía trên. Chỉnh số ở đây
+        chỉ thay đổi giả định cho tương lai — không ảnh hưởng tới lịch sử hay giá trị danh mục
+        hiện tại.
+      </div>
+
       {valid.map(p => (
-        <ProjectionForPortfolio key={p.id} portfolio={p} years={years} />
+        <ProjectionForPortfolio key={p.id} portfolio={p} years={years} monthlyContribution={effectiveContribution} />
       ))}
 
       <div className="dca-projection-disclaimer">
@@ -84,16 +111,18 @@ export const ProjectionBlock = memo(ProjectionBlockImpl)
 function ProjectionForPortfolio({
   portfolio,
   years,
+  monthlyContribution,
 }: {
   portfolio: ProjectionPortfolio
   years: number
+  monthlyContribution: number
 }) {
   const cagr = portfolio.cagr ?? 0
   const baseRate = cagr
   const pessRate = cagr - 0.03
   const optRate = cagr + 0.03
 
-  const monthlyContrib = portfolio.monthlyContribution
+  const monthlyContrib = monthlyContribution
   const months = years * 12
 
   // Simulate month by month: value_next = value_now * (1 + monthly_rate) + monthly_contrib
@@ -178,7 +207,10 @@ function ProjectionForPortfolio({
       </div>
 
       <div className="dca-projection-takeaway">
-        Nếu CAGR giữ được mức lịch sử <strong>{(cagr * 100).toFixed(1)}%/năm</strong> và
+        Danh mục <strong>{portfolio.name}</strong> hiện có giá trị{' '}
+        <strong>{formatVND(Math.round(portfolio.finalValue))}</strong> — đây là điểm xuất phát,
+        không phải bắt đầu từ 0 đồng. Nếu CAGR giữ được mức lịch sử{' '}
+        <strong>{(cagr * 100).toFixed(1)}%/năm</strong> và
         bạn vẫn đều đặn nạp <strong>{formatVND(Math.round(monthlyContrib))}/tháng</strong>,
         sau <strong>{years} năm nữa</strong> danh mục có thể chạm{' '}
         <strong>{formatVND(Math.round(finalBase))}</strong>. Trong đó bạn chỉ nạp thêm{' '}

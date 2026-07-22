@@ -4533,6 +4533,29 @@ h1, h2, h3 {
   background: var(--color-primary-dark);
 }
 
+.dca-projection-custom-input {
+  padding: 5px 10px;
+  border: 1px solid #e8e6dc;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #141413;
+  min-width: 140px;
+  background: #faf9f5;
+  font-family: inherit;
+}
+
+.dca-projection-custom-input:focus {
+  outline: none;
+  border-color: #141413;
+}
+
+.dca-projection-hint {
+  font-size: 0.78rem;
+  color: #87867f;
+  font-style: italic;
+  margin: -8px 0 16px 0;
+}
+
 .dca-projection-card {
   margin-bottom: 14px;
   padding: 14px;
@@ -4600,213 +4623,6 @@ h1, h2, h3 {
   font-size: 0.82rem;
   line-height: 1.5;
   color: #78350f;
-}
-
-/* ─── Goal Planner Block ────────────────────────────────────────────────────── */
-
-.dca-goal-block {
-  margin-bottom: 20px;
-  padding: 20px 22px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 10px;
-}
-
-.dca-goal-title {
-  margin: 0 0 6px 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #141413;
-}
-
-.dca-goal-sub {
-  margin: 0 0 14px 0;
-  font-size: 0.92rem;
-  color: #5e5d59;
-  line-height: 1.5;
-}
-
-.dca-goal-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  background: #faf9f5;
-  border-radius: 8px;
-}
-
-.dca-goal-control-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.dca-goal-control-label {
-  font-size: 0.85rem;
-  color: #5e5d59;
-  font-weight: 500;
-  min-width: 70px;
-}
-
-.dca-goal-btn {
-  padding: 5px 12px;
-  border: 1px solid #e8e6dc;
-  background: #faf9f5;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #5e5d59;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.dca-goal-btn:hover {
-  border-color: #87867f;
-  background: #f5f4ed;
-}
-
-.dca-goal-btn--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-fg);
-}
-
-.dca-goal-btn--active:hover {
-  background: var(--color-primary-dark);
-}
-
-.dca-goal-custom {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 4px;
-}
-
-.dca-goal-custom-input {
-  padding: 5px 10px;
-  border: 1px solid #e8e6dc;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #141413;
-  min-width: 200px;
-  background: #faf9f5;
-  font-family: inherit;
-}
-
-.dca-goal-custom-input:focus {
-  outline: none;
-  border-color: #141413;
-}
-
-.dca-goal-custom-error {
-  font-size: 0.8rem;
-  color: #991a1a;
-  padding-left: 78px;
-}
-
-.dca-goal-current {
-  font-size: 0.85rem;
-  color: #5e5d59;
-  padding-top: 4px;
-}
-
-.dca-goal-current strong {
-  color: #141413;
-}
-
-.dca-goal-card {
-  margin-bottom: 14px;
-  padding: 14px;
-  background: var(--color-surface);
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
-}
-
-.dca-goal-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
-}
-
-.dca-goal-card-cagr {
-  font-size: 0.82rem;
-  color: #5e5d59;
-}
-
-.dca-goal-scenarios {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.dca-goal-scenario {
-  padding: 10px 12px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 6px;
-}
-
-.dca-goal-scenario--highlight {
-  background: var(--color-primary-light);
-  border-color: #fde68a;
-}
-
-.dca-goal-scenario-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #141413;
-}
-
-.dca-goal-scenario-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.dca-goal-scenario-sub {
-  font-size: 0.75rem;
-  color: #5e5d59;
-  margin: 2px 0 6px 16px;
-}
-
-.dca-goal-scenario-pmt {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #141413;
-  margin-left: 16px;
-}
-
-.dca-goal-takeaway {
-  padding: 10px 12px;
-  background: #faf9f5;
-  border-left: 3px solid #5e5d59;
-  border-radius: 4px;
-  font-size: 0.92rem;
-  line-height: 1.55;
-  color: #5e5d59;
-}
-
-.dca-goal-takeaway strong {
-  color: #141413;
-}
-
-@media (max-width: 640px) {
-  .dca-goal-scenarios {
-    grid-template-columns: 1fr;
-  }
-  .dca-goal-custom-input {
-    min-width: 140px;
-  }
-  .dca-goal-custom-error {
-    padding-left: 0;
-  }
 }
 
 /* ─── Data Quality Block ────────────────────────────────────────────────────── */
@@ -5432,6 +5248,232 @@ h1, h2, h3 {
   color: #141413;
 }
 
+/* ─── Monte Carlo Block ─────────────────────────────────────────────────────── */
+
+.dca-mc-block {
+  margin-bottom: 20px;
+  padding: 20px 22px;
+  background: #faf9f5;
+  border: 1px solid #e8e6dc;
+  border-radius: 10px;
+}
+
+.dca-mc-title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #141413;
+}
+
+.dca-mc-sub {
+  margin: 0 0 14px 0;
+  font-size: 0.92rem;
+  color: #5e5d59;
+  line-height: 1.5;
+}
+
+.dca-mc-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #faf9f5;
+  border-radius: 8px;
+}
+
+.dca-mc-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dca-mc-control-label {
+  font-size: 0.85rem;
+  color: #5e5d59;
+  font-weight: 500;
+  min-width: 70px;
+}
+
+.dca-mc-btn {
+  padding: 5px 12px;
+  border: 1px solid #e8e6dc;
+  background: #faf9f5;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #5e5d59;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dca-mc-btn:hover {
+  border-color: #87867f;
+  background: #f5f4ed;
+}
+
+.dca-mc-btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.dca-mc-btn--active:hover {
+  background: var(--color-primary-dark);
+}
+
+.dca-mc-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.dca-mc-custom-input {
+  padding: 5px 10px;
+  border: 1px solid #e8e6dc;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #141413;
+  min-width: 200px;
+  background: #faf9f5;
+  font-family: inherit;
+}
+
+.dca-mc-custom-input:focus {
+  outline: none;
+  border-color: #141413;
+}
+
+.dca-mc-custom-error {
+  font-size: 0.8rem;
+  color: #991a1a;
+  padding-left: 78px;
+}
+
+.dca-mc-current {
+  font-size: 0.85rem;
+  color: #5e5d59;
+  padding-top: 4px;
+}
+
+.dca-mc-current strong {
+  color: #141413;
+}
+
+.dca-mc-hint {
+  font-size: 0.78rem;
+  color: #87867f;
+  font-style: italic;
+  margin-top: -2px;
+}
+
+.dca-mc-card {
+  margin-bottom: 14px;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid #e8e6dc;
+  border-radius: 8px;
+}
+
+.dca-mc-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.dca-mc-card-sub {
+  font-size: 0.8rem;
+  color: #5e5d59;
+}
+
+.dca-mc-insufficient {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #5e5d59;
+  font-style: italic;
+}
+
+.dca-mc-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dca-mc-stat {
+  padding: 8px 10px;
+  background: #faf9f5;
+  border: 1px solid #e8e6dc;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.dca-mc-stat--highlight {
+  border-color: #87867f;
+  background: #f5f4ed;
+}
+
+.dca-mc-stat-label {
+  font-size: 0.72rem;
+  color: #5e5d59;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.dca-mc-stat-sublabel {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.dca-mc-stat-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #141413;
+}
+
+.dca-mc-takeaway {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #faf9f5;
+  border-left: 3px solid #5e5d59;
+  border-radius: 4px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #5e5d59;
+}
+
+.dca-mc-takeaway strong {
+  color: #141413;
+}
+
+.dca-mc-disclaimer {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--color-primary-light);
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #78350f;
+}
+
+@media (max-width: 640px) {
+  .dca-mc-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .dca-mc-custom-input {
+    min-width: 140px;
+  }
+  .dca-mc-custom-error {
+    padding-left: 0;
+  }
+}
 
 
 

@@ -76,6 +76,29 @@ export function resampleToWeeklyGrid(
 
 export type DCAFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'yearly'
 
+const MONTHLY_FACTOR: Record<DCAFrequency, number> = {
+  daily: 365.25 / 12,
+  weekly: 365.25 / 7 / 12,
+  biweekly: 365.25 / 14 / 12,
+  monthly: 1,
+  quarterly: 1 / 3,
+  semiannual: 1 / 6,
+  yearly: 1 / 12,
+}
+
+/**
+ * Quy đổi số tiền nạp mỗi kỳ (theo tần suất bất kỳ) sang mức TƯƠNG ĐƯƠNG mỗi
+ * tháng — dùng làm "monthlyContribution" cho các phép chiếu tương lai
+ * (ProjectionBlock, MonteCarloBlock).
+ *
+ * KHÔNG dùng totalInvested/số tháng backtest để ước lượng: cách đó lẫn cả
+ * "Số tiền đầu tiên" (vốn chỉ nạp một lần, không lặp lại) vào trung bình,
+ * khiến con số bị kéo cao hơn số tiền nạp định kỳ thực tế người dùng đã nhập.
+ */
+export function monthlyEquivalentContribution(cashflowAmount: number, freq: DCAFrequency): number {
+  return cashflowAmount * MONTHLY_FACTOR[freq]
+}
+
 export interface DCASlot {
   fundId: string
   weight: number // 0-100
@@ -948,6 +971,160 @@ export function histogramBuckets(
   }
 
   return buckets
+}
+
+/**
+ * Tính chuỗi lợi nhuận HÀNG THÁNG từ TWRR cumulative series, dùng làm "pool"
+ * để block-bootstrap cho Monte Carlo (xem monteCarloProjection bên dưới).
+ *
+ * Mỗi tháng lấy điểm cuối cùng trong tháng đó làm mốc growth factor
+ * (1 + cumulative.value), rồi tính lợi nhuận = growth(tháng này) / growth(tháng
+ * trước) - 1. Bỏ tháng đầu tiên vì không có mốc trước đó để so sánh (tránh tạo
+ * ra một "lợi nhuận" giả từ một đoạn tháng không trọn vẹn).
+ */
+export function dcaMonthlyReturns(cumulative: ReturnPoint[]): ReturnPoint[] {
+  if (cumulative.length < 2) return []
+
+  const monthEnd = new Map<string, number>() // "YYYY-MM" → growth factor tại cuối tháng
+  const order: string[] = []
+  for (const p of cumulative) {
+    const ym = p.date.slice(0, 7)
+    if (!monthEnd.has(ym)) order.push(ym)
+    monthEnd.set(ym, 1 + p.value) // cumulative đã sắp tăng dần theo ngày → lần ghi cuối = cuối tháng
+  }
+
+  const result: ReturnPoint[] = []
+  for (let i = 1; i < order.length; i++) {
+    const ym = order[i]!
+    const growthEnd = monthEnd.get(ym)!
+    const growthPrev = monthEnd.get(order[i - 1]!)!
+    if (growthPrev <= 0) continue
+    result.push({ date: ym, value: growthEnd / growthPrev - 1 })
+  }
+  return result
+}
+
+/** Lấy phần tử ở percentile p (0-1) từ mảng đã sắp tăng dần (nội suy tuyến tính). */
+function percentileSorted(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0
+  if (sorted.length === 1) return sorted[0]!
+  const idx = (sorted.length - 1) * p
+  const lo = Math.floor(idx)
+  const hi = Math.ceil(idx)
+  if (lo === hi) return sorted[lo]!
+  const frac = idx - lo
+  return sorted[lo]! * (1 - frac) + sorted[hi]! * frac
+}
+
+export interface MonteCarloPathPoint {
+  month: number
+  p10: number
+  p25: number
+  p50: number
+  p75: number
+  p90: number
+}
+
+export interface MonteCarloResult {
+  /** Dải phân phối theo từng tháng (month 0 = hiện tại), dùng vẽ fan chart. */
+  path: MonteCarloPathPoint[]
+  /** Giá trị cuối kỳ của mọi kịch bản, đã sắp tăng dần — dùng tính percentile/xác suất. */
+  finalValues: number[]
+}
+
+const DEFAULT_BLOCK_SIZE = 12
+const DEFAULT_ITERATIONS = 1000
+
+/**
+ * Block-bootstrap Monte Carlo: xáo trộn ngẫu nhiên các khối N-tháng lợi nhuận
+ * lịch sử (block mặc định = 12 tháng, giữ nguyên thứ tự bên trong khối để bảo
+ * toàn phần nào tính tự tương quan/momentum thật của quỹ, khác với xáo trộn
+ * từng tháng độc lập), nối lại thành hàng nghìn kịch bản tương lai.
+ *
+ * Mỗi kịch bản: chọn ngẫu nhiên 1 điểm bắt đầu trong pool, lấy blockSize tháng
+ * liên tiếp (vòng lại từ đầu pool nếu chạm cuối — "circular block bootstrap"),
+ * áp dụng lần lượt vào công thức DCA tiêu chuẩn v = v×(1+r) + góp mỗi tháng,
+ * lặp lại tới khi đủ horizonMonths. Lặp lại toàn bộ quá trình `iterations` lần.
+ *
+ * Trả về null nếu pool rỗng — không có gì để xáo trộn. Việc pool "đủ dài để
+ * đáng tin" (vd tối thiểu 12 tháng) là quyết định UX, để caller tự quyết định
+ * (xem MonteCarloBlock.tsx) — hàm này chỉ đảm bảo đúng toán học với pool có ít
+ * nhất 1 phần tử, vòng lại (modulo) khi blockSize vượt quá độ dài pool.
+ */
+export function monteCarloProjection(opts: {
+  monthlyReturnPool: number[]
+  startValue: number
+  monthlyContribution: number
+  horizonMonths: number
+  iterations?: number
+  blockSize?: number
+  /** Injectable cho test tất định; mặc định Math.random. */
+  rng?: () => number
+}): MonteCarloResult | null {
+  const {
+    monthlyReturnPool: pool,
+    startValue,
+    monthlyContribution,
+    horizonMonths,
+    iterations = DEFAULT_ITERATIONS,
+    blockSize = DEFAULT_BLOCK_SIZE,
+    rng = Math.random,
+  } = opts
+
+  const poolLen = pool.length
+  if (poolLen === 0 || horizonMonths <= 0 || iterations <= 0) {
+    return null
+  }
+
+  // matrix[month][iteration] — cột theo tháng để tính percentile cho fan chart.
+  const matrix: number[][] = Array.from({ length: horizonMonths + 1 }, () => new Array(iterations))
+  for (let it = 0; it < iterations; it++) {
+    matrix[0]![it] = startValue
+  }
+
+  for (let it = 0; it < iterations; it++) {
+    let v = startValue
+    let built = 0
+    while (built < horizonMonths) {
+      const start = Math.floor(rng() * poolLen)
+      const take = Math.min(blockSize, horizonMonths - built)
+      for (let k = 0; k < take; k++) {
+        const r = pool[(start + k) % poolLen]!
+        v = v * (1 + r) + monthlyContribution
+        built++
+        matrix[built]![it] = v
+      }
+    }
+  }
+
+  const path: MonteCarloPathPoint[] = matrix.map((monthValues, month) => {
+    const sorted = [...monthValues].sort((a, b) => a - b)
+    return {
+      month,
+      p10: percentileSorted(sorted, 0.10),
+      p25: percentileSorted(sorted, 0.25),
+      p50: percentileSorted(sorted, 0.50),
+      p75: percentileSorted(sorted, 0.75),
+      p90: percentileSorted(sorted, 0.90),
+    }
+  })
+
+  const finalValues = [...matrix[horizonMonths]!].sort((a, b) => a - b)
+
+  return { path, finalValues }
+}
+
+/** Tỷ lệ kịch bản đạt >= target, trong mảng finalValues đã sắp tăng dần. */
+export function probabilityAtLeast(sortedFinalValues: number[], target: number): number {
+  const n = sortedFinalValues.length
+  if (n === 0) return 0
+  let lo = 0, hi = n
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (sortedFinalValues[mid]! < target) lo = mid + 1
+    else hi = mid
+  }
+  return (n - lo) / n
 }
 
 /**
