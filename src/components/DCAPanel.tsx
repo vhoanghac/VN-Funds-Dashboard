@@ -142,7 +142,7 @@ function DCAPanelImpl({ funds }: Props) {
       return {
         id: `dca${num}`,
         num,
-        name: p.name || derivePortfolioName(p.slots, num),
+        name: p.name || derivePortfolioName(p.slots, `Portfolio ${num}`),
         isNameCustom: !!p.name,
         slots: p.slots,
         rebalFreq: p.rebalFreq as import('../types').RebalanceFrequency,
@@ -290,7 +290,7 @@ function DCAPanelImpl({ funds }: Props) {
     const portfolio: DCAPortfolioState = {
       id: `dca${num}`,
       num,
-      name: derivePortfolioName(slots, num),
+      name: derivePortfolioName(slots, `Portfolio ${num}`),
       isNameCustom: false,
       slots,
       rebalFreq: 'quarterly',
@@ -312,7 +312,7 @@ function DCAPanelImpl({ funds }: Props) {
       const used = new Set(p.slots.map(s => s.fundId))
       const available = funds.find(f => !used.has(f.id))
       const newSlots = [...p.slots, { fundId: available?.id || '', weight: 0 }]
-      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, `Portfolio ${p.num}`)
       return { ...p, name, slots: newSlots }
     }))
   }
@@ -321,7 +321,7 @@ function DCAPanelImpl({ funds }: Props) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId || p.slots.length <= 1) return p
       const newSlots = p.slots.filter((_, i) => i !== index)
-      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, `Portfolio ${p.num}`)
       return { ...p, name, slots: newSlots }
     }))
   }
@@ -330,7 +330,7 @@ function DCAPanelImpl({ funds }: Props) {
     setPortfolios(portfolios.map(p => {
       if (p.id !== portfolioId) return p
       const newSlots = p.slots.map((s, i) => i === index ? { ...s, ...update } : s)
-      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, p.num)
+      const name = p.isNameCustom ? p.name : derivePortfolioName(newSlots, `Portfolio ${p.num}`)
       return { ...p, name, slots: newSlots }
     }))
   }

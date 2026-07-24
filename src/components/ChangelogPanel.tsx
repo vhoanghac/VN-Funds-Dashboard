@@ -1,9 +1,11 @@
 const ENTRIES = [
   {
     version: 'v3.8',
-    date: '22/07/2026',
+    date: '23/07/2026',
     items: [
       'Thêm chức năng mô phỏng Monte Carlo trong mục Endgame của tab DCA.',
+      'Thêm tab "Chiến Thuật Phân Bổ": mô phỏng chuyển đổi giữa 2 danh mục dựa trên tín hiệu SMA/EMA/RSI của một quỹ hoặc chỉ số bạn chọn.',
+      'Thêm biểu đồ mô phỏng tăng thêm tiền DCA khi thị trường giảm sâu, trong mục "Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?" của tab DCA.',
     ],
   },
   {

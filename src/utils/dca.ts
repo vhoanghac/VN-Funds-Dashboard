@@ -113,9 +113,9 @@ export interface DCASlot {
  * Chỉ áp dụng khi tên chưa bị người dùng tự sửa tay (xem `isNameCustom`
  * trong PortfolioCardState).
  */
-export function derivePortfolioName(slots: DCASlot[], num: number): string {
+export function derivePortfolioName(slots: DCASlot[], fallback: string): string {
   if (slots.length === 1 && slots[0]!.fundId) return slots[0]!.fundId
-  return `Portfolio ${num}`
+  return fallback
 }
 
 export interface DCAPortfolio {
@@ -206,9 +206,14 @@ function shouldInvest(
  *   Nhận current TWRR drawdown (âm khi dưới đỉnh, 0 khi ở đỉnh), return true để bỏ
  *   lần nạp đó. Mô phỏng hành vi retail "thấy đỏ là dừng nạp". Không áp dụng cho
  *   initial investment (day 0).
+ * - contributionAmountOverride: hàm trả về SỐ TIỀN thực nạp cho kỳ đó (mặc định
+ *   = params.cashflowAmount nếu không cung cấp). Dùng cho biến thể ngược lại
+ *   với skip: "tăng tiền khi thấy đỏ" (mua thêm khi giảm sâu). Nếu cả 2 hook
+ *   đều set, skipContributionWhen được ưu tiên (bỏ qua = 0 đồng, bất kể override).
  */
 export interface DCASimulateOptions {
   skipContributionWhen?: (date: string, currentDrawdown: number) => boolean
+  contributionAmountOverride?: (date: string, currentDrawdown: number) => number
   /**
    * Giá dùng để QUY ĐỔI TIỀN THÀNH ĐƠN VỊ khi mua (initial amount + mỗi lần DCA),
    * CHỈ cho những fundId có mặt trong map này — các quỹ khác (không có entry,
@@ -395,8 +400,9 @@ export function simulateDCA(
         const currentDD = twrrPeak > 0 ? (twrrGrowth / twrrPeak - 1) : 0
         const shouldSkip = options?.skipContributionWhen?.(date, currentDD) ?? false
         if (!shouldSkip) {
-          buyFunds(params.cashflowAmount, i)
-          cashflows.push({ date, amount: -params.cashflowAmount })
+          const amount = options?.contributionAmountOverride?.(date, currentDD) ?? params.cashflowAmount
+          buyFunds(amount, i)
+          cashflows.push({ date, amount: -amount })
         } else {
           // Vẫn phải dời mốc "kỳ nạp gần nhất" tới ngày hôm nay dù bỏ qua lần
           // này — nếu không, investDate ở trên cứ đứng yên tại lần nạp thành

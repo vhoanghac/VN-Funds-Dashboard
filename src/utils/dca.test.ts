@@ -8,26 +8,26 @@ import type { PricePoint, ReturnPoint } from '../types'
 
 describe('derivePortfolioName', () => {
   it('uses the fund ticker when there is exactly 1 fund', () => {
-    expect(derivePortfolioName([{ fundId: 'DCDS', weight: 100 }], 1)).toBe('DCDS')
+    expect(derivePortfolioName([{ fundId: 'DCDS', weight: 100 }], 'Portfolio 1')).toBe('DCDS')
   })
 
-  it('falls back to "Portfolio {num}" when there are 2+ funds', () => {
+  it('falls back to the given fallback when there are 2+ funds', () => {
     const slots = [{ fundId: 'DCDS', weight: 60 }, { fundId: 'DCBF', weight: 40 }]
-    expect(derivePortfolioName(slots, 2)).toBe('Portfolio 2')
+    expect(derivePortfolioName(slots, 'Portfolio 2')).toBe('Portfolio 2')
   })
 
-  it('falls back to "Portfolio {num}" when the single slot has no fundId yet', () => {
-    expect(derivePortfolioName([{ fundId: '', weight: 100 }], 3)).toBe('Portfolio 3')
+  it('falls back to the given fallback when the single slot has no fundId yet', () => {
+    expect(derivePortfolioName([{ fundId: '', weight: 100 }], 'Portfolio 3')).toBe('Portfolio 3')
   })
 
-  it('falls back to "Portfolio {num}" for an empty slots array', () => {
-    expect(derivePortfolioName([], 4)).toBe('Portfolio 4')
+  it('falls back to the given fallback for an empty slots array', () => {
+    expect(derivePortfolioName([], 'Portfolio 4')).toBe('Portfolio 4')
   })
 
-  it('uses the stable num, not array position, so removing other portfolios does not rename this one', () => {
-    // num=5 simulates a portfolio created 5th, even if it's now at array index 0
+  it('uses the caller-provided fallback verbatim (e.g. a stable num-based label, not array position)', () => {
+    // "Portfolio 5" simulates a portfolio created 5th, even if it's now at array index 0
     const slots = [{ fundId: 'DCDS', weight: 40 }, { fundId: 'DCBF', weight: 60 }]
-    expect(derivePortfolioName(slots, 5)).toBe('Portfolio 5')
+    expect(derivePortfolioName(slots, 'Portfolio 5')).toBe('Portfolio 5')
   })
 })
 
@@ -497,6 +497,55 @@ describe('simulateDCA skipContributionWhen cadence (panic-stop skip counting)', 
     // MỖI THÁNG ĐÚNG 1 LẦN (không bị merge/double-fire do cadence "kẹt").
     expect(result.totalInvested).toBe(200)
     expect(result.cashflows.filter(cf => cf.amount < 0)).toHaveLength(2)
+  })
+})
+
+describe('simulateDCA contributionAmountOverride (boost-buy-the-dip)', () => {
+  const FUND = 'TF'
+
+  it('uses the overridden amount instead of params.cashflowAmount for matching periods', () => {
+    const prices = new Map([[FUND, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-02-01', price: 100 },
+      { date: '2024-03-01', price: 100 },
+    ]]])
+
+    const result = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 100, cashflowFreq: 'monthly' },
+      'quarterly',
+      {
+        // Kỳ tháng 2 tăng gấp đôi (200), tháng 3 giữ nguyên mức bình thường (100).
+        contributionAmountOverride: (date) => date.startsWith('2024-02') ? 200 : 100,
+      },
+    )
+
+    // initialAmount=0 nên T1 (01-01) không nạp gì. Kỳ T2 (02-01) nạp 200 (boost),
+    // kỳ T3 (03-01) nạp 100 (bình thường) -> tổng 300.
+    expect(result.totalInvested).toBe(300)
+    expect(result.cashflows.filter(cf => cf.amount < 0).map(cf => -cf.amount)).toEqual([200, 100])
+  })
+
+  it('gives skipContributionWhen priority over contributionAmountOverride when both are set', () => {
+    const prices = new Map([[FUND, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-02-01', price: 100 },
+    ]]])
+
+    const result = simulateDCA(
+      prices,
+      [{ fundId: FUND, weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 100, cashflowFreq: 'monthly' },
+      'quarterly',
+      {
+        skipContributionWhen: () => true,
+        contributionAmountOverride: () => 999,
+      },
+    )
+
+    expect(result.totalInvested).toBe(0)
+    expect(result.cashflows.filter(cf => cf.amount < 0)).toHaveLength(0)
   })
 })
 

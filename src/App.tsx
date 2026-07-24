@@ -5,6 +5,7 @@ import { CompareTab } from './components/CompareTab'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { RebalanceSensitivityPanel } from './components/RebalanceSensitivityPanel'
+import { TacticalAllocationPanel } from './components/TacticalAllocationPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
@@ -62,6 +63,12 @@ export function App() {
           Tái Cân Bằng
         </button>
         <button
+          className={`tab ${state.tab === 'tactical' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'tactical' })}
+        >
+          Chiến Thuật Phân Bổ
+        </button>
+        <button
           className={`tab ${state.tab === 'bitcoin' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'bitcoin' })}
         >
@@ -109,6 +116,11 @@ export function App() {
       {/* Tái Cân Bằng Tab */}
       <div style={{ display: state.tab === 'rebalance' ? undefined : 'none' }}>
         <RebalanceSensitivityPanel funds={metadata} />
+      </div>
+
+      {/* Chiến Thuật Phân Bổ Tab */}
+      <div style={{ display: state.tab === 'tactical' ? undefined : 'none' }}>
+        <TacticalAllocationPanel funds={metadata} />
       </div>
 
       {/* Bitcoin Tab */}

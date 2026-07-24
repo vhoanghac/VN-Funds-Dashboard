@@ -79,7 +79,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     return {
       id: `lsdca${num}`,
       num,
-      name: src.name || derivePortfolioName(src.slots, num),
+      name: src.name || derivePortfolioName(src.slots, `Portfolio ${num}`),
       isNameCustom: !!src.name,
       slots: src.slots,
       rebalFreq: src.rebalFreq as import('../types').RebalanceFrequency,
@@ -183,7 +183,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     setPortfolio({
       id: `lsdca${num}`,
       num,
-      name: derivePortfolioName(slots, num),
+      name: derivePortfolioName(slots, `Portfolio ${num}`),
       isNameCustom: false,
       slots,
       rebalFreq: 'quarterly',
@@ -199,21 +199,21 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     const used = new Set(portfolio.slots.map(s => s.fundId))
     const available = funds.find(f => !used.has(f.id))
     const newSlots = [...portfolio.slots, { fundId: available?.id || '', weight: 0 }]
-    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, portfolio.num)
+    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, `Portfolio ${portfolio.num}`)
     setPortfolio(prev => prev ? { ...prev, name, slots: newSlots } : null)
   }
 
   function removeSlot(idx: number) {
     if (!portfolio || portfolio.slots.length <= 1) return
     const newSlots = portfolio.slots.filter((_, i) => i !== idx)
-    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, portfolio.num)
+    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, `Portfolio ${portfolio.num}`)
     setPortfolio(prev => prev ? { ...prev, name, slots: newSlots } : null)
   }
 
   function updateSlot(idx: number, update: Partial<DCASlot>) {
     if (!portfolio) return
     const newSlots = portfolio.slots.map((s, i) => i === idx ? { ...s, ...update } : s)
-    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, portfolio.num)
+    const name = portfolio.isNameCustom ? portfolio.name : derivePortfolioName(newSlots, `Portfolio ${portfolio.num}`)
     setPortfolio(prev => prev ? { ...prev, name, slots: newSlots } : null)
   }
 
