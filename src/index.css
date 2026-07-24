@@ -1110,8 +1110,8 @@ h1, h2, h3 {
   white-space: nowrap;
 }
 
-.dca-eoy-table th:first-child,
-.dca-eoy-table td:first-child {
+.dca-eoy-th-year,
+.dca-eoy-year {
   text-align: left;
 }
 
@@ -1119,6 +1119,13 @@ h1, h2, h3 {
   border-bottom: 2px solid #e8e6dc;
   font-weight: 700;
   font-size: 0.78rem;
+  vertical-align: bottom;
+}
+
+/* Đường kẻ dọc phân cách giữa các nhóm cột (mỗi quỹ / cột Chênh lệch) để dễ
+   nhìn ranh giới khi có từ 2 quỹ trở lên, tránh dồn hết số liệu thành 1 khối. */
+.dca-eoy-group-start {
+  border-left: 1px solid #e8e6dc;
 }
 
 .dca-eoy-table tbody tr:nth-child(even) {
@@ -1136,6 +1143,22 @@ h1, h2, h3 {
 
 .dca-eoy-partial {
   color: #b8b6ac;
+  font-weight: 400;
+}
+
+.dca-eoy-table thead tr:last-child th {
+  border-bottom: 1px solid #e8e6dc;
+}
+
+.dca-eoy-subhead {
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: none;
+  color: #9a9890;
+}
+
+.dca-eoy-cell--balance {
+  color: #5e5d59;
   font-weight: 400;
 }
 

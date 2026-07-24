@@ -638,6 +638,8 @@ export interface YearlyMWRR {
   /** decimal; null nếu không tính được (mẫu số bằng 0, vd danh mục rỗng suốt năm) */
   value: number | null
   isPartial: boolean
+  /** Giá trị danh mục (đã gồm cashflow) tại điểm cuối cùng của năm này */
+  endValue: number
 }
 
 /**
@@ -715,7 +717,7 @@ export function dcaYearlyMWRR(
     const denominator = BV + weightedContrib
     const value = denominator !== 0 ? (EV - BV - netContrib) / denominator : null
 
-    results.push({ year, value, isPartial })
+    results.push({ year, value, isPartial, endValue: EV })
   }
 
   return results

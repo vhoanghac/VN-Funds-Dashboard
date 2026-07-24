@@ -7,7 +7,7 @@
  * Mental model: retail VN không quen tách net profit khỏi total value. Hero
  * phải kể: "đã nạp X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
  */
-import { memo } from 'react'
+import { Fragment, memo } from 'react'
 import { formatVND, vndComparison } from '../utils/vndFormat'
 import { dcaYearlyMWRR } from '../utils/dca'
 
@@ -178,6 +178,10 @@ function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] })
 
   if (allYears.length === 0) return null
 
+  // Cột "Chênh lệch" chỉ có ý nghĩa rõ ràng khi so sánh đúng 2 danh mục (B trừ A).
+  // Với 3+ danh mục, "chênh lệch với cái nào" không còn là câu hỏi có 1 đáp án.
+  const showDiff = perPortfolio.length === 2
+
   return (
     <div className="dca-eoy-block">
       <h4 className="dca-eoy-title">Hiệu suất danh mục của bạn từng năm</h4>
@@ -187,45 +191,77 @@ function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] })
         của bản thân quỹ. Tiền nạp càng sớm trong năm càng được tính trọng số cao
         (có nhiều thời gian sinh lời hơn), tiền nạp cuối năm gần như chưa kịp sinh
         lời. Nhờ vậy con số này phản ánh đúng trải nghiệm DCA thực tế của bạn, thay
-        vì chỉ đo giá quỹ tăng/giảm bao nhiêu.
+        vì chỉ đo giá quỹ tăng/giảm bao nhiêu. Cột "Giá trị" là số dư danh mục tại
+        điểm cuối năm đó (đã gồm mọi lần nạp tính đến lúc đó).
       </p>
       <div className="dca-eoy-table-scroll">
         <table className="dca-eoy-table">
           <thead>
             <tr>
-              <th>Năm</th>
+              <th rowSpan={2} className="dca-eoy-th-year">Năm</th>
               {perPortfolio.map(p => (
-                <th key={p.id} style={{ color: p.color }}>{p.name}</th>
+                <th key={p.id} colSpan={2} className="dca-eoy-group-start" style={{ color: p.color }}>{p.name}</th>
+              ))}
+              {showDiff && <th rowSpan={2} className="dca-eoy-group-start">Chênh lệch</th>}
+            </tr>
+            <tr>
+              {perPortfolio.map(p => (
+                <Fragment key={p.id}>
+                  <th className="dca-eoy-subhead dca-eoy-group-start">Lợi nhuận</th>
+                  <th className="dca-eoy-subhead">Giá trị</th>
+                </Fragment>
               ))}
             </tr>
           </thead>
           <tbody>
-            {allYears.map(year => (
-              <tr key={year}>
-                <td className="dca-eoy-year">{year}</td>
-                {perPortfolio.map(p => {
-                  const r = p.byYear.get(year)
-                  if (!r || r.value === null) {
-                    return <td key={p.id} className="dca-eoy-cell dca-eoy-cell--empty">—</td>
-                  }
-                  const pct = r.value * 100
-                  return (
+            {allYears.map(year => {
+              const rows = perPortfolio.map(p => p.byYear.get(year))
+              const diffPct = showDiff && rows[0]?.value != null && rows[1]?.value != null
+                ? (rows[1]!.value! - rows[0]!.value!) * 100
+                : null
+
+              return (
+                <tr key={year}>
+                  <td className="dca-eoy-year">{year}</td>
+                  {perPortfolio.map((p, idx) => {
+                    const r = rows[idx]
+                    if (!r || r.value === null) {
+                      return (
+                        <Fragment key={p.id}>
+                          <td className="dca-eoy-cell dca-eoy-cell--empty dca-eoy-group-start">—</td>
+                          <td className="dca-eoy-cell dca-eoy-cell--empty">—</td>
+                        </Fragment>
+                      )
+                    }
+                    const pct = r.value * 100
+                    return (
+                      <Fragment key={p.id}>
+                        <td className={`dca-eoy-cell dca-eoy-group-start ${pct >= 0 ? 'dca-eoy-cell--pos' : 'dca-eoy-cell--neg'}`}>
+                          {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+                          {r.isPartial && <sup className="dca-eoy-partial">*</sup>}
+                        </td>
+                        <td className="dca-eoy-cell dca-eoy-cell--balance">
+                          {formatVND(r.endValue)}
+                        </td>
+                      </Fragment>
+                    )
+                  })}
+                  {showDiff && (
                     <td
-                      key={p.id}
-                      className={`dca-eoy-cell ${pct >= 0 ? 'dca-eoy-cell--pos' : 'dca-eoy-cell--neg'}`}
+                      className={`dca-eoy-cell dca-eoy-group-start ${diffPct === null ? 'dca-eoy-cell--empty' : diffPct >= 0 ? 'dca-eoy-cell--pos' : 'dca-eoy-cell--neg'}`}
                     >
-                      {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
-                      {r.isPartial && <sup className="dca-eoy-partial">*</sup>}
+                      {diffPct === null ? '—' : `${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)} điểm %`}
                     </td>
-                  )
-                })}
-              </tr>
-            ))}
+                  )}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
       <div className="dca-eoy-footnote">
         * Năm chưa đủ dữ liệu trọn năm (năm đầu hoặc năm cuối của khoảng so sánh).
+        {showDiff && ' "Chênh lệch" = lợi nhuận danh mục thứ 2 trừ danh mục thứ 1, tính bằng điểm phần trăm.'}
       </div>
     </div>
   )
