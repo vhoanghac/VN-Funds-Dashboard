@@ -47,7 +47,7 @@ export type RebalanceFrequency = 'monthly' | 'quarterly' | 'yearly'
 /** URL state for the dashboard */
 export interface DashboardState {
   funds: string[] // selected fund IDs for comparison
-  tab: 'compare' | 'dca' | 'lsdca' | 'rebalance' | 'tactical' | 'bitcoin' | 'wallofworry' | 'changelog'
+  tab: 'compare' | 'dca' | 'lsdca' | 'rebalance' | 'tactical' | 'bitcoin' | 'wallofworry' | 'methodology' | 'changelog'
   rollingPeriod: number // months: 6, 12, 24, 36, 48
   dateFrom: string | null
   dateTo: string | null

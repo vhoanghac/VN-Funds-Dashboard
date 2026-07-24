@@ -8,6 +8,7 @@ import { RebalanceSensitivityPanel } from './components/RebalanceSensitivityPane
 import { TacticalAllocationPanel } from './components/TacticalAllocationPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
+import { MethodologyPanel } from './components/MethodologyPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 
 export function App() {
@@ -81,6 +82,12 @@ export function App() {
           Wall of Worry
         </button>
         <button
+          className={`tab ${state.tab === 'methodology' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'methodology' })}
+        >
+          Minh Bạch Hoá
+        </button>
+        <button
           className={`tab ${state.tab === 'changelog' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'changelog' })}
         >
@@ -132,6 +139,9 @@ export function App() {
       <div style={{ display: state.tab === 'wallofworry' ? undefined : 'none' }}>
         <WallOfWorryPanel />
       </div>
+
+      {/* Minh Bạch Hoá Tab */}
+      {state.tab === 'methodology' && <MethodologyPanel />}
 
       {/* Changelog Tab */}
       {state.tab === 'changelog' && <ChangelogPanel />}

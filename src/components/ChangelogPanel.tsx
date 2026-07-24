@@ -1,11 +1,13 @@
 const ENTRIES = [
   {
     version: 'v3.8',
-    date: '23/07/2026',
+    date: '24/07/2026',
     items: [
       'Thêm chức năng mô phỏng Monte Carlo trong mục Endgame của tab DCA.',
       'Thêm tab "Chiến Thuật Phân Bổ": mô phỏng chuyển đổi giữa 2 danh mục dựa trên tín hiệu SMA/EMA/RSI của một quỹ hoặc chỉ số bạn chọn.',
       'Thêm biểu đồ mô phỏng tăng thêm tiền DCA khi thị trường giảm sâu, trong mục "Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?" của tab DCA.',
+      'Thêm tab "Minh Bạch Hoá": tài liệu giải thích chính xác cách dashboard tính từng con số (công thức, cách tính, dữ liệu dùng), bắt đầu từ tab DCA. Mỗi chỉ số đều có công thức, giải thích và ví dụ số cụ thể để bạn tự kiểm chứng.',
+      'Rà soát lại toàn bộ công thức tính, bảng và biểu đồ trong dashboard; sửa một số lỗi tính toán: mức tệ nhất 1 tuần/1 tháng ở tab Bitcoin, thứ hạng rolling return trong tab DCA, và độ lệch chuẩn/Sharpe của danh mục có Bitcoin trong tab Tái Cân Bằng.',
     ],
   },
   {
