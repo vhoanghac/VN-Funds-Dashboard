@@ -4,8 +4,8 @@ import { ShareButton } from './ShareButton'
 import { buildDcaUrl, parseDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import type { ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
-import { avgDrawdown, longestDrawdownDays, annualizedStdev } from '../utils/drawdownStats'
+import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -583,30 +583,20 @@ function DCAPanelImpl({ funds }: Props) {
     values: r.valueSeries,
   })), [validResults])
 
-  const dcaStatsTableData = useMemo(() => validResults.map(r => {
-    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-    const dcaYears = r.cumulative.length >= 2
-      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-      : null
-    const investorCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-      : null
-    return {
-      id: r.id,
-      name: r.name,
-      color: r.color,
-      finalValue: r.finalValue,
-      totalInvested: r.totalInvested,
-      cagr: investorCagr,
-      mwrr: r.mwrr,
-      maxDrawdown: r.storm.maxDrawdown,
-      avgDrawdown: avgDrawdown(r.drawdown),
-      longestDrawdownDays: longestDrawdownDays(r.drawdown),
-      stdev: annualizedStdev(r.cumulative),
-      profitFactor: r.profitFactor,
-    }
-  }), [validResults])
+  const dcaStatsTableData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    finalValue: r.finalValue,
+    totalInvested: r.totalInvested,
+    cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
+    mwrr: r.mwrr,
+    maxDrawdown: r.storm.maxDrawdown,
+    avgDrawdown: avgDrawdown(r.drawdown),
+    longestDrawdownDays: longestDrawdownDays(r.drawdown),
+    stdev: annualizedStdevFromCumulative(r.cumulative),
+    profitFactor: r.profitFactor,
+  })), [validResults])
 
   // EOYReturnsTable và DcaJourneyBlock dùng chung 1 shape props
   const journeyPortfolios = useMemo(() => validResults.map(r => ({
@@ -619,17 +609,13 @@ function DCAPanelImpl({ funds }: Props) {
     cashflows: r.cashflows,
   })), [validResults])
 
-  const dcaReturnExplainerData = useMemo(() => validResults.map(r => {
-    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-    const dcaYears = r.cumulative.length >= 2
-      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-      : null
-    const cagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-      : null
-    return { id: r.id, name: r.name, color: r.color, cagr, mwrr: r.mwrr }
-  }), [validResults])
+  const dcaReturnExplainerData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
+    mwrr: r.mwrr,
+  })), [validResults])
 
   const dividendFundIds = useMemo(() => Array.from(new Set(
     committed?.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
@@ -724,23 +710,12 @@ function DCAPanelImpl({ funds }: Props) {
     }
   }), [validResults])
 
-  const rollingReturnData = useMemo(() => validResults.map(r => {
-    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-    const dcaYears = r.cumulative.length >= 2
-      ? (new Date(r.cumulative[r.cumulative.length - 1]!.date).getTime() -
-         new Date(r.cumulative[0]!.date).getTime()) / msPerYear
-      : null
-    const userCagr = (dcaYears && dcaYears > 0 && r.totalInvested > 0 && r.finalValue > 0)
-      ? Math.pow(r.finalValue / r.totalInvested, 1 / dcaYears) - 1
-      : null
-    return {
-      id: r.id,
-      name: r.name,
-      color: r.color,
-      cumulative: r.cumulative,
-      userCagr,
-    }
-  }), [validResults])
+  const rollingReturnData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    cumulative: r.cumulative,
+  })), [validResults])
 
   // ── Format helpers ──
   function formatDate(dateStr: string): string {

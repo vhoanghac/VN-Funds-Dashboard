@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
   dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
+  trailingWindowCagr,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -686,5 +687,45 @@ describe('monthlyEquivalentContribution', () => {
     expect(monthlyEquivalentContribution(1_000_000, 'weekly')).toBeLessThan(4_500_000)
     expect(monthlyEquivalentContribution(2_000_000, 'biweekly')).toBeGreaterThan(4_000_000)
     expect(monthlyEquivalentContribution(2_000_000, 'biweekly')).toBeLessThan(4_500_000)
+  })
+})
+
+describe('trailingWindowCagr', () => {
+  it('computes TWRR CAGR over exactly the trailing windowYears, not the full series', () => {
+    // 6 năm dữ liệu: 2015-01-01 (value=0) -> 2018-01-01 (value=0.20) -> 2021-01-01 (value=0.50)
+    // trailingWindowCagr(cumulative, 3) phải CHỈ dùng đoạn 2018-01-01 -> 2021-01-01
+    // (1.50/1.20 growth), KHÔNG dùng toàn bộ 2015->2021.
+    const cumulative: ReturnPoint[] = [
+      { date: '2015-01-01', value: 0 },
+      { date: '2016-01-01', value: 0.05 },
+      { date: '2017-01-01', value: 0.10 },
+      { date: '2018-01-01', value: 0.20 },
+      { date: '2019-01-01', value: 0.30 },
+      { date: '2020-01-01', value: 0.40 },
+      { date: '2021-01-01', value: 0.50 },
+    ]
+    const result = trailingWindowCagr(cumulative, 3)!
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+    const actualYears = (new Date('2021-01-01').getTime() - new Date('2018-01-01').getTime()) / msPerYear
+    const expected = Math.pow(1.50 / 1.20, 1 / actualYears) - 1
+    expect(result).toBeCloseTo(expected, 8)
+    // Chắc chắn KHÁC với CAGR tính trên toàn bộ 6 năm (0 -> 0.50), để đảm bảo
+    // hàm thực sự chỉ dùng đoạn windowYears cuối chứ không phải toàn chuỗi.
+    const fullSeriesYears = (new Date('2021-01-01').getTime() - new Date('2015-01-01').getTime()) / msPerYear
+    const fullSeriesCagr = Math.pow(1.50 / 1.00, 1 / fullSeriesYears) - 1
+    expect(result).not.toBeCloseTo(fullSeriesCagr, 3)
+  })
+
+  it('returns null when there is not enough history for the requested window', () => {
+    const cumulative: ReturnPoint[] = [
+      { date: '2020-01-01', value: 0 },
+      { date: '2020-06-01', value: 0.05 },
+    ]
+    expect(trailingWindowCagr(cumulative, 5)).toBeNull()
+  })
+
+  it('returns null for empty or single-point series', () => {
+    expect(trailingWindowCagr([], 3)).toBeNull()
+    expect(trailingWindowCagr([{ date: '2020-01-01', value: 0 }], 3)).toBeNull()
   })
 })

@@ -13,7 +13,7 @@ import { useState, useMemo, memo } from 'react'
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, ReferenceLine, Cell,
 } from 'recharts'
-import { rollingCAGR, histogramBuckets } from '../utils/dca'
+import { rollingCAGR, histogramBuckets, trailingWindowCagr } from '../utils/dca'
 import type { ReturnPoint } from '../types'
 
 export interface RollingPortfolio {
@@ -21,8 +21,6 @@ export interface RollingPortfolio {
   name: string
   color: string
   cumulative: ReturnPoint[]
-  /** CAGR thực tế của user trong kỳ backtest, dùng làm marker so sánh */
-  userCagr: number | null
 }
 
 interface Props {
@@ -76,12 +74,17 @@ function RollingForPortfolio({
   portfolio: RollingPortfolio
   windowYears: number
 }) {
-  const { rolls, buckets, stats } = useMemo(() => {
+  const { rolls, buckets, stats, userCagr } = useMemo(() => {
     const rolls = rollingCAGR(portfolio.cumulative, windowYears)
     const values = rolls.map(r => r.cagr)
     const buckets = histogramBuckets(values, 0.02)
     const stats = computeStats(values)
-    return { rolls, buckets, stats }
+    // Cùng công thức TWRR + cùng độ dài windowYears với `rolls` ở trên (khác
+    // CAGR kiểu nhà đầu tư trên toàn bộ kỳ backtest) — để percentile so sánh
+    // đúng nghĩa "kết quả windowYears năm gần nhất của bạn nằm ở đâu trong
+    // phân phối windowYears năm lịch sử", không lẫn 2 công thức/2 độ dài khác nhau.
+    const userCagr = trailingWindowCagr(portfolio.cumulative, windowYears)
+    return { rolls, buckets, stats, userCagr }
   }, [portfolio.cumulative, windowYears])
 
   if (rolls.length < 3) {
@@ -98,7 +101,6 @@ function RollingForPortfolio({
     )
   }
 
-  const userCagr = portfolio.userCagr
   const percentile = userCagr !== null ? percentileOf(rolls.map(r => r.cagr), userCagr) : null
 
   // Chart data

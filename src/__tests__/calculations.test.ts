@@ -4,6 +4,8 @@ import {
   cumulativeReturns,
   cagr,
   maxDrawdown,
+  worstWeeklyReturn,
+  worstMonthlyReturn,
   drawdownSeries,
   yearlyReturns,
   winRateAmong,
@@ -183,6 +185,73 @@ describe('maxDrawdown', () => {
 
   it('returns 0 for empty input', () => {
     expect(maxDrawdown([])).toBe(0)
+  })
+})
+
+// ─── worstWeeklyReturn / worstMonthlyReturn ─────────────────
+
+describe('worstWeeklyReturn / worstMonthlyReturn', () => {
+  it('worstWeeklyReturn compounds a multi-day losing streak on DAILY data, not just the single worst day', () => {
+    // 5 ngày liên tiếp -2%, rồi 2 ngày +1% — dữ liệu daily (cách nhau 1 ngày).
+    // Tệ nhất 1 NGÀY = -2%. Nhưng tệ nhất cửa sổ 7-ngày-lịch phải gộp cả 5
+    // ngày lỗ liên tiếp (span 4 ngày, nằm trong 7 ngày): 0.98^5 - 1 ≈ -9.61%.
+    // Đây chính là bug đã sửa: code cũ coi "1 phần tử = 1 tuần" nên chỉ trả
+    // về -2% (giống hệt kết quả của 1 ngày tệ nhất), thấp hơn thực tế >4 lần.
+    const dates = ['2021-01-02', '2021-01-03', '2021-01-04', '2021-01-05', '2021-01-06', '2021-01-07', '2021-01-08']
+    const values = [-0.02, -0.02, -0.02, -0.02, -0.02, 0.01, 0.01]
+    const returns = makeReturns(dates, values)
+    const expected = Math.pow(0.98, 5) - 1 // ≈ -0.096079
+    expect(worstWeeklyReturn(returns)).toBeCloseTo(expected, 6)
+    // Phải khác xa (tệ hơn nhiều) so với "tệ nhất 1 ngày đơn lẻ" (-0.02) —
+    // nếu bug quay lại (coi mỗi phần tử là 1 tuần), test này sẽ fail vì
+    // worstWeeklyReturn sẽ chỉ trả về -0.02.
+    expect(worstWeeklyReturn(returns)).toBeLessThan(-0.02)
+  })
+
+  it('worstWeeklyReturn does NOT merge two periods that are exactly 7 calendar days apart (genuinely-weekly input)', () => {
+    // Dữ liệu weekly thật (cách nhau đúng 7 ngày): mỗi phần tử tự nó đã là
+    // "1 tuần". Tệ nhất cửa sổ 7 ngày phải là tệ nhất TỪNG phần tử riêng lẻ
+    // (-5%), KHÔNG được gộp 2 tuần liền kề lại thành cửa sổ 14 ngày (sẽ ra
+    // một số sai khác, sâu hơn nhiều so với -5%).
+    const dates = ['2021-01-01', '2021-01-08', '2021-01-15', '2021-01-22']
+    const values = [0.03, -0.05, 0.02, -0.01]
+    const returns = makeReturns(dates, values)
+    expect(worstWeeklyReturn(returns)).toBeCloseTo(-0.05, 10)
+  })
+
+  it('worstMonthlyReturn compounds a ~28-day losing streak on daily data', () => {
+    // 20 ngày liên tiếp -1%, rồi vài ngày phục hồi. Cửa sổ 28 ngày phải gộp
+    // đủ 20 ngày lỗ đó: 0.99^20 - 1 ≈ -18.21%.
+    const n = 25
+    const dates = Array.from({ length: n }, (_, i) => {
+      const d = new Date('2021-01-01')
+      d.setDate(d.getDate() + i)
+      return d.toISOString().slice(0, 10)
+    })
+    const values = Array.from({ length: n }, (_, i) => (i < 20 ? -0.01 : 0.02))
+    const returns = makeReturns(dates, values)
+    const expected = Math.pow(0.99, 20) - 1 // ≈ -0.18209
+    expect(worstMonthlyReturn(returns)).toBeCloseTo(expected, 6)
+  })
+
+  it('returns 0 for empty input', () => {
+    expect(worstWeeklyReturn([])).toBe(0)
+    expect(worstMonthlyReturn([])).toBe(0)
+  })
+
+  it('returns 0 when every return is positive', () => {
+    const returns = makeReturns(
+      ['2021-01-01', '2021-01-02', '2021-01-03'],
+      [0.01, 0.02, 0.01],
+    )
+    expect(worstWeeklyReturn(returns)).toBe(0)
+    expect(worstMonthlyReturn(returns)).toBe(0)
+  })
+
+  it('single negative point: worst window is just that point itself', () => {
+    const returns = makeReturns(['2021-01-01'], [-0.03])
+    expect(worstWeeklyReturn(returns)).toBeCloseTo(-0.03, 10)
+    expect(worstMonthlyReturn(returns)).toBeCloseTo(-0.03, 10)
   })
 })
 

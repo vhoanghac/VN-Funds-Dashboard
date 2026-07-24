@@ -52,7 +52,6 @@ export interface FundQualityReport {
   id: string
   startDate: string
   endDate: string
-  totalWeeks: number
   gaps: DataGap[]
   /** Ngày quỹ có giá đầu tiên so với dateFrom user chọn; null nếu coverage đủ */
   startsAfterRequested: boolean
@@ -94,7 +93,6 @@ export function buildFundQualityReport(
     id,
     startDate,
     endDate,
-    totalWeeks: weekly.length,
     gaps,
     startsAfterRequested,
     endsBeforeRequested,

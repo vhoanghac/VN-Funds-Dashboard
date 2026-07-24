@@ -4,7 +4,7 @@
  *     (đỉnh → đáy → hồi phục) để liệt kê top các đợt lớn nhất.
  *   - avgDrawdown / longestDrawdownDays: 2 cột "Avg Drawdown" / "Longest
  *     Drawdown" trong bảng Statistics của Testfolio.
- *   - annualizedStdev: biến động (độ lệch chuẩn quy năm) từ chuỗi TWRR.
+ *   - annualizedStdevFromCumulative: biến động (độ lệch chuẩn quy năm) từ chuỗi TWRR.
  *
  * Input là chuỗi drawdown TWRR (0 tại đỉnh, âm khi dưới đỉnh) do simulateDCA
  * trả về — đã loại noise cashflow nên phản ánh đúng "bão thị trường".
@@ -115,7 +115,7 @@ export function longestDrawdownDays(drawdown: ReturnPoint[]): number | null {
  * cumulative (bắt đầu 0). Hệ số quy năm lấy theo mật độ quan sát thực tế
  * (số điểm / số năm) thay vì hard-code 252, để không lệch khi dữ liệu có gap.
  */
-export function annualizedStdev(cumulative: ReturnPoint[]): number | null {
+export function annualizedStdevFromCumulative(cumulative: ReturnPoint[]): number | null {
   const n = cumulative.length
   if (n < 30) return null
 

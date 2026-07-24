@@ -316,7 +316,7 @@ function simulateBand(
   return { totals, rebalCount }
 }
 
-function computeMetrics(totals: Float64Array, years: number): {
+export function computeMetrics(totals: Float64Array, years: number): {
   cagr: number; stdev: number; maxDrawdown: number; sharpe: number
 } {
   const n = totals.length
@@ -337,8 +337,14 @@ function computeMetrics(totals: Float64Array, years: number): {
   const count = n - 1
   const mean = sum / count
   const variance = count > 1 ? (sumSq - sum * sum / count) / (count - 1) : 0
-  const stdev = Math.sqrt(Math.max(variance, 0)) * Math.sqrt(252)
-  const sharpe = stdev > 0 ? (mean * 252) / stdev : 0
+  // Số kỳ/năm SUY RA từ mật độ dữ liệu thực tế (count/years), giống
+  // annualizedStdev() trong calculations.ts — không hard-code 252, vì danh
+  // mục ở đây có thể gồm quỹ mở VN (~252 phiên/năm) LẪN BTC (giao dịch 365
+  // ngày/năm) hay vàng (tần suất bất định). Hard-code 252 sẽ làm "Biến động"
+  // và "Sharpe" bị đánh giá thấp hơn thực tế khi danh mục có BTC/vàng.
+  const periodsPerYear = years > 0 ? count / years : 252
+  const stdev = Math.sqrt(Math.max(variance, 0)) * Math.sqrt(periodsPerYear)
+  const sharpe = stdev > 0 ? (mean * periodsPerYear) / stdev : 0
 
   return { cagr, stdev, maxDrawdown: maxDD, sharpe }
 }

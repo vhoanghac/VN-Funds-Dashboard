@@ -210,43 +210,56 @@ export function maxDrawdown(returns: ReturnPoint[]): number {
 }
 
 /**
- * Tệ nhất 1 tuần: min trong toàn bộ weekly returns.
- * Dùng cho "sleep test", dịch ra VND để người dùng cảm được pain threshold.
+ * Tệ nhất trong bất kỳ cửa sổ `windowDays` NGÀY LỊCH liên tiếp nào (rolling
+ * calendar-day cumulative return, lấy giá trị nhỏ nhất). Two-pointer trên
+ * mốc thời gian thực tế nên đúng bất kể chuỗi `returns` là daily hay weekly —
+ * khác cách tính cũ (giả định "1 phần tử = 1 tuần"), vốn sai kể từ khi pipeline
+ * chuyển sang dùng dữ liệu daily (mỗi phần tử chỉ còn là 1 ngày).
  */
-export function worstWeeklyReturn(returns: ReturnPoint[]): number {
-  if (returns.length === 0) return 0
+function worstRollingCalendarReturn(returns: ReturnPoint[], windowDays: number): number {
+  const n = returns.length
+  if (n === 0) return 0
+
+  const dates = returns.map(r => new Date(r.date).getTime())
+  const logR = new Float64Array(n)
+  for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
+  const prefix = new Float64Array(n + 1)
+  for (let i = 0; i < n; i++) prefix[i + 1] = prefix[i]! + logR[i]!
+
+  const windowMs = windowDays * 24 * 60 * 60 * 1000
   let worst = 0
-  for (const r of returns) {
-    if (r.value < worst) worst = r.value
+  let j = 0
+  for (let i = 0; i < n; i++) {
+    // returns[k] chỉ lưu NGÀY KẾT THÚC của kỳ đó (dates[k]); điểm bắt đầu thực
+    // sự là dates[k-1] (ẩn, không có trong mảng). Vì vậy so `dates[i] - dates[j]`
+    // (không phải dates[j-1]) với windowMs sẽ "quên tính" độ dài của chính kỳ j —
+    // nếu dùng so sánh không nghiêm ngặt (`>`), 2 kỳ cách nhau ĐÚNG bằng windowDays
+    // (vd dữ liệu weekly thật, cách nhau đúng 7 ngày) sẽ bị gộp nhầm thành 1 cửa
+    // sổ 14 ngày thay vì tách thành 2 cửa sổ 7 ngày riêng biệt. Dùng `>=` để loại
+    // kỳ j ngay khi đưa nó vào sẽ chạm mốc giới hạn (không chỉ khi vượt hẳn).
+    while (j < i && dates[i]! - dates[j]! >= windowMs) j++
+    const logSum = prefix[i + 1]! - prefix[j]!
+    const v = Math.expm1(logSum)
+    if (v < worst) worst = v
   }
   return worst
 }
 
 /**
- * Tệ nhất 1 tháng: rolling 4-week cumulative return, lấy min.
- * Không phải calendar month mà là any 4-week window. Phản ánh
- * "trong 4 tuần liên tiếp tệ nhất, bạn mất bao nhiêu".
+ * Tệ nhất 1 tuần: rolling 7-ngày-lịch cumulative return, lấy min.
+ * Dùng cho "sleep test", dịch ra VND để người dùng cảm được pain threshold.
+ */
+export function worstWeeklyReturn(returns: ReturnPoint[]): number {
+  return worstRollingCalendarReturn(returns, 7)
+}
+
+/**
+ * Tệ nhất 1 tháng: rolling 28-ngày-lịch (~4 tuần) cumulative return, lấy min.
+ * Không phải calendar month mà là bất kỳ cửa sổ 28-ngày nào. Phản ánh
+ * "trong 28 ngày liên tiếp tệ nhất, bạn mất bao nhiêu".
  */
 export function worstMonthlyReturn(returns: ReturnPoint[]): number {
-  const WEEKS = 4
-  if (returns.length < WEEKS) return 0
-
-  // Log-space sliding window, giống rollingCumulativeReturns
-  const n = returns.length
-  const logR = new Float64Array(n)
-  for (let i = 0; i < n; i++) logR[i] = Math.log1p(returns[i]!.value)
-
-  let logSum = 0
-  for (let i = 0; i < WEEKS; i++) logSum += logR[i]!
-  let worst = Math.expm1(logSum)
-
-  for (let i = WEEKS; i < n; i++) {
-    logSum += logR[i]! - logR[i - WEEKS]!
-    const v = Math.expm1(logSum)
-    if (v < worst) worst = v
-  }
-
-  return worst
+  return worstRollingCalendarReturn(returns, 28)
 }
 
 /**

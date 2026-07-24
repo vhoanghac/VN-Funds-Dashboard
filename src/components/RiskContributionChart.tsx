@@ -51,7 +51,7 @@ function RiskContributionChartImpl({ data, fundId }: Props) {
         <h3>Đóng góp vào biến động danh mục</h3>
         <span
           className="chart-tooltip-icon"
-          title="So sánh tỷ trọng vốn với phần trăm đóng góp vào biến động (rủi ro) tổng thể của danh mục. Bitcoin dù chiếm tỷ trọng nhỏ nhưng thường đóng góp phần lớn rủi ro do biến động giá cao. Tính toán dựa trên covariance matrix của lợi nhuận tuần."
+          title="So sánh tỷ trọng vốn với phần trăm đóng góp vào biến động (rủi ro) tổng thể của danh mục. Bitcoin dù chiếm tỷ trọng nhỏ nhưng thường đóng góp phần lớn rủi ro do biến động giá cao. Tính toán dựa trên covariance matrix của lợi nhuận hàng ngày."
         >?</span>
       </div>
       <ResponsiveContainer width="100%" height={320}>

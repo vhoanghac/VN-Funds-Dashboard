@@ -244,6 +244,34 @@ describe('runTacticalBacktest', () => {
     expect(['A', 'B']).toContain(result!.switching.currentSignal)
   })
 
+  it('returns null (not a silent full-history fallback) when dateFrom is beyond all available data', () => {
+    // Dữ liệu chỉ có 400 ngày kể từ 2020-01-01 (~2021-02-03). dateFrom yêu
+    // cầu 2025-01-01 — không tìm thấy ngày nào >= dateFrom trong chuỗi, nên
+    // phải trả về null. Bug cũ: Math.max(firstValidIdx, -1) lặng lẽ quay về
+    // firstValidIdx, chạy backtest trên TOÀN BỘ lịch sử như thể không hề có
+    // dateFrom, thay vì báo "không có dữ liệu ở khoảng ngày yêu cầu".
+    const raw = new Map<string, PricePoint[]>([
+      ['SIGNAL', buildDailyPrices(100, 0.0005, 400)],
+      ['FUND_A', buildDailyPrices(100, 0.0006, 400)],
+      ['FUND_B', buildDailyPrices(100, 0.0001, 400)],
+    ])
+    const result = runTacticalBacktest({
+      rawPrices: raw,
+      signalFundId: 'SIGNAL',
+      indicatorType: 'SMA',
+      period: 50,
+      toleranceBandPct: 2,
+      dateFrom: '2025-01-01',
+      allocationASlots: [{ fundId: 'FUND_A', weight: 100 }],
+      allocationARebalFreq: 'quarterly',
+      allocationBSlots: [{ fundId: 'FUND_B', weight: 100 }],
+      allocationBRebalFreq: 'quarterly',
+      startValue: 1_000_000,
+      switchCostPct: 0.5,
+    })
+    expect(result).toBeNull()
+  })
+
   it('also works with EMA and RSI indicator types', () => {
     const raw = new Map<string, PricePoint[]>([
       ['SIGNAL', buildDailyPrices(100, 0.0005, 400)],

@@ -325,10 +325,17 @@ export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBackt
   const firstValidIdx = indicatorAll.findIndex(p => p.value !== null)
   if (firstValidIdx === -1) return null
 
-  const effectiveStartIdx = input.dateFrom
-    ? Math.max(firstValidIdx, indicatorAll.findIndex(p => p.date >= input.dateFrom!))
-    : firstValidIdx
-  if (effectiveStartIdx === -1 || effectiveStartIdx >= n) return null
+  let effectiveStartIdx = firstValidIdx
+  if (input.dateFrom) {
+    const requestedIdx = indicatorAll.findIndex(p => p.date >= input.dateFrom!)
+    // dateFrom nằm SAU toàn bộ dữ liệu hiện có (không tìm thấy ngày nào >=
+    // dateFrom) — phải báo "không có dữ liệu", không được lặng lẽ Math.max
+    // về firstValidIdx rồi chạy backtest trên toàn bộ lịch sử như thể người
+    // dùng không hề giới hạn ngày bắt đầu.
+    if (requestedIdx === -1) return null
+    effectiveStartIdx = Math.max(firstValidIdx, requestedIdx)
+  }
+  if (effectiveStartIdx >= n) return null
 
   let endIdx = n - 1
   if (input.dateTo) {

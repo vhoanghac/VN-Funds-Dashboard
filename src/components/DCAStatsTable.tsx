@@ -59,15 +59,15 @@ function DCAStatsTableImpl({ portfolios }: Props) {
               </th>
               <th>
                 Sụt giảm tối đa
-                <span className="dca-info-icon" title="Mức sụt giảm tối đa: mức giảm lớn nhất tính từ đỉnh, cho thấy rủi ro lớn nhất khi đầu tư.">?</span>
+                <span className="dca-info-icon" title="Mức sụt giảm tối đa CỦA CHÍNH QUỸ (TWRR, đã tách khỏi ảnh hưởng dòng tiền DCA): mức giảm lớn nhất tính từ đỉnh giá quỹ. Đây là 'bão thị trường thật', thường sâu hơn mức sụt giảm bạn thực sự trải nghiệm trên số dư tài khoản. Xem 'Kiên trì qua bão' bên dưới để so sánh 2 con số.">?</span>
               </th>
               <th>
                 Sụt giảm TB
-                <span className="dca-info-icon" title="Trung bình mức sụt giảm so với đỉnh, tính trên tất cả các ngày trong kỳ (ngày lập đỉnh mới tính là 0%). Cho biết mức 'chìm dưới đỉnh' điển hình bạn phải chịu đựng, thay vì chỉ nhìn điểm tệ nhất.">?</span>
+                <span className="dca-info-icon" title="Trung bình mức sụt giảm CỦA CHÍNH QUỸ (TWRR) so với đỉnh, tính trên tất cả các ngày trong kỳ (ngày lập đỉnh mới tính là 0%). Đây là mức 'chìm dưới đỉnh' của quỹ, không phải của số dư tài khoản bạn.">?</span>
               </th>
               <th>
                 Dưới đỉnh lâu nhất
-                <span className="dca-info-icon" title="Khoảng thời gian dài nhất danh mục nằm dưới đỉnh cũ, tính từ lúc lập đỉnh đến khi vượt lại đỉnh đó. Đây là khoảng thời gian thử thách sự kiên nhẫn nhất của nhà đầu tư.">?</span>
+                <span className="dca-info-icon" title="Khoảng thời gian dài nhất GIÁ QUỸ (TWRR) nằm dưới đỉnh cũ, tính từ lúc lập đỉnh đến khi vượt lại đỉnh đó. Đây là khoảng thời gian thử thách sự kiên nhẫn nhất của nhà đầu tư.">?</span>
               </th>
               <th>
                 Biến động
@@ -75,7 +75,7 @@ function DCAStatsTableImpl({ portfolios }: Props) {
               </th>
               <th>
                 Profit Factor
-                <span className="dca-info-icon" title="Tổng lợi nhuận các tuần tăng ÷ tổng lỗ các tuần giảm. Lớn hơn 1 = tổng lời nhiều hơn tổng lỗ. Ví dụ: 1.5× nghĩa là cứ 1 đồng lỗ thì lời được 1.5 đồng.">?</span>
+                <span className="dca-info-icon" title="Tổng lợi nhuận các phiên tăng ÷ tổng lỗ các phiên giảm. Lớn hơn 1 = tổng lời nhiều hơn tổng lỗ. Ví dụ: 1.5× nghĩa là cứ 1 đồng lỗ thì lời được 1.5 đồng.">?</span>
               </th>
             </tr>
           </thead>

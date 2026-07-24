@@ -3,7 +3,7 @@ import {
   drawdownEpisodes,
   avgDrawdown,
   longestDrawdownDays,
-  annualizedStdev,
+  annualizedStdevFromCumulative,
 } from './drawdownStats'
 import type { ReturnPoint } from '../types'
 
@@ -131,7 +131,7 @@ describe('longestDrawdownDays', () => {
   })
 })
 
-describe('annualizedStdev', () => {
+describe('annualizedStdevFromCumulative', () => {
   function cumulativeFromReturns(startDate: string, dailyReturns: number[]): ReturnPoint[] {
     const points: ReturnPoint[] = [{ date: startDate, value: 0 }]
     let growth = 1
@@ -145,18 +145,18 @@ describe('annualizedStdev', () => {
   }
 
   it('returns null for short series', () => {
-    expect(annualizedStdev(cumulativeFromReturns('2020-01-01', Array(10).fill(0.01)))).toBeNull()
+    expect(annualizedStdevFromCumulative(cumulativeFromReturns('2020-01-01', Array(10).fill(0.01)))).toBeNull()
   })
 
   it('returns ~0 for perfectly constant returns', () => {
     const series = cumulativeFromReturns('2020-01-01', Array(100).fill(0.001))
-    expect(annualizedStdev(series)!).toBeCloseTo(0, 6)
+    expect(annualizedStdevFromCumulative(series)!).toBeCloseTo(0, 6)
   })
 
   it('annualizes using observed density: alternating ±1% daily', () => {
     const returns = Array.from({ length: 200 }, (_, i) => (i % 2 === 0 ? 0.01 : -0.01))
     const series = cumulativeFromReturns('2020-01-01', returns)
-    const result = annualizedStdev(series)!
+    const result = annualizedStdevFromCumulative(series)!
     // stdev kỳ ≈ 1%, mật độ ≈ 365 điểm/năm (chuỗi liền ngày) → ~0.01 × √365 ≈ 0.191
     expect(result).toBeGreaterThan(0.15)
     expect(result).toBeLessThan(0.25)

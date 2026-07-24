@@ -217,11 +217,11 @@ export interface DCASimulateOptions {
   /**
    * Giá dùng để QUY ĐỔI TIỀN THÀNH ĐƠN VỊ khi mua (initial amount + mỗi lần DCA),
    * CHỈ cho những fundId có mặt trong map này — các quỹ khác (không có entry,
-   * tức tuyệt đại đa số quỹ mở/ETF) vẫn dùng đúng `weeklyPrices` như trước,
+   * tức tuyệt đại đa số quỹ mở/ETF) vẫn dùng đúng `dailyPrices` như trước,
    * hành vi không đổi.
    *
    * Dùng cho tài sản có 2 giá mua/bán như vàng miếng SJC: mua ở giá "bán ra"
-   * (sell — cái nhà đầu tư phải trả), còn `weeklyPrices` (dùng để định giá danh
+   * (sell — cái nhà đầu tư phải trả), còn `dailyPrices` (dùng để định giá danh
    * mục / rebalance / so sánh hiệu suất xuyên suốt) là giá "mua vào" (buy —
    * cái nhà đầu tư nhận được nếu bán). Bắt đúng chi phí chênh lệch mua-bán thật,
    * thay vì giả định vàng cũng chỉ có 1 giá như quỹ mở/ETF.
@@ -232,17 +232,18 @@ export interface DCASimulateOptions {
 /**
  * Simulate DCA for a single portfolio.
  *
- * Uses WEEKLY price data (last trading day of each ISO week).
+ * Uses DAILY price data (mọi ngày giao dịch thực tế, đã align qua
+ * alignFundsToCommonGridDaily) — không resample về tuần.
  * Matches the Compare/Simulate tabs: unified date grid across all tabs.
  *
- * @param weeklyPrices - Map of fundId → PricePoint[] (weekly prices, sorted by date)
+ * @param dailyPrices - Map of fundId → PricePoint[] (daily prices, sorted by date)
  * @param slots - Fund allocations with weights (must sum to 100)
  * @param params - DCA parameters (initial amount, cashflow, frequency)
  * @param rebalFreq - How often to rebalance weights
  * @param options - Behavioral knobs (skip predicate for panic-stop variants, etc.)
  */
 export function simulateDCA(
-  weeklyPrices: Map<string, PricePoint[]>,
+  dailyPrices: Map<string, PricePoint[]>,
   slots: DCASlot[],
   params: DCAParams,
   rebalFreq: RebalanceFrequency,
@@ -259,7 +260,7 @@ export function simulateDCA(
   const fundIds = validSlots.map(s => s.fundId)
 
   // Get all weekly price arrays
-  const priceArrays = fundIds.map(id => weeklyPrices.get(id) || [])
+  const priceArrays = fundIds.map(id => dailyPrices.get(id) || [])
 
   // Find common date range
   const startDates = priceArrays.map(arr => arr[0]?.date || '9999')
@@ -278,7 +279,7 @@ export function simulateDCA(
     return map
   })
 
-  // Purchase-time price lookups: falls back to priceLookups (weeklyPrices) for
+  // Purchase-time price lookups: falls back to priceLookups (dailyPrices) for
   // any fundId not present in options.purchasePrices — so funds/ETFs without
   // a buy/sell spread are completely unaffected.
   const purchaseLookups = fundIds.map((id, j) => {
@@ -304,7 +305,7 @@ export function simulateDCA(
   }
 
   // ── Run DCA simulation ──
-  // Note: giá weeklyPrices vào đây ĐÃ được dividend-adjusted ở layer CSV loader
+  // Note: giá dailyPrices vào đây ĐÃ được dividend-adjusted ở layer CSV loader
   // (xem src/utils/dividendAdjust.ts). Nên phần hiệu suất TWRR/MWRR tính
   // trực tiếp trên giá adjusted sẽ tự động phản ánh giả định tái đầu tư cổ
   // tức sau thuế. Không cần xử lý ex-date/pay-date ở đây nữa.
@@ -438,8 +439,8 @@ export function simulateDCA(
     prevEndValue = portfolioValue
   }
 
-  // Data is already weekly, use period returns directly (no manual resampling needed)
-  const weeklyReturns = twrrDailyReturns
+  // Dữ liệu đã ở dạng chuỗi TWRR daily returns, dùng trực tiếp (không cần resample gì thêm)
+  const dailyReturnsOut = twrrDailyReturns
 
   const finalValue = values.length > 0 ? values[values.length - 1]!.value : 0
 
@@ -455,7 +456,7 @@ export function simulateDCA(
     cashflows: allCashflows,
     cumulative,
     drawdown,
-    returns: weeklyReturns,
+    returns: dailyReturnsOut,
     totalInvested,
     finalValue,
   }
@@ -542,6 +543,27 @@ export function dcaCagr(cumulative: ReturnPoint[]): number | null {
 
   const twrrGrowth = 1 + cumulative[cumulative.length - 1]!.value
   return Math.pow(twrrGrowth, 1 / years) - 1
+}
+
+/**
+ * "CAGR nhà đầu tư" — quy năm lợi nhuận tích lũy dựa trên finalValue/totalInvested,
+ * giả định (sai) toàn bộ vốn đã hoạt động từ ngày đầu tiên. Thấp hơn dcaCagr() vì
+ * phần lớn vốn DCA chỉ mới nạp gần đây. Dùng để đối chiếu với MWRR trong bảng thống
+ * kê — không dùng để chiếu tương lai (xem projectionData trong DCAPanel.tsx).
+ */
+export function investorCagr(
+  cumulative: ReturnPoint[],
+  totalInvested: number,
+  finalValue: number,
+): number | null {
+  if (cumulative.length < 2 || totalInvested <= 0 || finalValue <= 0) return null
+
+  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+  const years = (new Date(cumulative[cumulative.length - 1]!.date).getTime() -
+    new Date(cumulative[0]!.date).getTime()) / msPerYear
+  if (years <= 0) return null
+
+  return Math.pow(finalValue / totalInvested, 1 / years) - 1
 }
 
 /**
@@ -837,7 +859,7 @@ function monthsBetween(d1: string, d2: string): number {
 }
 
 /**
- * Compute Profit Factor from weekly TWRR returns.
+ * Compute Profit Factor from daily TWRR returns.
  *
  * Profit Factor = sum(positive returns) / |sum(negative returns)|
  *
@@ -944,6 +966,56 @@ export function rollingCAGR(
   }
 
   return results
+}
+
+/**
+ * TWRR CAGR của đúng `windowYears` năm CUỐI CÙNG trong chuỗi `cumulative`
+ * (nếu đủ dữ liệu). Dùng làm "vị trí thực tế của bạn" khi so với phân phối
+ * rollingCAGR cùng windowYears trong RollingReturnBlock — cùng công thức
+ * (TWRR) và cùng độ dài kỳ nên percentile mới thực sự so sánh được. Khác
+ * với cách cũ (dùng CAGR kiểu nhà đầu tư tính trên TOÀN BỘ kỳ backtest —
+ * có thể dài/ngắn hơn windowYears rất nhiều, lại theo công thức khác hẳn
+ * TWRR — khiến việc xếp percentile không có ý nghĩa thống kê).
+ */
+export function trailingWindowCagr(cumulative: ReturnPoint[], windowYears: number): number | null {
+  if (cumulative.length < 2 || windowYears <= 0) return null
+
+  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+  const endPt = cumulative[cumulative.length - 1]!
+  const endTime = new Date(endPt.date).getTime()
+  const targetStartTime = endTime - windowYears * msPerYear
+
+  // Không đủ lịch sử lùi xa đủ windowYears năm: điểm sớm nhất của chuỗi vẫn
+  // còn sau mốc mục tiêu.
+  if (new Date(cumulative[0]!.date).getTime() > targetStartTime) return null
+
+  // Điểm đầu tiên có ngày >= targetStartTime...
+  let k = cumulative.length - 1
+  for (let i = 0; i < cumulative.length; i++) {
+    if (new Date(cumulative[i]!.date).getTime() >= targetStartTime) { k = i; break }
+  }
+  // ...rồi so với điểm NGAY TRƯỚC nó, chọn điểm nào GẦN targetStartTime hơn.
+  // Cần bước này vì msPerYear=365.25 chỉ là xấp xỉ (năm nhuận lệch lên tới
+  // ~6 giờ so với 1 năm lịch thật) — nếu dữ liệu thưa (vd chỉ 1 điểm/năm) và
+  // mốc mục tiêu rơi trúng ranh giới đó, tìm "điểm đầu tiên >= target" một
+  // cách cứng nhắc có thể chọn nhầm sang điểm SAU đó nguyên 1 năm.
+  let startIdx = k
+  if (k > 0) {
+    const distK = Math.abs(new Date(cumulative[k]!.date).getTime() - targetStartTime)
+    const distPrev = Math.abs(new Date(cumulative[k - 1]!.date).getTime() - targetStartTime)
+    if (distPrev < distK) startIdx = k - 1
+  }
+  if (startIdx >= cumulative.length - 1) return null
+
+  const startPt = cumulative[startIdx]!
+  const startGrowth = 1 + startPt.value
+  const endGrowth = 1 + endPt.value
+  if (startGrowth <= 0) return null
+
+  const actualYears = (endTime - new Date(startPt.date).getTime()) / msPerYear
+  if (actualYears <= 0) return null
+
+  return Math.pow(endGrowth / startGrowth, 1 / actualYears) - 1
 }
 
 /** Gom rolling CAGR thành histogram buckets. */
