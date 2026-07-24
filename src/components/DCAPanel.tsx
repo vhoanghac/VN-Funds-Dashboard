@@ -25,6 +25,8 @@ import { RollingReturnBlock } from './RollingReturnBlock'
 import { DcaConsistencyBlock } from './DcaConsistencyBlock'
 import { DividendBlock } from './DividendBlock'
 import { GoldLotWarningBlock } from './GoldLotWarningBlock'
+import { DataQualityBlock } from './DataQualityBlock'
+import { FUND_COLORS } from '../constants'
 import {
   PortfolioCard,
   PORTFOLIO_COLORS,
@@ -621,6 +623,27 @@ function DCAPanelImpl({ funds }: Props) {
     committed?.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
   )), [committed])
 
+  // Fund IDs cho DataQualityBlock: lấy từ portfolios ĐANG NHẬP (live state), không
+  // đợi committed — để cảnh báo chất lượng dữ liệu hiện ra ngay khi chọn quỹ, trước
+  // cả khi bấm "Chạy DCA" (giống cách GoldLotWarningBlock đã làm ngay phía dưới).
+  const dataQualityFundIds = useMemo(() => Array.from(new Set(
+    portfolios.flatMap(p => p.slots.map(s => s.fundId).filter(Boolean)),
+  )), [portfolios])
+
+  // Khoảng ngày thực tế đã dùng để backtest (giao của tất cả danh mục đã chạy) —
+  // chỉ có sau khi bấm "Chạy DCA"; trước đó DataQualityBlock vẫn hoạt động bình
+  // thường, chỉ là chưa hiển thị dòng "khoảng so sánh thực tế đã căn chỉnh".
+  const dataQualityAlignedRange = useMemo(() => {
+    if (validResults.length === 0) return null
+    const starts = validResults.map(r => r.cumulative[0]?.date).filter((d): d is string => !!d)
+    const ends = validResults.map(r => r.cumulative[r.cumulative.length - 1]?.date).filter((d): d is string => !!d)
+    if (starts.length === 0 || ends.length === 0) return null
+    return {
+      start: starts.reduce((a, b) => (a > b ? a : b)),
+      end: ends.reduce((a, b) => (a < b ? a : b)),
+    }
+  }, [validResults])
+
   const dividendNarrativeData = useMemo(() => validResults.map(r => ({
     portfolioId: r.id,
     portfolioName: r.name,
@@ -891,6 +914,16 @@ function DCAPanelImpl({ funds }: Props) {
           )}
         </div>
       )}
+
+      <DataQualityBlock
+        fundIds={dataQualityFundIds}
+        fundData={fundData}
+        colors={FUND_COLORS}
+        dateFrom={effectiveDates.from || null}
+        dateTo={effectiveDates.to || null}
+        alignedStart={dataQualityAlignedRange?.start}
+        alignedEnd={dataQualityAlignedRange?.end}
+      />
 
       <GoldLotWarningBlock
         portfolios={portfolios}
