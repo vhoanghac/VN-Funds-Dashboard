@@ -161,6 +161,15 @@ function BitcoinPanelImpl({ funds }: Props) {
       const riskData: RiskContribItem[] = []
       const portReturns: ReturnPoint[][] = []
 
+      // `name` vừa là nhãn hiển thị, vừa là DANH TÍNH của danh mục: React key ở
+      // bảng thành quả/bài kiểm tra tâm lý, và dataKey khi gộp series trong
+      // CumulativeReturnChart. Người dùng có thể nhập 2 mức tỷ trọng bằng nhau
+      // (vd 5, 5, 10), hoặc 2 mức chỉ khác nhau ở phần thập phân bị làm tròn khi
+      // hiển thị (5,04 và 5,02 đều ra "5.0% Bitcoin"). Khi đó tên trùng nhau và
+      // series sau ĐÈ LÊN series trước lúc gộp, làm mất hẳn 1 đường trên biểu đồ.
+      // Thêm hậu tố để mỗi danh mục luôn có tên riêng.
+      const usedNames = new Set<string>()
+
       for (let i = 0; i < weights.length; i++) {
         const btcW = weights[i]!
         const fundW = 1 - btcW
@@ -172,9 +181,12 @@ function BitcoinPanelImpl({ funds }: Props) {
         const cum = cumulativeReturns(simReturns, startDate)
         const pct = btcW * 100
         const pctStr = Number.isInteger(pct) ? pct.toFixed(0) : pct.toFixed(1)
-        const name = btcW === 0
+        const baseName = btcW === 0
           ? `100% ${applied.fundId}`
           : `${pctStr}% Bitcoin`
+        let name = baseName
+        for (let dup = 2; usedNames.has(name); dup++) name = `${baseName} (${dup})`
+        usedNames.add(name)
         const color = PORTFOLIO_COLORS[i]!
 
         portReturns.push(simReturns)
