@@ -152,9 +152,9 @@ function MethodologyPanelImpl() {
         <p>Câu hỏi: mỗi đồng bỏ ra tới nay lời bao nhiêu phần trăm?</p>
         <Formula>Lợi nhuận tích lũy = Giá trị cuối kỳ / Tổng đã đầu tư − 1</Formula>
         <p>
-          Đơn giản nhất, nhưng không quy về năm và không biết mỗi đồng đã nằm trong thị
-          trường bao lâu. Một người DCA 10 năm và một người DCA 2 năm có thể ra cùng con
-          số này mà thực chất rất khác nhau.
+          Cách tính này đơn giản nhất. Nhưng nó không quy về năm, cũng không phân biệt
+          đồng tiền nào đã nằm trong thị trường lâu hơn. Người DCA 10 năm và người DCA
+          2 năm có thể ra cùng một con số, mà thực chất là hai câu chuyện khác hẳn nhau.
         </p>
         <SeenAt>cột "Lợi nhuận tích lũy" trong Bảng thống kê, và ô "Lợi nhuận" phần "Hành trình của bạn".</SeenAt>
 
@@ -162,33 +162,36 @@ function MethodologyPanelImpl() {
         <p>Câu hỏi: nếu quy về mỗi năm lời đều nhau thì bao nhiêu?</p>
         <Formula>CAGR = (Giá trị cuối / Tổng đã đầu tư)<sup>1 / số năm</sup> − 1</Formula>
         <p>
-          Con số này quy lợi nhuận tích lũy về mỗi năm, nhưng nó <strong>giả định toàn bộ
-          vốn đã nằm trong thị trường từ ngày đầu tiên</strong>. Với DCA thì giả định đó
-          sai: phần lớn tiền chỉ mới được nạp gần đây, chưa kịp sinh lời bao nhiêu. Vì thế
-          CAGR nhà đầu tư thường <em>thấp hơn</em> con số MWRR ở dưới. Nó hữu ích để so
-          nhanh, nhưng không phải thước đo công bằng nhất cho DCA.
+          Công thức này quy lợi nhuận về mỗi năm, nhưng <strong>chỉ đúng nếu toàn bộ vốn
+          đã nằm trong thị trường từ ngày đầu</strong>. Với DCA thì không phải vậy. Phần
+          lớn tiền chỉ mới nạp gần đây, chưa kịp sinh lời bao nhiêu.
+        </p>
+        <p>
+          Vì thế CAGR nhà đầu tư thường <em>thấp hơn</em> MWRR ở dưới. Con số này tiện để
+          so nhanh, nhưng không phải thước đo công bằng nhất cho DCA.
         </p>
         <SeenAt>cột "CAGR" trong Bảng thống kê.</SeenAt>
 
         <h4 className="method-sub">2.3. MWRR (lợi nhuận có trọng số dòng tiền)</h4>
         <p>
-          Câu hỏi: tính đúng thời điểm và số tiền từng lần nạp, thì lãi suất kép thực tế
-          của bạn là bao nhiêu mỗi năm? Đây là thước đo công bằng nhất cho DCA.
+          Câu hỏi: nếu tính đúng thời điểm và số tiền của từng lần nạp, mỗi năm bạn thực
+          sự lãi bao nhiêu? Đây là thước đo công bằng nhất cho DCA.
         </p>
         <p>
-          MWRR chính là IRR (tỷ suất sinh lợi nội tại). Dashboard tìm mức lãi năm r sao
-          cho tổng các dòng tiền, quy về hiện tại theo r, bằng 0:
+          MWRR chính là IRR (tỷ suất sinh lợi nội tại). Dashboard đi tìm mức lãi năm r,
+          sao cho khi quy hết các dòng tiền về hiện tại theo r thì tổng bằng 0:
         </p>
         <Formula>Tìm r sao cho: Σ CF<sub>i</sub> / (1 + r)<sup>t<sub>i</sub></sup> = 0</Formula>
         <Where>
-          CF<sub>i</sub> là dòng tiền thứ i (âm khi bạn nạp tiền, dương ở cuối kỳ bằng
-          đúng giá trị danh mục lúc đó). t<sub>i</sub> là số năm kể từ lần nạp đầu tiên.
-          Phương trình này không giải thẳng được nên dashboard dò nghiệm bằng phương pháp
-          Newton-Raphson.
+          CF<sub>i</sub> là dòng tiền thứ i: âm khi bạn nạp tiền vào, dương ở ngày cuối kỳ
+          và bằng đúng giá trị danh mục lúc đó. t<sub>i</sub> là số năm kể từ lần nạp đầu
+          tiên. Phương trình này không giải thẳng ra được, nên dashboard dò nghiệm bằng
+          phương pháp Newton-Raphson.
         </Where>
         <p>
-          MWRR nhận ra rằng phần vốn nạp muộn chỉ có ít thời gian sinh lời, nên nó không
-          bị kéo thấp như CAGR nhà đầu tư. Đây là lý do MWRR thường cao hơn CAGR trong DCA.
+          MWRR có tính đến chuyện tiền nạp muộn có ít thời gian sinh lời hơn. Nhờ vậy nó
+          không bị kéo thấp như CAGR nhà đầu tư. Đó là lý do vì sao trong DCA, MWRR
+          thường cao hơn CAGR.
         </p>
         <SeenAt>cột "MWRR" trong Bảng thống kê, và cột "MWRR" ở các bảng kịch bản hoảng loạn / tăng tiền.</SeenAt>
 
