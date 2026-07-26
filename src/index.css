@@ -279,6 +279,30 @@ h1, h2, h3 {
   color: var(--color-text-muted);
 }
 
+/*
+ * Tab không hoạt động: ẩn đi nhưng KHÔNG dùng display:none.
+ *
+ * display:none làm phần tử co về 0x0. ResponsiveContainer của Recharts đo được
+ * chiều rộng 0 thì tháo bỏ luôn biểu đồ khỏi DOM, nên lúc quay lại tab, toàn bộ
+ * SVG phải dựng lại từ đầu, thấy rõ cảnh biểu đồ trống rồi vẽ lại.
+ *
+ * Cách dưới đây giữ nguyên chiều rộng thật của phần tử (nhờ vẫn nằm trong
+ * luồng), nên Recharts không thấy có gì thay đổi và giữ nguyên biểu đồ đã vẽ.
+ * height 0 với overflow hidden để tab ẩn không chiếm chỗ, visibility hidden để
+ * không nhìn thấy và không bấm hay tab phím vào được.
+ */
+.tab-panel-hidden {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  /*
+   * position relative để phần tử này thành mốc định vị. Thiếu nó thì con nào
+   * dùng position absolute sẽ neo vào tổ tiên xa hơn, thoát khỏi overflow
+   * hidden ở đây và kéo dài chiều cao cuộn của cả trang.
+   */
+  position: relative;
+}
+
 /* ─── Tabs ────────────────────────────────────── */
 .tabs {
   display: flex;

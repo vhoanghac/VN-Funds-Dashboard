@@ -5,12 +5,13 @@ interface Props {
   onChangeTo: (v: string | null) => void
 }
 
-type Preset = '6m' | '1y' | '3y' | 'ytd' | 'all'
+type Preset = '6m' | '1y' | '3y' | '5y' | 'ytd' | 'all'
 
 const PRESETS: { value: Preset; label: string }[] = [
   { value: '6m', label: '6 tháng' },
   { value: '1y', label: '1 năm' },
   { value: '3y', label: '3 năm' },
+  { value: '5y', label: '5 năm' },
   { value: 'ytd', label: 'YTD' },
   { value: 'all', label: 'Tất cả' },
 ]
@@ -28,6 +29,9 @@ function getPresetFrom(preset: Preset): string | null {
       break
     case '3y':
       d = new Date(now.getFullYear() - 3, now.getMonth(), now.getDate())
+      break
+    case '5y':
+      d = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
       break
     case 'ytd':
       d = new Date(now.getFullYear(), 0, 1)
@@ -75,13 +79,15 @@ export function DateRangePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo }: 
       <div className="date-inputs">
         <input
           type="date"
-          value={dateFrom || ''}
+          aria-label="Từ ngày"
+          value={dateFrom ?? ''}
           onChange={e => onChangeFrom(e.target.value || null)}
         />
         <span className="date-separator">→</span>
         <input
           type="date"
-          value={dateTo || ''}
+          aria-label="Đến ngày"
+          value={dateTo ?? ''}
           onChange={e => onChangeTo(e.target.value || null)}
         />
       </div>

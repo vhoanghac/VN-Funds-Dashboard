@@ -96,7 +96,7 @@ export function App() {
       </div>
 
       {/* Compare Tab: hidden via CSS when inactive to preserve state */}
-      <div className="compare-content" style={{ display: state.tab === 'compare' ? undefined : 'none' }}>
+      <div className={`compare-content ${state.tab === 'compare' ? '' : 'tab-panel-hidden'}`}>
         <CompareTab
           metadata={metadata}
           funds={state.funds}
@@ -111,32 +111,32 @@ export function App() {
       </div>
 
       {/* DCA Tab */}
-      <div style={{ display: state.tab === 'dca' ? undefined : 'none' }}>
+      <div className={state.tab === 'dca' ? undefined : 'tab-panel-hidden'}>
         <DCAPanel funds={metadata} />
       </div>
 
       {/* LS vs DCA Tab */}
-      <div style={{ display: state.tab === 'lsdca' ? undefined : 'none' }}>
+      <div className={state.tab === 'lsdca' ? undefined : 'tab-panel-hidden'}>
         <LumpSumDCAPanel funds={metadata} />
       </div>
 
       {/* Tái Cân Bằng Tab */}
-      <div style={{ display: state.tab === 'rebalance' ? undefined : 'none' }}>
+      <div className={state.tab === 'rebalance' ? undefined : 'tab-panel-hidden'}>
         <RebalanceSensitivityPanel funds={metadata} />
       </div>
 
       {/* Chiến Thuật Phân Bổ Tab */}
-      <div style={{ display: state.tab === 'tactical' ? undefined : 'none' }}>
+      <div className={state.tab === 'tactical' ? undefined : 'tab-panel-hidden'}>
         <TacticalAllocationPanel funds={metadata} />
       </div>
 
       {/* Bitcoin Tab */}
-      <div style={{ display: state.tab === 'bitcoin' ? undefined : 'none' }}>
+      <div className={state.tab === 'bitcoin' ? undefined : 'tab-panel-hidden'}>
         <BitcoinPanel funds={metadata} />
       </div>
 
       {/* Wall of Worry Tab */}
-      <div style={{ display: state.tab === 'wallofworry' ? undefined : 'none' }}>
+      <div className={state.tab === 'wallofworry' ? undefined : 'tab-panel-hidden'}>
         <WallOfWorryPanel />
       </div>
 

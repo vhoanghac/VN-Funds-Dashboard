@@ -16,7 +16,6 @@ import { BtcContributionChart } from './BtcContributionChart'
 import { BtcWeightChart } from './BtcWeightChart'
 import { BtcStdevChart } from './BtcStdevChart'
 import { BtcMaxDrawdownChart } from './BtcMaxDrawdownChart'
-import { DateRangePicker } from './DateRangePicker'
 import { BTC_EVENTS } from '../utils/btcEvents'
 import { MoneyInput } from './MoneyInput'
 import { MoneyMachineBlock } from './MoneyMachineBlock'
@@ -33,6 +32,8 @@ const DEFAULT_FUND_ID = 'E1VFVN30'
 const DEFAULT_BTC_PERCENTS: [number, number, number] = [1, 2, 3]
 const DEFAULT_INVESTMENT = 100_000_000 // 100 triệu, retail default
 const PORTFOLIO_COLORS = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
+
+type DateRangeMode = 'all' | 'years'
 
 const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'monthly', label: 'Hàng tháng' },
@@ -53,8 +54,14 @@ function BitcoinPanelImpl({ funds }: Props) {
   const [investAmount, setInvestAmount] = useState<number>(
     () => loadLS<number>('btc_invest_amount', DEFAULT_INVESTMENT),
   )
-  const [dateFrom, setDateFrom] = useState<string | null>(null)
-  const [dateTo, setDateTo] = useState<string | null>(null)
+  const [dateMode, setDateMode] = useState<DateRangeMode>(
+    () => loadLS<DateRangeMode>('btc_dateMode', 'all'),
+  )
+  const [yearsBack, setYearsBack] = useState(
+    () => loadLS<number>('btc_yearsBack', 5),
+  )
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,6 +82,21 @@ function BitcoinPanelImpl({ funds }: Props) {
   useEffect(() => { saveLS('btc_rebal', rebalFreq) }, [rebalFreq])
   useEffect(() => { saveLS('btc_weights', btcPercents) }, [btcPercents])
   useEffect(() => { saveLS('btc_invest_amount', investAmount) }, [investAmount])
+  useEffect(() => { saveLS('btc_dateMode', dateMode) }, [dateMode])
+  useEffect(() => { saveLS('btc_yearsBack', yearsBack) }, [yearsBack])
+
+  // Chế độ "X năm qua" quy ra khoảng ngày cụ thể, giống hệt tab DCA.
+  function getEffectiveDates(): { from: string | null; to: string | null } {
+    if (dateMode === 'years') {
+      const now = new Date()
+      const from = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
+      return {
+        from: from.toISOString().substring(0, 10),
+        to: now.toISOString().substring(0, 10),
+      }
+    }
+    return { from: dateFrom || null, to: dateTo || null }
+  }
 
   // Fund options (exclude BTC itself)
   const fundOptions = useMemo(
@@ -257,11 +279,13 @@ function BitcoinPanelImpl({ funds }: Props) {
   const startDate = portfolioSeries[0]?.data[0]?.date
   const endDate = portfolioSeries[0]?.data[portfolioSeries[0].data.length - 1]?.date
 
+  const effectiveDates = getEffectiveDates()
+
   const isDirty = !!applied && (
     applied.fundId !== selectedFundId
     || applied.rebalFreq !== rebalFreq
-    || applied.dateFrom !== dateFrom
-    || applied.dateTo !== dateTo
+    || applied.dateFrom !== effectiveDates.from
+    || applied.dateTo !== effectiveDates.to
     || applied.btcPercents[0] !== btcPercents[0]
     || applied.btcPercents[1] !== btcPercents[1]
     || applied.btcPercents[2] !== btcPercents[2]
@@ -348,12 +372,37 @@ function BitcoinPanelImpl({ funds }: Props) {
         </div>
       </div>
 
-      <DateRangePicker
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onChangeFrom={setDateFrom}
-        onChangeTo={setDateTo}
-      />
+      <div className="dca-params-card">
+        <div className="dca-param-row">
+          <label className="dca-label">Khoảng thời gian</label>
+          <div className="dca-date-mode">
+            <button className={`dca-mode-btn ${dateMode === 'all' ? 'dca-mode-btn-active' : ''}`} onClick={() => setDateMode('all')}>Tất cả</button>
+            <button className={`dca-mode-btn ${dateMode === 'years' ? 'dca-mode-btn-active' : ''}`} onClick={() => setDateMode('years')}>X năm qua</button>
+          </div>
+        </div>
+
+        {dateMode === 'years' && (
+          <div className="dca-param-row dca-years-row">
+            <label className="dca-label">Số năm</label>
+            <div className="dca-years-selector">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                <button key={n} className={`dca-year-btn ${yearsBack === n ? 'dca-year-btn-active' : ''}`} onClick={() => setYearsBack(n)}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {dateMode === 'all' && (
+          <div className="dca-param-row">
+            <label className="dca-label">Từ ngày đến ngày</label>
+            <div className="dca-date-inputs">
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              <span className="dca-date-sep">→</span>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="btc-run-row">
         <button
@@ -362,8 +411,8 @@ function BitcoinPanelImpl({ funds }: Props) {
             fundId: selectedFundId,
             rebalFreq,
             btcPercents: [...btcPercents] as [number, number, number],
-            dateFrom,
-            dateTo,
+            dateFrom: effectiveDates.from,
+            dateTo: effectiveDates.to,
           })}
           disabled={loading || !fundData.has(BTC_ID) || !fundData.has(selectedFundId)}
         >
