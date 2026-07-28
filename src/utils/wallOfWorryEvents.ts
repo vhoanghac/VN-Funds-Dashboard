@@ -362,4 +362,12 @@ export const WOW_EVENTS: WowEvent[] = [
     category: 'vn',
     sourceUrl: 'https://cafef.vn/ngan-hang-nha-nuoc-ban-viec-thay-the-thong-tu-quan-trong-bac-nhat-nganh-ngan-hang-188260719092130966.chn',
   },
+  {
+    date: '2026-07-24',
+    label: 'Mỹ áp thuế bổ sung 10 tới 12,5% với 60 đối tác thương mại',
+    shortLabel: 'Thuế bổ sung 12,5%',
+    description: 'USTR áp thuế bổ sung với 60 nền kinh tế vì vấn đề lao động cưỡng bức, hiệu lực ngay từ 0 giờ 01 ngày 24/7/2026 giờ miền Đông Mỹ. Việt Nam nằm nhóm chịu mức cao nhất là 12,5%, trong khi Canada, Ấn Độ, Mexico chỉ chịu 10%. Biện pháp kéo dài 4 năm nếu không gia hạn. Đây là cú thuế thứ hai từ Mỹ sau mức đối ứng 46% hồi tháng 4/2025.',
+    category: 'vn',
+    sourceUrl: 'https://baodautu.vn/my-ap-thue-quan-tu-10---125-voi-60-doi-tac-thuong-mai-d651615.html',
+  },
 ]
