@@ -16,6 +16,8 @@ import {
 export interface FundComparisonData {
   id: string
   returns: ReturnPoint[]
+  /** Giá gốc trên chuỗi ngày đã căn chỉnh. value là tiền, không phải %. */
+  prices: ReturnPoint[]
   cumulative: ReturnPoint[]
   drawdown: ReturnPoint[]
   yearly: YearlyReturn[]
@@ -85,6 +87,7 @@ export function useMultiComparison(
         return {
           id,
           returns,
+          prices: aligned.dates.map((date, j) => ({ date, value: aligned.prices[i]![j]! })),
           cumulative: cumulativeReturns(returns, startDate),
           drawdown: drawdownSeries(returns, startDate),
           yearly,

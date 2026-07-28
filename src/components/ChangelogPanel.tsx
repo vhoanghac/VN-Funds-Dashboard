@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v3.9',
+    date: '28/07/2026',
+    items: [
+      'Thêm biểu đồ "Giá tài sản" ở đầu tab So Sánh, dành cho ai chỉ muốn biết giá thực tế của một chứng chỉ quỹ, một lượng vàng hay một đồng Bitcoin, thay vì xem lợi nhuận phần trăm.',
+    ],
+  },
+  {
     version: 'v3.8',
     date: '24/07/2026',
     items: [

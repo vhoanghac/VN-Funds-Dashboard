@@ -3,6 +3,7 @@ import { useMultiFundSeries } from '../hooks/useFundData'
 import { useMultiComparison } from '../hooks/useCalculations'
 import { FundSelector } from './FundSelector'
 import { KPICards } from './KPICards'
+import { AssetPriceChart } from './AssetPriceChart'
 import { CumulativeReturnChart } from './CumulativeReturnChart'
 import { DrawdownChart } from './DrawdownChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
@@ -46,6 +47,14 @@ function CompareTabImpl({
       name: f.id,
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       data: f.cumulative,
+    }))
+    : []
+
+  const priceSeries: ChartSeries[] = comparison.status === 'ready'
+    ? comparison.data.funds.map((f, i) => ({
+      name: f.id,
+      color: FUND_COLORS[i % FUND_COLORS.length]!,
+      data: f.prices,
     }))
     : []
 
@@ -131,6 +140,8 @@ function CompareTabImpl({
           />
 
           <KPICards funds={kpiFunds} />
+
+          <AssetPriceChart series={priceSeries} metadata={metadata} />
 
           <CumulativeReturnChart series={chartSeries} />
 

@@ -444,6 +444,33 @@ h1, h2, h3 {
   margin-left: 6px;
 }
 
+/* Chart giá: 1 tài sản thì 1 chart rộng, từ 2 trở lên thì tách nhỏ nằm cạnh nhau */
+.price-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 12px;
+}
+
+.price-chart-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.price-chart-panel-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.price-chart-panel-unit {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .log-scale-btn {
   padding: 3px 10px;
   border: 1px solid var(--color-border);
