@@ -95,5 +95,11 @@ export function parseGoldCSV(csvText: string): { buy: PricePoint[]; sell: PriceP
 }
 
 function isValidDate(str: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(Date.parse(str))
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false
+  const parsed = new Date(str)
+  if (isNaN(parsed.getTime())) return false
+  // Date.parse('2024-02-30') does not fail, it rolls over to Mar 1. Compare the
+  // round-trip so an impossible calendar date is rejected instead of surviving
+  // with its original (wrong) string.
+  return parsed.toISOString().slice(0, 10) === str
 }
