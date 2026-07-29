@@ -15,8 +15,6 @@ import { RiskContributionChart } from './RiskContributionChart'
 import type { RiskContribItem } from './RiskContributionChart'
 import { BtcContributionChart } from './BtcContributionChart'
 import { BtcWeightChart } from './BtcWeightChart'
-import { BtcStdevChart } from './BtcStdevChart'
-import { BtcMaxDrawdownChart } from './BtcMaxDrawdownChart'
 import { BTC_EVENTS } from '../utils/btcEvents'
 import { MoneyInput } from './MoneyInput'
 import { MoneyMachineBlock } from './MoneyMachineBlock'
@@ -144,9 +142,8 @@ function BitcoinPanelImpl({ funds }: Props) {
     return () => { cancelled = true }
   }, [selectedFundId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // BTC weight 0–10% used by scatter charts, computed once here,
-  // passed down so BtcWeightChart / BtcStdevChart / BtcMaxDrawdownChart
-  // don't each independently re-simulate the same 11 portfolios.
+  // BTC weight 0–10% used by the scatter chart, computed once here and passed
+  // down so BtcWeightChart doesn't re-simulate the same 11 portfolios itself.
   const SCATTER_WEIGHTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
   // Build 4 portfolio cumulative return series + performance stats + risk contribution
@@ -496,16 +493,6 @@ function BitcoinPanelImpl({ funds }: Props) {
             </div>
 
             <BtcWeightChart
-              allSimReturns={deferredAllSimReturns}
-              fundId={applied.fundId}
-              rebalFreq={applied.rebalFreq}
-            />
-            <BtcStdevChart
-              allSimReturns={deferredAllSimReturns}
-              fundId={applied.fundId}
-              rebalFreq={applied.rebalFreq}
-            />
-            <BtcMaxDrawdownChart
               allSimReturns={deferredAllSimReturns}
               fundId={applied.fundId}
               rebalFreq={applied.rebalFreq}
