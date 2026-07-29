@@ -11,14 +11,16 @@
  */
 import type { PricePoint } from '../types'
 
-export type CycleMode = 'term' | 'calendar'
+export type CycleMode = 'term' | 'calendar' | 'election'
 
 export interface TermInfo {
   president: string
   /** CH = Cộng hoà, DC = Dân chủ */
   party: 'CH' | 'DC'
-  /** Ngày nhậm chức, YYYY-MM-DD */
+  /** Ngày nhậm chức, YYYY-MM-DD. Hiến pháp Mỹ ấn định trưa 20/1. */
   start: string
+  /** Ngày bầu cử đưa người này lên, YYYY-MM-DD */
+  election: string
 }
 
 /**
@@ -26,10 +28,10 @@ export interface TermInfo {
  * nhiệm kỳ mới thì thêm một dòng.
  */
 export const TERMS: TermInfo[] = [
-  { president: 'Obama 2', party: 'DC', start: '2013-01-20' },
-  { president: 'Trump 1', party: 'CH', start: '2017-01-20' },
-  { president: 'Biden', party: 'DC', start: '2021-01-20' },
-  { president: 'Trump 2', party: 'CH', start: '2025-01-20' },
+  { president: 'Obama 2', party: 'DC', start: '2013-01-20', election: '2012-11-06' },
+  { president: 'Trump 1', party: 'CH', start: '2017-01-20', election: '2016-11-08' },
+  { president: 'Biden', party: 'DC', start: '2021-01-20', election: '2020-11-03' },
+  { president: 'Trump 2', party: 'CH', start: '2025-01-20', election: '2024-11-05' },
 ]
 
 /** Ngày halving Bitcoin đã diễn ra. Không đoán ngày halving tương lai. */
@@ -113,11 +115,17 @@ export function buildPeriods(
 ): CyclePeriod[] {
   const periods: CyclePeriod[] = []
 
-  if (mode === 'term') {
-    for (const term of TERMS) {
+  if (mode === 'term' || mode === 'election') {
+    for (const [i, term] of TERMS.entries()) {
+      const anchor = mode === 'term' ? term.start : term.election
       for (let y = 1; y <= 4; y++) {
-        const from = addYears(term.start, y - 1)
-        const to = addYears(term.start, y)
+        const from = addYears(anchor, y - 1)
+        // Năm cuối của khung bầu cử khép lại đúng ngày bầu cử kế tiếp, không
+        // phải ngày kỷ niệm, để các kỳ nối liền nhau không hở cũng không chồng.
+        const nextElection = TERMS[i + 1]?.election
+        const to = mode === 'election' && y === 4 && nextElection
+          ? nextElection
+          : addYears(anchor, y)
         if (to <= dataStart || from > dataEnd) continue
         periods.push({
           id: `${term.president}-${y}`,

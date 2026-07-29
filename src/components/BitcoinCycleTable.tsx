@@ -67,6 +67,13 @@ function BitcoinCycleTableImpl({ btc, base, baseName }: Props) {
             Theo nhiệm kỳ
           </button>
           <button
+            className={`log-scale-btn${mode === 'election' ? ' log-scale-btn-active' : ''}`}
+            onClick={() => setMode('election')}
+            title="Cắt theo kỳ bầu cử: mỗi năm tính từ ngày bầu cử đầu tháng 11. Khung này tách đợt tăng sau bầu cử ra khỏi năm 4 của người tiền nhiệm."
+          >
+            Theo kỳ bầu cử
+          </button>
+          <button
             className={`log-scale-btn${mode === 'calendar' ? ' log-scale-btn-active' : ''}`}
             onClick={() => setMode('calendar')}
             title="Cắt theo năm dương lịch: mỗi năm tính từ 1/1 tới 31/12."
@@ -75,15 +82,15 @@ function BitcoinCycleTableImpl({ btc, base, baseName }: Props) {
           </button>
           <span
             className="chart-tooltip-icon"
-            title="Bấm qua lại hai nút để thấy cùng một chuỗi giá cho ra con số khác nhau khi cắt thời gian theo cách khác. Mốc 1/1 không có ý nghĩa gì với thị trường, nó chỉ là thói quen kế toán."
+            title="Bấm qua lại ba nút để thấy cùng một chuỗi giá cho ra con số khác nhau khi cắt thời gian theo cách khác. Mốc 1/1 không có ý nghĩa gì với thị trường, nó chỉ là thói quen kế toán."
           >?</span>
         </div>
       </div>
 
       <p className="cycle-table-intro">
-        {mode === 'term'
-          ? 'Mỗi năm đo từ ngày nhậm chức 20/1 tới 20/1 năm sau.'
-          : 'Mỗi năm đo từ 1/1 tới 31/12, không liên quan tới ngày nhậm chức.'}
+        {mode === 'term' && 'Mỗi năm đo từ ngày nhậm chức 20/1 tới 20/1 năm sau.'}
+        {mode === 'election' && 'Mỗi năm đo từ ngày bầu cử đầu tháng 11 tới ngày này năm sau, năm cuối khép lại đúng kỳ bầu cử kế tiếp.'}
+        {mode === 'calendar' && 'Mỗi năm đo từ 1/1 tới 31/12, không liên quan tới ngày nhậm chức.'}
         {' '}Cột "mức giảm từ đỉnh" là phần rơi từ đỉnh cao nhất trong kỳ xuống mức cuối kỳ.
       </p>
 
@@ -148,6 +155,13 @@ function BitcoinCycleTableImpl({ btc, base, baseName }: Props) {
           <strong>Bảng này không dự báo được gì.</strong> Mẫu chỉ có hai nhiệm kỳ trọn vẹn
           cộng một nhiệm kỳ đang chạy. Với chừng đó quan sát thì quy luật nào cũng vẽ ra
           được, và quy luật nào cũng có thể bị phá vỡ ở lần sau.
+        </p>
+        <p>
+          <strong>Chọn mốc cắt nào là đã chọn một câu trả lời.</strong> Ngày nhậm chức
+          20/1 do Hiến pháp Mỹ ấn định, nhưng lấy nó làm ranh giới thì cả giai đoạn từ
+          đầu tháng 11 tới 20/1, tức lúc thị trường đang phản ứng với người sắp lên,
+          lại bị tính vào năm 4 của người sắp mãn nhiệm. Bấm nút "theo kỳ bầu cử" để
+          tách đoạn đó ra và xem quy luật năm 4 co lại bao nhiêu.
         </p>
         <p>
           Riêng năm 2 của nhiệm kỳ, cả Bitcoin lẫn {baseName} đều âm ở mọi lần quan sát.

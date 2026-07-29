@@ -60,6 +60,37 @@ describe('buildPeriods, khung nhiệm kỳ', () => {
   })
 })
 
+describe('buildPeriods, khung kỳ bầu cử', () => {
+  it('mỗi năm tính từ ngày bầu cử đầu tháng 11', () => {
+    const p = buildPeriods('election', '2016-01-01', '2021-12-31')
+    const trump = p.filter(x => x.president === 'Trump 1')
+    expect(trump[0]!.from).toBe('2016-11-08')
+    expect(trump[0]!.to).toBe('2017-11-08')
+  })
+
+  it('năm 4 khép lại đúng kỳ bầu cử kế tiếp, không phải ngày kỷ niệm', () => {
+    // Bầu cử rơi vào thứ Ba sau thứ Hai đầu tiên của tháng 11 nên ngày lệch
+    // nhau mỗi kỳ. Nối bằng ngày thật thì các kỳ liền mạch, không hở không chồng.
+    const p = buildPeriods('election', '2016-01-01', '2026-07-27')
+    const trump4 = p.find(x => x.id === 'Trump 1-4')!
+    expect(trump4.to).toBe('2020-11-03')
+    const biden1 = p.find(x => x.id === 'Biden-1')!
+    expect(biden1.from).toBe('2020-11-03')
+  })
+
+  it('đẩy đợt tăng sau bầu cử ra khỏi năm 4 của người tiền nhiệm', () => {
+    // Đây là lý do khung này tồn tại. Ở khung nhiệm kỳ, đoạn từ đầu tháng 11
+    // tới 20/1 nằm trong năm 4; ở khung bầu cử thì nó thuộc năm 1 người kế nhiệm.
+    const byTerm = buildPeriods('term', '2016-01-01', '2026-07-27')
+      .find(x => x.id === 'Trump 1-4')!
+    const byElection = buildPeriods('election', '2016-01-01', '2026-07-27')
+      .find(x => x.id === 'Trump 1-4')!
+    expect(byTerm.to).toBe('2021-01-20')
+    expect(byElection.to).toBe('2020-11-03')
+    expect(byElection.to < byTerm.to).toBe(true)
+  })
+})
+
 describe('buildPeriods, khung năm dương lịch', () => {
   it('mỗi năm một kỳ, từ 1/1 tới 31/12', () => {
     const p = buildPeriods('calendar', '2017-01-01', '2019-12-31')
