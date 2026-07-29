@@ -444,6 +444,124 @@ h1, h2, h3 {
   margin-left: 6px;
 }
 
+/* Chi phí trung vị của việc rải tiền, theo từng mốc nắm giữ */
+.holdcost-intro,
+.holdcost-example {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.holdcost-example {
+  padding: 8px 12px;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+}
+
+.holdcost-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.holdcost-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 210px;
+  align-items: center;
+  gap: 10px;
+}
+
+.holdcost-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--color-text-muted);
+}
+
+.holdcost-track {
+  position: relative;
+  height: 22px;
+  background: var(--color-bg);
+  border-radius: 4px;
+}
+
+.holdcost-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-border);
+}
+
+.holdcost-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 3px;
+}
+
+.holdcost-bar--neg { background: #dc2626; }
+.holdcost-bar--pos { background: #16a34a; }
+
+/* Mốc thiếu lần thử tách rời thì làm mờ, không tô đậm như thể chắc chắn */
+.holdcost-bar--thin {
+  opacity: 0.35;
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 3px, rgba(255,255,255,0.5) 3px, rgba(255,255,255,0.5) 6px
+  );
+}
+
+.holdcost-value {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.holdcost-indep {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+}
+
+.holdcost-na {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.holdcost-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.holdcost-note p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.holdcost-note p + p { margin-top: 8px; }
+
+/* Số lần thử tách rời trong ô heatmap */
+.lsdca-hm-indep {
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .holdcost-row {
+    grid-template-columns: 44px 1fr 140px;
+    gap: 6px;
+  }
+}
+
 /* Bảng lợi nhuận theo năm nhiệm kỳ tổng thống Mỹ */
 
 /*

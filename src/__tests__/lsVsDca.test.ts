@@ -5,6 +5,10 @@ import {
   buildHistogram,
   computeHeatmap,
   getContribIndices,
+  countIndependentWindows,
+  alignedSpanMonths,
+  computeHoldingCost,
+  COST_HOLDING_YEARS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
 } from '../utils/lsVsDca'
@@ -530,5 +534,157 @@ describe('computeHeatmap', () => {
         }
       }
     }
+  })
+})
+
+// ─── countIndependentWindows ─────────────────────────────────────────────────
+
+describe('countIndependentWindows', () => {
+  it('đếm số lần thử tách rời, không đếm cửa sổ chồng lấn', () => {
+    // 141 tháng dữ liệu, nắm giữ 3 năm: chỉ lọt 3 cửa sổ rời nhau.
+    expect(countIndependentWindows(141, 36)).toBe(3)
+    expect(countIndependentWindows(141, 60)).toBe(2)
+    expect(countIndependentWindows(141, 120)).toBe(1)
+  })
+
+  it('trả 0 khi chuỗi ngắn hơn một cửa sổ', () => {
+    expect(countIndependentWindows(141, 240)).toBe(0)
+  })
+
+  it('trả 0 với đầu vào vô nghĩa thay vì chia cho 0', () => {
+    expect(countIndependentWindows(141, 0)).toBe(0)
+    expect(countIndependentWindows(0, 36)).toBe(0)
+    expect(countIndependentWindows(-5, 36)).toBe(0)
+  })
+})
+
+describe('alignedSpanMonths', () => {
+  it('đo độ dài chuỗi giá bằng tháng', () => {
+    const prices = makePrices(makeDates('2020-01-06', 105), flatPrices(100, 105))
+    // 105 tuần ≈ 24 tháng.
+    const span = alignedSpanMonths(singleFundMap('A', prices), singleSlot('A'))
+    expect(span).toBeGreaterThanOrEqual(23)
+    expect(span).toBeLessThanOrEqual(25)
+  })
+
+  it('trả 0 khi không có quỹ nào được chọn', () => {
+    const prices = makePrices(makeDates('2020-01-06', 20), flatPrices(100, 20))
+    expect(alignedSpanMonths(singleFundMap('A', prices), [])).toBe(0)
+    expect(alignedSpanMonths(new Map(), singleSlot('A'))).toBe(0)
+  })
+})
+
+// ─── heatmap kèm số cửa sổ độc lập ───────────────────────────────────────────
+
+describe('computeHeatmap, lớp trung thực về cỡ mẫu', () => {
+  const n = 60 * 4 // ~4.6 năm dữ liệu tuần
+  const prices = makePrices(makeDates('2015-01-05', n), linearPrices(100, 200, n))
+  const cells = computeHeatmap(
+    singleFundMap('A', prices), singleSlot('A'), 'monthly', 'flat', 0, null,
+  ).flat()
+
+  it('mỗi ô đều kèm số cửa sổ độc lập', () => {
+    expect(cells.every(c => typeof c.independentWindows === 'number')).toBe(true)
+  })
+
+  it('số cửa sổ độc lập giảm khi thời gian nắm giữ tăng', () => {
+    const byYear = new Map(cells.map(c => [c.holdingYears, c.independentWindows]))
+    const years = [...byYear.keys()].sort((a, b) => a - b)
+    for (let i = 1; i < years.length; i++) {
+      expect(byYear.get(years[i]!)!).toBeLessThanOrEqual(byYear.get(years[i - 1]!)!)
+    }
+  })
+
+  it('luôn ít hơn hẳn số kịch bản chồng lấn', () => {
+    // Đây là lý do lớp này tồn tại: 2 con số cách nhau rất xa.
+    const withData = cells.filter(c => c.winRate !== null)
+    expect(withData.length).toBeGreaterThan(0)
+    expect(withData.every(c => c.independentWindows < c.totalScenarios)).toBe(true)
+  })
+
+  it('mốc nắm giữ dài hơn cả chuỗi dữ liệu thì không có cửa sổ nào', () => {
+    const long = cells.filter(c => c.holdingYears === 20)
+    expect(long.every(c => c.independentWindows === 0)).toBe(true)
+    expect(long.every(c => c.winRate === null)).toBe(true)
+  })
+})
+
+// ─── computeHoldingCost ──────────────────────────────────────────────────────
+
+describe('computeHoldingCost', () => {
+  const n = 60 * 4
+  const rising = makePrices(makeDates('2015-01-05', n), linearPrices(100, 200, n))
+
+  it('trả về đúng một dòng cho mỗi mốc nắm giữ', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    expect(cost.map(c => c.holdingYears)).toEqual(COST_HOLDING_YEARS)
+  })
+
+  it('thị trường đi lên thì rải tiền chịu chi phí, tức chi phí âm', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const measured = cost.filter(c => c.medianCost !== null)
+    expect(measured.length).toBeGreaterThan(0)
+    expect(measured.every(c => c.medianCost! < 0)).toBe(true)
+  })
+
+  it('thị trường đi xuống thì rải tiền có lợi, chi phí dương', () => {
+    const falling = makePrices(makeDates('2015-01-05', n), linearPrices(200, 100, n))
+    const cost = computeHoldingCost(
+      singleFundMap('A', falling), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const measured = cost.filter(c => c.medianCost !== null)
+    expect(measured.length).toBeGreaterThan(0)
+    expect(measured.every(c => c.medianCost! > 0)).toBe(true)
+  })
+
+  it('mốc nắm giữ ngắn hơn thời gian DCA thì đánh dấu là vô lý, không phải thiếu số', () => {
+    // DCA 24 tháng mà hỏi kết quả sau 12 tháng thì chưa DCA xong. Hai lý do bỏ
+    // trống này khác hẳn nhau nên giao diện phải nói khác nhau.
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 24, 'monthly', 'flat', 0, null,
+    )
+    const oneYear = cost.find(c => c.holdingYears === 1)!
+    expect(oneYear.medianCost).toBeNull()
+    expect(oneYear.tooShort).toBe(true)
+
+    // Còn mốc 20 năm thì DCA xong từ lâu, chỉ là quỹ chưa đủ lịch sử.
+    const twentyYear = cost.find(c => c.holdingYears === 20)!
+    expect(twentyYear.medianCost).toBeNull()
+    expect(twentyYear.tooShort).toBe(false)
+  })
+
+  it('quy được chênh lệch ra tiền, cùng dấu với phần trăm', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const measured = cost.filter(c => c.medianCost !== null)
+    expect(measured.length).toBeGreaterThan(0)
+    for (const c of measured) {
+      expect(c.medianCostOfCapital).not.toBeNull()
+      // Cùng chiều: mất % thì cũng mất tiền.
+      expect(Math.sign(c.medianCostOfCapital!)).toBe(Math.sign(c.medianCost!))
+    }
+  })
+
+  it('bỏ trống mốc dài hơn dữ liệu, không bịa số', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const long = cost.find(c => c.holdingYears === 20)!
+    expect(long.medianCost).toBeNull()
+    expect(long.independentWindows).toBe(0)
+  })
+
+  it('kèm số cửa sổ độc lập cho từng mốc', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const oneYear = cost.find(c => c.holdingYears === 1)!
+    const fiveYear = cost.find(c => c.holdingYears === 5)!
+    expect(oneYear.independentWindows).toBeGreaterThan(fiveYear.independentWindows)
   })
 })

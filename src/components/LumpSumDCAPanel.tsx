@@ -13,11 +13,14 @@ import { parseCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { DividendNotice } from './DividendNotice'
+import { HoldingCostChart } from './HoldingCostChart'
 import {
   computeRollingScenarios,
   summarizeScenarios,
   buildHistogram,
   computeHeatmap,
+  computeHoldingCost,
+  MIN_INDEPENDENT_WINDOWS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
   type CashMode,
@@ -25,6 +28,7 @@ import {
   type LSvsDCASummary,
   type HistogramBucket,
   type HeatmapCell,
+  type HoldingCostCell,
 } from '../utils/lsVsDca'
 import {
   PortfolioCard,
@@ -90,7 +94,14 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
 
-  // Snapshot at run time
+  /**
+   * Bản chụp tại lúc bấm "Chạy Phân Tích".
+   *
+   * `data` là bản chụp giá, cố ý KHÔNG đọc thẳng `fundData` lúc tính. Nếu đọc
+   * thẳng thì mỗi lần người dùng đổi tên quỹ, dữ liệu quỹ mới tải về sẽ đổi
+   * identity của Map và kéo theo tính lại toàn bộ, dù người dùng chưa bấm gì.
+   * Đó là chỗ gây khựng máy, và tệ hơn là nó tính bằng cấu hình cũ.
+   */
   const [committed, setCommitted] = useState<{
     portfolio: PortfolioCardState
     totalCapital: number
@@ -100,7 +111,11 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     cashSavingsRate: number
     cashFundId: string
     compareFundId: string
+    data: Map<string, PricePoint[]>
   } | null>(null)
+
+  /** Đã bấm nút nhưng dữ liệu chưa tải xong, chờ đủ rồi mới chụp. */
+  const [pendingRun, setPendingRun] = useState(false)
 
   // ── Persist to localStorage ──
   useEffect(() => { saveLS('lsdca_totalCapital', totalCapital) }, [totalCapital])
@@ -235,6 +250,13 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     && (cashMode !== 'fund' || cashFundId !== '')
 
   function buildCommitted() {
+    // Chỉ chụp đúng những quỹ đang cần, để dữ liệu quỹ khác tải về sau không
+    // đụng tới kết quả đang hiển thị.
+    const snapshot = new Map<string, PricePoint[]>()
+    for (const id of neededIds) {
+      const prices = fundData.get(id)
+      if (prices) snapshot.set(id, prices)
+    }
     return {
       portfolio: { ...portfolio!, slots: [...portfolio!.slots] },
       totalCapital,
@@ -244,20 +266,29 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       cashSavingsRate: savingsRate / 100,
       cashFundId,
       compareFundId,
+      data: snapshot,
     }
   }
+
+  const dataReady = Array.from(neededIds).every(id => fundData.has(id))
 
   function runAnalysis() {
     if (!canRun || !portfolio) return
     hasRunOnceRef.current = true
+    // Bấm khi dữ liệu chưa về thì ghi nhận ý định, effect bên dưới chụp sau.
+    if (!dataReady) {
+      setPendingRun(true)
+      return
+    }
     setCommitted(buildCommitted())
   }
 
-  // Auto-recompute when lightweight params change (no new data fetch needed)
+  // Chốt lại lần chạy đang chờ, ngay khi dữ liệu về đủ.
   useEffect(() => {
-    if (!hasRunOnceRef.current || !canRun || !portfolio) return
+    if (!pendingRun || !dataReady || !canRun || !portfolio) return
     setCommitted(buildCommitted())
-  }, [totalCapital, horizonMonths, freq, cashMode, savingsRate, cashFundId, compareFundId]) // eslint-disable-line react-hooks/exhaustive-deps
+    setPendingRun(false)
+  }, [pendingRun, dataReady, canRun, portfolio]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Compute results ──
   const results = useMemo<{
@@ -267,9 +298,15 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     heatmap2: HeatmapCell[][] | null
     compareFundName: string | null
     effectiveWindow: string
+    holdingCost: HoldingCostCell[]
+    dcaMonths: number
+    totalCapital: number
   } | null>(() => {
     if (!committed) return null
-    const { portfolio: p, cashMode: cm, cashFundId: cfId, compareFundId: cfId2 } = committed
+    const {
+      portfolio: p, cashMode: cm, cashFundId: cfId, compareFundId: cfId2,
+      data: committedData,
+    } = committed
 
     const validSlots = p.slots.filter(s => s.fundId && s.weight > 0)
     if (validSlots.length === 0) return null
@@ -278,7 +315,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     const allFundIds = new Set(validSlots.map(s => s.fundId))
     const allPricesRaw = new Map<string, PricePoint[]>()
     for (const id of allFundIds) {
-      const data = fundData.get(id)
+      const data = committedData.get(id)
       if (!data || data.length === 0) return null
       allPricesRaw.set(id, data)
     }
@@ -287,7 +324,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     const aligned = alignFundsToCommonGridDaily(allPricesRaw)
 
     // Cash fund prices (if needed)
-    const cashFundPrices = (cm === 'fund' && cfId) ? fundData.get(cfId) ?? null : null
+    const cashFundPrices = (cm === 'fund' && cfId) ? committedData.get(cfId) ?? null : null
     if (cm === 'fund' && cfId && !cashFundPrices) return null
 
     const scenarios = computeRollingScenarios(
@@ -310,11 +347,16 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       aligned, validSlots, committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
     )
 
+    const holdingCost = computeHoldingCost(
+      aligned, validSlots, committed.horizonMonths,
+      committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
+    )
+
     // Heatmap for comparison fund (if selected)
     let heatmap2: HeatmapCell[][] | null = null
     let compareFundName: string | null = null
     if (cfId2) {
-      const comparePrices = fundData.get(cfId2)
+      const comparePrices = committedData.get(cfId2)
       if (comparePrices && comparePrices.length > 0) {
         const compareMap = new Map([[cfId2, comparePrices]])
         const aligned2 = alignFundsToCommonGridDaily(compareMap)
@@ -332,8 +374,14 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     const toDate = firstFundPrices?.[firstFundPrices.length - 1]?.date ?? ''
     const effectiveWindow = `${formatDate(fromDate)} → ${formatDate(toDate)}`
 
-    return { summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow }
-  }, [committed, fundData])
+    return {
+      summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
+      holdingCost, dcaMonths: committed.horizonMonths,
+      totalCapital: committed.totalCapital,
+    }
+    // Cố ý CHỈ phụ thuộc `committed`. Bản chụp dữ liệu nằm sẵn trong đó, nên đổi
+    // quỹ hay tải quỹ mới về đều không kéo theo tính lại.
+  }, [committed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ──
   function formatDate(d: string): string {
@@ -398,12 +446,14 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
                                : cell.winRate >= 0.50 ? 'medium'
                                : 'weak'
                     const wins = Math.round(cell.winRate * cell.totalScenarios)
-                    const lowN = cell.totalScenarios < 30
+                    // Số kịch bản chồng lấn trông rất nhiều, nhưng số lần thử
+                    // tách rời mới là thứ quyết định con số này đáng tin cỡ nào.
+                    const thin = cell.independentWindows < MIN_INDEPENDENT_WINDOWS
                     return (
                       <div
                         key={ci}
-                        className={`lsdca-hm-cell lsdca-hm-cell--${tier}${lowN ? ' lsdca-hm-cell-lown' : ''}`}
-                        title={`Giữ ${cell.holdingYears} năm, DCA ${cell.dcaMonths} tháng → LS thắng ${(cell.winRate * 100).toFixed(1)}% (${wins}/${cell.totalScenarios} kịch bản)`}
+                        className={`lsdca-hm-cell lsdca-hm-cell--${tier}${thin ? ' lsdca-hm-cell-lown' : ''}`}
+                        title={`Giữ ${cell.holdingYears} năm, DCA ${cell.dcaMonths} tháng → LS thắng ${(cell.winRate * 100).toFixed(1)}% (${wins}/${cell.totalScenarios} kịch bản chồng lấn, chỉ ${cell.independentWindows} lần thử tách rời)`}
                       >
                         <div className="lsdca-hm-fraction">
                           {wins}<span className="lsdca-hm-slash">/</span>{cell.totalScenarios}
@@ -412,7 +462,10 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
                           <div className="lsdca-hm-bar" style={{ width: `${cell.winRate * 100}%` }} />
                         </div>
                         <div className="lsdca-hm-pct">
-                          {lowN && '⚠ '}{(cell.winRate * 100).toFixed(0)}% LS thắng
+                          {thin && '⚠ '}{(cell.winRate * 100).toFixed(0)}% LS thắng
+                        </div>
+                        <div className="lsdca-hm-indep">
+                          {cell.independentWindows} lần thử tách rời
                         </div>
                       </div>
                     )
@@ -756,6 +809,12 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
               )}
             </div>
           </div>
+
+          <HoldingCostChart
+            data={results.holdingCost}
+            dcaMonths={results.dcaMonths}
+            totalCapital={results.totalCapital}
+          />
 
           {/* ── Histogram ── */}
           <div className="lsdca-chart-card">

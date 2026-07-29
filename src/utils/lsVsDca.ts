@@ -29,6 +29,37 @@ export interface LSvsDCASummary {
   meanLoss: number        // mean diff when DCA wins (negative)
 }
 
+/**
+ * Số cửa sổ ĐỘC LẬP, tức số lần thử không dùng chung một ngày dữ liệu nào.
+ *
+ * Vì sao cần: các kịch bản rolling chồng lấn nhau rất nặng. Với E1VFVN30, mốc
+ * nắm giữ 3 năm cho 93 tháng khởi đầu, nhưng chuỗi giá chỉ dài 141 tháng nên
+ * thực chất chỉ có 2 lần thử tách rời. Con số 93 trông chắc chắn hơn nhiều so
+ * với mức đáng tin thật, và đó chính là chỗ dashboard dễ làm người dùng tin quá.
+ */
+export function countIndependentWindows(spanMonths: number, windowMonths: number): number {
+  if (windowMonths <= 0 || spanMonths <= 0) return 0
+  return Math.floor(spanMonths / windowMonths)
+}
+
+/** Độ dài chuỗi giá đã căn chỉnh, tính bằng tháng. */
+export function alignedSpanMonths(
+  alignedPrices: Map<string, PricePoint[]>,
+  slots: DCASlot[],
+): number {
+  const first = slots.find(s => s.fundId && s.weight > 0)
+  if (!first) return 0
+  const prices = alignedPrices.get(first.fundId)
+  if (!prices || prices.length < 2) return 0
+  const a = prices[0]!.date
+  const b = prices[prices.length - 1]!.date
+  return (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12
+    + (Number(b.slice(5, 7)) - Number(a.slice(5, 7)))
+}
+
+/** Dưới ngưỡng này thì không đủ lần thử tách rời để nói gì cho chắc. */
+export const MIN_INDEPENDENT_WINDOWS = 3
+
 export interface HistogramBucket {
   midpoint: number      // e.g., 0.025 = 2.5%
   label: string         // e.g., "+2.5%"
@@ -314,11 +345,98 @@ function pctile(sorted: number[], p: number): number {
 export const HEATMAP_HOLDING_YEARS = [2, 5, 10, 20]
 export const HEATMAP_DCA_MONTHS = [3, 6, 12, 18]
 
+export interface HoldingCostCell {
+  holdingYears: number
+  /**
+   * Trung vị của (DCA - LS)/LS, tính bằng %. Âm nghĩa là DCA về sau ít tiền
+   * hơn đầu tư một lần. Đây là câu hỏi "thua thì thua bao nhiêu", khác với
+   * heatmap vốn chỉ trả lời "thua bao nhiêu lần".
+   */
+  medianCost: number | null
+  /**
+   * Trung vị của (DCA - LS) tính theo tỷ lệ trên vốn ban đầu. Nhân với số tiền
+   * người dùng nhập là ra tiền thật, để khỏi bắt người đọc tự quy đổi từ %.
+   */
+  medianCostOfCapital: number | null
+  /**
+   * Trung vị giá trị cuối kỳ của từng bên, tính theo lần so với vốn ban đầu.
+   * Cần cặp số này thì mới đọc được chênh lệch. Giữ 20 năm mà chênh 3 lần vốn
+   * nghe như mất sạch, trong khi thực ra cả hai bên đều đã lớn hơn vốn nhiều lần.
+   */
+  medianLsGrowth: number | null
+  medianDcaGrowth: number | null
+  scenarios: number
+  independentWindows: number
+  /** Kỳ nắm giữ ngắn hơn thời gian DCA, tức chưa DCA xong. Vô lý, không phải thiếu số. */
+  tooShort: boolean
+}
+
+export const COST_HOLDING_YEARS = [1, 2, 3, 5, 7, 10, 15, 20]
+
+/**
+ * Chi phí trung vị của việc rải tiền, đo ở từng mốc thời gian nắm giữ.
+ */
+export function computeHoldingCost(
+  alignedPrices: Map<string, PricePoint[]>,
+  slots: DCASlot[],
+  dcaMonths: number,
+  freq: LSvsDCAFreq,
+  cashMode: CashMode,
+  cashSavingsRate: number,
+  cashFundPrices: PricePoint[] | null,
+): HoldingCostCell[] {
+  const spanMonths = alignedSpanMonths(alignedPrices, slots)
+  return COST_HOLDING_YEARS.map(hy => {
+    const holdingMonths = hy * 12
+    const independent = countIndependentWindows(spanMonths, holdingMonths)
+    const empty = {
+      holdingYears: hy, medianCost: null, medianCostOfCapital: null,
+      medianLsGrowth: null, medianDcaGrowth: null,
+      scenarios: 0, independentWindows: independent,
+    }
+    if (holdingMonths < dcaMonths) {
+      return { ...empty, tooShort: true }
+    }
+    const scenarios = computeRollingScenarios(
+      alignedPrices, slots, 1, dcaMonths, freq, cashMode, cashSavingsRate, cashFundPrices, holdingMonths,
+    )
+    if (scenarios.length === 0) {
+      return { ...empty, tooShort: false }
+    }
+    const usable = scenarios.filter(s => s.lsGrowth > 0)
+    const costs = usable.map(s => (s.dcaGrowth - s.lsGrowth) / s.lsGrowth * 100).sort((a, b) => a - b)
+    // Tính riêng phần quy ra tiền: trung vị của chênh lệch trên vốn ban đầu.
+    // Không suy ra từ % ở trên vì trung vị không cộng trừ với nhau được.
+    const ofCapital = usable.map(s => s.dcaGrowth - s.lsGrowth).sort((a, b) => a - b)
+    const lsEnds = usable.map(s => s.lsGrowth).sort((a, b) => a - b)
+    const dcaEnds = usable.map(s => s.dcaGrowth).sort((a, b) => a - b)
+    return {
+      holdingYears: hy,
+      medianCost: costs.length > 0 ? median(costs) : null,
+      medianCostOfCapital: ofCapital.length > 0 ? median(ofCapital) : null,
+      medianLsGrowth: lsEnds.length > 0 ? median(lsEnds) : null,
+      medianDcaGrowth: dcaEnds.length > 0 ? median(dcaEnds) : null,
+      scenarios: scenarios.length,
+      independentWindows: independent,
+      tooShort: false,
+    }
+  })
+}
+
+function median(sorted: number[]): number {
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!
+}
+
 export interface HeatmapCell {
   holdingYears: number
   dcaMonths: number
   winRate: number | null   // null = insufficient data (< 10 scenarios)
   totalScenarios: number
+  /** Số lần thử tách rời, xem countIndependentWindows */
+  independentWindows: number
 }
 
 /**
@@ -334,18 +452,26 @@ export function computeHeatmap(
   cashSavingsRate: number,
   cashFundPrices: PricePoint[] | null,
 ): HeatmapCell[][] {
+  const spanMonths = alignedSpanMonths(alignedPrices, slots)
   return HEATMAP_HOLDING_YEARS.map(hy =>
     HEATMAP_DCA_MONTHS.map(dm => {
       const holdingMonths = hy * 12
+      const independentWindows = countIndependentWindows(spanMonths, holdingMonths)
       // totalCapital=1: win rate is scale-invariant, so any positive value gives the same result
       const scenarios = computeRollingScenarios(
         alignedPrices, slots, 1, dm, freq, cashMode, cashSavingsRate, cashFundPrices, holdingMonths,
       )
       if (scenarios.length < 10) {
-        return { holdingYears: hy, dcaMonths: dm, winRate: null, totalScenarios: scenarios.length }
+        return { holdingYears: hy, dcaMonths: dm, winRate: null, totalScenarios: scenarios.length, independentWindows }
       }
       const lsWins = scenarios.filter(s => s.diff > 0).length
-      return { holdingYears: hy, dcaMonths: dm, winRate: lsWins / scenarios.length, totalScenarios: scenarios.length }
+      return {
+        holdingYears: hy,
+        dcaMonths: dm,
+        winRate: lsWins / scenarios.length,
+        totalScenarios: scenarios.length,
+        independentWindows,
+      }
     })
   )
 }

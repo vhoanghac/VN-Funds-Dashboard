@@ -5,6 +5,9 @@ const ENTRIES = [
     items: [
       'Thêm biểu đồ "Giá tài sản" ở đầu tab So Sánh, dành cho ai chỉ muốn biết giá thực tế của một chứng chỉ quỹ, một lượng vàng hay một đồng Bitcoin, thay vì xem lợi nhuận phần trăm.',
       'Thêm bảng hiệu suất Bitcoin theo năm nhiệm kỳ tổng thống Mỹ trong tab Bitcoin.',
+      'Thêm khối "DCA tốn bao nhiêu tiền so với đầu tư một lần?" trong tab LS vs DCA. Bảng heatmap sẵn có chỉ trả lời DCA thua bao nhiêu lần, khối mới trả lời thua bao nhiêu tiền, quy ra tiền thật ở từng mốc thời gian nắm giữ.',
+      'Mỗi ô trong bảng heatmap của tab LS vs DCA giờ hiện thêm số giai đoạn tách rời. Các kịch bản lịch sử chồng lấn nhau rất nặng, ví dụ 2.507 kịch bản ở mốc giữ 5 năm thật ra chỉ là 2 giai đoạn không dùng chung dữ liệu. Ô nào có dưới 3 giai đoạn tách rời thì bị làm mờ và có dấu cảnh báo.',
+      'Sửa lỗi tab LS vs DCA: đổi tên quỹ làm hệ thống tự tính lại và gây khựng máy, dù người dùng chưa bấm "Chạy Phân Tích". Tệ hơn, kết quả hiện ra được tính bằng cấu hình cũ. Giờ chỉ nút "Chạy Phân Tích" mới kích hoạt tính toán.',
     ],
   },
   {
