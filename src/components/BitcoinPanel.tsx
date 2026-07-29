@@ -7,6 +7,7 @@ import { DividendNotice } from './DividendNotice'
 import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
 import { alignMultiSeries } from '../utils/dateAlign'
+import { BitcoinCycleTable } from './BitcoinCycleTable'
 import { CumulativeReturnChart } from './CumulativeReturnChart'
 import { PerformanceTable } from './PerformanceTable'
 import type { PortfolioStats } from './PerformanceTable'
@@ -458,6 +459,12 @@ function BitcoinPanelImpl({ funds }: Props) {
           />
           <CumulativeReturnChart series={portfolioSeries} events={BTC_EVENTS} />
           <PerformanceTable stats={portfolioStats} />
+
+          <BitcoinCycleTable
+            btc={fundData.get(BTC_ID) ?? []}
+            base={fundData.get(applied.fundId) ?? []}
+            baseName={applied.fundId}
+          />
           <SleepTestBlock investAmount={investAmount} stats={portfolioStats} />
 
           <div className="section-divider">

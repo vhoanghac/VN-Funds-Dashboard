@@ -444,6 +444,116 @@ h1, h2, h3 {
   margin-left: 6px;
 }
 
+/* Bảng lợi nhuận theo năm nhiệm kỳ tổng thống Mỹ */
+
+/*
+ * Khối này hay đứng ngay sau .perf-table-container, mà class đó đẩy khoảng cách
+ * bằng margin-top chứ không phải margin-bottom. Hai quy ước ngược nhau nên khi
+ * đứng cạnh thì không ai đẩy ai, dính sát vào nhau. Thêm lề trên cho riêng khối
+ * này thay vì sửa .perf-table-container, vì class đó đang dùng ở 6 chỗ khác.
+ */
+.cycle-table-card {
+  margin-top: 16px;
+}
+
+.cycle-table-intro {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.cycle-table-wrap {
+  overflow-x: auto;
+}
+
+.cycle-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 520px;
+}
+
+.cycle-table th,
+.cycle-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.cycle-table th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.cycle-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cycle-table-group td {
+  background: var(--color-bg);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding-top: 12px;
+}
+
+.cycle-table-count {
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+
+.cycle-table-term {
+  font-weight: 600;
+}
+
+.cycle-table-years {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  margin-left: 6px;
+}
+
+.cycle-table-partial {
+  margin-left: 6px;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.cycle-table-halving {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.cycle-pos { color: #16a34a; font-weight: 600; }
+.cycle-neg { color: #dc2626; font-weight: 600; }
+
+.cycle-table-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.cycle-table-note p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.cycle-table-note p + p {
+  margin-top: 8px;
+}
+
 /* Chart giá: 1 tài sản thì 1 chart rộng, từ 2 trở lên thì tách nhỏ nằm cạnh nhau */
 .price-chart-grid {
   display: grid;

@@ -60,7 +60,7 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
             <button
               className={`log-scale-btn${showEvents ? ' log-scale-btn-active' : ''}`}
               onClick={() => setShowEvents(v => !v)}
-              title="Bật/tắt các mốc sự kiện quan trọng trong lịch sử Bitcoin: Covid, đỉnh BTC, FTX, BTC ETF"
+              title="Bật/tắt các mốc sự kiện quan trọng: Covid, đỉnh BTC, FTX, BTC ETF, và các kỳ bầu cử Mỹ. Nhãn giữa kỳ ghi viện nào đổi tay: CH là Cộng hoà, DC là Dân chủ. Mốc chính trị để màu xám vì chưa biết tốt hay xấu."
             >
               Sự kiện
             </button>
@@ -76,7 +76,7 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
         </div>
       </div>
       <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={data} margin={{ top: 22, right: 20, left: 10, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 47, right: 20, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
           <XAxis
             dataKey="timestamp"
@@ -132,7 +132,8 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
                 fill: ev.color,
                 fontSize: 10,
                 fontWeight: 600,
-                offset: 6,
+                // Mỗi hàng đẩy nhãn lên 13px để mốc gần nhau khỏi đè chữ.
+                offset: 6 + (ev.labelRow ?? 0) * 13,
               }}
               ifOverflow="extendDomain"
             />

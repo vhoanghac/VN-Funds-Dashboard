@@ -4,6 +4,7 @@ const ENTRIES = [
     date: '28/07/2026',
     items: [
       'Thêm biểu đồ "Giá tài sản" ở đầu tab So Sánh, dành cho ai chỉ muốn biết giá thực tế của một chứng chỉ quỹ, một lượng vàng hay một đồng Bitcoin, thay vì xem lợi nhuận phần trăm.',
+      'Thêm bảng hiệu suất Bitcoin theo năm nhiệm kỳ tổng thống Mỹ trong tab Bitcoin.',
     ],
   },
   {
