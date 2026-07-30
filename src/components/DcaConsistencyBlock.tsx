@@ -390,8 +390,8 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange }
       </table>
 
       <p className="dca-note">
-        * Bảng này không có cột "chi phí cơ hội" như bảng trên, vì tăng tiền bỏ ra NHIỀU vốn hơn
-        (khác với panic bỏ ít vốn hơn). "% Lợi nhuận" tính trên mỗi đồng đã bỏ ra nhưng không phân
+        * Bảng này không có cột "chi phí cơ hội" như bảng trên, vì tăng tiền đầu tư NHIỀU vốn hơn
+        (khác với panic đầu tư ít vốn hơn). "% Lợi nhuận" tính trên mỗi đồng đã đầu tư nhưng không phân
         biệt tiền vào sớm hay muộn — cột "MWRR" mới là so sánh công bằng nhất, vì có tính đúng số
         năm mỗi đồng đã có để sinh lời.
       </p>
@@ -561,7 +561,7 @@ function BoostTakeaway({
       <p>
         Cách này cũng đòi hỏi bạn có sẵn tiền mặt đúng lúc thị trường đang đáng sợ nhất, điều
         không dễ về cả tâm lý lẫn tài chính. Quá khứ không đảm bảo tương lai: nếu quỹ tiếp tục
-        giảm ngay sau lần tăng tiền, phần vốn bỏ thêm đó vẫn phải chờ hồi phục như mọi khoản đầu
+        giảm ngay sau lần tăng tiền, phần vốn đầu tư thêm đó vẫn phải chờ hồi phục như mọi khoản đầu
         tư khác.
       </p>
     </div>

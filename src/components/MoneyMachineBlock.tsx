@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * Hero block: "nếu bạn bỏ 100 triệu vào E1VFVN30 từ 2020..., hôm nay có bao nhiêu"
+ * Hero block: "nếu bạn đầu tư 100 triệu vào E1VFVN30 từ 2020..., hôm nay có bao nhiêu"
  * So sánh portfolio không có BTC vs các portfolio có BTC bằng tiền VND thật.
  * Mục tiêu: làm cho retail investor VN cảm được tác động của Bitcoin bằng
  * đơn vị quen thuộc (xe máy, ô tô, nghỉ hưu) thay vì % trừu tượng.

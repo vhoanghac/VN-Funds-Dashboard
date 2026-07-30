@@ -157,7 +157,7 @@ export const DcaJourneyBlock = memo(DcaJourneyBlockImpl)
  * EOYReturnsTable: hiệu suất DANH MỤC CỦA NHÀ ĐẦU TƯ từng năm (End-of-Year Returns),
  * tính bằng Modified Dietz method (money-weighted, có tính dòng tiền nạp).
  *
- * Khác với TWRR (dcaYearlyReturns, đo hiệu suất bản thân quỹ như thể bỏ tiền
+ * Khác với TWRR (dcaYearlyReturns, đo hiệu suất bản thân quỹ như thể đầu tư
  * 1 lần từ đầu, bất kể bạn nạp bao nhiêu/khi nào), Modified Dietz đo đúng
  * trải nghiệm DCA thực tế: tiền nạp sớm trong năm được tính trọng số cao hơn
  * (nhiều thời gian sinh lời), tiền nạp cuối năm gần như chưa kịp sinh lời.
@@ -187,7 +187,7 @@ function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] })
       <h4 className="dca-eoy-title">Hiệu suất danh mục của bạn từng năm</h4>
       <p className="dca-eoy-explainer">
         Bảng này tính hiệu suất <strong>có tính đến dòng tiền bạn thực sự nạp</strong>
-        {' '}(Modified Dietz method), không phải hiệu suất "nếu bỏ tiền 1 lần từ đầu"
+        {' '}(Modified Dietz method), không phải hiệu suất "nếu đầu tư 1 lần từ đầu"
         của bản thân quỹ. Tiền nạp càng sớm trong năm càng được tính trọng số cao
         (có nhiều thời gian sinh lời hơn), tiền nạp cuối năm gần như chưa kịp sinh
         lời. Nhờ vậy con số này phản ánh đúng trải nghiệm DCA thực tế của bạn, thay

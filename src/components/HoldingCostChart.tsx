@@ -45,7 +45,7 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
       </div>
 
       <p className="holdcost-intro">
-        Bạn có <strong>{formatVND(totalCapital)}</strong>. Một bên bỏ hết vào ngay hôm nay.
+        Bạn có <strong>{formatVND(totalCapital)}</strong>. Một bên đầu tư hết ngay hôm nay.
         Bên kia chia đều ra <strong>{dcaMonths} tháng</strong> rồi mới giữ tiếp.
         Bảng dưới cho biết sau mỗi khoảng thời gian, bên DCA về đích ít hơn hay nhiều hơn bao nhiêu tiền.
       </p>
@@ -118,7 +118,7 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
         <p>
           <strong>Vì sao DCA thường về đích ít tiền hơn.</strong> Tiền chưa đầu tư thì chưa
           sinh lời. Thị trường đi lên nhiều hơn đi xuống, nên phần tiền ngồi chờ thường lỡ
-          mất đoạn tăng. Đổi lại, DCA giúp bạn tránh được kịch bản tệ nhất là bỏ hết đúng đỉnh.
+          mất đoạn tăng. Đổi lại, DCA giúp bạn tránh được kịch bản tệ nhất là đầu tư hết đúng đỉnh.
         </p>
         <p>
           <strong>"Giai đoạn tách rời" nghĩa là gì.</strong> Dashboard thử lại mọi thời điểm

@@ -149,7 +149,7 @@ function MethodologyPanelImpl() {
         </p>
 
         <h4 className="method-sub">2.1. Lợi nhuận tích lũy</h4>
-        <p>Câu hỏi: mỗi đồng bỏ ra tới nay lời bao nhiêu phần trăm?</p>
+        <p>Câu hỏi: mỗi đồng đã đầu tư tới nay lời bao nhiêu phần trăm?</p>
         <Formula>Lợi nhuận tích lũy = Giá trị cuối kỳ / Tổng đã đầu tư − 1</Formula>
         <p>
           Cách tính này đơn giản nhất. Nhưng nó không quy về năm, cũng không phân biệt
@@ -415,12 +415,12 @@ function MethodologyPanelImpl() {
         <h4 className="method-sub">4.2. Tăng tiền khi thấy đỏ</h4>
         <p>
           Đảo ngược kịch bản trên: mỗi khi quỹ giảm quá ngưỡng, giả định bạn chủ động nạp
-          thêm một khoản, tức mua thêm khi giá rẻ. Vì cách này bỏ ra <em>nhiều</em> vốn
-          hơn (khác với panic bỏ ít vốn hơn), bảng không có cột "chi phí cơ hội".
+          thêm một khoản, tức mua thêm khi giá rẻ. Vì cách này đầu tư <em>nhiều</em> vốn
+          hơn (khác với panic đầu tư ít vốn hơn), bảng không có cột "chi phí cơ hội".
         </p>
         <p>
           Ở đây thước đo công bằng nhất là <strong>MWRR</strong>, không phải "% lợi nhuận"
-          thô. Vì "% lợi nhuận" tính trên mỗi đồng bỏ ra nhưng không phân biệt tiền vào
+          thô. Vì "% lợi nhuận" tính trên mỗi đồng đã đầu tư nhưng không phân biệt tiền vào
           sớm hay muộn, còn MWRR tính đúng số năm mỗi đồng đã có để sinh lời. Cùng lịch nạp
           khác nhau thì phải so bằng MWRR mới không bị lệch.
         </p>

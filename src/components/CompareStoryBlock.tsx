@@ -126,7 +126,7 @@ function WinnerSection({ stats }: { stats: FundStats[] }) {
     <section className="cmp-sec">
       <h3 className="cmp-sec-title">1. Ai đang dẫn đầu?</h3>
       <p className="cmp-sec-lead">
-        Nếu bạn bỏ vào mỗi quỹ 100 triệu đồng ngay đầu kỳ và không đụng tới, hôm
+        Nếu bạn đầu tư vào mỗi quỹ 100 triệu đồng ngay đầu kỳ và không đụng tới, hôm
         nay bạn sẽ có bao nhiêu?
       </p>
 

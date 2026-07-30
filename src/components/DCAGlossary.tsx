@@ -28,7 +28,7 @@ export function DCAGlossary() {
           {/* ── 1. Lợi nhuận tích lũy ── */}
           <h3>① Lợi nhuận tích lũy</h3>
           <p>
-            Đây là chỉ số đơn giản nhất: tổng số % bạn lãi hoặc lỗ so với vốn bỏ ra.
+            Đây là chỉ số đơn giản nhất: tổng số % bạn lãi hoặc lỗ so với vốn đã đầu tư.
           </p>
           <div className="dca-glossary-formula">
             Lợi nhuận tích lũy = Giá trị cuối kỳ ÷ Tổng đầu tư &minus; 1
@@ -62,7 +62,7 @@ export function DCAGlossary() {
           </p>
           <blockquote className="dca-glossary-note">
             <strong>Lưu ý:</strong> CAGR trong tab này tính theo góc nhìn của nhà đầu
-            tư, tổng vốn bỏ ra so với giá trị cuối kỳ. Đây <em>không phải</em> CAGR
+            tư, tổng vốn đã đầu tư so với giá trị cuối kỳ. Đây <em>không phải</em> CAGR
             thuần của quỹ (TWRR), vốn bỏ qua các lần nạp tiền DCA.
           </blockquote>
 
@@ -141,7 +141,7 @@ export function DCAGlossary() {
               </thead>
               <tbody>
                 <tr>
-                  <td>Tổng tôi lãi bao nhiêu % so với vốn bỏ ra?</td>
+                  <td>Tổng tôi lãi bao nhiêu % so với vốn đã đầu tư?</td>
                   <td><strong>Lợi nhuận tích lũy</strong></td>
                 </tr>
                 <tr>

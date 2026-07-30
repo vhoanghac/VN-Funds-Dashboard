@@ -123,7 +123,7 @@ function DcaReturnExplainerImpl({ portfolios }: Props) {
             đã tăng trưởng ra sao, <strong>MWRR là chỉ số chính cho chiến lược DCA</strong>.
             Nhưng nếu bạn quen so sánh với các hình thức đầu tư khác (gửi tiết kiệm,
             trái phiếu) thì CAGR vẫn hữu ích. Nó trả lời câu hỏi đơn giản hơn: <em>"toàn
-            bộ số tiền tôi bỏ ra đã tăng bao nhiêu phần trăm mỗi năm?"</em>
+            bộ số tiền tôi đã đầu tư tăng bao nhiêu phần trăm mỗi năm?"</em>
           </div>
         </div>
       )}
