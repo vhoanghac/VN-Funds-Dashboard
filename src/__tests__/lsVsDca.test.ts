@@ -825,3 +825,75 @@ describe('computeScenarioPath', () => {
     expect(path).toEqual([])
   })
 })
+
+// ─── computeHoldingCost, hai cách đếm mốc ────────────────────────────────────
+
+describe('computeHoldingCost, chế độ giữ thêm sau lần mua cuối', () => {
+  const n = 60 * 8
+  const dates = makeDates('2005-01-05', n)
+  const rising = makePrices(dates, linearPrices(100, 300, n))
+
+  it('mặc định vẫn là chế độ đếm tổng thời gian', () => {
+    const implicit = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const explicit = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'total',
+    )
+    expect(implicit).toEqual(explicit)
+  })
+
+  // Đây là ràng buộc định nghĩa: giữ thêm N năm sau khi DCA xong 12 tháng
+  // bằng đúng tổng thời gian N+1 năm kể từ ngày bắt đầu.
+  it('DCA 12 tháng: mốc "N năm" của chế độ mới trùng mốc "N+1 năm" của chế độ cũ', () => {
+    const total = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'total',
+    )
+    const after = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'afterLast',
+    )
+    for (const hy of [1, 2]) {
+      const a = after.find(c => c.holdingYears === hy)!
+      const t = total.find(c => c.holdingYears === hy + 1)!
+      expect(a.medianCost).toBeCloseTo(t.medianCost!, 9)
+      expect(a.medianCostOfCapital).toBeCloseTo(t.medianCostOfCapital!, 9)
+      expect(a.scenarios).toBe(t.scenarios)
+      expect(a.independentWindows).toBe(t.independentWindows)
+    }
+  })
+
+  it('không mốc nào bị bỏ trống vì chưa DCA xong, kể cả khi DCA 36 tháng', () => {
+    const after = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null, 'afterLast',
+    )
+    expect(after.every(c => c.tooShort === false)).toBe(true)
+
+    // Chế độ cũ thì hai mốc đầu chết trống, đó chính là lý do có chế độ mới.
+    const total = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null, 'total',
+    )
+    expect(total.find(c => c.holdingYears === 1)!.tooShort).toBe(true)
+    expect(total.find(c => c.holdingYears === 2)!.tooShort).toBe(true)
+  })
+
+  it('DCA càng dài thì cùng một mốc càng cần nhiều dữ liệu, số giai đoạn tách rời giảm', () => {
+    const short = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 3, 'monthly', 'flat', 0, null, 'afterLast',
+    )
+    const long = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null, 'afterLast',
+    )
+    const s = short.find(c => c.holdingYears === 1)!
+    const l = long.find(c => c.holdingYears === 1)!
+    expect(l.independentWindows).toBeLessThan(s.independentWindows)
+  })
+
+  it('thị trường đi lên thì chế độ mới vẫn cho chi phí âm', () => {
+    const after = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'afterLast',
+    )
+    const measured = after.filter(c => c.medianCost !== null)
+    expect(measured.length).toBeGreaterThan(0)
+    expect(measured.every(c => c.medianCost! < 0)).toBe(true)
+  })
+})

@@ -548,6 +548,38 @@ h1, h2, h3 {
 
 .holdcost-note p + p { margin-top: 8px; }
 
+/* ── Bảng chi phí: nút đổi cách đếm mốc ── */
+.holdcost-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 8px;
+}
+
+.holdcost-modes-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.holdcost-mode-note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.holdcost-axis-caption {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 /* ── Đường đi của một kịch bản cụ thể ── */
 .scnpath-presets {
   display: flex;
@@ -595,32 +627,6 @@ h1, h2, h3 {
   font-variant-numeric: tabular-nums;
   min-width: 62px;
   text-align: right;
-}
-
-.scnpath-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.scnpath-chip {
-  font-size: 0.72rem;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-
-.scnpath-chip--ls {
-  color: #047857;
-  background: rgba(5, 150, 105, 0.10);
-  border-color: rgba(5, 150, 105, 0.30);
-}
-
-.scnpath-chip--dca {
-  color: #B91C1C;
-  background: rgba(220, 38, 38, 0.10);
-  border-color: rgba(220, 38, 38, 0.30);
 }
 
 .scnpath-endstats {

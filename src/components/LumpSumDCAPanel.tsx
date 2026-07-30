@@ -302,6 +302,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     compareFundName: string | null
     effectiveWindow: string
     holdingCost: HoldingCostCell[]
+    holdingCostAfterLast: HoldingCostCell[]
     dcaMonths: number
     totalCapital: number
     scenarios: LSvsDCAScenario[]
@@ -357,9 +358,14 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       aligned, validSlots, committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
     )
 
+    // Tính sẵn cả hai cách đếm mốc, để bấm nút chuyển không phải tính lại.
     const holdingCost = computeHoldingCost(
       aligned, validSlots, committed.horizonMonths,
-      committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
+      committed.freq, cm, committed.cashSavingsRate, cashFundPrices, 'total',
+    )
+    const holdingCostAfterLast = computeHoldingCost(
+      aligned, validSlots, committed.horizonMonths,
+      committed.freq, cm, committed.cashSavingsRate, cashFundPrices, 'afterLast',
     )
 
     // Heatmap for comparison fund (if selected)
@@ -386,7 +392,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
     return {
       summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
-      holdingCost, dcaMonths: committed.horizonMonths,
+      holdingCost, holdingCostAfterLast, dcaMonths: committed.horizonMonths,
       totalCapital: committed.totalCapital,
       scenarios,
       pathInputs: { aligned, validSlots, cashFundPrices },
@@ -795,6 +801,19 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
             {renderHeatmapGrid(results.heatmap)}
 
+            {/* Legend, đặt ngay dưới heatmap chính để đọc màu trước khi qua phần khác */}
+            <div className="lsdca-hm-legend-chips">
+              <span className="lsdca-hm-chip lsdca-hm-chip--weak">
+                &lt; 50%: DCA thắng nhiều hơn
+              </span>
+              <span className="lsdca-hm-chip lsdca-hm-chip--medium">
+                50–70%: LS nhỉnh hơn
+              </span>
+              <span className="lsdca-hm-chip lsdca-hm-chip--strong">
+                ≥ 70%: LS vượt trội
+              </span>
+            </div>
+
             {/* Compare fund picker */}
             <div className="lsdca-hm-compare">
               <span className="lsdca-hm-compare-label">So sánh với quỹ khác:</span>
@@ -816,19 +835,6 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
             {results.heatmap2 && results.compareFundName && (
               renderHeatmapGrid(results.heatmap2, results.compareFundName)
             )}
-
-            {/* Legend */}
-            <div className="lsdca-hm-legend-chips">
-              <span className="lsdca-hm-chip lsdca-hm-chip--weak">
-                &lt; 50%: DCA thắng nhiều hơn
-              </span>
-              <span className="lsdca-hm-chip lsdca-hm-chip--medium">
-                50–70%: LS nhỉnh hơn
-              </span>
-              <span className="lsdca-hm-chip lsdca-hm-chip--strong">
-                ≥ 70%: LS vượt trội
-              </span>
-            </div>
 
             <p className="lsdca-hm-indep-note">
               Mỗi ô ghi hai con số. Phân số bên trên là số kịch bản lịch sử, nhưng chúng
@@ -869,6 +875,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
           <HoldingCostChart
             data={results.holdingCost}
+            dataAfterLast={results.holdingCostAfterLast}
             dcaMonths={results.dcaMonths}
             totalCapital={results.totalCapital}
           />

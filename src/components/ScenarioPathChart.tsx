@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine,
   ResponsiveContainer,
 } from 'recharts'
 import type { PathPoint, LSvsDCAScenario } from '../utils/lsVsDca'
@@ -124,6 +124,10 @@ function ScenarioPathChartImpl({
             formatter={(value: number, name: string) => [formatVNDFull(value), name]}
             labelFormatter={(d: string) => `Ngày ${d.split('-').reverse().join('/')}`}
           />
+          <Legend
+            wrapperStyle={{ fontSize: 12 }}
+            iconType="line"
+          />
           <ReferenceLine
             y={totalCapital}
             stroke="#9CA3AF"
@@ -142,7 +146,7 @@ function ScenarioPathChartImpl({
           <Line
             type="monotone"
             dataKey="dcaValue"
-            name="DCA (gồm tiền còn chờ)"
+            name="DCA, gồm cả tiền chưa giải ngân"
             stroke="#DC2626"
             strokeWidth={2}
             dot={false}
@@ -150,11 +154,6 @@ function ScenarioPathChartImpl({
           />
         </LineChart>
       </ResponsiveContainer>
-
-      <div className="scnpath-legend">
-        <span className="scnpath-chip scnpath-chip--ls">Đầu tư một lần</span>
-        <span className="scnpath-chip scnpath-chip--dca">DCA, gồm cả tiền chưa giải ngân</span>
-      </div>
 
       <div className="scnpath-endstats">
         <div className="scnpath-endstat">

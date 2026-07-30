@@ -1,10 +1,13 @@
-import { memo } from 'react'
-import type { HoldingCostCell } from '../utils/lsVsDca'
-import { MIN_INDEPENDENT_WINDOWS } from '../utils/lsVsDca'
+import { memo, useState } from 'react'
+import type { HoldingCostCell, HoldingCostMode } from '../utils/lsVsDca'
+import { MIN_INDEPENDENT_WINDOWS, COST_HOLDING_YEARS } from '../utils/lsVsDca'
 import { formatVND } from '../utils/vndFormat'
 
 interface Props {
+  /** Mốc đếm theo tổng thời gian kể từ ngày bắt đầu. */
   data: HoldingCostCell[]
+  /** Mốc đếm theo số năm giữ thêm sau lần mua cuối. */
+  dataAfterLast: HoldingCostCell[]
   dcaMonths: number
   totalCapital: number
 }
@@ -16,10 +19,18 @@ interface Props {
  * hẳn: "thua thì thua bao nhiêu TIỀN". Hai câu đó lệch nhau được, vì thắng
  * thường xuyên mà mỗi lần thắng một ít thì vẫn thua ít lần mà lần nào cũng nặng.
  *
+ * Hai cách đếm mốc nằm chung một khối thay vì tách làm hai, vì chúng là cùng
+ * một dãy số đánh số lại trục. Đặt cạnh nhau thì người đọc dò xem chúng khác
+ * nhau chỗ nào rồi tự nghĩ ra một khác biệt không có thật. Bấm qua bấm lại thấy
+ * số đổi thì hiểu ngay hai khái niệm đó lệch nhau ở đâu.
+ *
  * Mốc nào không đủ giai đoạn tách rời thì làm mờ, không tô đậm như thể chắc chắn.
  */
-function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
-  const measured = data.filter(d => d.medianCost !== null)
+function HoldingCostChartImpl({ data, dataAfterLast, dcaMonths, totalCapital }: Props) {
+  const [mode, setMode] = useState<HoldingCostMode>('total')
+  const rows = mode === 'afterLast' ? dataAfterLast : data
+
+  const measured = rows.filter(d => d.medianCost !== null)
   if (measured.length === 0) return null
 
   const maxAbs = Math.max(...measured.map(d => Math.abs(d.medianCost!)), 0.5)
@@ -28,11 +39,25 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
   // Lấy một mốc đủ tin cậy làm ví dụ bằng tiền thật cho câu mở đầu.
   const example = solid[0] ?? measured[0]!
 
+  /** Số tháng thật sự của một mốc, tính từ ngày bắt đầu tới ngày bán. */
+  const windowMonths = (holdingYears: number) =>
+    mode === 'afterLast' ? dcaMonths + holdingYears * 12 : holdingYears * 12
+
+  /** Nhãn của một dòng, dùng chung cho bảng lẫn phần chữ để khỏi lệch nhau. */
+  const rowLabel = (holdingYears: number) =>
+    mode === 'afterLast' ? `+${holdingYears} năm` : `${holdingYears} năm`
+
+  // Ở chế độ đếm tổng thời gian, kỳ DCA đôi khi rơi trúng một mốc có sẵn (DCA
+  // 12 tháng trúng dòng 1 năm). Chỉ khi đó mới gọi tên dòng đó ra làm ví dụ.
+  const exactRow = dcaMonths % 12 === 0 && COST_HOLDING_YEARS.includes(dcaMonths / 12)
+    ? dcaMonths / 12
+    : null
+
   // Mốc dùng để giải thích "giai đoạn tách rời". Ưu tiên mốc dài vài năm vì ở
   // đó phần chồng lấn mới lộ rõ, mốc 1 năm thì nghe không thấy vấn đề gì.
   const overlapExample = measured.find(d => d.holdingYears >= 5) ?? measured[measured.length - 1]!
   const exYears = overlapExample.holdingYears
-  const exMonths = exYears * 12
+  const exMonths = windowMonths(exYears)
 
   return (
     <div className="perf-table-container" style={{ marginTop: 24 }}>
@@ -50,9 +75,43 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
         Bảng dưới cho biết sau mỗi khoảng thời gian, bên DCA về đích ít hơn hay nhiều hơn bao nhiêu tiền.
       </p>
 
+      <div className="holdcost-modes">
+        <span className="holdcost-modes-label">Mốc thời gian đếm theo</span>
+        <button
+          className={`lsdca-horizon-btn ${mode === 'total' ? 'lsdca-horizon-btn-active' : ''}`}
+          onClick={() => setMode('total')}
+          title="Tổng thời gian kể từ ngày bắt đầu, gồm cả quãng đang rải tiền"
+        >
+          Tổng thời gian nắm giữ
+        </button>
+        <button
+          className={`lsdca-horizon-btn ${mode === 'afterLast' ? 'lsdca-horizon-btn-active' : ''}`}
+          onClick={() => setMode('afterLast')}
+          title="Số năm giữ tiếp sau khi đã mua xong lần cuối"
+        >
+          Giữ thêm sau khi mua xong
+        </button>
+      </div>
+
+      <p className="holdcost-mode-note">
+        {mode === 'total'
+          ? <>Mốc tính từ ngày bắt đầu, gồm cả quãng đang rải tiền.{' '}
+            {exactRow !== null
+              ? <>Nên dòng <strong>{exactRow} năm</strong> nghĩa là mua xong phát cuối rồi
+                bán luôn, không giữ thêm ngày nào.</>
+              : <>Nên mốc nào ngắn hơn {dcaMonths} tháng thì để trống, vì lúc đó còn
+                chưa rải hết tiền.</>}
+            {' '}Cách đếm này hợp khi bạn đã biết mình có bao nhiêu năm rồi cần tiền.</>
+          : <>Mốc tính từ sau lần mua cuối. Dòng <strong>+1 năm</strong> nghĩa là rải hết{' '}
+            {dcaMonths} tháng, rồi giữ tiếp thêm một năm nữa mới bán, tổng cộng{' '}
+            {windowMonths(1)} tháng. Cách đếm này hợp khi bạn định rải tiền xong thì giữ dài hạn,
+            và không mốc nào bị bỏ trống vì chưa DCA xong.</>}
+      </p>
+
       {example.medianLsGrowth !== null && example.medianDcaGrowth !== null && (
         <p className="holdcost-example">
-          Ví dụ dòng <strong>{example.holdingYears} năm</strong>: bên đầu tư một lần
+          Ví dụ dòng <strong>{rowLabel(example.holdingYears)}</strong>, tức mỗi lần thử
+          kéo dài {windowMonths(example.holdingYears)} tháng: bên đầu tư một lần
           thường về đích <strong>{formatVND(example.medianLsGrowth * totalCapital)}</strong>,
           bên DCA về đích <strong>{formatVND(example.medianDcaGrowth * totalCapital)}</strong>.
           Chênh nhau{' '}
@@ -65,17 +124,17 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
       )}
 
       <div className="holdcost-rows">
-        {data.map(d => {
+        {rows.map(d => {
           const thin = d.independentWindows < MIN_INDEPENDENT_WINDOWS
           return (
             <div
               key={d.holdingYears}
               className="holdcost-row"
               title={d.medianLsGrowth !== null && d.medianDcaGrowth !== null
-                ? `Giữ ${d.holdingYears} năm: đầu tư một lần về đích ${formatVND(d.medianLsGrowth * totalCapital)}, DCA về đích ${formatVND(d.medianDcaGrowth * totalCapital)}.`
+                ? `${mode === 'afterLast' ? `Giữ thêm ${d.holdingYears} năm sau lần mua cuối (tổng ${windowMonths(d.holdingYears)} tháng)` : `Giữ ${d.holdingYears} năm`}: đầu tư một lần về đích ${formatVND(d.medianLsGrowth * totalCapital)}, DCA về đích ${formatVND(d.medianDcaGrowth * totalCapital)}.`
                 : undefined}
             >
-              <div className="holdcost-label">{d.holdingYears} năm</div>
+              <div className="holdcost-label">{rowLabel(d.holdingYears)}</div>
               <div className="holdcost-track">
                 <div className="holdcost-zero" />
                 {d.medianCost !== null && (
@@ -114,6 +173,12 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
         })}
       </div>
 
+      <p className="holdcost-axis-caption">
+        {mode === 'afterLast'
+          ? 'Số năm giữ thêm sau lần mua cuối'
+          : 'Tổng thời gian nắm giữ, tính từ ngày bắt đầu'}
+      </p>
+
       <div className="holdcost-note">
         <p>
           <strong>Vì sao DCA thường về đích ít tiền hơn.</strong> Tiền chưa đầu tư thì chưa
@@ -126,15 +191,16 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
           một quãng thời gian được đếm đi đếm lại.
         </p>
         <p>
-          Lấy dòng <strong>{exYears} năm</strong> làm ví dụ. Một lần thử bắt đầu tháng 1, lần
-          kế tiếp bắt đầu tháng 2. Cả hai cùng chạy {exYears} năm, nên chúng đi qua{' '}
+          Lấy dòng <strong>{rowLabel(exYears)}</strong> làm
+          ví dụ, tức mỗi lần thử kéo dài {exMonths} tháng. Một lần thử bắt đầu tháng 1, lần
+          kế tiếp bắt đầu tháng 2. Cả hai cùng chạy {exMonths} tháng, nên chúng đi qua{' '}
           <strong>{exMonths - 1} trên {exMonths} tháng giống hệt nhau</strong>. Thị trường sập
           năm nào thì cả hai cùng dính năm đó, cùng sai một kiểu. Đếm chúng thành hai lần
           kiểm chứng là tự lừa mình.
         </p>
         <p>
           Với chuỗi giá của quỹ đang chọn, chỉ nhét vừa{' '}
-          <strong>{overlapExample.independentWindows} quãng {exYears} năm không đè lên nhau</strong>.
+          <strong>{overlapExample.independentWindows} quãng {exMonths} tháng không đè lên nhau</strong>.
           Đó chính là con số ghi ở cuối mỗi dòng. Nó nhỏ hơn hẳn số kịch bản, và nó mới là
           thứ quyết định con số bên cạnh đáng tin tới đâu.
         </p>
@@ -142,7 +208,7 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
           {solid.length === 0
             ? <><strong>Không mốc nào đủ để kết luận.</strong> Mọi con số trên đây đều dựa trên
               dưới {MIN_INDEPENDENT_WINDOWS} giai đoạn tách rời, đọc cho biết thôi.</>
-            : <>Chỉ <strong>{solid.length} trên {data.length} mốc</strong> có từ {MIN_INDEPENDENT_WINDOWS} giai
+            : <>Chỉ <strong>{solid.length} trên {rows.length} mốc</strong> có từ {MIN_INDEPENDENT_WINDOWS} giai
               đoạn tách rời trở lên. Các mốc còn lại bị làm mờ vì quỹ chưa đủ lịch sử, không phải
               vì kết quả yếu. Muốn mốc dài có ý nghĩa thì cần quỹ ra đời sớm hơn.</>}
         </p>

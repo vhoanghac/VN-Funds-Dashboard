@@ -531,6 +531,19 @@ export interface HoldingCostCell {
 export const COST_HOLDING_YEARS = [1, 2, 3, 5, 7, 10, 15, 20]
 
 /**
+ * Mốc thời gian ở bảng chi phí đếm theo kiểu nào.
+ *
+ * `total`: tổng thời gian kể từ ngày bắt đầu. Mốc "1 năm" khi DCA 12 tháng
+ * nghĩa là mua xong phát cuối rồi bán luôn, không giữ thêm ngày nào. Hợp với
+ * người đã biết mình có bao nhiêu năm rồi cần tiền.
+ *
+ * `afterLast`: giữ thêm bao lâu SAU lần mua cuối. Mốc "1 năm" luôn mang đúng
+ * một nghĩa dù DCA 3 tháng hay 36 tháng, và không mốc nào bị bỏ trống vì chưa
+ * DCA xong. Hợp với người rải tiền xong rồi giữ dài hạn.
+ */
+export type HoldingCostMode = 'total' | 'afterLast'
+
+/**
  * Chi phí trung vị của việc rải tiền, đo ở từng mốc thời gian nắm giữ.
  */
 export function computeHoldingCost(
@@ -541,10 +554,11 @@ export function computeHoldingCost(
   cashMode: CashMode,
   cashSavingsRate: number,
   cashFundPrices: PricePoint[] | null,
+  mode: HoldingCostMode = 'total',
 ): HoldingCostCell[] {
   const spanMonths = alignedSpanMonths(alignedPrices, slots)
   return COST_HOLDING_YEARS.map(hy => {
-    const holdingMonths = hy * 12
+    const holdingMonths = mode === 'afterLast' ? dcaMonths + hy * 12 : hy * 12
     const independent = countIndependentWindows(spanMonths, holdingMonths)
     const empty = {
       holdingYears: hy, medianCost: null, medianCostOfCapital: null,
