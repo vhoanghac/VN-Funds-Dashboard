@@ -453,7 +453,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
                       <div
                         key={ci}
                         className={`lsdca-hm-cell lsdca-hm-cell--${tier}${thin ? ' lsdca-hm-cell-lown' : ''}`}
-                        title={`Giữ ${cell.holdingYears} năm, DCA ${cell.dcaMonths} tháng → LS thắng ${(cell.winRate * 100).toFixed(1)}% (${wins}/${cell.totalScenarios} kịch bản chồng lấn, chỉ ${cell.independentWindows} lần thử tách rời)`}
+                        title={`Giữ ${cell.holdingYears} năm, DCA ${cell.dcaMonths} tháng → LS thắng ${(cell.winRate * 100).toFixed(1)}% (${wins}/${cell.totalScenarios} kịch bản chồng lấn, chỉ ${cell.independentWindows} giai đoạn tách rời)`}
                       >
                         <div className="lsdca-hm-fraction">
                           {wins}<span className="lsdca-hm-slash">/</span>{cell.totalScenarios}
@@ -465,7 +465,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
                           {thin && '⚠ '}{(cell.winRate * 100).toFixed(0)}% LS thắng
                         </div>
                         <div className="lsdca-hm-indep">
-                          {cell.independentWindows} lần thử tách rời
+                          {cell.independentWindows} giai đoạn tách rời
                         </div>
                       </div>
                     )
@@ -780,6 +780,14 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
                 ≥ 70%: LS vượt trội
               </span>
             </div>
+
+            <p className="lsdca-hm-indep-note">
+              Mỗi ô ghi hai con số. Phân số bên trên là số kịch bản lịch sử, nhưng chúng
+              chồng lấn nhau rất nặng: hai lần thử cách nhau một tháng thì đi qua gần như
+              cùng một quãng thời gian. Dòng dưới cùng đếm số quãng thật sự không dùng
+              chung ngày nào. Ô nào có dưới {MIN_INDEPENDENT_WINDOWS} giai đoạn tách rời
+              thì bị làm mờ và có dấu ⚠. Khối bên dưới giải thích kỹ hơn kèm ví dụ.
+            </p>
 
             {/* Explanation toggle */}
             <div className="lsdca-hm-explainer">

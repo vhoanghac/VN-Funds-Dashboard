@@ -548,7 +548,18 @@ h1, h2, h3 {
 
 .holdcost-note p + p { margin-top: 8px; }
 
-/* Số lần thử tách rời trong ô heatmap */
+.lsdca-hm-indep-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+/* Số giai đoạn tách rời trong ô heatmap */
 .lsdca-hm-indep {
   font-size: 0.62rem;
   color: var(--color-text-muted);

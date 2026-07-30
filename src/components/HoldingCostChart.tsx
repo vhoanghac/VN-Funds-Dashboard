@@ -28,6 +28,12 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
   // Lấy một mốc đủ tin cậy làm ví dụ bằng tiền thật cho câu mở đầu.
   const example = solid[0] ?? measured[0]!
 
+  // Mốc dùng để giải thích "giai đoạn tách rời". Ưu tiên mốc dài vài năm vì ở
+  // đó phần chồng lấn mới lộ rõ, mốc 1 năm thì nghe không thấy vấn đề gì.
+  const overlapExample = measured.find(d => d.holdingYears >= 5) ?? measured[measured.length - 1]!
+  const exYears = overlapExample.holdingYears
+  const exMonths = exYears * 12
+
   return (
     <div className="perf-table-container" style={{ marginTop: 24 }}>
       <div className="chart-header">
@@ -115,10 +121,22 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
           mất đoạn tăng. Đổi lại, DCA giúp bạn tránh được kịch bản tệ nhất là bỏ hết đúng đỉnh.
         </p>
         <p>
-          <strong>"Giai đoạn tách rời" nghĩa là gì.</strong> Dashboard thử lại từng thời điểm
-          bắt đầu trong lịch sử, nhưng các lần thử đó dùng chung dữ liệu của nhau rất nhiều.
-          Hai lần thử cách nhau một tháng thì gần như trùng khớp. Con số này đếm số lần thử
-          thật sự không dùng chung ngày nào. Đó mới là số lần kiểm chứng độc lập.
+          <strong>"Giai đoạn tách rời" nghĩa là gì.</strong> Dashboard thử lại mọi thời điểm
+          bắt đầu có trong lịch sử. Nghe thì nhiều, nhưng các lần thử đó phần lớn là cùng
+          một quãng thời gian được đếm đi đếm lại.
+        </p>
+        <p>
+          Lấy dòng <strong>{exYears} năm</strong> làm ví dụ. Một lần thử bắt đầu tháng 1, lần
+          kế tiếp bắt đầu tháng 2. Cả hai cùng chạy {exYears} năm, nên chúng đi qua{' '}
+          <strong>{exMonths - 1} trên {exMonths} tháng giống hệt nhau</strong>. Thị trường sập
+          năm nào thì cả hai cùng dính năm đó, cùng sai một kiểu. Đếm chúng thành hai lần
+          kiểm chứng là tự lừa mình.
+        </p>
+        <p>
+          Với chuỗi giá của quỹ đang chọn, chỉ nhét vừa{' '}
+          <strong>{overlapExample.independentWindows} quãng {exYears} năm không đè lên nhau</strong>.
+          Đó chính là con số ghi ở cuối mỗi dòng. Nó nhỏ hơn hẳn số kịch bản, và nó mới là
+          thứ quyết định con số bên cạnh đáng tin tới đâu.
         </p>
         <p>
           {solid.length === 0
