@@ -601,9 +601,11 @@ h1, h2, h3 {
   font-size: 0.85rem;
 }
 
-/* Nhãn dải dài hơn nhãn "N năm" của bảng chi phí nên cần cột rộng hơn. */
+/* Nhãn dải dài hơn nhãn "N năm" của bảng chi phí, lại còn kèm danh sách tháng
+   bên dưới, nên cần cột rộng hơn hẳn. Cột giá trị cũng có ba mục nên nới theo. */
 .ddbucket-rows .holdcost-row {
-  grid-template-columns: 132px 1fr 190px;
+  grid-template-columns: 172px 1fr 215px;
+  align-items: start;
 }
 
 .ddbucket-label {
@@ -611,10 +613,52 @@ h1, h2, h3 {
   font-weight: 500;
 }
 
+.ddbucket-band {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Tiêu đề phụ và danh sách trong phần diễn giải của khối "thời gian sau đỉnh" */
+.sincepeak-sub {
+  font-weight: 700;
+  margin-top: 14px !important;
+}
+
+.sincepeak-list {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--color-text-muted);
+}
+
+.sincepeak-list li + li { margin-top: 5px; }
+
+/* Dòng phụ nói thị trường lúc đó ra sao, tách khỏi dòng nói LS với DCA. */
+.ddbucket-market {
+  opacity: 0.85;
+  font-style: italic;
+}
+
+/* Danh sách tháng bắt đầu của từng giai đoạn, để người đọc tự đối chiếu. */
+.ddbucket-dates {
+  font-size: 0.62rem;
+  line-height: 1.3;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 560px) {
+  /* Xếp dọc hẳn như bảng chi phí. Ép hai cột ở đây làm tên dải với danh sách
+     tháng cùng vỡ dòng, mỗi hàng cao gần gấp ba. */
   .ddbucket-rows .holdcost-row {
-    grid-template-columns: 104px 1fr;
-    row-gap: 2px;
+    grid-template-columns: 1fr;
+    row-gap: 3px;
+  }
+  .ddbucket-rows .holdcost-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
   }
   .ddbucket-rows .holdcost-value {
     grid-column: 1 / -1;

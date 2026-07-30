@@ -12,6 +12,8 @@ import {
   computeDrawdownBuckets,
   drawdownFromRunningPeak,
   DRAWDOWN_BANDS,
+  computeSincePeakBuckets,
+  SINCE_PEAK_BANDS,
   COST_HOLDING_YEARS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
@@ -1021,9 +1023,45 @@ describe('computeDrawdownBuckets', () => {
     expect(Math.max(...deep.map(r => r.episodes))).toBe(2)
   })
 
-  // Chốt ràng buộc thứ hai: số đợt không được vượt số quãng không đè lên nhau
+  // Con số giai đoạn là lời khẳng định, danh sách ngày là bằng chứng. Ba test
+  // dưới đây khoá chuyện bằng chứng phải khớp lời khẳng định.
+  it('số giai đoạn luôn bằng đúng số ngày liệt kê ra', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    for (const r of rows) {
+      expect(r.episodeStarts.length).toBe(r.episodes)
+    }
+  })
+
+  it('các ngày liệt kê ra thật sự không đè lên nhau', () => {
+    for (const hold of [12, 24, 42]) {
+      const s = computeRollingScenarios(
+        singleFundMap('A', cyclical), singleSlot('A'), 1e8, 12, 'monthly', 'flat', 0, null, hold,
+      )
+      const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), s, hold)
+      const minGapMs = hold * 30.44 * 86400000
+      for (const r of rows) {
+        for (let i = 1; i < r.episodeStarts.length; i++) {
+          const gap = new Date(r.episodeStarts[i]!).getTime()
+            - new Date(r.episodeStarts[i - 1]!).getTime()
+          expect(gap).toBeGreaterThanOrEqual(minGapMs)
+        }
+      }
+    }
+  })
+
+  it('mọi ngày liệt kê ra đều là ngày bắt đầu có thật của một kịch bản', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    const realStarts = new Set(scen.map(s => s.startDate))
+    for (const r of rows) {
+      for (const d of r.episodeStarts) {
+        expect(realStarts.has(d)).toBe(true)
+      }
+    }
+  })
+
+  // Chốt ràng buộc: số giai đoạn không được vượt số quãng không đè lên nhau
   // mà cả chuỗi chứa nổi, tức đúng con số countIndependentWindows dùng ở
-  // heatmap và bảng chi phí. Trước đây dải nông của BTC báo 19 đợt trong khi
+  // heatmap và bảng chi phí. Trước đây dải nông của BTC báo 19 trong khi
   // cả lịch sử chỉ nhét vừa 3 quãng 42 tháng.
   it('số đợt không vượt quá số quãng không đè nhau mà cả chuỗi chứa nổi', () => {
     for (const hold of [12, 24, 42]) {
@@ -1046,5 +1084,74 @@ describe('computeDrawdownBuckets', () => {
       expect(r.lsWinRate!).toBeGreaterThanOrEqual(0)
       expect(r.lsWinRate!).toBeLessThanOrEqual(1)
     }
+  })
+})
+
+// ─── computeSincePeakBuckets ─────────────────────────────────────────────────
+
+describe('computeSincePeakBuckets', () => {
+  // Một chu kỳ: lên 2 năm tới đỉnh, sập sâu rồi nằm dưới đáy gần 3 năm, sau đó hồi.
+  const n = 52 * 11
+  const dates = makeDates('2010-01-01', n)
+  const cycle = makePrices(dates, Array.from({ length: n }, (_, i) => {
+    const yr = i / 52
+    if (yr < 2) return 100 + 50 * yr           // lên, đỉnh 200 ở năm 2
+    if (yr < 3) return 200 - 120 * (yr - 2)    // sập còn 80, tức -60%
+    if (yr < 5) return 80 + 10 * (yr - 3)      // nằm sâu rồi bò lên chậm
+    return 100 + 45 * (yr - 5)                 // hồi mạnh
+  }))
+  const scen = computeRollingScenarios(
+    singleFundMap('A', cycle), singleSlot('A'), 1e8, 12, 'monthly', 'flat', 0, null, 12,
+  )
+
+  it('trả về đúng một dòng cho mỗi nhóm thời gian', () => {
+    const rows = computeSincePeakBuckets(singleFundMap('A', cycle), singleSlot('A'), scen, 12)
+    expect(rows.map(r => r.label)).toEqual(SINCE_PEAK_BANDS.map(b => b.label))
+  })
+
+  it('chỉ tính những lần đã rời đỉnh đủ sâu, không tính lúc quanh đỉnh', () => {
+    const rows = computeSincePeakBuckets(singleFundMap('A', cycle), singleSlot('A'), scen, 12)
+    const total = rows.reduce((a, r) => a + r.scenarios, 0)
+    // Phải ít hơn hẳn tổng số kịch bản, vì phần lớn thời gian giá không giảm sâu.
+    expect(total).toBeGreaterThan(0)
+    expect(total).toBeLessThan(scen.length)
+  })
+
+  // Ràng buộc định nghĩa: chuỗi này chỉ có một đỉnh thật, nên mọi ngày trong
+  // đợt sập phải xếp theo đúng khoảng cách tới đỉnh đó, tăng dần qua các nhóm.
+  it('xếp đúng nhóm theo khoảng cách tới đỉnh', () => {
+    const rows = computeSincePeakBuckets(singleFundMap('A', cycle), singleSlot('A'), scen, 12)
+    const filled = rows.filter(r => r.scenarios > 0)
+    expect(filled.length).toBeGreaterThan(1)
+    for (const r of filled) {
+      for (const d of r.episodeStarts) {
+        // Đỉnh ở khoảng đầu năm 2012 (năm thứ 2 của chuỗi bắt đầu 2010).
+        const months = (new Date(d).getTime() - new Date('2012-01-01').getTime()) / 86400000 / 30.44
+        expect(months).toBeGreaterThanOrEqual(r.from - 2)
+        expect(months).toBeLessThan(r.to + 2)
+      }
+    }
+  })
+
+  it('giữ nguyên lớp trung thực: số giai đoạn khớp danh sách ngày', () => {
+    const rows = computeSincePeakBuckets(singleFundMap('A', cycle), singleSlot('A'), scen, 12)
+    for (const r of rows) {
+      expect(r.episodeStarts.length).toBe(r.episodes)
+    }
+  })
+
+  it('tỷ lệ đang lỗ nằm trong khoảng 0 tới 1', () => {
+    const rows = computeSincePeakBuckets(singleFundMap('A', cycle), singleSlot('A'), scen, 12)
+    for (const r of rows.filter(x => x.lsLossRate !== null)) {
+      expect(r.lsLossRate!).toBeGreaterThanOrEqual(0)
+      expect(r.lsLossRate!).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('trả về mọi nhóm rỗng khi không có kịch bản hoặc không có slot', () => {
+    expect(computeSincePeakBuckets(singleFundMap('A', cycle), singleSlot('A'), [], 12)
+      .every(r => r.scenarios === 0)).toBe(true)
+    expect(computeSincePeakBuckets(singleFundMap('A', cycle), [], scen, 12)
+      .every(r => r.scenarios === 0)).toBe(true)
   })
 })

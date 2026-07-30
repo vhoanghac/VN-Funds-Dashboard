@@ -22,6 +22,8 @@ import {
   computeHoldingCost,
   computeScenarioPath,
   computeDrawdownBuckets,
+  computeSincePeakBuckets,
+  type SincePeakRow,
   MIN_INDEPENDENT_WINDOWS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
@@ -35,6 +37,7 @@ import {
 } from '../utils/lsVsDca'
 import { ScenarioPathChart } from './ScenarioPathChart'
 import { DrawdownBucketChart, type DrawdownBucketView } from './DrawdownBucketChart'
+import { SincePeakChart } from './SincePeakChart'
 import {
   PortfolioCard,
   portfolioSelectStyles,
@@ -305,6 +308,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     effectiveWindow: string
     holdingCost: HoldingCostCell[]
     drawdownViews: DrawdownBucketView[]
+    sincePeak: SincePeakRow[]
     dcaMonths: number
     totalCapital: number
     scenarios: LSvsDCAScenario[]
@@ -418,6 +422,11 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     return {
       summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
       drawdownViews,
+      // Dùng chung bộ kịch bản "bán ngay khi rải xong" với khối tóm tắt, để
+      // hai bảng chia nhóm khác nhau vẫn nói về cùng một tập dữ liệu.
+      sincePeak: computeSincePeakBuckets(
+        aligned, validSlots, scenarios, committed.horizonMonths,
+      ),
       holdingCost, dcaMonths: committed.horizonMonths,
       totalCapital: committed.totalCapital,
       scenarios,
@@ -961,6 +970,12 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
           <DrawdownBucketChart
             views={results.drawdownViews}
+            totalCapital={results.totalCapital}
+            dcaMonths={results.dcaMonths}
+          />
+
+          <SincePeakChart
+            rows={results.sincePeak}
             totalCapital={results.totalCapital}
             dcaMonths={results.dcaMonths}
           />

@@ -709,18 +709,29 @@ export interface DrawdownBucketRow {
   /** Số kịch bản có ngày bắt đầu rơi vào dải này. */
   scenarios: number
   /**
-   * Số lần kiểm chứng thật sự riêng biệt mà đám kịch bản trên rút gọn lại.
+   * Số quãng thời gian trong dải này KHÔNG dùng chung ngày nào với nhau.
    *
-   * Chặn bởi HAI ràng buộc, lấy cái nhỏ hơn: số cú sập tách rời, và số lần thử
-   * không đè lên nhau trong cùng kỳ nắm giữ.
+   * Đếm tham lam: lấy ngày bắt đầu sớm nhất, bỏ hết những ngày nằm trong cùng
+   * kỳ nắm giữ, lấy tiếp ngày kế. Cùng ý niệm với countIndependentWindows ở
+   * heatmap và bảng chi phí, chỉ khác là đếm trên riêng các ngày của dải này.
    *
    * Đây mới là con số đáng tin, và nó thường nhỏ đến giật mình. Với Bitcoin,
-   * mức dưới -60% có tới 735 điểm dữ liệu nhưng chỉ thuộc về 3 đợt sập. Đếm
-   * 735 thành 735 lần kiểm chứng là tự lừa mình: cả 735 điểm đó chỉ nói về
-   * chuyện đã xảy ra 3 lần.
+   * mức dưới -60% có tới 735 kịch bản nhưng chỉ gói lại thành 6 quãng rời nhau.
+   *
+   * Từng thử thêm một tầng nữa là gom theo cú sập (nhóm các ngày cùng đứng
+   * dưới một đỉnh). Đã bỏ vì nó đo thứ khác nhau ở từng dải: vùng sát đỉnh gộp
+   * nguyên một bull market ba năm thành một, còn dải -10 tới -20% thì vỡ thành
+   * 23 mẩu vài ngày. Hai dải không so được với nhau, mà người đọc lại đang so.
    */
   episodes: number
+  /**
+   * Ngày bắt đầu của từng quãng đã đếm ở trên, để người đọc tự kiểm chứng
+   * thay vì phải tin. Không có cái này thì con số kia là lời khẳng định suông.
+   */
+  episodeStarts: string[]
   lsWinRate: number | null
+  /** Tỷ lệ số lần mà đầu tư một lần vẫn đang lỗ vào ngày bán. */
+  lsLossRate: number | null
   medianCost: number | null
   medianCostOfCapital: number | null
   medianLsGrowth: number | null
@@ -782,7 +793,7 @@ export function computeDrawdownBuckets(
 ): DrawdownBucketRow[] {
   const empty = DRAWDOWN_BANDS.map(b => ({
     label: b.label, from: b.from, to: b.to,
-    scenarios: 0, episodes: 0, lsWinRate: null,
+    scenarios: 0, episodes: 0, episodeStarts: [] as string[], lsWinRate: null, lsLossRate: null,
     medianCost: null, medianCostOfCapital: null,
     medianLsGrowth: null, medianDcaGrowth: null,
   }))
@@ -797,96 +808,175 @@ export function computeDrawdownBuckets(
   if (!prices || prices.length === 0) return empty
   const ddMap = drawdownFromRunningPeak(prices)
 
-  // Vị trí từng ngày trong chuỗi, để biết hai ngày có liền nhau hay không.
-  const indexOfDate = new Map<string, number>()
-  for (let i = 0; i < prices.length; i++) indexOfDate.set(prices[i]!.date, i)
-
   const grouped: LSvsDCAScenario[][] = DRAWDOWN_BANDS.map(() => [])
-  const marks: { idx: number; peak: number; time: number }[][] = DRAWDOWN_BANDS.map(() => [])
 
   for (const s of scenarios) {
     const info = ddMap.get(s.startDate)
-    const idx = indexOfDate.get(s.startDate)
-    if (!info || idx === undefined) continue
+    if (!info) continue
     const bi = bandIndexOf(info.drawdown)
     if (bi < 0) continue
     grouped[bi]!.push(s)
-    marks[bi]!.push({ idx, peak: info.peak, time: new Date(s.startDate).getTime() })
   }
 
   return DRAWDOWN_BANDS.map((b, bi) => {
     const list = grouped[bi]!
-    if (list.length === 0) {
-      return { ...empty[bi]!, scenarios: 0, episodes: 0 }
+    if (list.length === 0) return empty[bi]!
+    return { label: b.label, from: b.from, to: b.to, ...summarizeGroup(list, holdingMonths) }
+  })
+}
+
+/**
+ * Số liệu chung cho một nhóm kịch bản đã lọc: thống kê tiền, cộng lớp trung
+ * thực về cỡ mẫu. Dùng chung cho bảng chia theo mức giảm lẫn bảng chia theo
+ * thời gian kể từ đỉnh, để hai bảng không bao giờ lệch quy ước.
+ */
+function summarizeGroup(list: LSvsDCAScenario[], holdingMonths: number) {
+  // Đếm quãng không đè lên nhau, tham lam từ ngày sớm nhất: lấy một ngày rồi
+  // bỏ hết những ngày nằm trong cùng kỳ nắm giữ, lấy tiếp ngày kế.
+  //
+  // Chỉ một quy tắc duy nhất cho mọi dòng, nên các dòng so được với nhau. Cùng
+  // ý niệm với countIndependentWindows ở heatmap và bảng chi phí, để cả tab
+  // nói một giọng.
+  //
+  // Ghi lại luôn ngày bắt đầu của từng quãng: không có danh sách đó thì con
+  // số này là lời khẳng định suông, người đọc không cách nào kiểm.
+  const holdMs = Math.max(1, holdingMonths) * 30.44 * 86400000
+  const sorted = list.map(s => s.startDate).sort()
+  const episodeStarts: string[] = []
+  let lastTaken = -Infinity
+  for (const d of sorted) {
+    const t = new Date(d).getTime()
+    if (t - lastTaken >= holdMs) {
+      episodeStarts.push(d)
+      lastTaken = t
     }
+  }
 
-    // Đếm đợt: gom các ngày bắt đầu trong dải thành từng cú sập riêng.
-    //
-    // Hai ngày thuộc cùng một đợt khi chúng nằm liền nhau trong chuỗi giá, hoặc
-    // khi cùng đứng dưới MỘT đỉnh và cách nhau chưa tới một năm. Vế sau lo cảnh
-    // giá nảy lên nảy xuống quanh mép dải trong cùng một cú sập.
-    //
-    // Đỉnh là thứ tách các cú sập ra khỏi nhau: sang cú sập sau thì thị trường
-    // đã lập đỉnh mới, nên đỉnh khác đi và đợt tự tách. Cố ý KHÔNG dùng kỳ nắm
-    // giữ làm ngưỡng gộp. Đã từng làm vậy và sai: ở chế độ giữ thêm 2 năm,
-    // ngưỡng thành 42 tháng, mà đáy 2018 với đáy 2022 của Bitcoin chỉ cách nhau
-    // 38 tháng nên bị gộp thành một đợt, dù rõ ràng là hai cú sập khác nhau.
-    // Số cú sập là chuyện của lịch sử giá, không phụ thuộc người dùng định giữ
-    // bao lâu.
-    const MERGE_GAP_MS = 365 * 86400000
-    const pts = marks[bi]!.slice().sort((a, c) => a.idx - c.idx)
-    let crashes = 0
-    let prev: { idx: number; peak: number; time: number } | null = null
-    for (const p of pts) {
-      const contiguous = prev !== null && p.idx === prev.idx + 1
-      const sameCrash = prev !== null
-        && p.peak === prev.peak
-        && p.time - prev.time < MERGE_GAP_MS
-      if (!contiguous && !sameCrash) crashes++
-      prev = p
+  const usable = list.filter(s => s.lsGrowth > 0)
+  const wins = list.filter(s => s.diff > 0).length
+  const costs = usable.map(s => (s.dcaGrowth - s.lsGrowth) / s.lsGrowth * 100).sort((a, c) => a - c)
+  const ofCapital = usable.map(s => s.dcaGrowth - s.lsGrowth).sort((a, c) => a - c)
+  const lsEnds = usable.map(s => s.lsGrowth).sort((a, c) => a - c)
+  const dcaEnds = usable.map(s => s.dcaGrowth).sort((a, c) => a - c)
+
+  return {
+    scenarios: list.length,
+    episodes: episodeStarts.length,
+    episodeStarts,
+    lsWinRate: wins / list.length,
+    /** Tỷ lệ số lần mà đầu tư một lần vẫn đang lỗ vào ngày bán. */
+    lsLossRate: list.length > 0 ? list.filter(s => s.lsGrowth < 1).length / list.length : 0,
+    medianCost: costs.length > 0 ? median(costs) : null,
+    medianCostOfCapital: ofCapital.length > 0 ? median(ofCapital) : null,
+    medianLsGrowth: lsEnds.length > 0 ? median(lsEnds) : null,
+    medianDcaGrowth: dcaEnds.length > 0 ? median(dcaEnds) : null,
+  }
+}
+
+// ─── Kết quả theo thời gian đã trôi qua kể từ đỉnh ───────────────────────────
+
+/**
+ * Chỉ xét những lần vào lệnh khi giá đã rời đỉnh ít nhất chừng này.
+ *
+ * Cần lọc, nếu không thì nhóm "0-3 tháng sau đỉnh" toàn là những ngày thị
+ * trường đang lập đỉnh mới trong sóng tăng, tức không phải chuyện đang bàn.
+ * Chọn 10% vì đó là mức vừa đủ để gọi là đã rời đỉnh, mà vẫn còn cỡ mẫu cho
+ * quỹ Việt Nam. Lấy 30% thì E1VFVN30 rỗng mất hai nhóm đầu.
+ */
+export const MIN_DRAWDOWN_FOR_SINCE_PEAK = -0.20
+
+export interface SincePeakBand {
+  /** Số tháng tối thiểu kể từ đỉnh. */
+  from: number
+  /** Số tháng tối đa, 999 nghĩa là không giới hạn. */
+  to: number
+  label: string
+}
+
+export const SINCE_PEAK_BANDS: SincePeakBand[] = [
+  { from: 0, to: 3, label: 'Dưới 3 tháng' },
+  { from: 3, to: 6, label: '3 tới 6 tháng' },
+  { from: 6, to: 12, label: '6 tới 12 tháng' },
+  { from: 12, to: 18, label: '12 tới 18 tháng' },
+  { from: 18, to: 999, label: 'Trên 18 tháng' },
+]
+
+export interface SincePeakRow {
+  label: string
+  from: number
+  to: number
+  scenarios: number
+  episodes: number
+  episodeStarts: string[]
+  lsWinRate: number | null
+  lsLossRate: number | null
+  medianCost: number | null
+  medianCostOfCapital: number | null
+  medianLsGrowth: number | null
+  medianDcaGrowth: number | null
+}
+
+/**
+ * Ngày lập ra từng đỉnh chạy, để biết một ngày bất kỳ đã cách đỉnh bao lâu.
+ */
+function peakDateIndex(prices: PricePoint[]): Map<number, string> {
+  const result = new Map<number, string>()
+  let peak = 0
+  for (const p of prices) {
+    if (p.price > peak) {
+      peak = p.price
+      result.set(peak, p.date)
     }
+  }
+  return result
+}
 
-    // Ràng buộc thứ hai: dù đếm được bao nhiêu cú sập, các lần thử trong dải
-    // vẫn phải KHÔNG đè lên nhau mới tính là kiểm chứng riêng. Đếm tham lam:
-    // lấy một ngày rồi bỏ hết những ngày nằm trong cùng kỳ nắm giữ, lấy tiếp.
-    //
-    // Vì sao cần: chuỗi BTC dài 142 tháng, giữ 42 tháng thì cả lịch sử chỉ nhét
-    // vừa 3 quãng rời nhau. Nếu chỉ đếm cú sập, dải "-10 tới -20%" ra 19, vượt
-    // ngưỡng cảnh báo và hiện ra như đáng tin, trong khi 19 lần thử đó chồng
-    // lấn nhau gần hết. Cùng ý niệm với countIndependentWindows ở heatmap và
-    // bảng chi phí, để cả tab nói một giọng.
-    const holdMs = Math.max(1, holdingMonths) * 30.44 * 86400000
-    const times = pts.map(p => p.time).sort((a, c) => a - c)
-    let separated = 0
-    let lastTaken = -Infinity
-    for (const t of times) {
-      if (t - lastTaken >= holdMs) {
-        separated++
-        lastTaken = t
-      }
-    }
+/**
+ * Kết quả LS so với DCA, tách theo số tháng đã trôi qua kể từ đỉnh gần nhất.
+ *
+ * Vì sao cần bảng này bên cạnh bảng chia theo mức giảm: đo trên dữ liệu thật
+ * thì mức giảm là biến yếu, còn thời gian kể từ đỉnh là biến mạnh. Cùng dải
+ * "giảm 50 tới 60%" của Bitcoin, vào lệnh 2 tháng sau đỉnh thì một năm sau lỗ
+ * 61%, vào lệnh 29 tháng sau đỉnh thì lãi 430%. Cùng độ sâu, kết quả ngược nhau.
+ * Thứ tách hai kết quả đó ra là bear đã chạy được bao lâu.
+ */
+export function computeSincePeakBuckets(
+  alignedPrices: Map<string, PricePoint[]>,
+  slots: DCASlot[],
+  scenarios: LSvsDCAScenario[],
+  holdingMonths: number,
+): SincePeakRow[] {
+  const empty: SincePeakRow[] = SINCE_PEAK_BANDS.map(b => ({
+    label: b.label, from: b.from, to: b.to,
+    scenarios: 0, episodes: 0, episodeStarts: [], lsWinRate: null, lsLossRate: null,
+    medianCost: null, medianCostOfCapital: null,
+    medianLsGrowth: null, medianDcaGrowth: null,
+  }))
 
-    // Không dòng nào đáng tin hơn ràng buộc chặt hơn trong hai ràng buộc.
-    const episodes = Math.min(crashes, separated)
+  const validSlots = slots.filter(s => s.fundId && s.weight > 0)
+  if (validSlots.length === 0 || scenarios.length === 0) return empty
 
-    const usable = list.filter(s => s.lsGrowth > 0)
-    const wins = list.filter(s => s.diff > 0).length
-    const costs = usable.map(s => (s.dcaGrowth - s.lsGrowth) / s.lsGrowth * 100).sort((a, c) => a - c)
-    const ofCapital = usable.map(s => s.dcaGrowth - s.lsGrowth).sort((a, c) => a - c)
-    const lsEnds = usable.map(s => s.lsGrowth).sort((a, c) => a - c)
-    const dcaEnds = usable.map(s => s.dcaGrowth).sort((a, c) => a - c)
+  const prices = alignedPrices.get(validSlots[0]!.fundId)
+  if (!prices || prices.length === 0) return empty
 
-    return {
-      label: b.label,
-      from: b.from,
-      to: b.to,
-      scenarios: list.length,
-      episodes,
-      lsWinRate: wins / list.length,
-      medianCost: costs.length > 0 ? median(costs) : null,
-      medianCostOfCapital: ofCapital.length > 0 ? median(ofCapital) : null,
-      medianLsGrowth: lsEnds.length > 0 ? median(lsEnds) : null,
-      medianDcaGrowth: dcaEnds.length > 0 ? median(dcaEnds) : null,
-    }
+  const ddMap = drawdownFromRunningPeak(prices)
+  const peakDates = peakDateIndex(prices)
+
+  const grouped: LSvsDCAScenario[][] = SINCE_PEAK_BANDS.map(() => [])
+  for (const s of scenarios) {
+    const info = ddMap.get(s.startDate)
+    if (!info || info.drawdown > MIN_DRAWDOWN_FOR_SINCE_PEAK) continue
+    const pd = peakDates.get(info.peak)
+    if (!pd) continue
+    const months = (new Date(s.startDate).getTime() - new Date(pd).getTime()) / 86400000 / 30.44
+    const bi = SINCE_PEAK_BANDS.findIndex(b => months >= b.from && months < b.to)
+    if (bi < 0) continue
+    grouped[bi]!.push(s)
+  }
+
+  return SINCE_PEAK_BANDS.map((b, bi) => {
+    const list = grouped[bi]!
+    if (list.length === 0) return empty[bi]!
+    return { label: b.label, from: b.from, to: b.to, ...summarizeGroup(list, holdingMonths) }
   })
 }

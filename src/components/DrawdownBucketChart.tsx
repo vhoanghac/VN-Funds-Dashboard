@@ -3,6 +3,11 @@ import type { DrawdownBucketRow } from '../utils/lsVsDca'
 import { MIN_DRAWDOWN_EPISODES } from '../utils/lsVsDca'
 import { formatVND } from '../utils/vndFormat'
 
+/** "2015-01-14" thành "01/2015". */
+function fmtMonth(date: string): string {
+  return `${date.slice(5, 7)}/${date.slice(0, 4)}`
+}
+
 /** Một kiểu chọn ngày bán, kèm mốc so sánh tính trên đúng kỳ nắm giữ đó. */
 export interface DrawdownBucketView {
   rows: DrawdownBucketRow[]
@@ -127,9 +132,16 @@ function DrawdownBucketChartImpl({ views, totalCapital, dcaMonths }: Props) {
               className="holdcost-row"
               title={empty
                 ? 'Quỹ này chưa từng giảm tới mức đó'
-                : `${r.label}: đầu tư một lần về đích ${formatVND(r.medianLsGrowth! * totalCapital)}, DCA về đích ${formatVND(r.medianDcaGrowth! * totalCapital)}. ${r.scenarios} kịch bản, thuộc ${r.episodes} giai đoạn.`}
+                : `${r.label}: đầu tư một lần về đích ${formatVND(r.medianLsGrowth! * totalCapital)}, DCA về đích ${formatVND(r.medianDcaGrowth! * totalCapital)}.`}
             >
-              <div className="holdcost-label ddbucket-label">{r.label}</div>
+              <div className="holdcost-label ddbucket-label">
+                <span className="ddbucket-band">{r.label}</span>
+                {r.episodeStarts.length > 0 && (
+                  <span className="ddbucket-dates">
+                    {r.episodeStarts.map(fmtMonth).join(' · ')}
+                  </span>
+                )}
+              </div>
               <div className="holdcost-track">
                 <div className="holdcost-zero" />
                 {cost !== null && (
@@ -152,6 +164,8 @@ function DrawdownBucketChartImpl({ views, totalCapital, dcaMonths }: Props) {
                       <span className="holdcost-indep">
                         {(r.lsWinRate! * 100).toFixed(0)}% LS thắng
                         {' · '}
+                        {r.scenarios} kịch bản
+                        {' · '}
                         {thin && '⚠ '}{r.episodes} giai đoạn
                       </span>
                     </>
@@ -168,17 +182,23 @@ function DrawdownBucketChartImpl({ views, totalCapital, dcaMonths }: Props) {
 
       <div className="holdcost-note">
         <p>
-          Số kịch bản ở đây không nói lên được gì.{deepest && deepest.scenarios > 0 && (
-            <> Dòng <strong>{deepest.label.toLowerCase()}</strong> có{' '}
-            {deepest.scenarios} kịch bản, nghe như đã kiểm chứng rất kỹ, nhưng tất cả chỉ
-            thuộc về <strong>{deepest.episodes} giai đoạn</strong>.</>)} Thị trường sập
-          sâu là chuyện hiếm, nên gom cả lịch sử lại cũng chỉ được vài lần.
+          Để minh bạch số liệu, dưới mỗi dải giảm giá đều ghi rõ các tháng bắt đầu của từng
+          giai đoạn để bạn dễ dàng kiểm chứng.
         </p>
         <p>
-          Nghĩa là mỗi dòng ở đây, dù ghi hàng trăm kịch bản, thực chất chỉ kể lại vài câu
-          chuyện. Đổi một trong số đó đi thì con số bên cạnh đổi theo hẳn. Đây là chỗ khác
-          hẳn mấy khối trên: ở đó các lần thử ít ra còn rải suốt chiều dài lịch sử, còn ở đây
-          chúng dồn vào đúng mấy cú sập.
+          Cách tính rất đơn giản: Chọn tháng sớm nhất làm mốc, sau đó bỏ qua toàn bộ các
+          tháng nằm trong chu kỳ nắm giữ{' '}
+          {view.extraMonths > 0 ? dcaMonths + view.extraMonths : dcaMonths} tháng tiếp theo.
+          Tháng đầu tiên xuất hiện sau chu kỳ đó sẽ được chọn làm mốc mới, và cứ thế tiếp tục.
+        </p>
+        <p>
+          Bằng cách này, các giai đoạn sẽ hoàn toàn tách biệt về mặt thời gian. Điều này
+          giải thích vì sao số lượng giai đoạn luôn nhỏ hơn rất nhiều so với tổng số kịch
+          bản.{deepest && deepest.scenarios > 0 && (
+            <> Chẳng hạn, ở mức <strong>{deepest.label.toLowerCase()}</strong>, dù có đến{' '}
+            {deepest.scenarios} kịch bản nhưng thực tế chúng chỉ nằm trong{' '}
+            <strong>{deepest.episodes} giai đoạn</strong> độc lập.</>)} Hàng trăm kịch bản
+          kia đơn giản là do cùng một khoảng thời gian được đếm đi đếm lại.
         </p>
         <p>
           {solid.length === 0
@@ -188,6 +208,17 @@ function DrawdownBucketChartImpl({ views, totalCapital, dcaMonths }: Props) {
             : <>Chỉ <strong>{solid.length} trên {filled.length} dòng có số liệu</strong> đạt từ{' '}
               {MIN_DRAWDOWN_EPISODES} giai đoạn trở lên. Các dòng còn lại bị làm mờ kèm dấu ⚠.</>}
           {' '}Và ngay cả dòng đạt ngưỡng cũng chỉ là vài giai đoạn, không phải vài trăm.
+        </p>
+        <p>
+          <strong>Hai giai đoạn vẫn có thể cùng một đợt sập.</strong> Chúng không dùng chung
+          ngày nào, nhưng nếu cùng nằm trong một bear market thì cùng phụ thuộc một lần hồi
+          phục về sau.
+        </p>
+        <p>
+          Hãy hình dung hai thời điểm giá cùng giảm 50 - 60%. Nếu bạn mua vào, một năm sau
+          có thể bạn sẽ lỗ nặng, nhưng cũng có thể lãi gấp vài lần. Điều gì quyết định
+          chuyện này? Đó là khoảng thời gian kể từ khi giá tạo đỉnh, chứ không thuần túy là
+          độ sâu của nhịp giảm. Bạn có thể thấy rõ quy luật này ở khối dữ liệu bên dưới.
         </p>
         <p>
           <strong>Bảng này không nói lần sau sẽ ra sao.</strong> Nó chỉ kể lại mấy lần đã
