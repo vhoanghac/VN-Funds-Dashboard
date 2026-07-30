@@ -467,16 +467,48 @@ h1, h2, h3 {
 
 .holdcost-row {
   display: grid;
-  grid-template-columns: 56px 1fr 210px;
+  grid-template-columns: 150px 1fr 200px;
   align-items: center;
   gap: 10px;
 }
 
+/* Nhãn hai dòng: số năm tổng, và ngay dưới là cách tách ra thành quãng rải
+   với quãng giữ thêm. Ghi sẵn để người đọc khỏi phải nhẩm mốc tính từ đâu. */
 .holdcost-label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   text-align: right;
   color: var(--color-text-muted);
+}
+
+.holdcost-label-years {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.holdcost-label-breakdown {
+  font-size: 0.66rem;
+  line-height: 1.25;
+  opacity: 0.8;
+}
+
+/* Mobile: cột nhãn hẹp làm "rải 18 tháng + giữ 2 năm 6 tháng" vỡ thành năm
+   dòng. Xếp dọc hẳn, nhãn nằm ngang chiếm hết chiều rộng. */
+@media (max-width: 640px) {
+  .holdcost-row {
+    grid-template-columns: 1fr;
+    row-gap: 3px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .holdcost-label {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    text-align: left;
+  }
+  .holdcost-value { text-align: left; }
 }
 
 .holdcost-track {
@@ -547,6 +579,48 @@ h1, h2, h3 {
 }
 
 .holdcost-note p + p { margin-top: 8px; }
+
+/* ── Kết quả theo mức giảm từ đỉnh lúc vào lệnh ── */
+.ddbucket-baseline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+}
+
+.ddbucket-baseline-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.ddbucket-baseline-value {
+  font-size: 0.85rem;
+}
+
+/* Nhãn dải dài hơn nhãn "N năm" của bảng chi phí nên cần cột rộng hơn. */
+.ddbucket-rows .holdcost-row {
+  grid-template-columns: 132px 1fr 190px;
+}
+
+.ddbucket-label {
+  text-align: left;
+  font-weight: 500;
+}
+
+@media (max-width: 560px) {
+  .ddbucket-rows .holdcost-row {
+    grid-template-columns: 104px 1fr;
+    row-gap: 2px;
+  }
+  .ddbucket-rows .holdcost-value {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
 
 /* ── Bảng chi phí: nút đổi cách đếm mốc ── */
 .holdcost-modes {
@@ -676,12 +750,9 @@ h1, h2, h3 {
   margin-top: 2px;
 }
 
-@media (max-width: 640px) {
-  .holdcost-row {
-    grid-template-columns: 44px 1fr 140px;
-    gap: 6px;
-  }
-}
+/* Luật mobile của .holdcost-row nằm chung một chỗ ở gần định nghĩa gốc, đừng
+   thêm luật thứ hai ở đây. Trước có một luật 640px đặt lại grid ở đoạn này,
+   nó đứng sau nên đè mất luật kia và làm nhãn vỡ thành năm dòng. */
 
 /* Bảng lợi nhuận theo năm nhiệm kỳ tổng thống Mỹ */
 
@@ -3561,7 +3632,20 @@ h1, h2, h3 {
   margin-top: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+}
+
+/* Ba khối cuối tab dùng lại .perf-table-container mượn từ tab khác, nên lệch
+   khung với mấy thẻ còn lại: có viền, bo góc to hơn, padding trên dưới hẹp hơn.
+   Đồng bộ về đúng khung thẻ của tab này, và chỉ trong phạm vi tab này để không
+   đụng tới các tab đang dùng chung class đó.
+   Khoảng cách giữa các khối do `gap` ở trên lo hết, các component không tự đặt
+   margin-top riêng nữa, nếu không chỗ 24 chỗ 40. */
+.lsdca-results .perf-table-container {
+  margin-top: 0;
+  padding: 20px;
+  border: none;
+  border-radius: 8px;
 }
 
 .lsdca-window-info {

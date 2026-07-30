@@ -528,23 +528,24 @@ export interface HoldingCostCell {
   tooShort: boolean
 }
 
-export const COST_HOLDING_YEARS = [1, 2, 3, 5, 7, 10, 15, 20]
-
 /**
- * Mốc thời gian ở bảng chi phí đếm theo kiểu nào.
- *
- * `total`: tổng thời gian kể từ ngày bắt đầu. Mốc "1 năm" khi DCA 12 tháng
- * nghĩa là mua xong phát cuối rồi bán luôn, không giữ thêm ngày nào. Hợp với
- * người đã biết mình có bao nhiêu năm rồi cần tiền.
- *
- * `afterLast`: giữ thêm bao lâu SAU lần mua cuối. Mốc "1 năm" luôn mang đúng
- * một nghĩa dù DCA 3 tháng hay 36 tháng, và không mốc nào bị bỏ trống vì chưa
- * DCA xong. Hợp với người rải tiền xong rồi giữ dài hạn.
+ * Liên tục 1 tới 10 năm, rồi thưa dần. Mốc dày ở đoạn đầu vì đó là khoảng
+ * thời gian người ta thật sự cân nhắc, và vì mốc càng dài thì càng ít giai
+ * đoạn tách rời nên có chi tiết hơn cũng không nói thêm được gì.
  */
-export type HoldingCostMode = 'total' | 'afterLast'
+export const COST_HOLDING_YEARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
 
 /**
  * Chi phí trung vị của việc rải tiền, đo ở từng mốc thời gian nắm giữ.
+ *
+ * Mốc là TỔNG thời gian kể từ ngày xuống tiền đầu tiên, gồm luôn cả quãng
+ * đang rải. Nên mốc 3 năm với kỳ DCA 12 tháng nghĩa là rải 12 tháng rồi giữ
+ * thêm 24 tháng nữa mới bán.
+ *
+ * Từng có thêm kiểu đếm thứ hai, tính từ lần mua cuối trở đi, chuyển qua
+ * lại bằng nút. Đã bỏ: cả hai chỉ là một đường cong duy nhất được lấy mẫu ở
+ * những điểm khác nhau, mà lại buộc người đọc giữ hai mô hình trong đầu. Giờ
+ * mỗi dòng tự ghi rõ cách phân tách, khỏi cần đoán mốc tính từ đâu.
  */
 export function computeHoldingCost(
   alignedPrices: Map<string, PricePoint[]>,
@@ -554,11 +555,10 @@ export function computeHoldingCost(
   cashMode: CashMode,
   cashSavingsRate: number,
   cashFundPrices: PricePoint[] | null,
-  mode: HoldingCostMode = 'total',
 ): HoldingCostCell[] {
   const spanMonths = alignedSpanMonths(alignedPrices, slots)
   return COST_HOLDING_YEARS.map(hy => {
-    const holdingMonths = mode === 'afterLast' ? dcaMonths + hy * 12 : hy * 12
+    const holdingMonths = hy * 12
     const independent = countIndependentWindows(spanMonths, holdingMonths)
     const empty = {
       holdingYears: hy, medianCost: null, medianCostOfCapital: null,
@@ -675,4 +675,218 @@ export function buildHistogram(
     })
   }
   return buckets
+}
+
+// ─── Kết quả theo mức giảm từ đỉnh lúc vào lệnh ──────────────────────────────
+
+export interface DrawdownBand {
+  /** Mức sâu hơn của dải, ví dụ -0.5. Dải cuối để -1 nghĩa là không đáy. */
+  from: number
+  /** Mức nông hơn của dải, ví dụ -0.4. Dải đầu để 0. */
+  to: number
+  label: string
+}
+
+/**
+ * Dải rời nhau, không chồng lên nhau. Cố ý không làm kiểu "giảm ít nhất 30%"
+ * vì kiểu đó khiến mọi tháng ở mức -60% nằm luôn trong dòng -30%, các dòng đè
+ * lên nhau và không so với nhau được.
+ */
+export const DRAWDOWN_BANDS: DrawdownBand[] = [
+  { from: -0.10, to: 0.00, label: 'Sát đỉnh (0 tới −10%)' },
+  { from: -0.20, to: -0.10, label: '−10 tới −20%' },
+  { from: -0.30, to: -0.20, label: '−20 tới −30%' },
+  { from: -0.40, to: -0.30, label: '−30 tới −40%' },
+  { from: -0.50, to: -0.40, label: '−40 tới −50%' },
+  { from: -0.60, to: -0.50, label: '−50 tới −60%' },
+  { from: -1.00, to: -0.60, label: 'Dưới −60%' },
+]
+
+export interface DrawdownBucketRow {
+  label: string
+  from: number
+  to: number
+  /** Số kịch bản có ngày bắt đầu rơi vào dải này. */
+  scenarios: number
+  /**
+   * Số lần kiểm chứng thật sự riêng biệt mà đám kịch bản trên rút gọn lại.
+   *
+   * Chặn bởi HAI ràng buộc, lấy cái nhỏ hơn: số cú sập tách rời, và số lần thử
+   * không đè lên nhau trong cùng kỳ nắm giữ.
+   *
+   * Đây mới là con số đáng tin, và nó thường nhỏ đến giật mình. Với Bitcoin,
+   * mức dưới -60% có tới 735 điểm dữ liệu nhưng chỉ thuộc về 3 đợt sập. Đếm
+   * 735 thành 735 lần kiểm chứng là tự lừa mình: cả 735 điểm đó chỉ nói về
+   * chuyện đã xảy ra 3 lần.
+   */
+  episodes: number
+  lsWinRate: number | null
+  medianCost: number | null
+  medianCostOfCapital: number | null
+  medianLsGrowth: number | null
+  medianDcaGrowth: number | null
+}
+
+/** Dưới ngưỡng này thì số đợt quá ít để nói gì cho chắc. */
+export const MIN_DRAWDOWN_EPISODES = 3
+
+/**
+ * Mức giảm so với đỉnh cao nhất TÍNH TỚI ĐÚNG NGÀY ĐÓ, cho từng ngày.
+ *
+ * Dùng đỉnh chạy (running max) chứ không phải đỉnh của cả chuỗi. Lấy đỉnh cả
+ * chuỗi là nhìn trộm tương lai: ngày 1/2015 không thể biết đỉnh 2021 ở đâu.
+ * Với tài sản theo chu kỳ như Bitcoin, đỉnh chạy tự nó chính là đỉnh chu kỳ
+ * gần nhất, vì qua đỉnh rồi thì mức cao nhất quá khứ đứng yên tới lúc lập
+ * đỉnh mới.
+ */
+export function drawdownFromRunningPeak(
+  prices: PricePoint[],
+): Map<string, { drawdown: number; peak: number }> {
+  const result = new Map<string, { drawdown: number; peak: number }>()
+  let peak = 0
+  for (const p of prices) {
+    if (p.price > peak) peak = p.price
+    result.set(p.date, {
+      drawdown: peak > 0 ? p.price / peak - 1 : 0,
+      peak,
+    })
+  }
+  return result
+}
+
+/** Dải chứa mức giảm này, hoặc -1 nếu không dải nào chứa. */
+function bandIndexOf(drawdown: number): number {
+  for (let i = 0; i < DRAWDOWN_BANDS.length; i++) {
+    const b = DRAWDOWN_BANDS[i]!
+    // Cận trên đóng, cận dưới mở, để không đếm trùng ở đúng mốc tròn.
+    if (drawdown <= b.to && drawdown > b.from) return i
+  }
+  // Đúng đáy tuyệt đối (-100%) thì cho vào dải cuối.
+  return drawdown <= DRAWDOWN_BANDS[DRAWDOWN_BANDS.length - 1]!.to
+    ? DRAWDOWN_BANDS.length - 1
+    : -1
+}
+
+/**
+ * Kết quả LS so với DCA, tách theo mức giảm từ đỉnh tại ngày bắt đầu.
+ *
+ * Nhận thẳng mảng kịch bản đã tính sẵn thay vì tự chạy lại, để khối này dùng
+ * đúng bộ kịch bản với khối tóm tắt và histogram. Nhờ vậy dòng "mọi tháng"
+ * cộng lại phải bằng con số tổng ở trên, và test khoá chuyện đó.
+ */
+export function computeDrawdownBuckets(
+  alignedPrices: Map<string, PricePoint[]>,
+  slots: DCASlot[],
+  scenarios: LSvsDCAScenario[],
+  holdingMonths: number,
+): DrawdownBucketRow[] {
+  const empty = DRAWDOWN_BANDS.map(b => ({
+    label: b.label, from: b.from, to: b.to,
+    scenarios: 0, episodes: 0, lsWinRate: null,
+    medianCost: null, medianCostOfCapital: null,
+    medianLsGrowth: null, medianDcaGrowth: null,
+  }))
+
+  const validSlots = slots.filter(s => s.fundId && s.weight > 0)
+  if (validSlots.length === 0 || scenarios.length === 0) return empty
+
+  // Mức giảm đo trên chính chuỗi giá đang phân tích. Danh mục nhiều quỹ thì
+  // lấy quỹ đầu làm đại diện, vì "đỉnh của danh mục" cần dựng lại đường giá
+  // có tái cân bằng, mà tab này cố ý không tái cân bằng.
+  const prices = alignedPrices.get(validSlots[0]!.fundId)
+  if (!prices || prices.length === 0) return empty
+  const ddMap = drawdownFromRunningPeak(prices)
+
+  // Vị trí từng ngày trong chuỗi, để biết hai ngày có liền nhau hay không.
+  const indexOfDate = new Map<string, number>()
+  for (let i = 0; i < prices.length; i++) indexOfDate.set(prices[i]!.date, i)
+
+  const grouped: LSvsDCAScenario[][] = DRAWDOWN_BANDS.map(() => [])
+  const marks: { idx: number; peak: number; time: number }[][] = DRAWDOWN_BANDS.map(() => [])
+
+  for (const s of scenarios) {
+    const info = ddMap.get(s.startDate)
+    const idx = indexOfDate.get(s.startDate)
+    if (!info || idx === undefined) continue
+    const bi = bandIndexOf(info.drawdown)
+    if (bi < 0) continue
+    grouped[bi]!.push(s)
+    marks[bi]!.push({ idx, peak: info.peak, time: new Date(s.startDate).getTime() })
+  }
+
+  return DRAWDOWN_BANDS.map((b, bi) => {
+    const list = grouped[bi]!
+    if (list.length === 0) {
+      return { ...empty[bi]!, scenarios: 0, episodes: 0 }
+    }
+
+    // Đếm đợt: gom các ngày bắt đầu trong dải thành từng cú sập riêng.
+    //
+    // Hai ngày thuộc cùng một đợt khi chúng nằm liền nhau trong chuỗi giá, hoặc
+    // khi cùng đứng dưới MỘT đỉnh và cách nhau chưa tới một năm. Vế sau lo cảnh
+    // giá nảy lên nảy xuống quanh mép dải trong cùng một cú sập.
+    //
+    // Đỉnh là thứ tách các cú sập ra khỏi nhau: sang cú sập sau thì thị trường
+    // đã lập đỉnh mới, nên đỉnh khác đi và đợt tự tách. Cố ý KHÔNG dùng kỳ nắm
+    // giữ làm ngưỡng gộp. Đã từng làm vậy và sai: ở chế độ giữ thêm 2 năm,
+    // ngưỡng thành 42 tháng, mà đáy 2018 với đáy 2022 của Bitcoin chỉ cách nhau
+    // 38 tháng nên bị gộp thành một đợt, dù rõ ràng là hai cú sập khác nhau.
+    // Số cú sập là chuyện của lịch sử giá, không phụ thuộc người dùng định giữ
+    // bao lâu.
+    const MERGE_GAP_MS = 365 * 86400000
+    const pts = marks[bi]!.slice().sort((a, c) => a.idx - c.idx)
+    let crashes = 0
+    let prev: { idx: number; peak: number; time: number } | null = null
+    for (const p of pts) {
+      const contiguous = prev !== null && p.idx === prev.idx + 1
+      const sameCrash = prev !== null
+        && p.peak === prev.peak
+        && p.time - prev.time < MERGE_GAP_MS
+      if (!contiguous && !sameCrash) crashes++
+      prev = p
+    }
+
+    // Ràng buộc thứ hai: dù đếm được bao nhiêu cú sập, các lần thử trong dải
+    // vẫn phải KHÔNG đè lên nhau mới tính là kiểm chứng riêng. Đếm tham lam:
+    // lấy một ngày rồi bỏ hết những ngày nằm trong cùng kỳ nắm giữ, lấy tiếp.
+    //
+    // Vì sao cần: chuỗi BTC dài 142 tháng, giữ 42 tháng thì cả lịch sử chỉ nhét
+    // vừa 3 quãng rời nhau. Nếu chỉ đếm cú sập, dải "-10 tới -20%" ra 19, vượt
+    // ngưỡng cảnh báo và hiện ra như đáng tin, trong khi 19 lần thử đó chồng
+    // lấn nhau gần hết. Cùng ý niệm với countIndependentWindows ở heatmap và
+    // bảng chi phí, để cả tab nói một giọng.
+    const holdMs = Math.max(1, holdingMonths) * 30.44 * 86400000
+    const times = pts.map(p => p.time).sort((a, c) => a - c)
+    let separated = 0
+    let lastTaken = -Infinity
+    for (const t of times) {
+      if (t - lastTaken >= holdMs) {
+        separated++
+        lastTaken = t
+      }
+    }
+
+    // Không dòng nào đáng tin hơn ràng buộc chặt hơn trong hai ràng buộc.
+    const episodes = Math.min(crashes, separated)
+
+    const usable = list.filter(s => s.lsGrowth > 0)
+    const wins = list.filter(s => s.diff > 0).length
+    const costs = usable.map(s => (s.dcaGrowth - s.lsGrowth) / s.lsGrowth * 100).sort((a, c) => a - c)
+    const ofCapital = usable.map(s => s.dcaGrowth - s.lsGrowth).sort((a, c) => a - c)
+    const lsEnds = usable.map(s => s.lsGrowth).sort((a, c) => a - c)
+    const dcaEnds = usable.map(s => s.dcaGrowth).sort((a, c) => a - c)
+
+    return {
+      label: b.label,
+      from: b.from,
+      to: b.to,
+      scenarios: list.length,
+      episodes,
+      lsWinRate: wins / list.length,
+      medianCost: costs.length > 0 ? median(costs) : null,
+      medianCostOfCapital: ofCapital.length > 0 ? median(ofCapital) : null,
+      medianLsGrowth: lsEnds.length > 0 ? median(lsEnds) : null,
+      medianDcaGrowth: dcaEnds.length > 0 ? median(dcaEnds) : null,
+    }
+  })
 }

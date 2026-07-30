@@ -61,7 +61,7 @@ function ScenarioPathChartImpl({
   ]
 
   return (
-    <div className="perf-table-container" style={{ marginTop: 24 }}>
+    <div className="perf-table-container">
       <div className="chart-header">
         <h3>Bắt đầu đúng vào một tháng thì khoản đầu tư sẽ ra sao?</h3>
         <span

@@ -21,6 +21,7 @@ import {
   computeHeatmap,
   computeHoldingCost,
   computeScenarioPath,
+  computeDrawdownBuckets,
   MIN_INDEPENDENT_WINDOWS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
@@ -33,6 +34,7 @@ import {
   type LSvsDCAScenario,
 } from '../utils/lsVsDca'
 import { ScenarioPathChart } from './ScenarioPathChart'
+import { DrawdownBucketChart, type DrawdownBucketView } from './DrawdownBucketChart'
 import {
   PortfolioCard,
   portfolioSelectStyles,
@@ -302,7 +304,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     compareFundName: string | null
     effectiveWindow: string
     holdingCost: HoldingCostCell[]
-    holdingCostAfterLast: HoldingCostCell[]
+    drawdownViews: DrawdownBucketView[]
     dcaMonths: number
     totalCapital: number
     scenarios: LSvsDCAScenario[]
@@ -358,15 +360,38 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       aligned, validSlots, committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
     )
 
-    // Tính sẵn cả hai cách đếm mốc, để bấm nút chuyển không phải tính lại.
     const holdingCost = computeHoldingCost(
       aligned, validSlots, committed.horizonMonths,
-      committed.freq, cm, committed.cashSavingsRate, cashFundPrices, 'total',
+      committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
     )
-    const holdingCostAfterLast = computeHoldingCost(
-      aligned, validSlots, committed.horizonMonths,
-      committed.freq, cm, committed.cashSavingsRate, cashFundPrices, 'afterLast',
-    )
+
+    /**
+     * Bảng chia theo mức giảm từ đỉnh, cho một kỳ nắm giữ cụ thể.
+     *
+     * Mốc so sánh phải tính lại theo đúng kỳ nắm giữ đó, không mượn con số của
+     * kỳ khác, nếu không dòng mốc nói một đằng còn các dải nói một nẻo.
+     */
+    function bucketView(holdingMonths: number, reuse?: typeof scenarios) {
+      const scen = reuse ?? computeRollingScenarios(
+        aligned, validSlots, committed!.totalCapital, committed!.horizonMonths,
+        committed!.freq, cm, committed!.cashSavingsRate, cashFundPrices, holdingMonths,
+      )
+      const sum = summarizeScenarios(scen)
+      return {
+        rows: computeDrawdownBuckets(aligned, validSlots, scen, holdingMonths),
+        baselineWinRate: sum?.lsWinRate ?? 0,
+        baselineCostOfCapital: sum ? -sum.medianDiff : 0,
+        totalScenarios: scen.length,
+        extraMonths: holdingMonths - committed!.horizonMonths,
+      }
+    }
+
+    // Kỳ "bán ngay" trùng đúng bộ kịch bản của khối tóm tắt, dùng lại cho khỏi tính hai lần.
+    const drawdownViews = [
+      bucketView(committed.horizonMonths, scenarios),
+      bucketView(committed.horizonMonths + 12),
+      bucketView(committed.horizonMonths + 24),
+    ]
 
     // Heatmap for comparison fund (if selected)
     let heatmap2: HeatmapCell[][] | null = null
@@ -392,7 +417,8 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
     return {
       summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
-      holdingCost, holdingCostAfterLast, dcaMonths: committed.horizonMonths,
+      drawdownViews,
+      holdingCost, dcaMonths: committed.horizonMonths,
       totalCapital: committed.totalCapital,
       scenarios,
       pathInputs: { aligned, validSlots, cashFundPrices },
@@ -875,7 +901,6 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
           <HoldingCostChart
             data={results.holdingCost}
-            dataAfterLast={results.holdingCostAfterLast}
             dcaMonths={results.dcaMonths}
             totalCapital={results.totalCapital}
           />
@@ -933,6 +958,12 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          <DrawdownBucketChart
+            views={results.drawdownViews}
+            totalCapital={results.totalCapital}
+            dcaMonths={results.dcaMonths}
+          />
         </div>
       )}
 

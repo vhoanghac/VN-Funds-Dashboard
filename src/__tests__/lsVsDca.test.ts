@@ -9,6 +9,9 @@ import {
   alignedSpanMonths,
   computeHoldingCost,
   computeScenarioPath,
+  computeDrawdownBuckets,
+  drawdownFromRunningPeak,
+  DRAWDOWN_BANDS,
   COST_HOLDING_YEARS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
@@ -826,74 +829,222 @@ describe('computeScenarioPath', () => {
   })
 })
 
-// ─── computeHoldingCost, hai cách đếm mốc ────────────────────────────────────
+// ─── computeHoldingCost, dãy mốc và cách đếm ─────────────────────────────────
 
-describe('computeHoldingCost, chế độ giữ thêm sau lần mua cuối', () => {
+describe('computeHoldingCost, mốc là tổng thời gian', () => {
   const n = 60 * 8
   const dates = makeDates('2005-01-05', n)
   const rising = makePrices(dates, linearPrices(100, 300, n))
 
-  it('mặc định vẫn là chế độ đếm tổng thời gian', () => {
-    const implicit = computeHoldingCost(
+  it('có đủ mốc liên tục từ 1 tới 10 năm, rồi 15 và 20', () => {
+    expect(COST_HOLDING_YEARS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20])
+    const cost = computeHoldingCost(
       singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
     )
-    const explicit = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'total',
-    )
-    expect(implicit).toEqual(explicit)
+    expect(cost.map(c => c.holdingYears)).toEqual(COST_HOLDING_YEARS)
   })
 
-  // Đây là ràng buộc định nghĩa: giữ thêm N năm sau khi DCA xong 12 tháng
-  // bằng đúng tổng thời gian N+1 năm kể từ ngày bắt đầu.
-  it('DCA 12 tháng: mốc "N năm" của chế độ mới trùng mốc "N+1 năm" của chế độ cũ', () => {
-    const total = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'total',
+  // Ràng buộc định nghĩa: mốc đếm từ ngày ĐẦU, không phải từ lần mua cuối.
+  // Nên mốc N năm luôn là đúng N*12 tháng bất kể kỳ DCA dài bao nhiêu.
+  it('mốc N năm luôn là N*12 tháng, không đổi theo kỳ DCA', () => {
+    const dca6 = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 6, 'monthly', 'flat', 0, null,
     )
-    const after = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'afterLast',
+    const dca24 = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 24, 'monthly', 'flat', 0, null,
     )
-    for (const hy of [1, 2]) {
-      const a = after.find(c => c.holdingYears === hy)!
-      const t = total.find(c => c.holdingYears === hy + 1)!
-      expect(a.medianCost).toBeCloseTo(t.medianCost!, 9)
-      expect(a.medianCostOfCapital).toBeCloseTo(t.medianCostOfCapital!, 9)
-      expect(a.scenarios).toBe(t.scenarios)
-      expect(a.independentWindows).toBe(t.independentWindows)
+    // Cùng mốc 5 năm thì cùng độ dài cửa sổ, nên cùng số giai đoạn tách rời,
+    // dù kỳ DCA khác nhau. Nếu mốc tính từ lần mua cuối thì hai số này đã lệch.
+    const a = dca6.find(c => c.holdingYears === 5)!
+    const b = dca24.find(c => c.holdingYears === 5)!
+    expect(a.independentWindows).toBe(b.independentWindows)
+  })
+
+  it('mốc ngắn hơn kỳ DCA thì bỏ trống vì chưa rải xong', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null,
+    )
+    expect(cost.find(c => c.holdingYears === 1)!.tooShort).toBe(true)
+    expect(cost.find(c => c.holdingYears === 2)!.tooShort).toBe(true)
+    expect(cost.find(c => c.holdingYears === 3)!.tooShort).toBe(false)
+  })
+
+  it('mốc dài hơn thì số giai đoạn tách rời giảm dần, không tăng', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    for (let i = 1; i < cost.length; i++) {
+      expect(cost[i]!.independentWindows).toBeLessThanOrEqual(cost[i - 1]!.independentWindows)
+    }
+  })
+})
+
+// ─── computeDrawdownBuckets ──────────────────────────────────────────────────
+
+describe('drawdownFromRunningPeak', () => {
+  it('dùng đỉnh tính tới đúng ngày đó, không nhìn trộm đỉnh tương lai', () => {
+    const dates = makeDates('2020-01-06', 5)
+    // Giá lên 100 → 200, sụt về 100, rồi vọt lên 400.
+    const prices = makePrices(dates, [100, 200, 100, 150, 400])
+    const dd = drawdownFromRunningPeak(prices)
+    // Ngày thứ 3 giảm 50% so với đỉnh 200 lúc đó, KHÔNG phải 75% so với đỉnh 400 sau này.
+    expect(dd.get(dates[2]!)!.drawdown).toBeCloseTo(-0.5, 9)
+    expect(dd.get(dates[2]!)!.peak).toBe(200)
+    // Ngày lập đỉnh mới thì mức giảm bằng 0.
+    expect(dd.get(dates[4]!)!.drawdown).toBeCloseTo(0, 9)
+    expect(dd.get(dates[0]!)!.drawdown).toBeCloseTo(0, 9)
+  })
+
+  it('đỉnh không bao giờ giảm khi đi dọc chuỗi', () => {
+    const dates = makeDates('2020-01-06', 40)
+    const prices = makePrices(dates, Array.from({ length: 40 }, (_, i) => 100 + 50 * Math.sin(i / 3)))
+    const dd = drawdownFromRunningPeak(prices)
+    let last = 0
+    for (const d of dates) {
+      const peak = dd.get(d)!.peak
+      expect(peak).toBeGreaterThanOrEqual(last)
+      last = peak
+    }
+  })
+})
+
+describe('computeDrawdownBuckets', () => {
+  const n = 52 * 12
+  const dates = makeDates('2010-01-01', n)
+  // Hai chu kỳ tăng rồi sập sâu, để có đợt sụt giảm thật sự tách rời nhau.
+  const cyclical = makePrices(dates, Array.from({ length: n }, (_, i) => {
+    const cycle = Math.floor(i / (n / 2))
+    const t = (i % (n / 2)) / (n / 2)
+    const base = 100 * Math.pow(2, cycle)
+    return base * (t < 0.5 ? 1 + 2.4 * t : 2.2 - 2.6 * (t - 0.5))
+  }))
+
+  const scen = computeRollingScenarios(
+    singleFundMap('A', cyclical), singleSlot('A'), 1e8, 12, 'monthly', 'flat', 0, null,
+  )
+
+  it('trả về đúng một dòng cho mỗi dải', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    expect(rows.map(r => r.label)).toEqual(DRAWDOWN_BANDS.map(b => b.label))
+  })
+
+  // Các dải rời nhau nên tổng phải khớp, không được đếm trùng hay bỏ sót.
+  it('mỗi kịch bản vào đúng một dải, tổng bằng tổng số kịch bản', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    const sum = rows.reduce((a, r) => a + r.scenarios, 0)
+    expect(sum).toBe(scen.length)
+  })
+
+  it('số đợt luôn nhỏ hơn hẳn số kịch bản ở dải có dữ liệu', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    const filled = rows.filter(r => r.scenarios > 20)
+    expect(filled.length).toBeGreaterThan(0)
+    for (const r of filled) {
+      expect(r.episodes).toBeGreaterThan(0)
+      expect(r.episodes).toBeLessThan(r.scenarios)
     }
   })
 
-  it('không mốc nào bị bỏ trống vì chưa DCA xong, kể cả khi DCA 36 tháng', () => {
-    const after = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null, 'afterLast',
-    )
-    expect(after.every(c => c.tooShort === false)).toBe(true)
-
-    // Chế độ cũ thì hai mốc đầu chết trống, đó chính là lý do có chế độ mới.
-    const total = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null, 'total',
-    )
-    expect(total.find(c => c.holdingYears === 1)!.tooShort).toBe(true)
-    expect(total.find(c => c.holdingYears === 2)!.tooShort).toBe(true)
+  it('hai chu kỳ sập giống nhau thì dải sâu ghi nhận 2 đợt', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    const deep = rows.filter(r => r.to <= -0.3 && r.scenarios > 0)
+    expect(deep.length).toBeGreaterThan(0)
+    for (const r of deep) {
+      expect(r.episodes).toBeLessThanOrEqual(2)
+    }
   })
 
-  it('DCA càng dài thì cùng một mốc càng cần nhiều dữ liệu, số giai đoạn tách rời giảm', () => {
-    const short = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 3, 'monthly', 'flat', 0, null, 'afterLast',
+  it('dải không có tháng nào thì để trống, không bịa số', () => {
+    const flat = makePrices(dates, flatPrices(100, n))
+    const flatScen = computeRollingScenarios(
+      singleFundMap('A', flat), singleSlot('A'), 1e8, 12, 'monthly', 'flat', 0, null,
     )
-    const long = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 36, 'monthly', 'flat', 0, null, 'afterLast',
-    )
-    const s = short.find(c => c.holdingYears === 1)!
-    const l = long.find(c => c.holdingYears === 1)!
-    expect(l.independentWindows).toBeLessThan(s.independentWindows)
+    const rows = computeDrawdownBuckets(singleFundMap('A', flat), singleSlot('A'), flatScen, 12)
+    // Giá phẳng thì luôn sát đỉnh, mọi dải sâu đều rỗng.
+    for (const r of rows.filter(x => x.to <= -0.1)) {
+      expect(r.scenarios).toBe(0)
+      expect(r.episodes).toBe(0)
+      expect(r.lsWinRate).toBeNull()
+      expect(r.medianCost).toBeNull()
+    }
+    expect(rows[0]!.scenarios).toBe(flatScen.length)
   })
 
-  it('thị trường đi lên thì chế độ mới vẫn cho chi phí âm', () => {
-    const after = computeHoldingCost(
-      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null, 'afterLast',
+  it('trả về mọi dải rỗng khi không có kịch bản hoặc không có slot', () => {
+    expect(computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), [], 12)
+      .every(r => r.scenarios === 0)).toBe(true)
+    expect(computeDrawdownBuckets(singleFundMap('A', cyclical), [], scen, 12)
+      .every(r => r.scenarios === 0)).toBe(true)
+  })
+
+  // Lỗi đã mắc: gộp đợt theo đỉnh chung khiến đợt tăng TRƯỚC cú sập và đợt hồi
+  // phục SAU cú sập dính làm một, vì cả hai cùng đứng dưới một đỉnh cũ.
+  it('hai lần vào dải cách nhau nhiều năm là hai đợt, không gộp làm một', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    const nearPeak = rows[0]!
+    expect(nearPeak.scenarios).toBeGreaterThan(50)
+    // Chuỗi có 2 chu kỳ nên vùng sát đỉnh phải xuất hiện ít nhất 2 lần tách rời.
+    expect(nearPeak.episodes).toBeGreaterThanOrEqual(2)
+  })
+
+  // Lỗi đã mắc: lấy kỳ nắm giữ làm ngưỡng gộp đợt. Ở chế độ giữ thêm 2 năm,
+  // ngưỡng thành 42 tháng, mà đáy 2018 với đáy 2022 của Bitcoin cách nhau 38
+  // tháng nên bị gộp thành một đợt. Số cú sập phải là chuyện của lịch sử giá,
+  // không đổi theo việc người dùng định giữ bao lâu.
+  it('hai bear market dài, cách nhau ngắn hơn kỳ nắm giữ, vẫn là hai đợt', () => {
+    // Dựng giống Bitcoin: sập rồi NẰM SÂU nhiều năm chứ không hồi ngay.
+    // Bear 1 kéo từ năm 2 tới năm 4, bear 2 từ năm 6 tới năm 8, tức đáy nọ
+    // cách đáy kia 2 năm, ngắn hơn kỳ nắm giữ 42 tháng.
+    //
+    // Cách đếm cũ đo khoảng cách tới NGÀY LIỀN TRƯỚC nên chuỗi ngày sát nhau
+    // trong cùng một bear nối dài mãi, rồi nối luôn sang bear sau vì 2 năm
+    // ngắn hơn 3,5 năm. Kết quả gộp cả hai thành 1 đợt. Cách mới đo từ ngày
+    // đã CHỌN nên không bị nối kiểu đó.
+    const n = 52 * 11
+    const d = makeDates('2010-01-01', n)
+    const px = makePrices(d, Array.from({ length: n }, (_, i) => {
+      const yr = i / 52
+      if (yr < 2) return 100 + 50 * yr              // lên, đỉnh 200
+      if (yr < 2.5) return 200 - 150 * (yr - 2)     // sập còn 125
+      if (yr < 4) return 125                        // nằm sâu, dưới -35%
+      if (yr < 5.5) return 125 + 90 * (yr - 4)      // hồi, đỉnh mới 260
+      if (yr < 6) return 260 - 200 * (yr - 5.5)     // sập lần hai còn 160
+      if (yr < 8) return 160                        // lại nằm sâu, dưới -38%
+      return 160 + 40 * (yr - 8)
+    }))
+    const s = computeRollingScenarios(
+      singleFundMap('A', px), singleSlot('A'), 1e8, 12, 'monthly', 'flat', 0, null, 42,
     )
-    const measured = after.filter(c => c.medianCost !== null)
-    expect(measured.length).toBeGreaterThan(0)
-    expect(measured.every(c => c.medianCost! < 0)).toBe(true)
+    const rows = computeDrawdownBuckets(singleFundMap('A', px), singleSlot('A'), s, 42)
+    const deep = rows.filter(r => r.to <= -0.3 && r.scenarios > 0)
+    expect(deep.length).toBeGreaterThan(0)
+    expect(Math.max(...deep.map(r => r.episodes))).toBe(2)
+  })
+
+  // Chốt ràng buộc thứ hai: số đợt không được vượt số quãng không đè lên nhau
+  // mà cả chuỗi chứa nổi, tức đúng con số countIndependentWindows dùng ở
+  // heatmap và bảng chi phí. Trước đây dải nông của BTC báo 19 đợt trong khi
+  // cả lịch sử chỉ nhét vừa 3 quãng 42 tháng.
+  it('số đợt không vượt quá số quãng không đè nhau mà cả chuỗi chứa nổi', () => {
+    for (const hold of [12, 24, 42]) {
+      const s = computeRollingScenarios(
+        singleFundMap('A', cyclical), singleSlot('A'), 1e8, 12, 'monthly', 'flat', 0, null, hold,
+      )
+      const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), s, hold)
+      const ceiling = countIndependentWindows(
+        alignedSpanMonths(singleFundMap('A', cyclical), singleSlot('A')), hold,
+      )
+      for (const r of rows) {
+        expect(r.episodes).toBeLessThanOrEqual(ceiling)
+      }
+    }
+  })
+
+  it('tỷ lệ LS thắng nằm trong khoảng 0 tới 1', () => {
+    const rows = computeDrawdownBuckets(singleFundMap('A', cyclical), singleSlot('A'), scen, 12)
+    for (const r of rows.filter(x => x.lsWinRate !== null)) {
+      expect(r.lsWinRate!).toBeGreaterThanOrEqual(0)
+      expect(r.lsWinRate!).toBeLessThanOrEqual(1)
+    }
   })
 })
