@@ -20,6 +20,7 @@ import {
   buildHistogram,
   computeHeatmap,
   computeHoldingCost,
+  computeScenarioPath,
   MIN_INDEPENDENT_WINDOWS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
@@ -29,7 +30,9 @@ import {
   type HistogramBucket,
   type HeatmapCell,
   type HoldingCostCell,
+  type LSvsDCAScenario,
 } from '../utils/lsVsDca'
+import { ScenarioPathChart } from './ScenarioPathChart'
 import {
   PortfolioCard,
   portfolioSelectStyles,
@@ -301,6 +304,13 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
     holdingCost: HoldingCostCell[]
     dcaMonths: number
     totalCapital: number
+    scenarios: LSvsDCAScenario[]
+    /** Đầu vào để vẽ lại đường đi của một kịch bản, giữ nguyên bản chụp. */
+    pathInputs: {
+      aligned: Map<string, PricePoint[]>
+      validSlots: DCASlot[]
+      cashFundPrices: PricePoint[] | null
+    }
   } | null>(() => {
     if (!committed) return null
     const {
@@ -378,10 +388,49 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
       holdingCost, dcaMonths: committed.horizonMonths,
       totalCapital: committed.totalCapital,
+      scenarios,
+      pathInputs: { aligned, validSlots, cashFundPrices },
     }
     // Cố ý CHỈ phụ thuộc `committed`. Bản chụp dữ liệu nằm sẵn trong đó, nên đổi
     // quỹ hay tải quỹ mới về đều không kéo theo tính lại.
   }, [committed]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Một kịch bản cụ thể ──
+  /** null nghĩa là chưa chọn tay, lấy tháng nằm giữa làm mặc định. */
+  const [selectedStart, setSelectedStart] = useState<string | null>(null)
+
+  // Chạy lại phân tích thì tháng đang chọn không còn ý nghĩa, trả về mặc định.
+  useEffect(() => { setSelectedStart(null) }, [committed])
+
+  const pathView = useMemo(() => {
+    if (!results || results.scenarios.length === 0) return null
+    const { scenarios, pathInputs } = results
+    const byDiff = [...scenarios].sort((a, b) => a.diff - b.diff)
+    // diff = LS trừ DCA. Nhỏ nhất là lúc đầu tư một lần thua đậm nhất.
+    const worstStart = byDiff[0]!.startDate
+    const bestStart = byDiff[byDiff.length - 1]!.startDate
+    const medianStart = byDiff[Math.floor(byDiff.length / 2)]!.startDate
+
+    const start = (selectedStart && scenarios.some(s => s.startDate === selectedStart))
+      ? selectedStart
+      : medianStart
+
+    const path = computeScenarioPath(
+      pathInputs.aligned,
+      pathInputs.validSlots,
+      committed!.totalCapital,
+      committed!.horizonMonths,
+      committed!.freq,
+      committed!.cashMode,
+      committed!.cashSavingsRate,
+      pathInputs.cashFundPrices,
+      start,
+    )
+    if (path.length === 0) return null
+    return { path, start, worstStart, medianStart, bestStart, scenarios }
+    // Chỉ phụ thuộc kết quả đã chốt và tháng người dùng chọn. `results` vốn đã
+    // chỉ phụ thuộc `committed`, nên tải quỹ mới về vẫn không kéo theo tính lại.
+  }, [results, selectedStart]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ──
   function formatDate(d: string): string {
@@ -823,6 +872,20 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
             dcaMonths={results.dcaMonths}
             totalCapital={results.totalCapital}
           />
+
+          {pathView && (
+            <ScenarioPathChart
+              path={pathView.path}
+              scenarios={pathView.scenarios}
+              worstStart={pathView.worstStart}
+              medianStart={pathView.medianStart}
+              bestStart={pathView.bestStart}
+              selectedStart={pathView.start}
+              onSelectStart={setSelectedStart}
+              totalCapital={results.totalCapital}
+              dcaMonths={results.dcaMonths}
+            />
+          )}
 
           {/* ── Histogram ── */}
           <div className="lsdca-chart-card">

@@ -301,6 +301,163 @@ export function getContribIndices(
   return indices
 }
 
+export interface PathPoint {
+  date: string
+  /** Giá trị danh mục nếu đầu tư hết vốn ngay ngày đầu. */
+  lsValue: number
+  /** Tổng tài sản bên DCA: phần đã mua quỹ cộng phần tiền còn chờ. */
+  dcaValue: number
+  /** Riêng phần đã mua quỹ. */
+  dcaInvested: number
+  /** Riêng phần tiền chưa giải ngân, tính theo cách người dùng chọn ở "vốn chờ". */
+  dcaCash: number
+  /** Ngày này có góp một kỳ DCA hay không. */
+  isContribution: boolean
+}
+
+/**
+ * Đường đi của hai chiến lược khi bắt đầu đúng vào một ngày cụ thể.
+ *
+ * Khác với computeRollingScenarios ở chỗ nó ghi giá trị tại MỌI ngày trong kỳ,
+ * chứ không phải chỉ ngày cuối. Toàn bộ quy ước tính toán giữ y hệt hàm kia:
+ * cùng lịch góp, cùng cách xử lý vốn chờ, cùng mốc kết thúc. Nhờ vậy điểm cuối
+ * của đường trùng khít với kịch bản cùng ngày khởi đầu, và test khoá chuyện đó lại.
+ *
+ * Đường DCA cộng cả tiền chưa giải ngân. Nếu chỉ vẽ phần đã mua quỹ thì đường
+ * DCA xuất phát gần bằng 0 rồi bò lên, nhìn như thua đậm ngay từ đầu trong khi
+ * thực tế tiền vẫn còn nguyên trong túi.
+ */
+export function computeScenarioPath(
+  alignedPrices: Map<string, PricePoint[]>,
+  slots: DCASlot[],
+  totalCapital: number,
+  horizonMonths: number,
+  freq: LSvsDCAFreq,
+  cashMode: CashMode,
+  cashSavingsRate: number,
+  cashFundPrices: PricePoint[] | null,
+  startDate: string,
+  holdingPeriodMonths?: number,
+): PathPoint[] {
+  const validSlots = slots.filter(s => s.fundId && s.weight > 0)
+  if (validSlots.length === 0 || totalCapital <= 0 || horizonMonths <= 0) return []
+  if ((holdingPeriodMonths ?? horizonMonths) < horizonMonths) return []
+
+  const totalWeight = validSlots.reduce((s, slot) => s + slot.weight, 0)
+  const weights = validSlots.map(s => s.weight / totalWeight)
+  const fundIds = validSlots.map(s => s.fundId)
+
+  const priceMaps: Map<string, number>[] = fundIds.map(id => {
+    const prices = alignedPrices.get(id)
+    const map = new Map<string, number>()
+    if (prices) for (const p of prices) map.set(p.date, p.price)
+    return map
+  })
+
+  const firstFundPrices = alignedPrices.get(fundIds[0]!)
+  if (!firstFundPrices || firstFundPrices.length === 0) return []
+  const dates = firstFundPrices.map(p => p.date)
+  const dateTimes = dates.map(d => new Date(d).getTime())
+
+  const startIdx = dates.indexOf(startDate)
+  if (startIdx < 0) return []
+
+  const horizonEndIdx = monthsAheadIndex(dateTimes, horizonMonths)[startIdx]!
+  const endIdx = holdingPeriodMonths
+    ? monthsAheadIndex(dateTimes, holdingPeriodMonths)[startIdx]!
+    : horizonEndIdx
+  if (endIdx >= dates.length) return []
+
+  const contribIndices = getContribIndices(dates, startIdx, horizonEndIdx, freq)
+  if (contribIndices.length === 0) return []
+  const contribution = totalCapital / contribIndices.length
+  const contribSet = new Set(contribIndices)
+
+  const getCashPrice = (cashMode === 'fund' && cashFundPrices)
+    ? (date: string) => priceAtOrBefore(cashFundPrices, date)
+    : null
+
+  // Lump sum: mua hết ngay ngày đầu, giữ nguyên số chứng chỉ quỹ tới cuối kỳ.
+  const lsUnits = weights.map((w, j) => {
+    const startPrice = priceMaps[j]!.get(startDate)
+    if (!startPrice || startPrice <= 0) return 0
+    return (totalCapital * w) / startPrice
+  })
+
+  const dcaUnits = new Array<number>(fundIds.length).fill(0)
+  let cashFundUnits = 0
+  if (cashMode === 'fund' && getCashPrice) {
+    const startCashPrice = getCashPrice(startDate)
+    if (!startCashPrice || startCashPrice <= 0) return []
+    cashFundUnits = totalCapital / startCashPrice
+  }
+  let cashRemaining = totalCapital
+  let lastContribDate = startDate
+
+  const path: PathPoint[] = []
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    const date = dates[i]!
+    const isContribution = contribSet.has(i)
+
+    if (isContribution) {
+      // Lãi tiết kiệm dồn từ lần góp trước tới lần này, đúng thứ tự của
+      // computeRollingScenarios: cộng lãi xong mới trừ tiền góp.
+      if (cashMode === 'savings' && i !== startIdx) {
+        const yearsElapsed = daysBetween(lastContribDate, date) / 365.25
+        cashRemaining *= Math.pow(1 + cashSavingsRate, yearsElapsed)
+      }
+      if (cashMode === 'fund' && getCashPrice) {
+        const cashPrice = getCashPrice(date)
+        if (cashPrice && cashPrice > 0) cashFundUnits -= contribution / cashPrice
+      } else {
+        cashRemaining -= contribution
+      }
+      for (let j = 0; j < fundIds.length; j++) {
+        const price = priceMaps[j]!.get(date)
+        if (price && price > 0) dcaUnits[j]! += (contribution * weights[j]!) / price
+      }
+      lastContribDate = date
+    }
+
+    let lsValue = 0
+    let dcaInvested = 0
+    let missing = false
+    for (let j = 0; j < fundIds.length; j++) {
+      const price = priceMaps[j]!.get(date)
+      if (!price) { missing = true; break }
+      lsValue += lsUnits[j]! * price
+      dcaInvested += dcaUnits[j]! * price
+    }
+    // Ngày nào thiếu giá của một quỹ thì bỏ hẳn điểm đó, không vẽ nửa vời.
+    if (missing) continue
+
+    let dcaCash = 0
+    const residual = Math.max(0, cashRemaining)
+    if (cashMode === 'savings') {
+      const yearsElapsed = daysBetween(lastContribDate, date) / 365.25
+      dcaCash = residual > 0 ? residual * Math.pow(1 + cashSavingsRate, yearsElapsed) : 0
+    } else if (cashMode === 'fund' && getCashPrice) {
+      const cashPrice = getCashPrice(date)
+      const safeUnits = Math.max(0, cashFundUnits)
+      if (cashPrice && safeUnits > 0) dcaCash = safeUnits * cashPrice
+    } else {
+      dcaCash = residual
+    }
+
+    path.push({
+      date,
+      lsValue,
+      dcaValue: dcaInvested + dcaCash,
+      dcaInvested,
+      dcaCash,
+      isContribution,
+    })
+  }
+
+  return path
+}
+
 export function summarizeScenarios(scenarios: LSvsDCAScenario[]): LSvsDCASummary | null {
   if (scenarios.length === 0) return null
 

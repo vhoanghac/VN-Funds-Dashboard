@@ -8,6 +8,7 @@ import {
   countIndependentWindows,
   alignedSpanMonths,
   computeHoldingCost,
+  computeScenarioPath,
   COST_HOLDING_YEARS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
@@ -686,5 +687,141 @@ describe('computeHoldingCost', () => {
     const oneYear = cost.find(c => c.holdingYears === 1)!
     const fiveYear = cost.find(c => c.holdingYears === 5)!
     expect(oneYear.independentWindows).toBeGreaterThan(fiveYear.independentWindows)
+  })
+})
+
+// ─── computeScenarioPath ──────────────────────────────────────────────────────
+
+describe('computeScenarioPath', () => {
+  const n = 5 * 52 + 1
+  const dates = makeDates('2010-01-01', n)
+  const wavy = makePrices(dates, Array.from({ length: n }, (_, i) =>
+    100 + 40 * Math.sin(i / 9) + 30 * (i / (n - 1))))
+  const cashFund = makePrices(dates, linearPrices(10, 11.5, n))
+
+  it('trả về mảng rỗng khi ngày khởi đầu không có trong dữ liệu', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      '1999-01-01',
+    )
+    expect(path).toEqual([])
+  })
+
+  it('trả về mảng rỗng khi không còn đủ dữ liệu tương lai', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      dates[n - 3]!,
+    )
+    expect(path).toEqual([])
+  })
+
+  it('trả về mảng rỗng khi không có slot hợp lệ hoặc vốn bằng 0', () => {
+    expect(computeScenarioPath(
+      singleFundMap('A', wavy), [], 10000, 12, 'monthly', 'flat', 0, null, dates[0]!,
+    )).toEqual([])
+    expect(computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 0, 12, 'monthly', 'flat', 0, null, dates[0]!,
+    )).toEqual([])
+  })
+
+  it('hai đường cùng xuất phát từ đúng tổng vốn', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      dates[0]!,
+    )
+    expect(path.length).toBeGreaterThan(0)
+    expect(path[0]!.lsValue).toBeCloseTo(10000, 6)
+    expect(path[0]!.dcaValue).toBeCloseTo(10000, 6)
+    expect(path[0]!.date).toBe(dates[0])
+  })
+
+  it('ngày tăng dần và nằm trong kỳ nắm giữ', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      dates[10]!,
+    )
+    expect(path[0]!.date).toBe(dates[10])
+    for (let i = 1; i < path.length; i++) {
+      expect(path[i]!.date > path[i - 1]!.date).toBe(true)
+    }
+  })
+
+  it('tổng tài sản DCA luôn bằng phần đã mua quỹ cộng phần tiền chờ', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'savings', 0.04, null,
+      dates[5]!,
+    )
+    for (const p of path) {
+      expect(p.dcaValue).toBeCloseTo(p.dcaInvested + p.dcaCash, 6)
+    }
+  })
+
+  it('chế độ không sinh lãi: tiền chờ giảm dần về 0 khi góp xong', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      dates[0]!,
+    )
+    expect(path[0]!.dcaCash).toBeGreaterThan(0)
+    expect(path[path.length - 1]!.dcaCash).toBeCloseTo(0, 6)
+    for (let i = 1; i < path.length; i++) {
+      expect(path[i]!.dcaCash).toBeLessThanOrEqual(path[i - 1]!.dcaCash + 1e-9)
+    }
+  })
+
+  it('đánh dấu đúng số kỳ góp: DCA 12 tháng theo tháng thì có 12 lần', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      dates[0]!,
+    )
+    expect(path.filter(p => p.isContribution).length).toBe(12)
+    expect(path[0]!.isContribution).toBe(true)
+  })
+
+  // Đây là ràng buộc quan trọng nhất: biểu đồ một kịch bản và bảng thống kê
+  // phải nói cùng một con số, nếu không thì người đọc bắt được ngay.
+  for (const [label, mode, rate, cash] of [
+    ['không sinh lãi', 'flat', 0, null],
+    ['gửi tiết kiệm', 'savings', 0.04, null],
+    ['gửi quỹ khác', 'fund', 0, cashFund],
+  ] as const) {
+    it(`điểm cuối trùng khít với kịch bản cùng ngày khởi đầu (${label})`, () => {
+      const scenarios = computeRollingScenarios(
+        singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', mode, rate, cash,
+      )
+      expect(scenarios.length).toBeGreaterThan(20)
+      for (const s of [scenarios[0]!, scenarios[37]!, scenarios[scenarios.length - 1]!]) {
+        const path = computeScenarioPath(
+          singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', mode, rate, cash,
+          s.startDate,
+        )
+        const last = path[path.length - 1]!
+        expect(last.lsValue / 10000).toBeCloseTo(s.lsGrowth, 9)
+        expect(last.dcaValue / 10000).toBeCloseTo(s.dcaGrowth, 9)
+      }
+    })
+  }
+
+  it('giữ lâu hơn kỳ DCA: góp dừng sớm, đường vẫn chạy tới hết kỳ nắm giữ', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 6, 'monthly', 'flat', 0, null,
+      dates[0]!, 36,
+    )
+    const contribs = path.filter(p => p.isContribution)
+    expect(contribs.length).toBe(6)
+    // Kỳ góp kết thúc sớm hơn hẳn ngày cuối của đường.
+    expect(contribs[contribs.length - 1]!.date < path[path.length - 1]!.date).toBe(true)
+    const scenarios = computeRollingScenarios(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 6, 'monthly', 'flat', 0, null, 36,
+    )
+    const match = scenarios.find(s => s.startDate === dates[0])!
+    expect(path[path.length - 1]!.dcaValue / 10000).toBeCloseTo(match.dcaGrowth, 9)
+  })
+
+  it('kỳ nắm giữ ngắn hơn kỳ DCA thì không vẽ gì', () => {
+    const path = computeScenarioPath(
+      singleFundMap('A', wavy), singleSlot('A'), 10000, 12, 'monthly', 'flat', 0, null,
+      dates[0]!, 6,
+    )
+    expect(path).toEqual([])
   })
 })
