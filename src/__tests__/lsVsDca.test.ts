@@ -20,6 +20,7 @@ import {
 } from '../utils/lsVsDca'
 import type { PricePoint } from '../types'
 import type { DCASlot } from '../utils/dca'
+import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1153,5 +1154,138 @@ describe('computeSincePeakBuckets', () => {
       .every(r => r.scenarios === 0)).toBe(true)
     expect(computeSincePeakBuckets(singleFundMap('A', cycle), [], scen, 12)
       .every(r => r.scenarios === 0)).toBe(true)
+  })
+})
+
+// ─── Danh mục nhiều quỹ khác ngày ra đời ─────────────────────────────────────
+
+describe('danh mục nhiều quỹ: lưới ngày phải là giao của mọi quỹ', () => {
+  // Lỗi đã mắc: lấy lưới ngày từ quỹ ĐỨNG ĐẦU danh mục. Mà
+  // alignFundsToCommonGridDaily cố ý không thêm điểm cho quỹ chưa ra đời, nên
+  // với quỹ dài đứng trước, mọi ngày trước khi quỹ sau ra đời đều thiếu giá.
+  // Phần vốn của quỹ đó bị tính là đã tiêu nhưng không mua được gì.
+  //
+  // Đo trước khi sửa: giá phẳng tuyệt đối mà 105 trên 208 kịch bản trả về 0,5
+  // thay vì 1,0. Và kết quả đổi theo thứ tự người dùng kéo thả quỹ.
+  const dLong = makeDates('2010-01-01', 260)
+  const dShort = makeDates('2012-01-06', 156)
+  const twoFunds = () => alignFundsToCommonGridDaily(new Map([
+    ['LONG', makePrices(dLong, flatPrices(100, dLong.length))],
+    ['SHORT', makePrices(dShort, flatPrices(50, dShort.length))],
+  ]))
+
+  it('giá phẳng tuyệt đối thì mọi kịch bản phải bằng đúng vốn, bất kể thứ tự quỹ', () => {
+    for (const order of [['LONG', 'SHORT'], ['SHORT', 'LONG']]) {
+      const slots = order.map(id => ({ fundId: id, weight: 50 }))
+      const s = computeRollingScenarios(
+        twoFunds(), slots, 1e8, 12, 'monthly', 'flat', 0, null,
+      )
+      expect(s.length).toBeGreaterThan(0)
+      for (const x of s) {
+        expect(x.lsGrowth).toBeCloseTo(1, 9)
+        expect(x.dcaGrowth).toBeCloseTo(1, 9)
+      }
+    }
+  })
+
+  it('đổi thứ tự quỹ không làm đổi kết quả', () => {
+    const a = computeRollingScenarios(
+      twoFunds(), [{ fundId: 'LONG', weight: 50 }, { fundId: 'SHORT', weight: 50 }],
+      1e8, 12, 'monthly', 'flat', 0, null,
+    )
+    const b = computeRollingScenarios(
+      twoFunds(), [{ fundId: 'SHORT', weight: 50 }, { fundId: 'LONG', weight: 50 }],
+      1e8, 12, 'monthly', 'flat', 0, null,
+    )
+    expect(a.length).toBe(b.length)
+    expect(a.map(x => x.startDate)).toEqual(b.map(x => x.startDate))
+  })
+
+  it('không kịch bản nào bắt đầu trước ngày quỹ ra đời muộn nhất', () => {
+    const s = computeRollingScenarios(
+      twoFunds(), [{ fundId: 'LONG', weight: 50 }, { fundId: 'SHORT', weight: 50 }],
+      1e8, 12, 'monthly', 'flat', 0, null,
+    )
+    expect(s.length).toBeGreaterThan(0)
+    for (const x of s) {
+      expect(x.startDate >= dShort[0]!).toBe(true)
+    }
+  })
+
+  it('đường đi một kịch bản dùng chung lưới ngày với bảng kịch bản', () => {
+    const slots = [{ fundId: 'LONG', weight: 50 }, { fundId: 'SHORT', weight: 50 }]
+    const s = computeRollingScenarios(twoFunds(), slots, 1e8, 12, 'monthly', 'flat', 0, null)
+    const target = s[10]!
+    const path = computeScenarioPath(
+      twoFunds(), slots, 1e8, 12, 'monthly', 'flat', 0, null, target.startDate,
+    )
+    expect(path.length).toBeGreaterThan(0)
+    const last = path[path.length - 1]!
+    expect(last.lsValue / 1e8).toBeCloseTo(target.lsGrowth, 9)
+    expect(last.dcaValue / 1e8).toBeCloseTo(target.dcaGrowth, 9)
+  })
+
+  // Ca cực đoan: hai quỹ cách nhau 15 năm, không trùng ngày gốc nào. Hàm căn
+  // chỉnh chuyển tiếp giá cuối của quỹ cũ nên vẫn có giao, nhưng giao đó phải
+  // bắt đầu từ ngày quỹ sau ra đời chứ không sớm hơn.
+  it('hai quỹ cách nhau rất xa: kịch bản chỉ bắt đầu từ khi quỹ sau ra đời', () => {
+    const early = makeDates('2000-01-07', 100)
+    const late = makeDates('2015-01-02', 300)
+    const far = alignFundsToCommonGridDaily(new Map([
+      ['EARLY', makePrices(early, flatPrices(100, early.length))],
+      ['LATE', makePrices(late, flatPrices(100, late.length))],
+    ]))
+    const s = computeRollingScenarios(
+      far, [{ fundId: 'EARLY', weight: 50 }, { fundId: 'LATE', weight: 50 }],
+      1e8, 12, 'monthly', 'flat', 0, null,
+    )
+    expect(s.length).toBeGreaterThan(0)
+    for (const x of s) {
+      expect(x.startDate >= late[0]!).toBe(true)
+      expect(x.lsGrowth).toBeCloseTo(1, 9)
+    }
+  })
+})
+
+// ─── alignedSpanMonths trên danh mục nhiều quỹ ───────────────────────────────
+
+describe('alignedSpanMonths đo trên giao của mọi quỹ', () => {
+  // Lỗi đã mắc: đo trên quỹ ĐỨNG ĐẦU. Với DCDS (2004) cộng E1VFVN30 (2014) nó
+  // trả về 266 tháng trong khi phân tích chỉ chạy được 141 tháng, khiến hàng
+  // "2 năm" của heatmap báo 11 giai đoạn tách rời thay vì 5.
+  const dLong = makeDates('2010-01-01', 260)    // 5 năm
+  const dShort = makeDates('2012-01-06', 156)   // ra đời muộn 2 năm
+  const twoFunds = () => alignFundsToCommonGridDaily(new Map([
+    ['LONG', makePrices(dLong, flatPrices(100, dLong.length))],
+    ['SHORT', makePrices(dShort, flatPrices(50, dShort.length))],
+  ]))
+
+  it('không đổi theo thứ tự quỹ trong danh mục', () => {
+    const a = alignedSpanMonths(twoFunds(), [
+      { fundId: 'LONG', weight: 50 }, { fundId: 'SHORT', weight: 50 },
+    ])
+    const b = alignedSpanMonths(twoFunds(), [
+      { fundId: 'SHORT', weight: 50 }, { fundId: 'LONG', weight: 50 },
+    ])
+    expect(a).toBe(b)
+  })
+
+  it('ngắn hơn dải của quỹ dài, vì chỉ tính từ khi quỹ sau ra đời', () => {
+    const both = alignedSpanMonths(twoFunds(), [
+      { fundId: 'LONG', weight: 50 }, { fundId: 'SHORT', weight: 50 },
+    ])
+    const longOnly = alignedSpanMonths(twoFunds(), [{ fundId: 'LONG', weight: 100 }])
+    expect(both).toBeLessThan(longOnly)
+    // Quỹ sau ra đời muộn đúng 2 năm nên giao ngắn hơn khoảng 24 tháng.
+    expect(longOnly - both).toBeGreaterThanOrEqual(23)
+  })
+
+  // Đây là chỗ lỗi biểu hiện ra mặt người dùng: lớp trung thực về cỡ mẫu.
+  it('số giai đoạn tách rời không bị thổi lên gấp đôi', () => {
+    const slots = [{ fundId: 'LONG', weight: 50 }, { fundId: 'SHORT', weight: 50 }]
+    const span = alignedSpanMonths(twoFunds(), slots)
+    const longSpan = alignedSpanMonths(twoFunds(), [{ fundId: 'LONG', weight: 100 }])
+    expect(countIndependentWindows(span, 24))
+      .toBeLessThan(countIndependentWindows(longSpan, 24))
   })
 })

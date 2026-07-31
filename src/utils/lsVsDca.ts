@@ -42,17 +42,26 @@ export function countIndependentWindows(spanMonths: number, windowMonths: number
   return Math.floor(spanMonths / windowMonths)
 }
 
-/** Độ dài chuỗi giá đã căn chỉnh, tính bằng tháng. */
+/**
+ * Độ dài quãng dữ liệu THẬT SỰ dùng được, tính bằng tháng.
+ *
+ * Đo trên giao của mọi quỹ trong danh mục, không phải trên quỹ đứng đầu. Con
+ * số này là đầu vào của countIndependentWindows, tức lớp trung thực về cỡ mẫu
+ * ở heatmap và bảng chi phí. Lấy quỹ đứng đầu thì với DCDS (2004) cộng
+ * E1VFVN30 (2014) nó trả về 266 tháng trong khi phân tích chỉ chạy được 141
+ * tháng, và hàng "2 năm" của heatmap báo 11 giai đoạn tách rời thay vì 5. Nói
+ * quá gấp đôi, đúng thứ lớp trung thực sinh ra để chặn.
+ */
 export function alignedSpanMonths(
   alignedPrices: Map<string, PricePoint[]>,
   slots: DCASlot[],
 ): number {
-  const first = slots.find(s => s.fundId && s.weight > 0)
-  if (!first) return 0
-  const prices = alignedPrices.get(first.fundId)
-  if (!prices || prices.length < 2) return 0
-  const a = prices[0]!.date
-  const b = prices[prices.length - 1]!.date
+  const fundIds = slots.filter(s => s.fundId && s.weight > 0).map(s => s.fundId)
+  if (fundIds.length === 0) return 0
+  const dates = commonDates(alignedPrices, fundIds)
+  if (dates.length < 2) return 0
+  const a = dates[0]!
+  const b = dates[dates.length - 1]!
   return (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12
     + (Number(b.slice(5, 7)) - Number(a.slice(5, 7)))
 }
@@ -88,6 +97,40 @@ function priceAtOrBefore(prices: PricePoint[], date: string): number | undefined
 
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
+}
+
+/**
+ * Lưới ngày dùng chung cho danh mục: chỉ giữ những ngày mà MỌI quỹ đều có giá.
+ *
+ * Vì sao không lấy thẳng lưới của quỹ đứng đầu: alignFundsToCommonGridDaily cố
+ * ý không thêm điểm cho quỹ chưa ra đời, nên mỗi quỹ bắt đầu từ ngày riêng của
+ * nó. Lấy lưới của quỹ đứng đầu thì với danh mục DCDS (2004) cộng E1VFVN30
+ * (2014), mọi ngày trước 2014 đều thiếu giá E1VFVN30. Phần vốn của quỹ đó bị
+ * tính là đã tiêu nhưng không mua được gì, nên bốc hơi im lặng.
+ *
+ * Hậu quả đo được trước khi sửa: chuỗi giá phẳng tuyệt đối mà 105 trên 208
+ * kịch bản trả về 0,5 thay vì 1,0, tức dashboard bao lỗ 50% trong khi giá
+ * không đổi. Và kết quả phụ thuộc THỨ TỰ người dùng kéo thả quỹ: DCDS trước
+ * cho LS lãi trung bình 8,1%, E1VFVN30 trước cho 17,1%.
+ */
+function commonDates(
+  alignedPrices: Map<string, PricePoint[]>,
+  fundIds: string[],
+  /** Truyền vào khi nơi gọi đã dựng sẵn, để khỏi dựng lại. */
+  prebuiltMaps?: Map<string, number>[],
+): string[] {
+  const firstFundPrices = alignedPrices.get(fundIds[0]!)
+  if (!firstFundPrices || firstFundPrices.length === 0) return []
+  if (fundIds.length === 1) return firstFundPrices.map(p => p.date)
+  const priceMaps = prebuiltMaps ?? fundIds.map(id => {
+    const map = new Map<string, number>()
+    const prices = alignedPrices.get(id)
+    if (prices) for (const p of prices) map.set(p.date, p.price)
+    return map
+  })
+  return firstFundPrices
+    .map(p => p.date)
+    .filter(d => priceMaps.every(m => m.has(d)))
 }
 
 /**
@@ -127,10 +170,8 @@ export function computeRollingScenarios(
     return map
   })
 
-  // Get aligned dates from first fund
-  const firstFundPrices = alignedPrices.get(fundIds[0]!)
-  if (!firstFundPrices || firstFundPrices.length === 0) return []
-  const dates = firstFundPrices.map(p => p.date)
+  const dates = commonDates(alignedPrices, fundIds, priceMaps)
+  if (dates.length === 0) return []
   const dateTimes = dates.map(d => new Date(d).getTime())
 
   // Cash fund lookup (for cashMode === 'fund')
@@ -354,9 +395,10 @@ export function computeScenarioPath(
     return map
   })
 
-  const firstFundPrices = alignedPrices.get(fundIds[0]!)
-  if (!firstFundPrices || firstFundPrices.length === 0) return []
-  const dates = firstFundPrices.map(p => p.date)
+  // Cùng lưới ngày với computeRollingScenarios, nếu không thì đường đi và
+  // kịch bản cùng ngày khởi đầu sẽ không còn khớp nhau.
+  const dates = commonDates(alignedPrices, fundIds, priceMaps)
+  if (dates.length === 0) return []
   const dateTimes = dates.map(d => new Date(d).getTime())
 
   const startIdx = dates.indexOf(startDate)

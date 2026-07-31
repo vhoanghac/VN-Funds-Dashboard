@@ -413,11 +413,15 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       }
     }
 
-    // Effective window info
-    const firstFundPrices = aligned.get(validSlots[0]!.fundId)
-    const fromDate = firstFundPrices?.[0]?.date ?? ''
-    const toDate = firstFundPrices?.[firstFundPrices.length - 1]?.date ?? ''
-    const effectiveWindow = `${formatDate(fromDate)} → ${formatDate(toDate)}`
+    // Khoảng thời gian THẬT SỰ đã phân tích: lấy từ chính mảng kịch bản, không
+    // lấy dải của quỹ đứng đầu. Danh mục DCDS (2004) cộng E1VFVN30 (2014) chỉ
+    // chạy được từ 2014, ghi "từ 2004" là nói quá phạm vi đã kiểm chứng.
+    // Ngày cuối cộng thêm kỳ nắm giữ, vì kịch bản cuối còn chạy tới lúc bán.
+    const fromDate = scenarios[0]?.startDate ?? ''
+    const lastStart = scenarios[scenarios.length - 1]?.startDate ?? ''
+    const alignedFirst = aligned.get(validSlots[0]!.fundId)
+    const lastAvailable = alignedFirst?.[alignedFirst.length - 1]?.date ?? lastStart
+    const effectiveWindow = `${formatDate(fromDate)} → ${formatDate(lastAvailable)}`
 
     return {
       summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
