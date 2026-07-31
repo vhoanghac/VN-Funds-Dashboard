@@ -1289,3 +1289,43 @@ describe('alignedSpanMonths đo trên giao của mọi quỹ', () => {
       .toBeLessThan(countIndependentWindows(longSpan, 24))
   })
 })
+
+// ─── buildHistogram không được làm rơi kịch bản ──────────────────────────────
+
+describe('buildHistogram giữ đủ mọi kịch bản', () => {
+  // Lỗi đã mắc: ô cuối là nửa khoảng [max-w, max), nên giá trị lớn nhất khi
+  // đúng bằng bội của độ rộng ô rơi ra ngoài mọi ô và mất trắng.
+  const mk = (diffs: number[]) => diffs.map((d, i) => ({
+    startDate: `2020-01-${String((i % 28) + 1).padStart(2, '0')}`,
+    lsGrowth: 1 + d, dcaGrowth: 1, diff: d,
+  }))
+
+  it('tổng số đếm luôn bằng đúng số kịch bản', () => {
+    const cases: number[][] = [
+      [-0.10, 0, 0.10, 0.20],           // mọi giá trị đúng bội của 0,05
+      [-0.33, 0.07, 1.24, 22.5],        // biên độ rộng như Bitcoin
+      [0.05, 0.05, 0.05],               // trùng nhau, đúng mép ô
+      [-0.05],                          // đúng một kịch bản, đúng mép
+      [0],                              // đúng một kịch bản bằng 0
+    ]
+    for (const diffs of cases) {
+      const h = buildHistogram(mk(diffs))
+      const total = h.reduce((a, b) => a + b.count, 0)
+      expect(total).toBe(diffs.length)
+    }
+  })
+
+  it('giá trị lớn nhất nằm trong ô cuối cùng, không rơi ra ngoài', () => {
+    // 0,20 là bội đúng của 0,05 nên đây chính là ca lỗi cũ.
+    const h = buildHistogram(mk([-0.10, 0.20]))
+    expect(h[h.length - 1]!.count).toBeGreaterThan(0)
+  })
+
+  it('mốc giữa các ô không bị trôi số thực dù nhiều ô', () => {
+    const h = buildHistogram(mk([-0.5, 20]))
+    expect(h.length).toBeGreaterThan(300)
+    for (let i = 1; i < h.length; i++) {
+      expect(h[i]!.midpoint - h[i - 1]!.midpoint).toBeCloseTo(0.05, 9)
+    }
+  })
+})

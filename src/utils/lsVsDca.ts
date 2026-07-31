@@ -235,6 +235,8 @@ export function computeRollingScenarios(
 
     // Remaining undeployed cash (flat/savings modes)
     let cashRemaining = totalCapital
+    /** Thiếu giá quỹ tiền chờ giữa chừng: không mô phỏng nổi, bỏ cả kịch bản. */
+    let cashPriceMissing = false
 
     for (let ci = 0; ci < contribIndices.length; ci++) {
       const idx = contribIndices[ci]!
@@ -248,9 +250,14 @@ export function computeRollingScenarios(
       }
 
       // Deploy contribution: remove from cash
+      //
+      // Trước đây chỗ này dùng `continue`, làm nhảy luôn qua đoạn mua danh mục
+      // bên dưới: tiền không bị trừ nên không mất, nhưng lịch góp bị đổi âm
+      // thầm và kịch bản vẫn được tính là hợp lệ. Giờ bỏ hẳn kịch bản, vì
+      // thiếu giá quỹ tiền chờ thì không mô phỏng đúng được.
       if (cashMode === 'fund' && getCashPrice) {
         const cashPrice = getCashPrice(date)
-        if (!cashPrice || cashPrice <= 0) continue
+        if (!cashPrice || cashPrice <= 0) { cashPriceMissing = true; break }
         cashFundUnits -= contribution / cashPrice
       } else {
         cashRemaining -= contribution
@@ -264,6 +271,7 @@ export function computeRollingScenarios(
         }
       }
     }
+    if (cashPriceMissing) continue
 
     // Value of main portfolio at endDate
     let dcaPortfolioValue = 0
@@ -702,17 +710,30 @@ export function buildHistogram(
 
   const bucketMin = Math.floor(minD / bucketWidth) * bucketWidth
   const bucketMax = Math.ceil(maxD / bucketWidth) * bucketWidth
+  const bucketCount = Math.max(1, Math.round((bucketMax - bucketMin) / bucketWidth))
+
+  // Đếm một lượt rồi mới dựng ô, thay vì quét lại toàn bộ mảng cho từng ô.
+  // Với Bitcoin, chênh lệch trải từ -0,3 tới hơn 20 lần vốn nên có vài trăm ô,
+  // cách cũ tốn cỡ 1,8 triệu phép so sánh mỗi lần vẽ.
+  //
+  // Kẹp chỉ số vào ô cuối: giá trị lớn nhất khi đúng bằng bội của độ rộng ô sẽ
+  // rơi ra ngoài mọi ô, làm mất trắng một kịch bản. Test khoá tổng số đếm phải
+  // bằng đúng số kịch bản.
+  const counts = new Array<number>(bucketCount).fill(0)
+  for (const d of diffs) {
+    const i = Math.floor((d - bucketMin) / bucketWidth)
+    counts[Math.min(bucketCount - 1, Math.max(0, i))]!++
+  }
 
   const buckets: HistogramBucket[] = []
-  for (let b = bucketMin; b < bucketMax - bucketWidth / 2; b += bucketWidth) {
-    const mid = b + bucketWidth / 2
-    const count = diffs.filter(d => d >= b && d < b + bucketWidth).length
-    const pct = mid * 100
+  for (let i = 0; i < bucketCount; i++) {
+    // Nhân chứ không cộng dồn: cộng dồn qua vài trăm vòng làm trôi số thực.
+    const mid = bucketMin + i * bucketWidth + bucketWidth / 2
     const sign = mid >= 0 ? '+' : ''
     buckets.push({
       midpoint: mid,
-      label: `${sign}${pct.toFixed(0)}%`,
-      count,
+      label: `${sign}${(mid * 100).toFixed(0)}%`,
+      count: counts[i]!,
       positive: mid >= 0,
     })
   }
