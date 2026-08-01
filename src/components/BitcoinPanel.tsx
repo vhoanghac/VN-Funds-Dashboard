@@ -264,12 +264,14 @@ function BitcoinPanelImpl({ funds }: Props) {
     }
   }, [fundData, applied])
 
-  // Phần "phân tích chi tiết" bên dưới (WinRateBlock + 3 chart scatter) tính
-  // toán nặng hơn nhiều (rollingMaxDrawdown là O(n·w), lặp qua 11 kịch bản
-  // tỷ trọng) — dùng useDeferredValue để phần nhanh ở trên (MoneyMachine,
-  // chart chính, bảng hiệu suất...) hiện ngay lập tức, không phải chờ phần
-  // nặng tính xong mới thấy gì cả. React tự lùi phần nặng xuống 1 update có
-  // độ ưu tiên thấp hơn, chạy sau khi phần nhanh đã paint xong.
+  // Phần "phân tích chi tiết" bên dưới (WinRateBlock + BtcContributionChart +
+  // BtcWeightChart) nặng hơn vì hai lý do: rollingCumulativeReturns chạy trên
+  // từng kịch bản (11 trọng số scatter × 1-3 kỳ hạn), và BtcWeightChart dựng
+  // ~11 nghìn điểm scatter từ dữ liệu daily. Dùng useDeferredValue để phần
+  // nhanh ở trên (MoneyMachine, chart chính, bảng hiệu suất...) hiện ngay lập
+  // tức, không phải chờ phần nặng tính xong mới thấy gì cả. React tự lùi phần
+  // nặng xuống 1 update có độ ưu tiên thấp hơn, chạy sau khi phần nhanh đã
+  // paint xong.
   const deferredPortfolioReturns = useDeferredValue(portfolioReturns)
   const deferredAllSimReturns = useDeferredValue(allSimReturns)
   const isHeavySectionStale = deferredAllSimReturns !== allSimReturns
