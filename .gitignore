@@ -3,6 +3,8 @@ dist/
 __pycache__/
 .env
 *.local
+.mcp.json
+opencode.json
 .DS_Store
 Thumbs.db
 .gstack/
@@ -11,6 +13,7 @@ Thumbs.db
 tsconfig.tsbuildinfo
 TODOS.md
 CLAUDE.md
+CONTEXT.md
 GRAND_PLAN.md
 GRAND_PLAN_PROCESS.md
 docs/wireframe-2026-03-25.html
