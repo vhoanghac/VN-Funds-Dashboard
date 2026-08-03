@@ -6729,11 +6729,3 @@ h1, h2, h3 {
 .hm-legend-swatch--pos1 { background: rgb(214, 235, 231); }
 .hm-legend-swatch--pos2 { background: rgb(175, 220, 210); }
 .hm-legend-swatch--pos3 { background: rgb(120, 200, 180); }
-
-.hm-note {
-  margin: 12px 0 0 0;
-  font-size: 0.78rem;
-  line-height: 1.55;
-  color: var(--color-text-muted);
-  max-width: 720px;
-}

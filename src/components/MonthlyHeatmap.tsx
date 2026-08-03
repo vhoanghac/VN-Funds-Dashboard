@@ -127,14 +127,6 @@ export function MonthlyHeatmap({ series }: Props) {
         <span className="hm-legend-label">Lời</span>
         <span className="hm-legend-unit">(0–12%+ mỗi tháng)</span>
       </div>
-
-      <p className="hm-note">
-        Heatmap luôn hiển thị toàn bộ lịch sử của từng quỹ, không theo bộ lọc thời
-        gian phía trên và không cắt theo thời điểm ra đời của quỹ kia. Ô trống là
-        tháng quỹ chưa ra đời hoặc nằm ngoài dữ liệu, không phải quỹ âm. Năm đầu và
-        năm cuối có thể chỉ là vài tháng, nên khi so sánh hai quỹ hãy nhìn vào khoảng
-        thời gian cả hai đều hoạt động.
-      </p>
     </div>
   )
 }
