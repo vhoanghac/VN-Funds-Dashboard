@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { PricePoint, ReturnPoint, KPIData, YearlyReturn } from '../types'
+import type { PricePoint, ReturnPoint, KPIData, YearlyReturn, MonthlyReturn } from '../types'
 import { alignMultiSeries, NoOverlapError } from '../utils/dateAlign'
 import {
   weeklyReturns,
@@ -8,6 +8,7 @@ import {
   maxDrawdown,
   drawdownSeries,
   yearlyReturns,
+  monthlyReturns,
   rollingReturns,
   rollingAverage,
   winRateAmong,
@@ -21,6 +22,11 @@ export interface FundComparisonData {
   cumulative: ReturnPoint[]
   drawdown: ReturnPoint[]
   yearly: YearlyReturn[]
+  monthly: MonthlyReturn[]
+  /** Lợi nhuận tháng theo lịch sử RIÊNG của từng quỹ, không cắt theo giao.
+   *  Chỉ lọc theo dateFrom/dateTo. Heatmap dùng bản này để không bị thu hẹp
+   *  khi các quỹ có thời điểm ra đời khác nhau. */
+  monthlyFull: MonthlyReturn[]
   rolling: ReturnPoint[]
   kpi: KPIData
 }
@@ -79,6 +85,19 @@ export function useMultiComparison(
 
       const startDate = aligned.dates[0]
 
+      // Lợi nhuận tháng theo lịch sử riêng từng quỹ, dùng chuỗi GỐC chưa lọc ngày
+      // và chưa align. Heatmap luôn hiển thị toàn bộ lịch sử quỹ, không bị thu
+      // hẹp bởi bộ lọc thời gian (6T/1N/3N...) cũng như không bị cắt theo thời
+      // điểm ra đời của quỹ mới nhất.
+      const allMonthlyFull: MonthlyReturn[][] = fundIds.map(id => {
+        const raw = fundData.get(id)
+        if (!raw) return []
+        const dates = raw.map(p => p.date)
+        const prices = raw.map(p => p.price)
+        const rets = weeklyReturns(dates, prices)
+        return monthlyReturns(rets)
+      })
+
       const funds: FundComparisonData[] = fundIds.map((id, i) => {
         const returns = allReturns[i]!
         const yearly = allYearly[i]!
@@ -91,6 +110,8 @@ export function useMultiComparison(
           cumulative: cumulativeReturns(returns, startDate),
           drawdown: drawdownSeries(returns, startDate),
           yearly,
+          monthly: monthlyReturns(returns),
+          monthlyFull: allMonthlyFull[i]!,
           rolling,
           kpi: {
             cagr: cagr(returns),

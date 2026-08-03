@@ -8,6 +8,7 @@ import {
   worstMonthlyReturn,
   drawdownSeries,
   yearlyReturns,
+  monthlyReturns,
   winRateAmong,
   rollingReturns,
   rollingAverage,
@@ -695,5 +696,56 @@ describe('simulateMultiFundPortfolio', () => {
   it('returns empty for empty returns', () => {
     expect(simulateMultiFundPortfolio([], [], 'yearly')).toEqual([])
     expect(simulateMultiFundPortfolio([[]], [1.0], 'yearly')).toEqual([])
+  })
+})
+
+// ─── monthlyReturns ───────────────────────────────────────────
+
+describe('monthlyReturns', () => {
+  it('groups weekly returns by calendar month and compounds', () => {
+    // Tháng 1: 3 tuần, lần lượt +10%, +10%, +10% → 1.1^3 - 1
+    // Tháng 2: 2 tuần, -5%, +5% → 0.95 * 1.05 - 1
+    const returns = makeReturns([
+      '2021-01-07', '2021-01-14', '2021-01-21',
+      '2021-02-04', '2021-02-11',
+    ], [0.10, 0.10, 0.10, -0.05, 0.05])
+    const result = monthlyReturns(returns)
+
+    expect(result).toHaveLength(2)
+    expect(result[0]!.year).toBe(2021)
+    expect(result[0]!.month).toBe(1)
+    expect(result[0]!.value).toBeCloseTo(1.1 * 1.1 * 1.1 - 1, 10)
+    expect(result[1]!.month).toBe(2)
+    expect(result[1]!.value).toBeCloseTo(0.95 * 1.05 - 1, 10)
+  })
+
+  it('marks first and last month partial when data does not cover full month', () => {
+    // Tháng 3 bắt đầu từ ngày 15, tháng 4 kết thúc ngày 20 → cả hai partial
+    const returns = makeReturns([
+      '2021-03-15', '2021-03-22', '2021-03-29',
+      '2021-04-05', '2021-04-12', '2021-04-20',
+    ], [0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
+    const result = monthlyReturns(returns)
+
+    expect(result[0]!.isPartial).toBe(true)
+    expect(result[1]!.isPartial).toBe(true)
+  })
+
+  it('does not flag middle months as partial', () => {
+    const returns = makeReturns([
+      '2021-01-15', '2021-01-22', '2021-01-29',
+      '2021-02-05', '2021-02-12', '2021-02-19', '2021-02-26',
+      '2021-03-05', '2021-03-12', '2021-03-19', '2021-03-26',
+      '2021-04-15',
+    ], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02])
+    const result = monthlyReturns(returns)
+
+    expect(result).toHaveLength(4)
+    expect(result[1]!.isPartial).toBe(false)
+    expect(result[2]!.isPartial).toBe(false)
+  })
+
+  it('returns empty for empty input', () => {
+    expect(monthlyReturns([])).toEqual([])
   })
 })

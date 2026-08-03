@@ -1,4 +1,4 @@
-import type { ReturnPoint, YearlyReturn } from '../types'
+import type { ReturnPoint, YearlyReturn, MonthlyReturn } from '../types'
 import { rollingWindowStarts } from './dateWindow'
 
 /**
@@ -450,6 +450,58 @@ export function yearlyReturns(returns: ReturnPoint[]): YearlyReturn[] {
 
 function daysBetweenDates(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
+}
+
+// ─── Monthly returns ─────────────────────────────────────────
+
+/**
+ * Lợi nhuận theo từng tháng dương lịch. Gom các return rồi compounding trong
+ * cùng tháng/năm. Dùng làm dữ liệu cho heatmap "tháng × năm".
+ *
+ * Tháng ĐẦU và CUỐI của chuỗi bị đánh dấu isPartial nếu dữ liệu bắt đầu/kết thúc
+ * giữa tháng, để heatmap không vẽ như tháng trọn vẹn. Các tháng ở giữa luôn trọn.
+ */
+export function monthlyReturns(returns: ReturnPoint[]): MonthlyReturn[] {
+  if (returns.length === 0) return []
+
+  // Gom return theo (year, month)
+  const groups = new Map<string, ReturnPoint[]>()
+  for (const r of returns) {
+    const key = r.date.substring(0, 7) // YYYY-MM
+    const group = groups.get(key)
+    if (group) {
+      group.push(r)
+    } else {
+      groups.set(key, [r])
+    }
+  }
+
+  const monthKeys = Array.from(groups.keys()).sort()
+  const firstKey = monthKeys[0]!
+  const lastKey = monthKeys[monthKeys.length - 1]!
+
+  const result: MonthlyReturn[] = []
+
+  for (const key of monthKeys) {
+    const group = groups.get(key)!
+    let growth = 1.0
+    for (const r of group) {
+      growth *= 1 + r.value
+    }
+
+    const year = parseInt(key.substring(0, 4), 10)
+    const month = parseInt(key.substring(5, 7), 10)
+
+    const firstDate = group[0]!.date
+    const lastDate = group[group.length - 1]!.date
+    const isPartial =
+      (key === firstKey && firstDate !== `${key}-01`) ||
+      (key === lastKey && lastDate !== `${key}-31` && lastDate !== `${key}-30` && lastDate !== `${key}-28` && lastDate !== `${key}-29`)
+
+    result.push({ year, month, value: growth - 1, isPartial })
+  }
+
+  return result
 }
 
 // ─── Win Rate ───────────────────────────────────────────────

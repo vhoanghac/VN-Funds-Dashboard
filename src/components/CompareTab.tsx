@@ -9,6 +9,7 @@ import { DrawdownChart } from './DrawdownChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
 import { RollingReturnChart } from './RollingReturnChart'
 import { CompareStoryBlock } from './CompareStoryBlock'
+import { MonthlyHeatmap } from './MonthlyHeatmap'
 import { DataQualityBlock } from './DataQualityBlock'
 import { DividendNotice } from './DividendNotice'
 import { DateRangePicker } from './DateRangePicker'
@@ -82,6 +83,14 @@ function CompareTabImpl({
     }))
     : []
 
+  const monthlySeries = comparison.status === 'ready'
+    ? comparison.data.funds.map((f, i) => ({
+      name: f.id,
+      color: FUND_COLORS[i % FUND_COLORS.length]!,
+      data: f.monthlyFull,
+    }))
+    : []
+
   const kpiFunds = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
       name: f.id,
@@ -148,6 +157,8 @@ function CompareTabImpl({
           <DrawdownChart series={drawdownSeries} />
 
           <YearlyPerformanceChart series={yearlySeries} />
+
+          <MonthlyHeatmap series={monthlySeries} />
 
           <RollingReturnChart
             series={rollingSeries}

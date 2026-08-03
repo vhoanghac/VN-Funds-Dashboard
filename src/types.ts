@@ -41,6 +41,14 @@ export interface YearlyReturn {
   isPartial: boolean // true for incomplete years
 }
 
+/** Monthly return for a single calendar month */
+export interface MonthlyReturn {
+  year: number
+  month: number // 1..12
+  value: number // decimal, growth of the whole month
+  isPartial: boolean // true for incomplete months (first/last)
+}
+
 /** Rebalancing frequency options */
 export type RebalanceFrequency = 'monthly' | 'quarterly' | 'yearly'
 

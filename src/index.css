@@ -6611,3 +6611,129 @@ h1, h2, h3 {
   line-height: 1.5;
   color: #78350f;
 }
+
+/* ── Heatmap tháng × năm (tab So Sánh) ─────────────────────── */
+
+.hm-fund-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.hm-fund-tab {
+  border: 1px solid #d8d5cb;
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.hm-fund-tab:hover {
+  border-color: var(--color-text-muted);
+}
+
+.hm-fund-tab--active {
+  background: #fff;
+}
+
+.hm-scroll {
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.hm-grid {
+  display: grid;
+  gap: 3px;
+  min-width: 640px;
+}
+
+.hm-col-header {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 2px 0 6px;
+}
+
+.hm-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-right: 6px;
+}
+
+.hm-cell {
+  border-radius: 4px;
+  padding: 5px 2px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  transition: filter 0.12s;
+}
+
+.hm-cell:hover {
+  filter: brightness(0.94);
+}
+
+.hm-cell--na {
+  background: #f5f4ed;
+  color: #c3c1b8;
+}
+
+.hm-cell--partial {
+  outline: 1px dashed rgba(0, 0, 0, 0.18);
+  outline-offset: -1px;
+}
+
+.hm-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.hm-legend-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin: 0 4px;
+}
+
+.hm-legend-unit {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  margin-left: 6px;
+}
+
+.hm-legend-swatch {
+  width: 18px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.hm-legend-swatch--neg3 { background: rgb(255, 80, 80); }
+.hm-legend-swatch--neg2 { background: rgb(255, 145, 145); }
+.hm-legend-swatch--neg1 { background: rgb(255, 190, 190); }
+.hm-legend-swatch--zero  { background: rgb(248, 248, 245); }
+.hm-legend-swatch--pos1 { background: rgb(214, 235, 231); }
+.hm-legend-swatch--pos2 { background: rgb(175, 220, 210); }
+.hm-legend-swatch--pos3 { background: rgb(120, 200, 180); }
+
+.hm-note {
+  margin: 12px 0 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  max-width: 720px;
+}

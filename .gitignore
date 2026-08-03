@@ -8,6 +8,8 @@ opencode.json
 .DS_Store
 Thumbs.db
 .gstack/
+.playwright/
+.playwright-mcp/
 .context/
 .claude/
 tsconfig.tsbuildinfo
