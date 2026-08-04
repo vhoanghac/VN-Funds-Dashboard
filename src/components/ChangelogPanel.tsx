@@ -5,6 +5,7 @@ const ENTRIES = [
     items: [
       'Thêm biểu đồ heatmap lợi nhuận theo tháng cho tab So Sánh. Mỗi quỹ hiển thị đầy đủ lịch sử riêng, không bị cắt theo bộ lọc thời gian đang chọn; năm mới nhất luôn ở trên cùng.',
       'Thêm "Tiết kiệm ngân hàng (lãi suất cố định, tự nhập)" vào danh sách chọn quỹ trong tab DCA.',
+      'Sửa lỗi MWRR bị tính 2 lần (khuếch đại con số thực lên làm 2) trong mục "Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ".',
     ],
   },
   {

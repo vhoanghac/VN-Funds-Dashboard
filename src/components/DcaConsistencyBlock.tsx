@@ -577,20 +577,14 @@ function BoostTakeaway({
 
 /**
  * MWRR (Money-Weighted Rate of Return, IRR có trọng số thời gian) cho MỘT kịch
- * bản: nối chuỗi cashflows (âm = nạp tiền) với 1 dòng tiền dương ở ngày cuối
- * cùng bằng đúng giá trị danh mục lúc đó, rồi giải qua dcaMWRR() đã có sẵn.
- * Khác "% Lợi nhuận" (finalValue/totalInvested − 1) ở chỗ MWRR tính đúng SỐ
- * NĂM mỗi đồng đã có để sinh lời, không coi tiền vào sớm và tiền vào muộn là
- * như nhau.
+ * bản. simulateDCA() đã tự nối sẵn dòng tiền dương ở ngày cuối cùng bằng đúng
+ * giá trị danh mục vào result.cashflows (xem allCashflows trong dca.ts), nên
+ * ở đây chỉ cần đưa thẳng cashflows đó vào dcaMWRR(), không nối thêm lần nữa.
+ * Nối thêm lần nữa sẽ đếm trùng giá trị cuối kỳ, đẩy MWRR lên sai gấp mấy lần.
  */
-function computeMWRR(
-  cashflows: { date: string; amount: number }[],
-  values: { date: string; value: number }[],
-  finalValue: number,
-): number | null {
-  if (cashflows.length === 0 || values.length === 0) return null
-  const lastDate = values[values.length - 1]!.date
-  return dcaMWRR([...cashflows, { date: lastDate, amount: finalValue }])
+function computeMWRR(cashflows: { date: string; amount: number }[]): number | null {
+  if (cashflows.length === 0) return null
+  return dcaMWRR(cashflows)
 }
 
 /** Chạy DCA đều đặn bình thường (không skip, không boost) — dùng làm baseline
@@ -613,7 +607,7 @@ function runBaseline(inputs: NonNullable<ConsistencyPortfolio['simulationInputs'
     totalInvested: result.totalInvested,
     finalValue: result.finalValue,
     valueSeries: result.values,
-    mwrr: computeMWRR(result.cashflows, result.values, result.finalValue),
+    mwrr: computeMWRR(result.cashflows),
   }
 }
 
@@ -657,7 +651,7 @@ function runPanicStop(
     valueSeries: result.values,
     skippedCount,
     skippedCash: skippedCount * inputs.params.cashflowAmount,
-    mwrr: computeMWRR(result.cashflows, result.values, result.finalValue),
+    mwrr: computeMWRR(result.cashflows),
   }
 }
 
@@ -700,7 +694,7 @@ function runBoostBuy(
     valueSeries: result.values,
     boostedCount,
     extraInvested: boostedCount * extraAmount,
-    mwrr: computeMWRR(result.cashflows, result.values, result.finalValue),
+    mwrr: computeMWRR(result.cashflows),
   }
 }
 
