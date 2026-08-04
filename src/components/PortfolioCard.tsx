@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from 'react'
 import Select from 'react-select'
 import type { FundMeta, RebalanceFrequency } from '../types'
 import type { DCASlot } from '../utils/dca'
+import { isSavingsAssetId, parseSavingsRate, savingsAssetId, SAVINGS_OPTION_LABEL } from '../utils/savingsAsset'
 
 export const PORTFOLIO_COLORS = ['#059669', '#2563EB', '#DC2626', '#F59E0B', '#8B5CF6']
 export const MAX_PORTFOLIOS = 5
@@ -110,19 +112,30 @@ export function PortfolioCard({
       </div>
 
       <div className="portfolio-slots">
-        {portfolio.slots.map((slot, idx) => (
+        {portfolio.slots.map((slot, idx) => {
+          const isSavings = isSavingsAssetId(slot.fundId)
+          const selectedOption = isSavings
+            ? { value: slot.fundId, label: SAVINGS_OPTION_LABEL }
+            : fundOptions.find(o => o.value === slot.fundId) || null
+          return (
           <div key={idx} className="portfolio-slot-row">
             <Select
               className="portfolio-fund-select"
               classNamePrefix="fund-search"
               options={fundOptions}
-              value={fundOptions.find(o => o.value === slot.fundId) || null}
+              value={selectedOption}
               onChange={opt => onUpdateSlot(idx, { fundId: opt?.value || '' })}
               placeholder="Tìm quỹ..."
               noOptionsMessage={() => 'Không tìm thấy'}
               isSearchable
               styles={portfolioSelectStyles}
             />
+            {isSavings && (
+              <SavingsRateInput
+                fundId={slot.fundId}
+                onCommit={rate => onUpdateSlot(idx, { fundId: savingsAssetId(rate) })}
+              />
+            )}
             <div className="portfolio-weight-input">
               <input
                 type="number"
@@ -145,7 +158,8 @@ export function PortfolioCard({
               −
             </button>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className={`portfolio-total ${isOverUnder ? 'portfolio-total-warn' : ''}`}>
@@ -153,6 +167,51 @@ export function PortfolioCard({
         <span className="portfolio-total-value">{totalWeight}</span>
         <span>%</span>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Ô nhập lãi suất tiết kiệm: gõ tự do (giữ state riêng), chỉ đẩy giá trị lên
+ * slot.fundId (kéo theo regenerate toàn bộ chuỗi giá và align lại cả màn hình
+ * DCA) sau 300ms ngừng gõ hoặc khi rời khỏi ô, tránh regenerate mỗi phím gõ.
+ */
+function SavingsRateInput({ fundId, onCommit }: { fundId: string; onCommit: (rate: number) => void }) {
+  const [text, setText] = useState(() => String(parseSavingsRate(fundId)))
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Đồng bộ lại khi fundId đổi từ bên ngoài (vd người dùng chọn lại quỹ khác rồi quay lại)
+  useEffect(() => {
+    setText(String(parseSavingsRate(fundId)))
+  }, [fundId])
+
+  function scheduleCommit(value: string) {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      onCommit(Math.max(0, Number(value) || 0))
+    }, 300)
+  }
+
+  function flushCommit(value: string) {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    onCommit(Math.max(0, Number(value) || 0))
+  }
+
+  return (
+    <div className="portfolio-rate-input" title="Lãi suất tiết kiệm giả định, %/năm">
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step={0.1}
+        value={text}
+        onChange={e => {
+          setText(e.target.value)
+          scheduleCommit(e.target.value)
+        }}
+        onBlur={e => flushCommit(e.target.value)}
+      />
+      <span>%/năm</span>
     </div>
   )
 }

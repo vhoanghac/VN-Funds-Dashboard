@@ -101,6 +101,41 @@ function MethodologyPanelImpl() {
           quỹ, kỳ tính bắt đầu từ ngày muộn nhất mà tất cả các quỹ đều đã có dữ liệu.
         </p>
         <SeenAt where="tab So Sánh">mục "Chất lượng dữ liệu" minh bạch khoảng dữ liệu và các khoảng trống của từng quỹ.</SeenAt>
+
+        <h4 className="method-sub">0.1. Tiết kiệm ngân hàng: không lấy dữ liệu ở đâu cả</h4>
+        <p>
+          Tiết kiệm ngân hàng là trường hợp khác hẳn mọi tài sản còn lại trong danh sách.
+          Nó không có NAV, không có nguồn nào để fetch. Bạn nhập một mức lãi suất cố định
+          (mặc định 6%/năm), dashboard tự sinh ra một chuỗi giá lãi kép ngay trong trình
+          duyệt, rồi coi chuỗi giá đó như NAV của một quỹ bình thường:
+        </p>
+        <Formula>Giá(t) = 100 × (1 + lãi suất)<sup>số ngày đã trôi qua / 365,25</sup></Formula>
+        <p>
+          Chuỗi giá này hoạt động giống như chứng chỉ quỹ. Mỗi lần nạp tiền, vẫn mua
+          "đơn vị" tại giá hôm đó. Vẫn trộn theo tỷ trọng. Vẫn tái cân bằng theo lịch bạn
+          chọn. Tiền nạp tháng nào, sinh lãi từ tháng đó, không gộp lại rồi cộng lãi một
+          cục cuối năm.
+        </p>
+        <p>
+          Giới hạn cần biết: lãi suất ngân hàng thật đổi theo từng năm, lúc 4%, lúc 8%. Số
+          bạn nhập ở đây thì <strong>cố định suốt cả kỳ backtest</strong>, dù kỳ đó 10 hay
+          20 năm. Đây không phải dữ liệu lịch sử lãi suất thật. Nhãn "lãi suất cố định giả
+          định" ở dropdown chọn quỹ nhắc đúng điều đó.
+        </p>
+        <Example>
+          <p>Gửi tiết kiệm với lãi suất giả định 6%/năm:</p>
+          <ul>
+            <li>Ngày bắt đầu: giá = 100.</li>
+            <li>Sau đúng 1 năm: giá = 100 × 1,06<sup>1</sup> = <strong>106</strong>.</li>
+            <li>Sau đúng 2 năm: giá = 100 × 1,06<sup>2</sup> = <strong>112,36</strong>.</li>
+          </ul>
+          <p>
+            Trộn 60% tiết kiệm 6%/năm với 40% một quỹ ETF trong cùng danh mục thì phần
+            tiết kiệm luôn đi lên đều đặn, còn phần ETF vẫn lên xuống theo thị trường như
+            bình thường. Kết quả là một đường TWRR bớt dốc hơn, nhưng cũng bớt xóc hơn.
+          </p>
+        </Example>
+        <SeenAt>tuỳ chọn "Tiết kiệm ngân hàng (lãi suất cố định, tự nhập)" trong danh sách chọn quỹ ở tab DCA, cùng ô nhập lãi suất %/năm ngay cạnh ô tỷ trọng.</SeenAt>
       </Section>
 
       {/* ─────────────────────────── 1. MÔ PHỎNG ─────────────────────────── */}

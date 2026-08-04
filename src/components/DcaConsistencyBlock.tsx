@@ -432,13 +432,18 @@ function ConsistencyTakeaway({
   skippedCash15: number
   skippedCash25: number
 }) {
-  // Case 1: Panic không skip lần nào (không có DD vượt -15%) -> thị trường êm ả
+  // Case 1: Panic không skip lần nào, có thể do thị trường êm ả, hoặc do quỹ vẫn giảm sâu
+  // nhưng gọn trong khoảng ngắn giữa 2 lần nạp, không lần kiểm tra hàng tháng nào rơi đúng
+  // lúc (hook skipContributionWhen chỉ check tại contribution date, không phải mỗi ngày).
   if (skipped15 === 0 && skipped25 === 0) {
     return (
       <div className="dca-consist-takeaway">
-        Trong kỳ này quỹ không có cơn sụt nào sâu quá -15%, nên cả ba kịch bản cho kết quả
-        giống nhau. Đây là giai đoạn thị trường dễ chịu, bạn chưa bị thử thách về tâm lý.
-        Thử kéo dài kỳ backtest để xem mình sẽ xử lý thế nào khi có bão thật.
+        Trong kỳ này, không lần nạp tiền hàng tháng nào rơi đúng vào lúc quỹ giảm sâu quá
+        -15%, nên cả ba kịch bản cho kết quả giống nhau. Điều này không có nghĩa quỹ chưa
+        từng giảm đến mức đó. Quỹ vẫn có thể đã giảm sâu như vậy, chỉ là gọn trong vài tuần
+        ngắn giữa hai lần nạp, không lần kiểm tra hàng tháng nào rơi đúng lúc. Xem bảng
+        "Các đợt sụt giảm lớn nhất" ở trên để biết quỹ thực sự từng giảm sâu đến đâu, hoặc
+        thử kéo dài kỳ backtest để xem mình sẽ xử lý thế nào khi có bão thật.
       </div>
     )
   }
@@ -526,8 +531,10 @@ function BoostTakeaway({
   if (boosted15 === 0 && boosted25 === 0) {
     return (
       <div className="dca-consist-takeaway">
-        Trong kỳ này quỹ không có cơn sụt nào sâu quá -15%, nên tăng tiền chưa có cơ hội áp dụng.
-        Cả ba kịch bản cho kết quả giống nhau.
+        Trong kỳ này, không lần nạp tiền hàng tháng nào rơi đúng vào lúc quỹ giảm sâu quá
+        -15%, nên tăng tiền chưa có cơ hội áp dụng. Cả ba kịch bản cho kết quả giống nhau.
+        Quỹ vẫn có thể từng giảm đến mức đó, chỉ là không rơi đúng vào ngày bạn định kỳ
+        nạp tiền.
       </div>
     )
   }

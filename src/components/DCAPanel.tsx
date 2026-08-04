@@ -28,6 +28,14 @@ import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import { DataQualityBlock } from './DataQualityBlock'
 import { FUND_COLORS } from '../constants'
 import {
+  isSavingsAssetId,
+  parseSavingsRate,
+  generateSavingsSeries,
+  savingsAssetId,
+  SAVINGS_OPTION_LABEL,
+  DEFAULT_SAVINGS_RATE,
+} from '../utils/savingsAsset'
+import {
   PortfolioCard,
   PORTFOLIO_COLORS,
   MAX_PORTFOLIOS,
@@ -198,10 +206,10 @@ function DCAPanelImpl({ funds }: Props) {
     })))
   }, [portfolios])
 
-  const fundOptions = useMemo(() =>
-    funds.map(f => ({ value: f.id, label: f.name_vi })),
-    [funds],
-  )
+  const fundOptions = useMemo(() => [
+    ...funds.map(f => ({ value: f.id, label: f.name_vi })),
+    { value: savingsAssetId(DEFAULT_SAVINGS_RATE), label: SAVINGS_OPTION_LABEL },
+  ], [funds])
 
   // Quỹ 2-giá (mua/bán khác nhau, vd vàng miếng SJC) — xem giải thích ở
   // purchasePriceData phía trên.
@@ -232,6 +240,15 @@ function DCAPanelImpl({ funds }: Props) {
     setLoading(true)
     Promise.all(
       toFetch.map(async id => {
+        // Tiết kiệm ngân hàng lãi suất cố định: không phải quỹ thật, không
+        // qua CSV/fetch. Sinh sẵn chuỗi giá từ một mốc đủ sớm (bao trùm mọi
+        // khoảng thời gian DCA có thể chọn) đến hôm nay.
+        if (isSavingsAssetId(id)) {
+          const today = new Date().toISOString().substring(0, 10)
+          const series = generateSavingsSeries(parseSavingsRate(id), '2000-01-01', today)
+          return { id, raw: series, adjusted: series, purchase: null }
+        }
+
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()

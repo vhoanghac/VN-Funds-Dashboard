@@ -1,5 +1,13 @@
 const ENTRIES = [
   {
+    version: 'v4.0',
+    date: '04/08/2026',
+    items: [
+      'Thêm biểu đồ heatmap lợi nhuận theo tháng cho tab So Sánh. Mỗi quỹ hiển thị đầy đủ lịch sử riêng, không bị cắt theo bộ lọc thời gian đang chọn; năm mới nhất luôn ở trên cùng.',
+      'Thêm "Tiết kiệm ngân hàng (lãi suất cố định, tự nhập)" vào danh sách chọn quỹ trong tab DCA.',
+    ],
+  },
+  {
     version: 'v3.9',
     date: '28/07/2026',
     items: [

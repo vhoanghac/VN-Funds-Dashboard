@@ -2543,6 +2543,27 @@ h1, h2, h3 {
   color: var(--color-text-muted);
 }
 
+.portfolio-rate-input {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.portfolio-rate-input input {
+  width: 64px;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.portfolio-rate-input span {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 .portfolio-remove-slot-btn {
   width: 30px;
   height: 30px;
@@ -4401,6 +4422,16 @@ h1, h2, h3 {
   }
 
   .portfolio-weight-input input {
+    width: 100%;
+    min-width: 60px;
+  }
+
+  .portfolio-rate-input {
+    order: 2;
+    flex: 1;
+  }
+
+  .portfolio-rate-input input {
     width: 100%;
     min-width: 60px;
   }
