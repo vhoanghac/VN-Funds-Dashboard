@@ -101,23 +101,33 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     dateTo: string
   } | null>(null)
 
-  // Danh sách cho ô chọn TÍN HIỆU: chỉ quỹ thật, CỐ TÌNH không có tiết kiệm
-  // ngân hàng. Chuỗi lãi suất cố định chỉ có tăng, không có ngày giảm, nên mọi
-  // chỉ báo trên nó đều kẹt cứng một trạng thái: giá luôn nằm trên SMA/EMA
-  // (đo trên 4 năm: 1263/1263 ngày), còn RSI luôn đúng bằng 100 vì mẫu số
-  // (trung bình mức giảm) bằng 0. Backtest vẫn chạy ra kết quả, nhưng là kết
-  // quả không bao giờ đổi trạng thái, tức một cái bẫy trông như phân tích thật.
-  const signalFundOptions = useMemo(
+  // Danh sách quỹ thật, không có tiết kiệm ngân hàng.
+  const realFundOptions = useMemo(
     () => funds.map(f => ({ value: f.id, label: f.name_vi })),
     [funds],
   )
 
-  // Danh sách cho 2 thẻ danh mục: có tiết kiệm ngân hàng. Đây mới là chỗ nó
-  // hữu ích thật, kiểu "trên MA200 thì giữ ETF, dưới thì rút về gửi tiết kiệm".
+  // Danh sách đầy đủ, thêm tiết kiệm ngân hàng. Dùng cho CẢ 2 thẻ danh mục lẫn
+  // ô chọn tín hiệu.
+  //
+  // Ở 2 thẻ danh mục thì tiết kiệm hữu ích thật, kiểu "trên MA200 thì giữ ETF,
+  // dưới thì rút về gửi tiết kiệm".
+  //
+  // Ở ô tín hiệu thì nó là một cái bẫy, nên có cảnh báo đi kèm chứ không chặn.
+  // Chuỗi lãi suất cố định chỉ tăng, không có ngày nào giảm, nên mọi chỉ báo
+  // trên nó kẹt cứng một trạng thái: giá luôn nằm trên SMA/EMA (đo trên 4 năm,
+  // 1263 trên 1263 ngày), còn RSI luôn đúng bằng 100 vì mẫu số (trung bình mức
+  // giảm) bằng 0. Backtest vẫn chạy ra kết quả, nhưng là kết quả không bao giờ
+  // đổi trạng thái. Trước đây ô tín hiệu dùng danh sách riêng để giấu hẳn tiết
+  // kiệm đi; user chọn đổi sang cho chọn kèm cảnh báo, xem hồ sơ
+  // process/2026-08-05_TietKiemNganHang.md.
   const fundOptions = useMemo(() => [
-    ...signalFundOptions,
+    ...realFundOptions,
     { value: savingsAssetId(DEFAULT_SAVINGS_RATE), label: SAVINGS_OPTION_LABEL },
-  ], [signalFundOptions])
+  ], [realFundOptions])
+
+  // Tín hiệu đang trỏ vào tiết kiệm thì backtest sẽ đứng im một trạng thái.
+  const signalIsSavings = isSavingsAssetId(signalFundId)
 
   const dualPriceFundIds = useMemo(() => new Set(funds.filter(f => f.type === 'gold').map(f => f.id)), [funds])
 
@@ -230,7 +240,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
   const nameA = allocationA.name || 'Danh mục A'
   const nameB = allocationB.name || 'Danh mục B'
-  const signalFundName = signalFundOptions.find(o => o.value === signalFundId)?.label || signalFundId
+  const signalFundName = fundOptions.find(o => o.value === signalFundId)?.label || signalFundId
 
   return (
     <div className="simulation-panel">
@@ -315,8 +325,8 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
           <label className="dca-label">Quỹ/chỉ số làm tín hiệu</label>
           <div className="tactical-signal-select">
             <Select
-              options={signalFundOptions}
-              value={signalFundOptions.find(o => o.value === signalFundId) || null}
+              options={fundOptions}
+              value={fundOptions.find(o => o.value === signalFundId) || null}
               onChange={opt => setSignalFundId(opt?.value || '')}
               placeholder="Tìm quỹ..."
               noOptionsMessage={() => 'Không tìm thấy'}
@@ -325,6 +335,17 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
             />
           </div>
         </div>
+
+        {signalIsSavings && (
+          <p className="tactical-signal-warning">
+            Tiết kiệm ngân hàng làm tín hiệu thì backtest sẽ đứng im một trạng thái từ đầu
+            tới cuối. Lãi suất cố định nghĩa là không có ngày nào giảm, nên giá luôn nằm
+            trên SMA và EMA, còn RSI luôn bằng 100. Kết quả chạy ra vẫn có biểu đồ, nhưng
+            nó chỉ nói cho bạn biết danh mục A chạy thế nào, không phải chuyện chuyển đổi
+            hai danh mục. Muốn thấy tín hiệu đổi qua đổi lại thì chọn một quỹ hoặc chỉ số
+            có lên có xuống.
+          </p>
+        )}
         <div className="dca-param-row">
           <label className="dca-label">Chỉ báo</label>
           <div className="dca-years-selector">
@@ -505,7 +526,19 @@ export const TacticalAllocationPanel = memo(TacticalAllocationPanelImpl)
 
 // ─── Kết quả ──────────────────────────────────────────────────────
 
-function TacticalResults({
+/**
+ * Khối kết quả BẮT BUỘC bọc memo ở cuối file. Đừng gỡ.
+ *
+ * Mọi ô nhập trong panel cha (Vùng đệm, Số ngày, Số tiền đầu tư, Phí chuyển đổi)
+ * đều giữ state ở cha, nên mỗi phím gõ là một lần cha render lại. Khối này vẽ 2
+ * biểu đồ Recharts trên toàn bộ chuỗi ngày, đo được 116ms mỗi lần. Gõ vài phím
+ * liên tiếp là trang đứng hình.
+ *
+ * Props ở đây đều ổn định giữa các lần gõ: `result` đi qua useMemo và chỉ đổi khi
+ * bấm "Chạy lại", còn lại là chuỗi và số. Nhờ vậy memo bỏ qua render hoàn toàn.
+ * Ai thêm prop mới phải giữ nguyên tính chất đó, nếu không lỗi quay lại ngay.
+ */
+function TacticalResultsImpl({
   result, nameA, nameB, signalFundName, indicatorType, period, rsiOverbought, rsiOversold,
 }: {
   result: TacticalBacktestResult
@@ -729,6 +762,8 @@ function TacticalResults({
     </div>
   )
 }
+
+const TacticalResults = memo(TacticalResultsImpl)
 
 function signClass(v: number | null): string {
   if (v === null) return ''
