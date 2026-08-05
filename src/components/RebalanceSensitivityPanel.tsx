@@ -624,7 +624,7 @@ function SensitivityResults({ result }: { result: NonNullable<ReturnType<typeof 
           <h3>Thống kê theo lịch</h3>
           <span
             className="chart-tooltip-icon"
-            title="Mỗi tần suất được chạy với mọi ngày có thể tái cân bằng trong kỳ. Cột CAGR hiện median, kèm khoảng [thấp nhất – cao nhất] giữa các ngày đó: khoảng này chính là phần 'may rủi' do chọn đúng ngày nào để cân lại."
+            title="Mỗi tần suất được chạy với mọi ngày có thể tái cân bằng trong kỳ. Cột CAGR hiện median, kèm khoảng [thấp nhất – cao nhất] giữa các ngày đó: khoảng này chính là phần 'may rủi' do chọn đúng ngày nào để cân lại. Sharpe trong bảng là Sharpe 'thuần', không trừ lãi suất phi rủi ro (risk-free)."
           >?</span>
         </div>
         <div className="dca-stats-table-scroll">
@@ -632,7 +632,7 @@ function SensitivityResults({ result }: { result: NonNullable<ReturnType<typeof 
             <thead>
               <tr>
                 <th>Lịch</th>
-                <th>Số biến thể</th>
+                <th>Số ngày giao dịch</th>
                 <th>CAGR (median)</th>
                 <th>CAGR [min – max]</th>
                 <th>Sụt giảm tối đa</th>
