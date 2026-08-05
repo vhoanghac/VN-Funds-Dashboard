@@ -13,8 +13,8 @@
  *     khỏi mục tiêu quá ngưỡng 1%..20% (tuyệt đối hoặc tương đối).
  *   - "Không tái cân bằng" (buy & hold): baseline luôn có.
  *
- * Mô phỏng lump-sum chuẩn hóa vốn = 1, không phí giao dịch, giá đã
- * dividend-adjusted như mọi tab khác.
+ * Mô phỏng lump-sum chuẩn hóa vốn = 1, giá đã dividend-adjusted như mọi
+ * tab khác. Có thể tính phí giao dịch cho mỗi lần tái cân bằng (xem feePct).
  */
 import type { PricePoint } from '../types'
 import type { DCASlot } from './dca'
@@ -81,6 +81,13 @@ export interface SensitivityInput {
   schedules: ScheduleId[]
   absBand: BandSweep | null
   relBand: BandSweep | null
+  /**
+   * Phí giao dịch mỗi lần tái cân bằng, đơn vị % (0.1 = 0.1%). Phí trừ trên
+   * CẢ HAI chiều mua và bán của phần tài sản lệch tỷ trọng: mỗi lần cân,
+   * phần giá trị bị bán (traded) mất feeRate, và phần mua lại cũng mất
+   * feeRate, nên tổng phí ≈ traded × feeRate × 2. Mặc định 0 = không tính phí.
+   */
+  feePct?: number
 }
 
 export interface SensitivityResult {
@@ -134,6 +141,9 @@ export function runRebalanceSensitivity(input: SensitivityInput): SensitivityRes
     / (365.25 * 24 * 60 * 60 * 1000)
   if (years <= 0) return null
 
+  // Phí mỗi lần cân, đơn vị thập phân (0.001 = 0.1%).
+  const feeRate = (input.feePct ?? 0) / 100
+
   const variants: VariantResult[] = []
 
   // ── Biến thể lịch: từng tần suất × từng offset ──
@@ -150,7 +160,7 @@ export function runRebalanceSensitivity(input: SensitivityInput): SensitivityRes
           if (day > 0) rebalDays.add(day)
         }
       }
-      const sim = simulateCalendar(returns, targetW, n, rebalDays)
+      const sim = simulateCalendar(returns, targetW, n, rebalDays, feeRate)
       variants.push({
         group: sched.id,
         label: sched.maxOffset === 0
@@ -166,7 +176,7 @@ export function runRebalanceSensitivity(input: SensitivityInput): SensitivityRes
   // ── Biến thể band ──
   if (input.absBand) {
     for (const thr of buildThresholds(input.absBand)) {
-      const sim = simulateBand(returns, targetW, n, thr / 100, false)
+      const sim = simulateBand(returns, targetW, n, thr / 100, false, feeRate)
       variants.push({
         group: 'band-abs',
         label: `Lệch tuyệt đối ${formatThreshold(thr)}%`,
@@ -178,7 +188,7 @@ export function runRebalanceSensitivity(input: SensitivityInput): SensitivityRes
   }
   if (input.relBand) {
     for (const thr of buildThresholds(input.relBand)) {
-      const sim = simulateBand(returns, targetW, n, thr / 100, true)
+      const sim = simulateBand(returns, targetW, n, thr / 100, true, feeRate)
       variants.push({
         group: 'band-rel',
         label: `Lệch tương đối ${formatThreshold(thr)}%`,
@@ -191,7 +201,7 @@ export function runRebalanceSensitivity(input: SensitivityInput): SensitivityRes
 
   // ── Baseline: không bao giờ tái cân bằng ──
   {
-    const sim = simulateCalendar(returns, targetW, n, new Set())
+    const sim = simulateCalendar(returns, targetW, n, new Set(), feeRate)
     variants.push({
       group: 'none',
       label: 'Không tái cân bằng',
@@ -256,11 +266,35 @@ function buildPeriods(dates: string[], sched: ScheduleId): number[][] {
   return periods
 }
 
+/**
+ * Áp phí giao dịch của một lần tái cân bằng: phí trừ trên phần tài sản lệch
+ * tỷ trọng (traded), tính CẢ chiều bán lẫn chiều mua — bán phần thừa mất
+ * feeRate, mua lại phần thiếu cũng mất feeRate, nên tổng phí ≈ traded ×
+ * feeRate × 2. Trả về total sau phí (luôn ≥ 0) và đưa mọi values về đúng
+ * tỷ trọng target dựa trên total mới.
+ */
+function applyRebalanceFee(
+  values: Float64Array,
+  total: number,
+  targetW: number[],
+  feeRate: number,
+): number {
+  let traded = 0
+  for (let i = 0; i < values.length; i++) {
+    const diff = values[i]! - total * targetW[i]!
+    if (diff > 0) traded += diff
+  }
+  const afterFee = Math.max(0, total - traded * feeRate * 2)
+  for (let i = 0; i < values.length; i++) values[i] = afterFee * targetW[i]!
+  return afterFee
+}
+
 function simulateCalendar(
   returns: Float64Array[],
   targetW: number[],
   n: number,
   rebalDays: Set<number>,
+  feeRate: number,
 ): { totals: Float64Array; rebalCount: number } {
   const f = returns.length
   const values = new Float64Array(f)
@@ -275,7 +309,7 @@ function simulateCalendar(
       total += values[i]!
     }
     if (rebalDays.has(t)) {
-      for (let i = 0; i < f; i++) values[i] = total * targetW[i]!
+      total = applyRebalanceFee(values, total, targetW, feeRate)
       rebalCount++
     }
     totals[t] = total
@@ -289,6 +323,7 @@ function simulateBand(
   n: number,
   threshold: number,
   relative: boolean,
+  feeRate: number,
 ): { totals: Float64Array; rebalCount: number } {
   const f = returns.length
   const values = new Float64Array(f)
@@ -309,7 +344,7 @@ function simulateBand(
       if (drift > limit) { breach = true; break }
     }
     if (breach) {
-      for (let i = 0; i < f; i++) values[i] = total * targetW[i]!
+      total = applyRebalanceFee(values, total, targetW, feeRate)
       rebalCount++
     }
     totals[t] = total

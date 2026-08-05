@@ -63,6 +63,8 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
   const [absSweep, setAbsSweep] = useState<BandSweep>({ start: 1, step: 1, end: 20 })
   const [includeRelBands, setIncludeRelBands] = useState(false)
   const [relSweep, setRelSweep] = useState<BandSweep>({ start: 1, step: 1, end: 20 })
+  // Phí giao dịch mỗi lần tái cân bằng, đơn vị % (mặc định 0,1%).
+  const [feePct, setFeePct] = useState(0.1)
 
   // ── Danh mục (đúng 1, tối thiểu 2 quỹ) ──
   const [portfolio, setPortfolio] = useState<PortfolioCardState>(() => ({
@@ -87,6 +89,7 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     schedules: ScheduleId[]
     absBand: BandSweep | null
     relBand: BandSweep | null
+    feePct: number
   } | null>(null)
 
   const fundOptions = useMemo(() => [
@@ -165,6 +168,7 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
       schedules: [...selectedSchedules],
       absBand: includeAbsBands ? { ...absSweep } : null,
       relBand: includeRelBands ? { ...relSweep } : null,
+      feePct,
     }
   }
 
@@ -210,6 +214,7 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
       schedules: committed.schedules,
       absBand: committed.absBand,
       relBand: committed.relBand,
+      feePct: committed.feePct,
     })
   }, [committed, fundData])
 
@@ -352,9 +357,27 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
           </div>
         </div>
 
+        <div className="dca-param-row">
+          <label className="dca-label">Phí giao dịch mỗi lần cân</label>
+          <div className="rebal-fee-row">
+            <input
+              type="range"
+              className="scnpath-slider"
+              min={0}
+              max={3}
+              step={0.1}
+              value={feePct}
+              onChange={e => setFeePct(Number(e.target.value))}
+            />
+            <span className="rebal-fee-value">{feePct.toFixed(1).replace('.', ',')}%</span>
+          </div>
+        </div>
+
         <p className="dca-note">
           * Không cần chọn ngày nếu muốn dùng toàn bộ lịch sử chung của các quỹ. Mô phỏng
-          mua một lần, giá đã điều chỉnh cổ tức, chưa tính phí giao dịch và thuế.
+          mua một lần, giá đã điều chỉnh cổ tức, chưa tính thuế. Phí giao dịch (nếu đặt lớn
+          hơn 0%) trừ trên CẢ chiều mua lẫn bán của phần tài sản lệch tỷ trọng mỗi lần cân,
+          và chỉ áp cho các lần tái cân bằng — không tính cho lần mua ban đầu.
         </p>
       </div>
 

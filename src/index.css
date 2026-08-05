@@ -3286,6 +3286,25 @@ h1, h2, h3 {
   gap: 10px;
 }
 
+.rebal-fee-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rebal-fee-row .scnpath-slider {
+  max-width: 220px;
+}
+
+.rebal-fee-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+}
+
 .rebal-band-row {
   display: flex;
   align-items: center;
