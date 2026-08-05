@@ -122,6 +122,23 @@ function MethodologyPanelImpl() {
           20 năm. Đây không phải dữ liệu lịch sử lãi suất thật. Nhãn "lãi suất cố định giả
           định" ở dropdown chọn quỹ nhắc đúng điều đó.
         </p>
+        <p>
+          Hai chỗ dashboard cố tình KHÔNG hiển thị tiết kiệm, vì hiện lên là dạy sai:
+        </p>
+        <ul className="method-list">
+          <li>
+            <strong>Biểu đồ "Giá tài sản" (tab So Sánh).</strong> Chuỗi giá gốc 100 kia là
+            chỉ số tự sinh, không phải giá thật của một đơn vị tài sản nào ngoài đời. Đặt
+            nó cạnh giá một chứng chỉ quỹ hay giá một lượng vàng là ngầm bảo rằng tiết kiệm
+            cũng có "giá đơn vị".
+          </li>
+          <li>
+            <strong>Tỷ số Sharpe (tab Bitcoin).</strong> Sharpe là lợi nhuận chia cho biến
+            động. Tiết kiệm có biến động bằng 0, chia cho 0 thì không ra "hiệu quả vô hạn"
+            mà là không định nghĩa được, nên ô đó để trống. Sharpe sinh ra để so hai tài sản
+            đều có rủi ro, áp lên tài sản không rủi ro là dùng sai thước.
+          </li>
+        </ul>
         <Example>
           <p>Gửi tiết kiệm với lãi suất giả định 6%/năm:</p>
           <ul>
@@ -135,7 +152,7 @@ function MethodologyPanelImpl() {
             bình thường. Kết quả là một đường TWRR bớt dốc hơn, nhưng cũng bớt xóc hơn.
           </p>
         </Example>
-        <SeenAt>tuỳ chọn "Tiết kiệm ngân hàng (lãi suất cố định, tự nhập)" trong danh sách chọn quỹ ở tab DCA, cùng ô nhập lãi suất %/năm ngay cạnh ô tỷ trọng.</SeenAt>
+        <SeenAt where="4 tab">tuỳ chọn "Tiết kiệm ngân hàng (lãi suất cố định, tự nhập)" trong danh sách chọn quỹ ở tab DCA, So Sánh, Tái Cân Bằng và Bitcoin, kèm ô nhập lãi suất %/năm ngay bên cạnh.</SeenAt>
       </Section>
 
       {/* ─────────────────────────── 1. MÔ PHỎNG ─────────────────────────── */}

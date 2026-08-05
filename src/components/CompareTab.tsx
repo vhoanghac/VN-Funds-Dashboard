@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { useMultiFundSeries } from '../hooks/useFundData'
 import { useMultiComparison } from '../hooks/useCalculations'
 import { FundSelector } from './FundSelector'
@@ -15,6 +15,7 @@ import { DividendNotice } from './DividendNotice'
 import { DateRangePicker } from './DateRangePicker'
 import { ShareButton } from './ShareButton'
 import { FUND_COLORS } from '../constants'
+import { assetDisplayName, isSavingsAssetId } from '../utils/savingsAsset'
 import type { ChartSeries, FundMeta } from '../types'
 
 interface Props {
@@ -45,23 +46,31 @@ function CompareTabImpl({
 
   const chartSeries: ChartSeries[] = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
+      name: assetDisplayName(f.id),
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       data: f.cumulative,
     }))
     : []
 
+  // Biểu đồ "Giá tài sản" cố ý BỎ QUA tiết kiệm ngân hàng. Chuỗi giá của nó là
+  // chỉ số giả lập gốc 100 do dashboard tự sinh, không phải giá thật của một
+  // đơn vị tài sản nào ngoài đời. Vẽ nó cạnh giá CCQ hay giá một lượng vàng sẽ
+  // ngầm nói rằng "tiết kiệm cũng có giá đơn vị", tức dạy sai người dùng.
+  // Giữ nguyên màu theo vị trí gốc để khớp màu với các biểu đồ còn lại.
   const priceSeries: ChartSeries[] = comparison.status === 'ready'
-    ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
-      color: FUND_COLORS[i % FUND_COLORS.length]!,
-      data: f.prices,
-    }))
+    ? comparison.data.funds
+      .map((f, i) => ({ fund: f, color: FUND_COLORS[i % FUND_COLORS.length]! }))
+      .filter(({ fund }) => !isSavingsAssetId(fund.id))
+      .map(({ fund, color }) => ({
+        name: assetDisplayName(fund.id),
+        color,
+        data: fund.prices,
+      }))
     : []
 
   const drawdownSeries: ChartSeries[] = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
+      name: assetDisplayName(f.id),
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       data: f.drawdown,
     }))
@@ -69,7 +78,7 @@ function CompareTabImpl({
 
   const rollingSeries: ChartSeries[] = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
+      name: assetDisplayName(f.id),
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       data: f.rolling,
     }))
@@ -77,7 +86,7 @@ function CompareTabImpl({
 
   const yearlySeries = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
+      name: assetDisplayName(f.id),
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       data: f.yearly,
     }))
@@ -85,7 +94,7 @@ function CompareTabImpl({
 
   const monthlySeries = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
+      name: assetDisplayName(f.id),
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       data: f.monthlyFull,
     }))
@@ -93,11 +102,22 @@ function CompareTabImpl({
 
   const kpiFunds = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({
-      name: f.id,
+      name: assetDisplayName(f.id),
       color: FUND_COLORS[i % FUND_COLORS.length]!,
       kpi: f.kpi,
     }))
     : []
+
+  // Đổi id thô sang tên hiển thị cho CompareStoryBlock. PHẢI bọc useMemo: khối
+  // đó có useMemo riêng phụ thuộc vào chính mảng này, bên trong chạy
+  // drawdownStats + rollingReturns cho từng quỹ. Tạo mảng mới mỗi lần render
+  // sẽ khiến nó tính lại toàn bộ dù dữ liệu không hề đổi.
+  const storyFunds = useMemo(
+    () => comparison.status === 'ready'
+      ? comparison.data.funds.map(f => ({ ...f, id: assetDisplayName(f.id) }))
+      : [],
+    [comparison],
+  )
 
   const errorMessages = Array.from(fundErrors.entries())
     .map(([id, msg]) => `${id}: ${msg}`)
@@ -138,8 +158,11 @@ function CompareTabImpl({
         <>
           <DividendNotice fundIds={funds} />
 
+          {/* Tiết kiệm ngân hàng không có nguồn dữ liệu nào để mà kiểm tra chất
+              lượng: chuỗi giá sinh tại chỗ nên luôn "đủ ngày, mới tinh". Đưa nó
+              vào bảng này chỉ tạo cảm giác an tâm giả, nên loại thẳng ra. */}
           <DataQualityBlock
-            fundIds={funds}
+            fundIds={funds.filter(id => !isSavingsAssetId(id))}
             fundData={fundData}
             colors={FUND_COLORS}
             dateFrom={dateFrom}
@@ -167,7 +190,7 @@ function CompareTabImpl({
           />
 
           <CompareStoryBlock
-            funds={comparison.data.funds}
+            funds={storyFunds}
             colors={FUND_COLORS}
             startDate={comparison.data.startDate}
             endDate={comparison.data.endDate}

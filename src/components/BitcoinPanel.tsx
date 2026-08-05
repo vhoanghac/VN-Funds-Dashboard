@@ -4,7 +4,7 @@ import type { FundMeta, PricePoint, ChartSeries, RebalanceFrequency, ReturnPoint
 import { parseCSV } from '../utils/csvParser'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { DividendNotice } from './DividendNotice'
-import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn } from '../utils/calculations'
+import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn, ZERO_VOLATILITY_EPSILON } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
 import { alignMultiSeries } from '../utils/dateAlign'
 import { BitcoinCycleTable } from './BitcoinCycleTable'
@@ -18,6 +18,11 @@ import { BtcWeightChart } from './BtcWeightChart'
 import { BTC_EVENTS } from '../utils/btcEvents'
 import { MoneyInput } from './MoneyInput'
 import { MoneyMachineBlock } from './MoneyMachineBlock'
+import { SavingsRateInput } from './SavingsRateInput'
+import {
+  isSavingsAssetId, savingsSeriesForId, savingsAssetId, assetDisplayName,
+  pruneUnusedSavings, SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
+} from '../utils/savingsAsset'
 import { SleepTestBlock } from './SleepTestBlock'
 import { WinRateBlock } from './WinRateBlock'
 import { loadLS, saveLS } from '../utils/localStorage'
@@ -99,11 +104,21 @@ function BitcoinPanelImpl({ funds }: Props) {
 
   // Fund options (exclude BTC itself)
   const fundOptions = useMemo(
-    () => funds
-      .filter(f => f.id !== BTC_ID)
-      .map(f => ({ value: f.id, label: f.name_vi })),
+    () => [
+      ...funds
+        .filter(f => f.id !== BTC_ID)
+        .map(f => ({ value: f.id, label: f.name_vi })),
+      { value: savingsAssetId(DEFAULT_SAVINGS_RATE), label: SAVINGS_OPTION_LABEL },
+    ],
     [funds],
   )
+
+  // Lãi suất nằm ngay trong id ("SAVINGS:7"), nên khi người dùng đổi lãi suất,
+  // id mới không còn khớp option nào trong danh sách. Tự dựng lại option cho
+  // đúng id hiện tại để ô chọn không bị rỗng.
+  const selectedFundOption = isSavingsAssetId(selectedFundId)
+    ? { value: selectedFundId, label: SAVINGS_OPTION_LABEL }
+    : fundOptions.find(o => o.value === selectedFundId) || null
 
   // Load BTC + selected fund CSV
   useEffect(() => {
@@ -116,6 +131,9 @@ function BitcoinPanelImpl({ funds }: Props) {
 
     Promise.all(
       needed.map(async id => {
+        // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
+        if (isSavingsAssetId(id)) return { id, weekly: savingsSeriesForId(id) }
+
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) throw new Error(`Không tải được ${id} (${resp.status})`)
         const text = await resp.text()
@@ -129,6 +147,9 @@ function BitcoinPanelImpl({ funds }: Props) {
         setFundData(prev => {
           const next = new Map(prev)
           for (const r of results) next.set(r.id, r.weekly)
+          // Dọn chuỗi tiết kiệm của lãi suất cũ (xem pruneUnusedSavings). Tab này
+          // mỗi lúc chỉ giữ đúng 2 tài sản: BTC và quỹ nền tảng đang chọn.
+          pruneUnusedSavings(next, [BTC_ID, selectedFundId])
           return next
         })
         setLoading(false)
@@ -202,7 +223,7 @@ function BitcoinPanelImpl({ funds }: Props) {
         const pct = btcW * 100
         const pctStr = Number.isInteger(pct) ? pct.toFixed(0) : pct.toFixed(1)
         const baseName = btcW === 0
-          ? `100% ${applied.fundId}`
+          ? `100% ${assetDisplayName(applied.fundId)}`
           : `${pctStr}% Bitcoin`
         let name = baseName
         for (let dup = 2; usedNames.has(name); dup++) name = `${baseName} (${dup})`
@@ -220,7 +241,8 @@ function BitcoinPanelImpl({ funds }: Props) {
           cumReturn: cum.length > 1 ? cum[cum.length - 1]!.value : 0,
           cagrValue: cagrVal,
           stdev: stdevVal,
-          sharpe: stdevVal > 0 ? cagrVal / stdevVal : 0,
+          // null = không định nghĩa được (danh mục không biến động), xem PortfolioStats.sharpe
+          sharpe: stdevVal > ZERO_VOLATILITY_EPSILON ? cagrVal / stdevVal : null,
           maxDD: maxDrawdown(simReturns),
           worstWeek: worstWeeklyReturn(simReturns),
           worstMonth: worstMonthlyReturn(simReturns),
@@ -304,17 +326,25 @@ function BitcoinPanelImpl({ funds }: Props) {
         </p>
         <div className="bitcoin-ctrl-group bitcoin-ctrl-fund">
           <label className="bitcoin-ctrl-label">Quỹ nền tảng</label>
-          <Select
-            className="bitcoin-fund-select"
-            classNamePrefix="fund-search"
-            options={fundOptions}
-            value={fundOptions.find(o => o.value === selectedFundId) || null}
-            onChange={opt => opt && setSelectedFundId(opt.value)}
-            isSearchable
-            placeholder="Tìm quỹ..."
-            noOptionsMessage={() => 'Không tìm thấy'}
-            styles={bitcoinSelectStyles}
-          />
+          <div className="bitcoin-fund-row">
+            <Select
+              className="bitcoin-fund-select"
+              classNamePrefix="fund-search"
+              options={fundOptions}
+              value={selectedFundOption}
+              onChange={opt => opt && setSelectedFundId(opt.value)}
+              isSearchable
+              placeholder="Tìm quỹ..."
+              noOptionsMessage={() => 'Không tìm thấy'}
+              styles={bitcoinSelectStyles}
+            />
+            {isSavingsAssetId(selectedFundId) && (
+              <SavingsRateInput
+                fundId={selectedFundId}
+                onCommit={rate => setSelectedFundId(savingsAssetId(rate))}
+              />
+            )}
+          </div>
         </div>
         <div className="bitcoin-ctrl-group">
           <label className="bitcoin-ctrl-label">Số tiền đầu tư</label>
@@ -452,7 +482,7 @@ function BitcoinPanelImpl({ funds }: Props) {
           <MoneyMachineBlock
             investAmount={investAmount}
             stats={portfolioStats}
-            fundId={applied.fundId}
+            fundId={assetDisplayName(applied.fundId)}
             startDate={startDate}
             endDate={endDate}
           />
@@ -462,7 +492,7 @@ function BitcoinPanelImpl({ funds }: Props) {
           <BitcoinCycleTable
             btc={fundData.get(BTC_ID) ?? []}
             base={fundData.get(applied.fundId) ?? []}
-            baseName={applied.fundId}
+            baseName={assetDisplayName(applied.fundId)}
           />
           <SleepTestBlock investAmount={investAmount} stats={portfolioStats} />
 
@@ -472,7 +502,7 @@ function BitcoinPanelImpl({ funds }: Props) {
             </span>
           </div>
 
-          <RiskContributionChart data={riskContribData} fundId={applied.fundId} />
+          <RiskContributionChart data={riskContribData} fundId={assetDisplayName(applied.fundId)} />
 
           {/* Phần bên dưới tính nặng hơn — deferred để không chặn phần trên hiện ngay
               (xem useDeferredValue ở trên). Mờ nhẹ trong lúc React tính phần mới. */}
@@ -480,7 +510,7 @@ function BitcoinPanelImpl({ funds }: Props) {
             <BtcContributionChart
               portfolioReturns={deferredPortfolioReturns}
               btcPercents={applied.btcPercents}
-              fundId={applied.fundId}
+              fundId={assetDisplayName(applied.fundId)}
             />
             <WinRateBlock
               portfolioReturns={deferredPortfolioReturns}

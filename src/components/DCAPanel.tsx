@@ -29,9 +29,9 @@ import { DataQualityBlock } from './DataQualityBlock'
 import { FUND_COLORS } from '../constants'
 import {
   isSavingsAssetId,
-  parseSavingsRate,
-  generateSavingsSeries,
+  savingsSeriesForId,
   savingsAssetId,
+  pruneUnusedSavings,
   SAVINGS_OPTION_LABEL,
   DEFAULT_SAVINGS_RATE,
 } from '../utils/savingsAsset'
@@ -241,11 +241,9 @@ function DCAPanelImpl({ funds }: Props) {
     Promise.all(
       toFetch.map(async id => {
         // Tiết kiệm ngân hàng lãi suất cố định: không phải quỹ thật, không
-        // qua CSV/fetch. Sinh sẵn chuỗi giá từ một mốc đủ sớm (bao trùm mọi
-        // khoảng thời gian DCA có thể chọn) đến hôm nay.
+        // qua CSV/fetch, chuỗi giá sinh thẳng trong trình duyệt.
         if (isSavingsAssetId(id)) {
-          const today = new Date().toISOString().substring(0, 10)
-          const series = generateSavingsSeries(parseSavingsRate(id), '2000-01-01', today)
+          const series = savingsSeriesForId(id)
           return { id, raw: series, adjusted: series, purchase: null }
         }
 
@@ -272,11 +270,15 @@ function DCAPanelImpl({ funds }: Props) {
       }),
     ).then(results => {
       if (cancelled) return
+      // Dọn chuỗi tiết kiệm của lãi suất cũ khỏi cả 2 map (xem pruneUnusedSavings).
+      // purchasePriceData không cần dọn: tài sản tiết kiệm không có giá mua riêng
+      // nên chưa bao giờ được ghi vào đó.
       setFundData(prev => {
         const next = new Map(prev)
         for (const r of results) {
           if (r) next.set(r.id, r.adjusted)
         }
+        pruneUnusedSavings(next, neededIds)
         return next
       })
       setRawFundData(prev => {
@@ -284,6 +286,7 @@ function DCAPanelImpl({ funds }: Props) {
         for (const r of results) {
           if (r) next.set(r.id, r.raw)
         }
+        pruneUnusedSavings(next, neededIds)
         return next
       })
       setPurchasePriceData(prev => {

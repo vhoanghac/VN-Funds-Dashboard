@@ -96,6 +96,18 @@ export function cagr(returns: ReturnPoint[]): number | null {
 // ─── Annualized Standard Deviation ─────────────────────────
 
 /**
+ * Ngưỡng coi như "không biến động".
+ *
+ * Một tài sản lãi suất cố định (tiết kiệm ngân hàng) đáng lẽ có độ lệch chuẩn
+ * đúng bằng 0, nhưng lãi kép tính bằng số thực dấu phẩy động để lại nhiễu cỡ
+ * 1e-15. Nếu chỉ chặn `stdev > 0` thì phép chia CAGR/stdev cho ra Sharpe cỡ
+ * 2e13, một con số vô nghĩa trông như lỗi. Mọi tài sản có rủi ro thật đều có
+ * độ lệch chuẩn quy năm từ khoảng 0,5% trở lên, nên ngưỡng này không bao giờ
+ * chạm nhầm vào chúng.
+ */
+export const ZERO_VOLATILITY_EPSILON = 1e-9
+
+/**
  * Annualized standard deviation.
  *
  * Matches R: sqrt(252) * sd(daily_returns), adapted cho weekly: sqrt(52) * sd(...).

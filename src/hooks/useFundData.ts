@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import type { PricePoint, FundMeta } from '../types'
 import { parseCSV, parseFundMetadata } from '../utils/csvParser'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { isSavingsAssetId, savingsSeriesForId, pruneUnusedSavings } from '../utils/savingsAsset'
 
 interface FundDataState {
   metadata: FundMeta[] | null
@@ -136,6 +137,11 @@ export function useMultiFundSeries(fundIds: string[]): MultiFundState {
     Promise.all(
       neededIds.map(async id => {
         try {
+          // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
+          if (isSavingsAssetId(id)) {
+            return { id, prices: savingsSeriesForId(id), error: null as string | null }
+          }
+
           const resp = await fetch(`/data/${id}.csv`)
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
           const text = await resp.text()
@@ -154,6 +160,11 @@ export function useMultiFundSeries(fundIds: string[]): MultiFundState {
         for (const r of results) {
           if (r.prices) next.set(r.id, r.prices)
         }
+        // Dọn chuỗi tiết kiệm của lãi suất cũ. Đổi lãi suất là đổi id, mà lần
+        // đổi nào cũng kéo theo một lượt nạp, nên chỗ này bắt được đúng cái
+        // vòng phình cache. Đối chiếu với `fundIds` (toàn bộ id đang chọn),
+        // KHÔNG phải `neededIds` (chỉ những id còn thiếu).
+        pruneUnusedSavings(next, fundIds)
         return next
       })
       setErrors(new Map(

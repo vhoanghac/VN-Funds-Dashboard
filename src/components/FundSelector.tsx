@@ -1,6 +1,11 @@
 import Select from 'react-select'
 import type { FundMeta } from '../types'
 import { FUND_COLORS, MAX_COMPARE_FUNDS } from '../constants'
+import { SavingsRateInput } from './SavingsRateInput'
+import {
+  isSavingsAssetId, savingsAssetId, parseSavingsRate, pickDefaultSavingsRate,
+  SAVINGS_OPTION_LABEL,
+} from '../utils/savingsAsset'
 interface Props {
   allFunds: FundMeta[]
   selectedFunds: string[]
@@ -21,10 +26,7 @@ export function FundSelector({
   startDate,
   endDate,
 }: Props) {
-  const options: FundOption[] = allFunds.map(f => ({
-    value: f.id,
-    label: f.name_vi,
-  }))
+  const baseOptions: FundOption[] = allFunds.map(f => ({ value: f.id, label: f.name_vi }))
 
   function changeFund(index: number, newId: string) {
     const next = [...selectedFunds]
@@ -49,7 +51,19 @@ export function FundSelector({
   return (
     <div className="fund-selector">
       <div className="fund-selector-list">
-        {selectedFunds.map((fundId, i) => (
+        {selectedFunds.map((fundId, i) => {
+          // Mức lãi suất mặc định của Ô NÀY tránh trùng với tiết kiệm đã chọn
+          // ở NHỮNG ô khác, để 2 ô cùng bấm "Tiết kiệm ngân hàng" không cùng ra
+          // SAVINGS:6 (xem pickDefaultSavingsRate).
+          const usedRatesElsewhere = selectedFunds
+            .filter((id, j) => j !== i && isSavingsAssetId(id))
+            .map(id => parseSavingsRate(id))
+          const defaultRate = pickDefaultSavingsRate(usedRatesElsewhere)
+          const options: FundOption[] = [
+            ...baseOptions,
+            { value: savingsAssetId(defaultRate), label: SAVINGS_OPTION_LABEL },
+          ]
+          return (
           <div key={i} className="fund-selector-item">
             <span
               className="fund-color-dot"
@@ -59,13 +73,23 @@ export function FundSelector({
               className="fund-search-select"
               classNamePrefix="fund-search"
               options={options}
-              value={options.find(o => o.value === fundId) || null}
+              // Lãi suất nằm trong id ("SAVINGS:7"), đổi lãi suất là đổi id, nên
+              // id mới không khớp option nào. Tự dựng option cho đúng id hiện tại.
+              value={isSavingsAssetId(fundId)
+                ? { value: fundId, label: SAVINGS_OPTION_LABEL }
+                : options.find(o => o.value === fundId) || null}
               onChange={opt => opt && changeFund(i, opt.value)}
               placeholder="Tìm quỹ..."
               noOptionsMessage={() => 'Không tìm thấy'}
               isSearchable
               styles={selectStyles}
             />
+            {isSavingsAssetId(fundId) && (
+              <SavingsRateInput
+                fundId={fundId}
+                onCommit={rate => changeFund(i, savingsAssetId(rate))}
+              />
+            )}
             <button
               className="fund-remove-btn"
               onClick={() => removeFund(i)}
@@ -75,7 +99,8 @@ export function FundSelector({
               ✕
             </button>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <button

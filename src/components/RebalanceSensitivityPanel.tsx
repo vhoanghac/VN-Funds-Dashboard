@@ -23,6 +23,10 @@ import {
   type VariantResult, type VariantGroup, type ScheduleId, type BandSweep,
 } from '../utils/rebalanceSensitivity'
 import { PortfolioCard, portfolioSelectStyles, type PortfolioCardState } from './PortfolioCard'
+import {
+  isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
+  SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
+} from '../utils/savingsAsset'
 
 interface Props {
   funds: FundMeta[]
@@ -85,10 +89,10 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     relBand: BandSweep | null
   } | null>(null)
 
-  const fundOptions = useMemo(() =>
-    funds.map(f => ({ value: f.id, label: f.name_vi })),
-    [funds],
-  )
+  const fundOptions = useMemo(() => [
+    ...funds.map(f => ({ value: f.id, label: f.name_vi })),
+    { value: savingsAssetId(DEFAULT_SAVINGS_RATE), label: SAVINGS_OPTION_LABEL },
+  ], [funds])
 
   // Fetch CSV cho các quỹ đã chọn (cùng pipeline adjusted-prices với các tab khác)
   const neededIds = useMemo(() => {
@@ -107,6 +111,9 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     setLoading(true)
     Promise.all(
       toFetch.map(async id => {
+        // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
+        if (isSavingsAssetId(id)) return { id, adjusted: savingsSeriesForId(id) }
+
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()
@@ -121,6 +128,8 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
         for (const r of results) {
           if (r) next.set(r.id, r.adjusted)
         }
+        // Dọn chuỗi tiết kiệm của lãi suất cũ (xem pruneUnusedSavings).
+        pruneUnusedSavings(next, neededIds)
         return next
       })
       setLoading(false)

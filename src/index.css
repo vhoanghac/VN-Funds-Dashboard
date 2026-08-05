@@ -1009,6 +1009,14 @@ h1, h2, h3 {
 
 .bitcoin-fund-select {
   min-width: 220px;
+  flex: 1;
+}
+
+/* Ô chọn quỹ nền tảng, kèm ô nhập lãi suất khi chọn tiết kiệm ngân hàng */
+.bitcoin-fund-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .bitcoin-rebal-select {
@@ -4426,12 +4434,15 @@ h1, h2, h3 {
     min-width: 60px;
   }
 
-  .portfolio-rate-input {
+  /* Chỉ áp trong hàng slot của danh mục (tab DCA, Tái Cân Bằng), nơi cả hàng
+     xuống dòng trên mobile. Ô lãi suất ở tab So Sánh và Bitcoin nằm trong hàng
+     không wrap, cho nó flex:1 sẽ giành hết chỗ của ô chọn quỹ. */
+  .portfolio-slot-row .portfolio-rate-input {
     order: 2;
     flex: 1;
   }
 
-  .portfolio-rate-input input {
+  .portfolio-slot-row .portfolio-rate-input input {
     width: 100%;
     min-width: 60px;
   }

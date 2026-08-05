@@ -18,6 +18,7 @@
  */
 import type { PricePoint } from '../types'
 import type { DCASlot } from './dca'
+import { ZERO_VOLATILITY_EPSILON } from './calculations'
 
 export type ScheduleId =
   | 'daily' | 'weekly' | 'monthly' | 'bimonthly'
@@ -344,7 +345,10 @@ export function computeMetrics(totals: Float64Array, years: number): {
   // và "Sharpe" bị đánh giá thấp hơn thực tế khi danh mục có BTC/vàng.
   const periodsPerYear = years > 0 ? count / years : 252
   const stdev = Math.sqrt(Math.max(variance, 0)) * Math.sqrt(periodsPerYear)
-  const sharpe = stdev > 0 ? (mean * periodsPerYear) / stdev : 0
+  // Ngưỡng epsilon thay vì `> 0`: danh mục toàn tiết kiệm ngân hàng có stdev
+  // đúng ra bằng 0 nhưng số thực để lại nhiễu ~1e-15, chia cho nó ra Sharpe
+  // cỡ 2e13. Trả 0 để không hiện một con số vô nghĩa. Xem ZERO_VOLATILITY_EPSILON.
+  const sharpe = stdev > ZERO_VOLATILITY_EPSILON ? (mean * periodsPerYear) / stdev : 0
 
   return { cagr, stdev, maxDrawdown: maxDD, sharpe }
 }

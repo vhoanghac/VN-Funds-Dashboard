@@ -23,6 +23,10 @@ import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { dcaCagr, dcaMaxDrawdown, derivePortfolioName } from '../utils/dca'
 import { runTacticalBacktest, type TacticalBacktestResult, type AllocationId, type IndicatorType } from '../utils/tactical'
 import { PortfolioCard, portfolioSelectStyles, PORTFOLIO_COLORS, type PortfolioCardState } from './PortfolioCard'
+import {
+  isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
+  SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
+} from '../utils/savingsAsset'
 import { MoneyInput } from './MoneyInput'
 import { formatVND } from '../utils/vndFormat'
 
@@ -97,7 +101,24 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     dateTo: string
   } | null>(null)
 
-  const fundOptions = useMemo(() => funds.map(f => ({ value: f.id, label: f.name_vi })), [funds])
+  // Danh sách cho ô chọn TÍN HIỆU: chỉ quỹ thật, CỐ TÌNH không có tiết kiệm
+  // ngân hàng. Chuỗi lãi suất cố định chỉ có tăng, không có ngày giảm, nên mọi
+  // chỉ báo trên nó đều kẹt cứng một trạng thái: giá luôn nằm trên SMA/EMA
+  // (đo trên 4 năm: 1263/1263 ngày), còn RSI luôn đúng bằng 100 vì mẫu số
+  // (trung bình mức giảm) bằng 0. Backtest vẫn chạy ra kết quả, nhưng là kết
+  // quả không bao giờ đổi trạng thái, tức một cái bẫy trông như phân tích thật.
+  const signalFundOptions = useMemo(
+    () => funds.map(f => ({ value: f.id, label: f.name_vi })),
+    [funds],
+  )
+
+  // Danh sách cho 2 thẻ danh mục: có tiết kiệm ngân hàng. Đây mới là chỗ nó
+  // hữu ích thật, kiểu "trên MA200 thì giữ ETF, dưới thì rút về gửi tiết kiệm".
+  const fundOptions = useMemo(() => [
+    ...signalFundOptions,
+    { value: savingsAssetId(DEFAULT_SAVINGS_RATE), label: SAVINGS_OPTION_LABEL },
+  ], [signalFundOptions])
+
   const dualPriceFundIds = useMemo(() => new Set(funds.filter(f => f.type === 'gold').map(f => f.id)), [funds])
 
   const neededIds = useMemo(() => {
@@ -116,6 +137,9 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     setLoading(true)
     Promise.all(
       toFetch.map(async id => {
+        // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
+        if (isSavingsAssetId(id)) return { id, adjusted: savingsSeriesForId(id) }
+
         const resp = await fetch(`/data/${id}.csv`)
         if (!resp.ok) return null
         const text = await resp.text()
@@ -132,6 +156,8 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
       setFundData(prev => {
         const next = new Map(prev)
         for (const r of results) if (r) next.set(r.id, r.adjusted)
+        // Dọn chuỗi tiết kiệm của lãi suất cũ (xem pruneUnusedSavings).
+        pruneUnusedSavings(next, neededIds)
         return next
       })
       setLoading(false)
@@ -204,7 +230,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
   const nameA = allocationA.name || 'Danh mục A'
   const nameB = allocationB.name || 'Danh mục B'
-  const signalFundName = fundOptions.find(o => o.value === signalFundId)?.label || signalFundId
+  const signalFundName = signalFundOptions.find(o => o.value === signalFundId)?.label || signalFundId
 
   return (
     <div className="simulation-panel">
@@ -289,8 +315,8 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
           <label className="dca-label">Quỹ/chỉ số làm tín hiệu</label>
           <div className="tactical-signal-select">
             <Select
-              options={fundOptions}
-              value={fundOptions.find(o => o.value === signalFundId) || null}
+              options={signalFundOptions}
+              value={signalFundOptions.find(o => o.value === signalFundId) || null}
               onChange={opt => setSignalFundId(opt?.value || '')}
               placeholder="Tìm quỹ..."
               noOptionsMessage={() => 'Không tìm thấy'}

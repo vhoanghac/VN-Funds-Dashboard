@@ -1,6 +1,7 @@
 import type { PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
 import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
 import { rollingWindowStarts } from './dateWindow'
+import { assetDisplayName } from './savingsAsset'
 
 /**
  * Resample multiple ReturnPoint[] series to a common weekly date grid.
@@ -112,9 +113,13 @@ export interface DCASlot {
  *
  * Chỉ áp dụng khi tên chưa bị người dùng tự sửa tay (xem `isNameCustom`
  * trong PortfolioCardState).
+ *
+ * Với tài sản giả lập, id thô ("SAVINGS:6") không đọc ra nghĩa, nên đổi sang
+ * tên hiển thị ("Tiết kiệm 6%/năm"). Mã quỹ thật thì giữ nguyên: "DCDS" vốn
+ * đã là cái tên người dùng quen đọc.
  */
 export function derivePortfolioName(slots: DCASlot[], fallback: string): string {
-  if (slots.length === 1 && slots[0]!.fundId) return slots[0]!.fundId
+  if (slots.length === 1 && slots[0]!.fundId) return assetDisplayName(slots[0]!.fundId)
   return fallback
 }
 

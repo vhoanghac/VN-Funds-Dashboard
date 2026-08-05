@@ -30,6 +30,16 @@ describe('derivePortfolioName', () => {
     const slots = [{ fundId: 'DCDS', weight: 40 }, { fundId: 'DCBF', weight: 60 }]
     expect(derivePortfolioName(slots, 'Portfolio 5')).toBe('Portfolio 5')
   })
+
+  it('shows a readable name for the synthetic savings asset, not the raw id', () => {
+    // "SAVINGS:6" là khoá nội bộ. Danh mục 100% tiết kiệm là cách dùng tự nhiên
+    // nhất ở tab Chiến Thuật Phân Bổ ("dưới MA200 thì rút về gửi tiết kiệm"),
+    // nên tên này hiện lên khắp biểu đồ và bảng, không được để lộ id thô.
+    expect(derivePortfolioName([{ fundId: 'SAVINGS:6', weight: 100 }], 'Portfolio 1'))
+      .toBe('Tiết kiệm 6%/năm')
+    expect(derivePortfolioName([{ fundId: 'SAVINGS:7.5', weight: 100 }], 'Portfolio 1'))
+      .toBe('Tiết kiệm 7.5%/năm')
+  })
 })
 
 describe('dcaYearlyMWRR (Modified Dietz)', () => {
