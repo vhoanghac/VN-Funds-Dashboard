@@ -74,6 +74,33 @@ export function vndComparison(value: number): string | null {
   return chosen.label
 }
 
+/**
+ * Bản rút gọn của formatVND, dùng cho nhãn trục biểu đồ.
+ *   250_000_000    → "250tr"
+ *   2_500_000_000  → "2,5 tỷ"
+ *
+ * Khác formatVND ở chỗ bỏ khoảng trắng trước "tr". Nhãn trục Y có khung hẹp,
+ * chuỗi "250 triệu" bị Recharts ngắt làm hai dòng, còn "250tr" thì vừa.
+ * Mốc tỷ vẫn giữ khoảng trắng vì "2,5tỷ" đọc dính chữ, mà chuỗi cũng đã ngắn.
+ */
+export function formatVNDAxis(value: number): string {
+  const v = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+
+  if (v >= 1_000_000_000) {
+    const ty = v / 1_000_000_000
+    const fmt = ty >= 10 ? ty.toFixed(0) : ty.toFixed(1).replace(/\.0$/, '')
+    return `${sign}${fmt.replace('.', ',')} tỷ`
+  }
+  if (v >= 1_000_000) {
+    return `${sign}${Math.round(v / 1_000_000)}tr`
+  }
+  if (v >= 1_000) {
+    return `${sign}${Math.round(v / 1_000)}k`
+  }
+  return `${sign}${Math.round(v)}`
+}
+
 /** Xác định dấu cho delta, ví dụ +250 triệu / -30 triệu */
 export function signedVND(value: number): string {
   if (value > 0) return '+' + formatVND(value)

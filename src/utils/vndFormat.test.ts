@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatVND, formatVNDFull, vndComparison, signedVND } from './vndFormat'
+import { formatVND, formatVNDAxis, formatVNDFull, vndComparison, signedVND } from './vndFormat'
 
 describe('formatVND', () => {
   it('formats the examples the function documents', () => {
@@ -115,5 +115,37 @@ describe('signedVND', () => {
 
   it('gives zero no sign at all', () => {
     expect(signedVND(0)).toBe('0')
+  })
+})
+
+describe('formatVNDAxis', () => {
+  it('bỏ khoảng trắng ở mốc triệu để nhãn trục không bị ngắt dòng', () => {
+    expect(formatVNDAxis(250_000_000)).toBe('250tr')
+    expect(formatVNDAxis(600_000_000)).toBe('600tr')
+    expect(formatVNDAxis(1_500_000)).toBe('2tr')
+  })
+
+  it('giữ khoảng trắng ở mốc tỷ, dùng dấu phẩy thập phân', () => {
+    expect(formatVNDAxis(2_500_000_000)).toBe('2,5 tỷ')
+    expect(formatVNDAxis(3_000_000_000)).toBe('3 tỷ')
+    expect(formatVNDAxis(12_300_000_000)).toBe('12 tỷ')
+  })
+
+  it('mốc nghìn và mốc nhỏ', () => {
+    expect(formatVNDAxis(30_000)).toBe('30k')
+    expect(formatVNDAxis(0)).toBe('0')
+  })
+
+  it('giữ dấu âm', () => {
+    expect(formatVNDAxis(-250_000_000)).toBe('-250tr')
+    expect(formatVNDAxis(-2_500_000_000)).toBe('-2,5 tỷ')
+  })
+
+  it('nhãn luôn ngắn hơn bản đầy đủ, không có chuỗi nào dài quá 7 ký tự', () => {
+    // 7 ký tự ở cỡ chữ 11px vẫn vừa khung trục 62px, đây là điều kiện để
+    // Recharts không ngắt nhãn làm hai dòng.
+    for (const v of [0, 30_000, 999_000, 1_000_000, 600_000_000, 2_500_000_000, 99_000_000_000]) {
+      expect(formatVNDAxis(v).length).toBeLessThanOrEqual(7)
+    }
   })
 })

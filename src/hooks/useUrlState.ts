@@ -1,11 +1,12 @@
 import { useSearchParams } from 'react-router-dom'
 import { useCallback, useMemo } from 'react'
-import type { DashboardState } from '../types'
-import { DEFAULT_FUNDS } from '../constants'
+import type { CalculatorId, DashboardState } from '../types'
+import { CALCULATOR_IDS, DEFAULT_FUNDS } from '../constants'
 import { loadLS, saveLS } from '../utils/localStorage'
 
-const VALID_TABS = ['compare', 'dca', 'lsdca', 'rebalance', 'tactical', 'bitcoin', 'wallofworry', 'methodology', 'changelog'] as const
+const VALID_TABS = ['compare', 'dca', 'lsdca', 'rebalance', 'tactical', 'bitcoin', 'wallofworry', 'calculator', 'methodology', 'changelog'] as const
 const VALID_PERIODS = [6, 12, 24, 36, 48]
+const DEFAULT_CALC_ID: CalculatorId = 'compound'
 
 /**
  * Manages dashboard state via URL search params.
@@ -22,6 +23,7 @@ export function useUrlState() {
   const bParam = searchParams.get('b')
   const fromParam = searchParams.get('from')
   const toParam = searchParams.get('to')
+  const calcParam = searchParams.get('calcId')
 
   // Chỉ tạo lại mảng funds khi GIÁ TRỊ param thực sự đổi, không phải mỗi khi
   // searchParams đổi reference vì lý do khác (vd chuyển tab). Nhờ vậy các
@@ -53,6 +55,11 @@ export function useUrlState() {
     rollingPeriod: VALID_PERIODS.includes(roll) ? roll : 12,
     dateFrom: fromParam || null,
     dateTo: toParam || null,
+    // Link hỏng hoặc ai sửa tay URL thì quay về máy tính đầu tiên, không để
+    // trang trắng. Cùng mẫu whitelist với VALID_TABS phía trên.
+    calcId: CALCULATOR_IDS.includes(calcParam as CalculatorId)
+      ? (calcParam as CalculatorId)
+      : DEFAULT_CALC_ID,
   }
 
   const updateState = useCallback(
@@ -66,7 +73,13 @@ export function useUrlState() {
           next.delete('b')
           saveLS('compare_funds', updates.funds)
         }
-        if (updates.tab !== undefined) next.set('tab', updates.tab)
+        if (updates.tab !== undefined) {
+          next.set('tab', updates.tab)
+          // Rời tab Máy tính thì bỏ luôn calcId, đừng để nó bám lại trong URL
+          // rồi lẫn vào link người ta copy đi chia sẻ.
+          if (updates.tab !== 'calculator') next.delete('calcId')
+        }
+        if (updates.calcId !== undefined) next.set('calcId', updates.calcId)
         if (updates.rollingPeriod !== undefined) next.set('roll', String(updates.rollingPeriod))
         if (updates.dateFrom !== undefined) {
           if (updates.dateFrom) next.set('from', updates.dateFrom)

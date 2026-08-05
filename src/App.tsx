@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type { CalculatorId } from './types'
 import { useFundMetadata } from './hooks/useFundData'
 import { useUrlState } from './hooks/useUrlState'
 import { CompareTab } from './components/CompareTab'
@@ -8,6 +9,7 @@ import { RebalanceSensitivityPanel } from './components/RebalanceSensitivityPane
 import { TacticalAllocationPanel } from './components/TacticalAllocationPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
+import { CalculatorTab } from './components/calculators/CalculatorTab'
 import { MethodologyPanel } from './components/MethodologyPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 
@@ -22,6 +24,7 @@ export function App() {
   const onChangeDateFrom = useCallback((v: string | null) => updateState({ dateFrom: v }), [updateState])
   const onChangeDateTo = useCallback((v: string | null) => updateState({ dateTo: v }), [updateState])
   const onChangeRollingPeriod = useCallback((p: number) => updateState({ rollingPeriod: p }), [updateState])
+  const onSelectCalculator = useCallback((calcId: CalculatorId) => updateState({ calcId }), [updateState])
 
   if (metaLoading) {
     return <div className="loading-screen">Đang tải dữ liệu...</div>
@@ -82,6 +85,12 @@ export function App() {
           Wall of Worry
         </button>
         <button
+          className={`tab ${state.tab === 'calculator' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'calculator' })}
+        >
+          Máy Tính
+        </button>
+        <button
           className={`tab ${state.tab === 'methodology' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'methodology' })}
         >
@@ -139,6 +148,13 @@ export function App() {
       <div className={state.tab === 'wallofworry' ? undefined : 'tab-panel-hidden'}>
         <WallOfWorryPanel />
       </div>
+
+      {/* Máy Tính Tab: mỗi calculator tự giữ state riêng, mount lại là mất số đã
+          nhập. Nhưng mọi ô đều có default nên mất cũng không sao, khác với tab
+          DCA phải giữ nguyên cả bộ thông số nặng. */}
+      {state.tab === 'calculator' && (
+        <CalculatorTab calcId={state.calcId} onSelect={onSelectCalculator} />
+      )}
 
       {/* Minh Bạch Hoá Tab */}
       {state.tab === 'methodology' && <MethodologyPanel />}

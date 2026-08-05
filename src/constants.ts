@@ -11,3 +11,12 @@ export const FUND_COLORS = [
 
 export const MAX_COMPARE_FUNDS = 8
 export const DEFAULT_FUNDS = ['DCDS', 'E1VFVN30']
+
+/**
+ * Danh sách máy tính của tab "Máy tính", nguồn duy nhất.
+ *
+ * Kiểu `CalculatorId` trong types.ts suy ra từ chính mảng này, còn registry
+ * (`CalculatorRegistry.ts`) có test canh phải phủ đủ. Thêm máy tính mới chỉ sửa
+ * một chỗ ở đây, quên chỗ nào là tsc hoặc test bắt được ngay.
+ */
+export const CALCULATOR_IDS = ['compound', 'cagr', 'fee-erosion'] as const
