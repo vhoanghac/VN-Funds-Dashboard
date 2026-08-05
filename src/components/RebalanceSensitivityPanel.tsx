@@ -632,7 +632,7 @@ function SensitivityResults({ result }: { result: NonNullable<ReturnType<typeof 
             <thead>
               <tr>
                 <th>Lịch</th>
-                <th>Số ngày giao dịch</th>
+                <th>Số biến thể</th>
                 <th>CAGR (median)</th>
                 <th>CAGR [min – max]</th>
                 <th>Sụt giảm tối đa</th>
