@@ -6593,6 +6593,14 @@ h1, h2, h3 {
   white-space: nowrap;
 }
 
+/* Nhãn dài hơn hẳn nút SMA/EMA/RSI nên cần rộng hơn, cùng chiều cao. */
+.tactical-freq-btn {
+  width: auto;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 .tactical-results {
   margin-top: 20px;
 }
@@ -6651,17 +6659,6 @@ h1, h2, h3 {
   color: #141413;
 }
 
-.tactical-switch-log {
-  margin: 20px 0;
-}
-
-.tactical-switch-log-title {
-  margin: 0 0 10px 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
 .tactical-disclaimer {
   margin-top: 16px;
   padding: 10px 12px;
@@ -6671,6 +6668,15 @@ h1, h2, h3 {
   font-size: 0.82rem;
   line-height: 1.5;
   color: #78350f;
+}
+
+/* Tách thành nhiều đoạn ngắn cho dễ đọc, nhưng vẫn phải nhìn ra là một khối liền. */
+.tactical-disclaimer p {
+  margin: 0 0 8px;
+}
+
+.tactical-disclaimer p:last-child {
+  margin-bottom: 0;
 }
 
 /* ── Heatmap tháng × năm (tab So Sánh) ─────────────────────── */

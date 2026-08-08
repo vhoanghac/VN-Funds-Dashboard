@@ -2,14 +2,14 @@
  * TacticalAllocationPanel: tab "Chiến thuật phân bổ".
  *
  * Trả lời câu hỏi retail VN hay hỏi: "NAV quỹ X trên/dưới MA200 thì có nên
- * chuyển sang quỹ Y không?" — mô phỏng chuyển đổi giữa 2 danh mục (mỗi danh
+ * chuyển sang quỹ Y không?". Mô phỏng chuyển đổi giữa 2 danh mục (mỗi danh
  * mục có thể nhiều quỹ, tái dùng PortfolioCard) dựa trên tín hiệu Giá vs
  * SMA(N) của MỘT ticker do người dùng chọn riêng (không nhất thiết là quỹ
  * đang nắm giữ).
  *
  * Cố tình thu hẹp so với công cụ Tactical Allocation của testfol.io: đúng 1
  * kiểu tín hiệu, đúng 2 trạng thái, độ trễ thực thi CỐ ĐỊNH T+1 (không cho
- * chỉnh) — xem utils/tactical.ts để biết lý do.
+ * chỉnh). Xem utils/tactical.ts để biết lý do.
  */
 import { useState, useMemo, useEffect, memo } from 'react'
 import Select from 'react-select'
@@ -21,14 +21,14 @@ import type { FundMeta, PricePoint } from '../types'
 import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { dcaCagr, dcaMaxDrawdown, derivePortfolioName } from '../utils/dca'
-import { runTacticalBacktest, type TacticalBacktestResult, type AllocationId, type IndicatorType } from '../utils/tactical'
+import { runTacticalBacktest, decomposeAdvantage, type TacticalBacktestResult, type AllocationId, type IndicatorType, type SignalFrequency } from '../utils/tactical'
 import { PortfolioCard, portfolioSelectStyles, PORTFOLIO_COLORS, type PortfolioCardState } from './PortfolioCard'
 import {
   isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
   SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
 } from '../utils/savingsAsset'
 import { MoneyInput } from './MoneyInput'
-import { formatVND } from '../utils/vndFormat'
+import { formatVND, formatVNDAxis } from '../utils/vndFormat'
 
 interface Props {
   funds: FundMeta[]
@@ -37,12 +37,58 @@ interface Props {
 type DateRangeMode = 'all' | 'years'
 
 const INDICATOR_OPTIONS: IndicatorType[] = ['SMA', 'EMA', 'RSI']
+
+const FREQUENCY_OPTIONS: { value: SignalFrequency; label: string }[] = [
+  { value: 'daily', label: 'Mỗi phiên' },
+  { value: 'weekly', label: 'Cuối tuần' },
+  { value: 'monthly', label: 'Cuối tháng' },
+]
 const COLOR_A = PORTFOLIO_COLORS[0]!
 const COLOR_B = PORTFOLIO_COLORS[1]!
 
 /** Nhãn hiển thị cho 1 cấu hình chỉ báo, vd "SMA200", "RSI14". */
 function indicatorLabel(type: IndicatorType, period: number): string {
   return `${type}${period}`
+}
+
+/** Toàn bộ thông số chốt lại tại thời điểm bấm "Chạy". Backtest chỉ đọc từ đây. */
+interface CommittedParams {
+  signalFundId: string
+  indicatorType: IndicatorType
+  period: number
+  toleranceBandPct: number
+  signalFrequency: SignalFrequency
+  rsiOverbought: number
+  rsiOversold: number
+  allocationASlots: PortfolioCardState['slots']
+  allocationARebalFreq: PortfolioCardState['rebalFreq']
+  allocationBSlots: PortfolioCardState['slots']
+  allocationBRebalFreq: PortfolioCardState['rebalFreq']
+  startValue: number
+  switchCostPct: number
+  dateFrom: string
+  dateTo: string
+}
+
+/**
+ * Một lần bấm "Chạy" chốt lại đúng một object thế này.
+ *
+ * `labels` để riêng khỏi `params` vì hai thứ dùng vào hai việc khác nhau: so sánh
+ * dirty chỉ nhìn `params`, nên đổi tên danh mục không làm hiện dòng "thông số đã
+ * thay đổi", còn kết quả thì luôn hiển thị đúng tên của chính lần chạy đó.
+ */
+interface CommittedSnapshot {
+  params: CommittedParams
+  labels: { nameA: string; nameB: string; signalFundName: string }
+}
+
+/** Gom mọi quỹ mà một snapshot cần tới, kể cả quỹ làm tín hiệu. */
+function collectCommittedIds(c: CommittedParams): Set<string> {
+  const ids = new Set<string>()
+  if (c.signalFundId) ids.add(c.signalFundId)
+  for (const s of c.allocationASlots) if (s.fundId) ids.add(s.fundId)
+  for (const s of c.allocationBSlots) if (s.fundId) ids.add(s.fundId)
+  return ids
 }
 
 function makeEmptyAllocation(id: string, fallbackName: string): PortfolioCardState {
@@ -68,6 +114,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
   const [indicatorType, setIndicatorType] = useState<IndicatorType>('SMA')
   const [period, setPeriod] = useState(200)
   const [toleranceBandPct, setToleranceBandPct] = useState(2)
+  const [signalFrequency, setSignalFrequency] = useState<SignalFrequency>('monthly')
   const [rsiOverbought, setRsiOverbought] = useState(70)
   const [rsiOversold, setRsiOversold] = useState(30)
 
@@ -84,21 +131,17 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   const [loading, setLoading] = useState(false)
 
-  const [committed, setCommitted] = useState<{
-    signalFundId: string
-    indicatorType: IndicatorType
-    period: number
-    toleranceBandPct: number
-    rsiOverbought: number
-    rsiOversold: number
-    allocationASlots: PortfolioCardState['slots']
-    allocationARebalFreq: PortfolioCardState['rebalFreq']
-    allocationBSlots: PortfolioCardState['slots']
-    allocationBRebalFreq: PortfolioCardState['rebalFreq']
-    startValue: number
-    switchCostPct: number
-    dateFrom: string
-    dateTo: string
+  // Thông số VÀ nhãn chốt chung một chỗ. Tên danh mục đổi ngay khi người dùng chọn
+  // quỹ khác, nên nếu truyền tên đang sống vào khối kết quả thì lớp memo vỡ, 3 biểu
+  // đồ vẽ lại theo từng phím gõ. Gói chung còn bảo đảm nhãn luôn khớp với chính kết
+  // quả đang hiện, không phải nhãn của lần chỉnh dở dang.
+  const [committed, setCommitted] = useState<CommittedSnapshot | null>(null)
+
+  // Kết quả backtest kèm đúng snapshot đã sinh ra nó. Giữ cả hai trong một state để
+  // biết chắc kết quả đang xem thuộc về lần bấm nút nào.
+  const [computation, setComputation] = useState<{
+    for: CommittedSnapshot
+    result: TacticalBacktestResult | null
   } | null>(null)
 
   // Danh sách quỹ thật, không có tiết kiệm ngân hàng.
@@ -196,7 +239,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
   function buildSnapshot() {
     const { from, to } = getEffectiveDates()
     return {
-      signalFundId, indicatorType, period, toleranceBandPct, rsiOverbought, rsiOversold,
+      signalFundId, indicatorType, period, toleranceBandPct, signalFrequency, rsiOverbought, rsiOversold,
       allocationASlots: allocationA.slots.map(s => ({ ...s })),
       allocationARebalFreq: allocationA.rebalFreq,
       allocationBSlots: allocationB.slots.map(s => ({ ...s })),
@@ -206,41 +249,78 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     }
   }
 
-  function runBacktest() {
-    if (!canRun) return
-    setCommitted(buildSnapshot())
-  }
-
-  const isDirty = !!committed && JSON.stringify(committed) !== JSON.stringify(buildSnapshot())
-
-  const result = useMemo(() => {
-    if (!committed) return null
-    if (!fundData.has(committed.signalFundId)) return null
-    for (const s of committed.allocationASlots) if (s.fundId && !fundData.has(s.fundId)) return null
-    for (const s of committed.allocationBSlots) if (s.fundId && !fundData.has(s.fundId)) return null
-
-    return runTacticalBacktest({
-      rawPrices: fundData,
-      signalFundId: committed.signalFundId,
-      indicatorType: committed.indicatorType,
-      period: committed.period,
-      toleranceBandPct: committed.toleranceBandPct,
-      rsiOverbought: committed.rsiOverbought,
-      rsiOversold: committed.rsiOversold,
-      allocationASlots: committed.allocationASlots,
-      allocationARebalFreq: committed.allocationARebalFreq,
-      allocationBSlots: committed.allocationBSlots,
-      allocationBRebalFreq: committed.allocationBRebalFreq,
-      startValue: committed.startValue,
-      switchCostPct: committed.switchCostPct,
-      dateFrom: committed.dateFrom || undefined,
-      dateTo: committed.dateTo || undefined,
-    })
-  }, [committed, fundData])
-
   const nameA = allocationA.name || 'Danh mục A'
   const nameB = allocationB.name || 'Danh mục B'
   const signalFundName = fundOptions.find(o => o.value === signalFundId)?.label || signalFundId
+
+  function runBacktest() {
+    if (!canRun) return
+    setCommitted({
+      params: buildSnapshot(),
+      labels: { nameA, nameB, signalFundName },
+    })
+  }
+
+  // Chỉ so `params`, không so `labels`: đổi tên danh mục không phải là đổi thông số.
+  const isDirty = !!committed && JSON.stringify(committed.params) !== JSON.stringify(buildSnapshot())
+
+  /**
+   * Backtest CHỈ chạy khi bấm "Chạy", không chạy lại lúc người dùng đang chọn quỹ
+   * hay gõ thông số. Trước đây chỗ này là `useMemo([committed, fundData])`, mà chọn
+   * một quỹ bất kỳ là `fundData` đổi, nên cả backtest chạy lại rồi kéo theo 3 biểu đồ
+   * Recharts vẽ lại, trang đứng hình.
+   *
+   * `computation.for` giữ đúng object snapshot đã sinh ra kết quả. Mỗi lần bấm nút
+   * `buildSnapshot()` trả về object mới, nên so sánh tham chiếu là đủ để biết snapshot
+   * này đã tính hay chưa. `fundData` vẫn nằm trong deps vì lúc mới bấm nút dữ liệu có
+   * thể chưa tải xong, phải đợi nó về rồi mới tính được.
+   */
+  useEffect(() => {
+    if (!committed) {
+      setComputation(null)
+      return
+    }
+    if (computation && computation.for === committed) return
+
+    const p = committed.params
+
+    // Chỉ lấy đúng những quỹ snapshot này cần. Truyền cả cache vào như trước thì quỹ
+    // người dùng vừa chọn thử (chưa bấm Chạy) cũng chen vào lưới ngày chung của
+    // backtest, vừa chậm vừa làm kết quả phụ thuộc thứ không liên quan.
+    const scoped = new Map<string, PricePoint[]>()
+    for (const id of collectCommittedIds(p)) {
+      const series = fundData.get(id)
+      if (!series) return // chưa tải xong, chờ lần fundData kế tiếp
+      scoped.set(id, series)
+    }
+
+    setComputation({
+      for: committed,
+      result: runTacticalBacktest({
+        rawPrices: scoped,
+        signalFundId: p.signalFundId,
+        indicatorType: p.indicatorType,
+        period: p.period,
+        toleranceBandPct: p.toleranceBandPct,
+        signalFrequency: p.signalFrequency,
+        rsiOverbought: p.rsiOverbought,
+        rsiOversold: p.rsiOversold,
+        allocationASlots: p.allocationASlots,
+        allocationARebalFreq: p.allocationARebalFreq,
+        allocationBSlots: p.allocationBSlots,
+        allocationBRebalFreq: p.allocationBRebalFreq,
+        startValue: p.startValue,
+        switchCostPct: p.switchCostPct,
+        dateFrom: p.dateFrom || undefined,
+        dateTo: p.dateTo || undefined,
+      }),
+    })
+  }, [committed, fundData, computation])
+
+  const result = computation?.result ?? null
+  // Đã thật sự chạy cho snapshot hiện tại mà không ra kết quả thì mới báo lỗi. Lúc
+  // còn đang chờ dữ liệu thì để loading nói chuyện, không hiện băng đỏ.
+  const computedCurrent = !!committed && computation?.for === committed
 
   return (
     <div className="simulation-panel">
@@ -251,10 +331,10 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
       <div className="rebal-intro-card">
         <p className="dca-ratio-sub">
           Trả lời câu hỏi: <strong>nếu chuyển đổi giữa 2 danh mục dựa trên tín hiệu từ một chỉ báo
-          kỹ thuật (SMA, EMA, hoặc RSI), kết quả thực tế sẽ ra sao?</strong> Chọn 1 quỹ/chỉ số làm
-          tín hiệu (không nhất thiết là quỹ bạn nắm giữ), 2 danh mục A/B tuỳ ý — khi tín hiệu chỉ
-          về xu hướng tăng, chuyển sang danh mục A; khi chỉ về xu hướng giảm, chuyển sang danh
-          mục B.
+          kỹ thuật (SMA, EMA, hoặc RSI), kết quả thực tế sẽ ra sao?</strong> Chọn 1 quỹ hoặc chỉ số
+          làm tín hiệu, không nhất thiết phải là quỹ bạn đang nắm giữ. Rồi chọn 2 danh mục A và B
+          tuỳ ý. Tín hiệu chỉ về xu hướng tăng thì chuyển sang danh mục A, chỉ về xu hướng giảm
+          thì chuyển sang danh mục B.
         </p>
       </div>
 
@@ -313,7 +393,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
           </div>
         </div>
         <p className="dca-note">
-          * Phí chuyển đổi trừ trên giá trị danh mục mỗi lần đổi allocation — nhiều quỹ mở VN
+          * Mỗi lần đổi danh mục, phí này trừ thẳng trên giá trị đang có. Nhiều quỹ mở ở Việt Nam
           phạt phí nếu bán trước một mốc thời gian nhất định. Đặt 0% nếu quỹ bạn chọn không phạt.
         </p>
       </div>
@@ -346,6 +426,28 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
             có lên có xuống.
           </p>
         )}
+        <div className="dca-param-row">
+          <label className="dca-label">Chốt tín hiệu</label>
+          <div className="dca-years-selector">
+            {FREQUENCY_OPTIONS.map(f => (
+              <button
+                key={f.value}
+                className={`dca-year-btn tactical-freq-btn ${signalFrequency === f.value ? 'dca-year-btn-active' : ''}`}
+                onClick={() => setSignalFrequency(f.value)}
+              >{f.label}</button>
+            ))}
+          </div>
+        </div>
+        <p className="dca-note">
+          * Bao lâu bạn nhìn giá một lần để quyết định chuyển hay giữ. Đây là tham số ăn vào kết
+          quả mạnh nhất của cả tab, mạnh hơn hẳn vùng đệm hay phí.
+        </p>
+        <p className="dca-note">
+          Thử trên E1VFVN30 với SMA200 và tiết kiệm 7%, cùng một bộ dữ liệu, chỉ đổi mỗi mục này:
+          chốt cuối tháng cho 13,9%/năm với 11 lần chuyển, chốt mỗi phiên cho 8,2%/năm với 27 lần
+          chuyển. Mua giữ luôn thì 11,5%/năm. Chốt thưa mỗi năm chỉ nhìn giá 12 lần, dao động
+          trong tháng không cách nào làm nó đổi ý. Chốt dày thì ăn trọn từng cú bật giả một.
+        </p>
         <div className="dca-param-row">
           <label className="dca-label">Chỉ báo</label>
           <div className="dca-years-selector">
@@ -393,11 +495,12 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
               </div>
             </div>
             <p className="dca-note">
-              * RSI xuống dưới mốc quá bán → kỳ vọng hồi phục, chuyển sang danh mục A. RSI vượt lên
-              trên mốc quá mua → kỳ vọng điều chỉnh, chuyển sang danh mục B. Ở giữa 2 mốc: giữ
-              nguyên trạng thái trước đó — chính khoảng cách giữa 2 mốc đã đóng vai trò "vùng đệm"
+              * RSI xuống dưới mốc quá bán thì kỳ vọng hồi phục, chuyển sang danh mục A. RSI vượt
+              lên trên mốc quá mua thì kỳ vọng điều chỉnh, chuyển sang danh mục B. Nằm giữa 2 mốc
+              thì giữ nguyên trạng thái cũ. Chính khoảng cách giữa 2 mốc đã đóng vai trò vùng đệm
               chống nhấp nháy, không cần thêm tham số riêng. Lệnh chuyển luôn thực hiện vào phiên
-              giao dịch KẾ TIẾP sau khi có tín hiệu (không thể phản ứng ngay trong phiên đang xét).
+              giao dịch KẾ TIẾP sau khi có tín hiệu, vì trong phiên đang xét thì bạn chưa nhìn thấy
+              giá đóng cửa của chính nó.
             </p>
           </>
         ) : (
@@ -415,11 +518,11 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
               </div>
             </div>
             <p className="dca-note">
-              * Vùng đệm quanh đường {indicatorType} giúp tín hiệu không "nhấp nháy" (chuyển qua
-              chuyển lại liên tục) khi giá dao động sát đường trung bình — chỉ đổi khi giá vượt hẳn
-              ra khỏi vùng ± X% quanh đường {indicatorType}. Đặt 0% nếu muốn đổi ngay khi giá cắt
-              qua. Lệnh chuyển luôn thực hiện vào phiên giao dịch KẾ TIẾP sau khi có tín hiệu (không
-              thể phản ứng ngay trong phiên đang xét).
+              * Giá dao động sát đường {indicatorType} thì tín hiệu dễ nhấp nháy, chuyển qua chuyển
+              lại liên tục mà chẳng được gì. Vùng đệm chặn chuyện đó: chỉ đổi khi giá vượt hẳn ra
+              khỏi vùng ± X% quanh đường {indicatorType}. Đặt 0% nếu muốn đổi ngay lúc giá cắt qua.
+              Lệnh chuyển luôn thực hiện vào phiên giao dịch KẾ TIẾP sau khi có tín hiệu, vì trong
+              phiên đang xét thì bạn chưa nhìn thấy giá đóng cửa của chính nó.
             </p>
           </>
         )}
@@ -498,24 +601,24 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
-      {committed && !loading && !result && (
+      {committed && !loading && computedCurrent && !result && (
         <div className="error-banner">
-          Không đủ dữ liệu để mô phỏng — kiểm tra lại quỹ đã chọn, hoặc cần nhiều lịch sử hơn để
-          tính đủ {indicatorLabel(committed.indicatorType, committed.period)} (~{Math.round(committed.period / 21)} tháng
+          Không đủ dữ liệu để mô phỏng. Kiểm tra lại quỹ đã chọn, hoặc cần nhiều lịch sử hơn để
+          tính đủ {indicatorLabel(committed.params.indicatorType, committed.params.period)} (~{Math.round(committed.params.period / 21)} tháng
           dữ liệu trước ngày bắt đầu).
         </div>
       )}
 
-      {result && (
+      {result && computation && (
         <TacticalResults
           result={result}
-          nameA={nameA}
-          nameB={nameB}
-          signalFundName={signalFundName}
-          indicatorType={committed!.indicatorType}
-          period={committed!.period}
-          rsiOverbought={committed!.rsiOverbought}
-          rsiOversold={committed!.rsiOversold}
+          nameA={computation.for.labels.nameA}
+          nameB={computation.for.labels.nameB}
+          signalFundName={computation.for.labels.signalFundName}
+          indicatorType={computation.for.params.indicatorType}
+          period={computation.for.params.period}
+          rsiOverbought={computation.for.params.rsiOverbought}
+          rsiOversold={computation.for.params.rsiOversold}
         />
       )}
     </div>
@@ -534,9 +637,13 @@ export const TacticalAllocationPanel = memo(TacticalAllocationPanelImpl)
  * biểu đồ Recharts trên toàn bộ chuỗi ngày, đo được 116ms mỗi lần. Gõ vài phím
  * liên tiếp là trang đứng hình.
  *
- * Props ở đây đều ổn định giữa các lần gõ: `result` đi qua useMemo và chỉ đổi khi
- * bấm "Chạy lại", còn lại là chuỗi và số. Nhờ vậy memo bỏ qua render hoàn toàn.
- * Ai thêm prop mới phải giữ nguyên tính chất đó, nếu không lỗi quay lại ngay.
+ * Props ở đây đều ổn định giữa các lần gõ, và phải giữ nguyên như vậy. `result` cùng
+ * mọi thông số đều lấy từ `computation.for`, tức snapshot chốt lúc bấm "Chạy", nên chỉ
+ * đổi khi bấm nút. Kể cả tên danh mục (`nameA`, `nameB`) cũng lấy từ snapshot chứ không
+ * lấy tên đang sống, vì tên đổi ngay khi người dùng chọn quỹ khác.
+ *
+ * Ai thêm prop mới phải lấy từ snapshot, đừng lấy state đang sống của cha. Lấy nhầm
+ * một prop là 3 biểu đồ Recharts vẽ lại theo từng phím gõ, trang đứng hình ngay.
  */
 function TacticalResultsImpl({
   result, nameA, nameB, signalFundName, indicatorType, period, rsiOverbought, rsiOversold,
@@ -550,11 +657,25 @@ function TacticalResultsImpl({
   rsiOverbought: number
   rsiOversold: number
 }) {
-  const { switching, indicatorSeries, strategyCumulative, buyHoldACumulative, buyHoldBCumulative, requestedStartDate, effectiveStartDate } = result
+  const { switching, indicatorSeries, strategyCumulative, buyHoldACumulative, buyHoldBCumulative, buyHoldAValue, buyHoldBValue, requestedStartDate, effectiveStartDate } = result
   const label = indicatorLabel(indicatorType, period)
 
   const nameOf = (id: AllocationId) => id === 'A' ? nameA : nameB
   const colorOf = (id: AllocationId) => id === 'A' ? COLOR_A : COLOR_B
+
+  // ── Phân rã lợi thế: hệ số cuối kỳ so với mua giữ luôn A, tách theo từng đoạn ──
+  const advantage = useMemo(
+    () => decomposeAdvantage(switching.dates, switching.strategyValue, buyHoldAValue, switching.activeAllocation),
+    [switching, buyHoldAValue],
+  )
+  const topAdvantageIdx = useMemo(() => {
+    let idx = -1
+    let maxLog = -Infinity
+    advantage.segments.forEach((seg, i) => {
+      if (seg.factor > 1 && Math.log(seg.factor) > maxLog) { maxLog = Math.log(seg.factor); idx = i }
+    })
+    return idx
+  }, [advantage])
 
   // ── Gom activeAllocation thành các đoạn liên tục để tô nền ──
   const segments = useMemo(() => {
@@ -586,6 +707,13 @@ function TacticalResultsImpl({
     buyHoldB: buyHoldBCumulative[i]!.value * 100,
   }))
 
+  const valueData = switching.dates.map((date, i) => ({
+    date,
+    strategy: switching.strategyValue[i]!,
+    buyHoldA: buyHoldAValue[i]!,
+    buyHoldB: buyHoldBValue[i]!,
+  }))
+
   const strategyCagr = dcaCagr(strategyCumulative)
   const strategyMaxDD = dcaMaxDrawdown(strategyCumulative)
   const aCagr = dcaCagr(buyHoldACumulative)
@@ -605,10 +733,10 @@ function TacticalResultsImpl({
   return (
     <div className="tactical-results">
       <div className="tactical-current-signal">
-        Dựa trên dữ liệu tới <strong>{fmtDate(lastDate)}</strong>: giá <strong>{signalFundName}</strong>{' '}
-        đang ở vị trí khiến tín hiệu {label} chỉ về{' '}
-        <strong style={{ color: colorOf(switching.currentSignal) }}>{currentAllocationName}</strong> —
-        nếu giữ kỷ luật, phiên giao dịch kế tiếp nên đang nắm giữ danh mục này.
+        Dữ liệu tới <strong>{fmtDate(lastDate)}</strong>. Tín hiệu {label} của{' '}
+        <strong>{signalFundName}</strong> đang chỉ về{' '}
+        <strong style={{ color: colorOf(switching.currentSignal) }}>{currentAllocationName}</strong>.
+        Nếu giữ kỷ luật, danh mục nên nắm giữ tài sản này.
       </div>
 
       {warmupNote && <p className="dca-note">* {warmupNote}</p>}
@@ -658,6 +786,27 @@ function TacticalResultsImpl({
 
       <div className="chart-container">
         <div className="chart-header">
+          <h3>Giá trị tài sản</h3>
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart data={valueData} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} minTickGap={40} />
+            <YAxis tickFormatter={formatVNDAxis} tick={{ fontSize: 11, fill: '#6b7280' }} width={62} />
+            <Tooltip
+              formatter={(v: number) => formatVND(Math.round(v))}
+              contentStyle={{ fontSize: 12, borderRadius: 6 }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Line type="monotone" dataKey="strategy" name={`Chiến thuật ${label}`} stroke="#141413" strokeWidth={2.2} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="buyHoldA" name={`Mua giữ luôn ${nameA}`} stroke={COLOR_A} strokeWidth={1.5} strokeDasharray="4 2" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="buyHoldB" name={`Mua giữ luôn ${nameB}`} stroke={COLOR_B} strokeWidth={1.5} strokeDasharray="4 2" dot={false} isAnimationActive={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="chart-container">
+        <div className="chart-header">
           <h3>Lợi nhuận tích lũy: Chiến thuật vs mua-giữ-luôn</h3>
         </div>
         <ResponsiveContainer width="100%" height={280}>
@@ -677,87 +826,162 @@ function TacticalResultsImpl({
         </ResponsiveContainer>
       </div>
 
-      <div className="dca-stats-table-scroll">
-        <table className="dca-stats-table">
-          <thead>
-            <tr>
-              <th>Kịch bản</th>
-              <th>Giá trị cuối kỳ</th>
-              <th>CAGR</th>
-              <th>Sụt giảm tối đa</th>
-              <th>Số lần chuyển</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="tactical-stats-row--highlight">
-              <td>Chiến thuật {label}</td>
-              <td>{formatVND(Math.round(finalValue))}</td>
-              <td className={signClass(strategyCagr)}>{fmtPct(strategyCagr)}</td>
-              <td className={strategyMaxDD < 0 ? 'dca-loss' : ''}>{fmtPct(strategyMaxDD)}</td>
-              <td>{switching.switches.length} (phí {formatVND(Math.round(totalCost))})</td>
-            </tr>
-            <tr>
-              <td>Mua giữ luôn {nameA}</td>
-              <td>{formatVND(Math.round(result.buyHoldAValue[result.buyHoldAValue.length - 1]!))}</td>
-              <td className={signClass(aCagr)}>{fmtPct(aCagr)}</td>
-              <td className={aMaxDD < 0 ? 'dca-loss' : ''}>{fmtPct(aMaxDD)}</td>
-              <td>0</td>
-            </tr>
-            <tr>
-              <td>Mua giữ luôn {nameB}</td>
-              <td>{formatVND(Math.round(result.buyHoldBValue[result.buyHoldBValue.length - 1]!))}</td>
-              <td className={signClass(bCagr)}>{fmtPct(bCagr)}</td>
-              <td className={bMaxDD < 0 ? 'dca-loss' : ''}>{fmtPct(bMaxDD)}</td>
-              <td>0</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="tactical-takeaway">
-        Sau <strong>{switching.switches.length}</strong> lần chuyển đổi (tổng phí{' '}
-        <strong>{formatVND(Math.round(totalCost))}</strong>), chiến thuật {label} kết thúc
-        với <strong>{formatVND(Math.round(finalValue))}</strong> ({fmtPct(strategyCagr)} CAGR, sụt
-        giảm tối đa {fmtPct(strategyMaxDD)}) — so với nếu chỉ mua giữ luôn {nameA} ({fmtPct(aCagr)}{' '}
-        CAGR, sụt {fmtPct(aMaxDD)}) hoặc luôn {nameB} ({fmtPct(bCagr)} CAGR, sụt {fmtPct(bMaxDD)}).
-        Đọc cả 3 con số cùng lúc — CAGR cao hơn không có nghĩa chiến thuật tốt hơn nếu sụt giảm
-        cũng sâu hơn, hoặc nếu phần lớn lợi thế chỉ đến từ vài lần chuyển đổi may mắn.
-      </div>
-
-      {switching.switches.length > 0 && (
-        <div className="tactical-switch-log">
-          <h4 className="tactical-switch-log-title">Nhật ký chuyển đổi</h4>
-          <div className="dca-stats-table-scroll">
+      <div className="chart-container">
+        <div className="chart-header">
+          <h3>Bảng thống kê</h3>
+        </div>
+        <div className="dca-stats-table-scroll">
           <table className="dca-stats-table">
             <thead>
               <tr>
-                <th>Ngày</th>
-                <th>Từ</th>
-                <th>Sang</th>
-                <th>Phí</th>
+                <th>Kịch bản</th>
+                <th>Giá trị cuối kỳ</th>
+                <th>CAGR</th>
+                <th>Sụt giảm tối đa</th>
+                <th>Số lần chuyển</th>
               </tr>
             </thead>
             <tbody>
-              {switching.switches.map((sw, i) => (
-                <tr key={i}>
-                  <td>{fmtDate(sw.date)}</td>
-                  <td style={{ color: colorOf(sw.from) }}>{nameOf(sw.from)}</td>
-                  <td style={{ color: colorOf(sw.to) }}>{nameOf(sw.to)}</td>
-                  <td>{formatVND(Math.round(sw.costPaid))}</td>
-                </tr>
-              ))}
+              <tr className="tactical-stats-row--highlight">
+                <td>Chiến thuật {label}</td>
+                <td>{formatVND(Math.round(finalValue))}</td>
+                <td className={signClass(strategyCagr)}>{fmtPct(strategyCagr)}</td>
+                <td className={strategyMaxDD < 0 ? 'dca-loss' : ''}>{fmtPct(strategyMaxDD)}</td>
+                <td>{switching.switches.length} (phí {formatVND(Math.round(totalCost))})</td>
+              </tr>
+              <tr>
+                <td>Mua giữ luôn {nameA}</td>
+                <td>{formatVND(Math.round(result.buyHoldAValue[result.buyHoldAValue.length - 1]!))}</td>
+                <td className={signClass(aCagr)}>{fmtPct(aCagr)}</td>
+                <td className={aMaxDD < 0 ? 'dca-loss' : ''}>{fmtPct(aMaxDD)}</td>
+                <td>0</td>
+              </tr>
+              <tr>
+                <td>Mua giữ luôn {nameB}</td>
+                <td>{formatVND(Math.round(result.buyHoldBValue[result.buyHoldBValue.length - 1]!))}</td>
+                <td className={signClass(bCagr)}>{fmtPct(bCagr)}</td>
+                <td className={bMaxDD < 0 ? 'dca-loss' : ''}>{fmtPct(bMaxDD)}</td>
+                <td>0</td>
+              </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="tactical-takeaway">
+        Sau <strong>{switching.switches.length}</strong> lần chuyển đổi, tổng phí{' '}
+        <strong>{formatVND(Math.round(totalCost))}</strong>, chiến thuật {label} kết thúc
+        với <strong>{formatVND(Math.round(finalValue))}</strong>, tức {fmtPct(strategyCagr)} mỗi
+        năm và sụt giảm tối đa {fmtPct(strategyMaxDD)}. Mua giữ luôn {nameA} thì {fmtPct(aCagr)} mỗi
+        năm, sụt {fmtPct(aMaxDD)}. Mua giữ luôn {nameB} thì {fmtPct(bCagr)} mỗi năm, sụt {fmtPct(bMaxDD)}.
+        Đọc cả 3 con số cùng lúc. Lãi cao hơn không có nghĩa là tốt hơn, nếu sụt giảm cũng sâu hơn,
+        hoặc nếu phần lớn lợi thế chỉ đến từ vài lần chuyển đổi may mắn.
+      </div>
+
+      {switching.switches.length > 0 && (
+        <div className="chart-container">
+          <div className="chart-header">
+            <h3>Phân tích từng giai đoạn</h3>
+          </div>
+          <p className="dca-note">
+            Chiến thuật {label} hơn hay kém mua giữ luôn {nameA} bao nhiêu? Phần chênh đó không
+            rải đều qua năm tháng. Nó dồn vào vài đoạn.
+          </p>
+          <p className="dca-note">
+            Bảng dưới cắt cả chặng thành từng đoạn. Mỗi đoạn là một lần chiến thuật giữ nguyên
+            một danh mục. Cột cuối cho biết đoạn đó đóng góp bao nhiêu: số dương thì kéo chiến
+            thuật vượt lên, số âm thì kéo tụt lại. Nhân dồn hết các đoạn lại thì ra đúng chênh
+            lệch cuối kỳ, không thiếu chỗ nào.
+          </p>
+          <div className="dca-stats-table-scroll">
+            <table className="dca-stats-table">
+              <thead>
+                <tr>
+                  <th>Đoạn</th>
+                  <th>Từ - Đến</th>
+                  <th>Danh mục giữ</th>
+                  <th>Số phiên</th>
+                  <th>Đóng góp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {advantage.segments.map((seg, i) => (
+                  <tr key={i} className={i === topAdvantageIdx ? 'tactical-stats-row--highlight' : ''}>
+                    <td>{i + 1}</td>
+                    <td>{fmtDate(seg.from)} → {fmtDate(seg.to)}</td>
+                    <td style={{ color: colorOf(seg.allocation) }}>{nameOf(seg.allocation)}</td>
+                    <td>{seg.days}</td>
+                    <td className={signClass(seg.factor - 1)}>{fmtPct(seg.factor - 1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {advantage.topPositiveShare !== null && topAdvantageIdx >= 0 && (
+            <p className={advantage.topPositiveShare > 0.5 ? 'tactical-signal-warning' : 'dca-note'}>
+              {advantage.topPositiveShare > 0.5 ? (
+                <>Nhìn kỹ đoạn {fmtDate(advantage.segments[topAdvantageIdx]!.from)} →{' '}
+                {fmtDate(advantage.segments[topAdvantageIdx]!.to)}, lúc đó chiến thuật đang giữ{' '}
+                {nameOf(advantage.segments[topAdvantageIdx]!.allocation)}. Riêng nó chiếm{' '}
+                <strong>{(advantage.topPositiveShare * 100).toFixed(0)}%</strong> tổng phần đóng góp dương.
+                {' '}Nghĩa là bạn tưởng mình đang xem kết quả của {advantage.segments.length} lần quyết định.
+                Thật ra gần như chỉ một. Một lần chuyển đúng lúc. Một lần thì chưa đủ để chắc chắn
+                điều gì cả.</>
+              ) : (
+                <>* Đoạn đóng góp nhiều nhất là {fmtDate(advantage.segments[topAdvantageIdx]!.from)} →{' '}
+                {fmtDate(advantage.segments[topAdvantageIdx]!.to)}, lúc đó giữ {nameOf(advantage.segments[topAdvantageIdx]!.allocation)},
+                chiếm {(advantage.topPositiveShare * 100).toFixed(0)}% tổng phần đóng góp dương. Phần còn
+                lại trải ra nhiều đoạn khác, không dồn hết vào một lần.</>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+
+      {switching.switches.length > 0 && (
+        <div className="chart-container">
+          <div className="chart-header">
+            <h3>Nhật ký chuyển đổi</h3>
+          </div>
+          <div className="dca-stats-table-scroll">
+            <table className="dca-stats-table">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Từ</th>
+                  <th>Sang</th>
+                  <th>Phí</th>
+                </tr>
+              </thead>
+              <tbody>
+                {switching.switches.map((sw, i) => (
+                  <tr key={i}>
+                    <td>{fmtDate(sw.date)}</td>
+                    <td style={{ color: colorOf(sw.from) }}>{nameOf(sw.from)}</td>
+                    <td style={{ color: colorOf(sw.to) }}>{nameOf(sw.to)}</td>
+                    <td>{formatVND(Math.round(sw.costPaid))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       <div className="tactical-disclaimer">
-        ⚠️ Đây KHÔNG phải khuyến nghị đầu tư. Tín hiệu kỹ thuật (SMA/EMA/RSI) có độ trễ tự nhiên
-        (chỉ nhận ra xu hướng SAU KHI nó đã bắt đầu) và dễ gặp "whipsaw" — giá trị dao động qua lại
-        quanh ngưỡng khiến chiến thuật chuyển đổi liên tục, mỗi lần đều mất phí mà không thu được
-        gì. Quá khứ không đảm bảo
-        tương lai; một chiến thuật thắng buy-and-hold trong quá khứ không chắc sẽ thắng tiếp.
+        <p>⚠️ Đây KHÔNG phải khuyến nghị đầu tư.</p>
+        <p>
+          Mọi chỉ báo kỹ thuật đều đi sau thị trường. Xu hướng phải chạy một đoạn thì chỉ báo mới
+          đổi theo. Lúc bạn nhìn thấy tín hiệu, giá đã đi mất một quãng rồi.
+        </p>
+        <p>
+          Còn một cái bẫy nữa tên là whipsaw. Giá dập dềnh quanh ngưỡng, tín hiệu đổi qua đổi lại
+          liên tục, lần nào cũng mất phí mà chẳng được gì.
+        </p>
+        <p>
+          Quá khứ không bảo đảm tương lai. Một chiến thuật thắng mua và giữ suốt 10 năm qua không
+          có nghĩa nó thắng tiếp 10 năm tới.
+        </p>
       </div>
     </div>
   )

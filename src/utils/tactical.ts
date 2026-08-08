@@ -127,6 +127,19 @@ export function computeIndicator(prices: PricePoint[], type: IndicatorType, wind
 
 export type AllocationId = 'A' | 'B'
 
+/**
+ * Bao lâu thì nhìn giá một lần để chốt tín hiệu.
+ *
+ * Đây là tham số ăn vào kết quả mạnh nhất của cả tab, mạnh hơn hẳn vùng đệm hay phí.
+ * Đo trên E1VFVN30 với SMA200 và tiết kiệm 7%, cùng bộ dữ liệu, chỉ đổi mỗi chỗ này:
+ * chốt cuối tháng cho 11 lệnh và CAGR 13,9%, chốt mỗi phiên cho 27 lệnh và CAGR 8,2%,
+ * trong khi mua giữ luôn là 11,5%. Chốt thưa thì thắng mua giữ, chốt dày thì thua đậm.
+ *
+ * Lý do: chốt cuối tháng mỗi năm chỉ nhìn giá 12 lần, mọi dao động trong tháng không
+ * cách nào làm nó đổi ý. Chốt mỗi phiên thì ăn trọn từng cú bật giả một.
+ */
+export type SignalFrequency = 'daily' | 'weekly' | 'monthly'
+
 export interface TacticalSwitchEvent {
   date: string
   from: AllocationId
@@ -174,12 +187,17 @@ export function simulateTacticalSwitching(opts: {
   returnB: number[]
   startValue: number
   switchCostPct: number
+  /** Ngày nào được phép chốt tín hiệu. Bỏ trống thì ngày nào cũng chốt. */
+  isCheckpoint?: boolean[]
 }): TacticalSwitchResult {
-  const { dates, compareValue, upperThreshold, lowerThreshold, returnA, returnB, startValue, switchCostPct } = opts
+  const { dates, compareValue, upperThreshold, lowerThreshold, returnA, returnB, startValue, switchCostPct, isCheckpoint } = opts
   const bullishAbove = opts.bullishAbove ?? true
   const n = dates.length
 
   const desiredSignal = (i: number, prevSignal: AllocationId | null): AllocationId => {
+    // Ngoài ngày chốt thì không nhìn giá, giữ nguyên tín hiệu cũ. Ngày đầu tiên vẫn
+    // phải chốt một lần dù rơi vào đâu, không thì cả backtest không có trạng thái nào.
+    if (isCheckpoint && !isCheckpoint[i] && prevSignal) return prevSignal
     const upper = upperThreshold[i]!
     const lower = lowerThreshold[i]!
     if (compareValue[i]! > upper) return bullishAbove ? 'A' : 'B'
@@ -235,6 +253,8 @@ export interface TacticalBacktestInput {
   period: number
   /** SMA/EMA: % biên độ quanh đường trung bình. Bỏ qua khi indicatorType='RSI'. */
   toleranceBandPct: number
+  /** Bao lâu nhìn giá một lần để chốt tín hiệu. Mặc định 'daily' cho hợp bản cũ. */
+  signalFrequency?: SignalFrequency
   /** RSI: mốc quá mua (vd 70) — RSI vượt lên trên → chuyển sang B. Mặc định 70. */
   rsiOverbought?: number
   /** RSI: mốc quá bán (vd 30) — RSI xuống dưới → chuyển sang A. Mặc định 30. */
@@ -270,11 +290,80 @@ function cumulativeToPricePoints(cumulative: ReturnPoint[]): PricePoint[] {
   return cumulative.map(r => ({ date: r.date, price: 1 + r.value }))
 }
 
+/**
+ * Ngày thứ Hai của tuần chứa `d`, dùng làm khoá gom nhóm theo tuần.
+ *
+ * CỐ Ý không dùng lại `getISOWeekKey` trong `weeklyResample.ts` dù tên nó nghe đúng
+ * việc. Hàm đó tính sai ranh giới tuần: đo được tuần của nó chạy từ thứ Sáu tới thứ
+ * Năm, ví dụ 04/01/2024 (thứ Năm) và 05/01/2024 (thứ Sáu) rơi vào hai tuần khác nhau,
+ * còn 05/01 với 08/01 (thứ Hai) lại chung một tuần. Sửa hàm đó sẽ làm lệch lưới tuần
+ * của mấy tab khác đang dùng nó, nên để nguyên và tự tính ở đây.
+ */
+function mondayOfWeek(d: string): string {
+  const dt = new Date(d + 'T00:00:00Z')
+  const daysSinceMonday = (dt.getUTCDay() + 6) % 7
+  dt.setUTCDate(dt.getUTCDate() - daysSinceMonday)
+  return dt.toISOString().slice(0, 10)
+}
+
+/**
+ * Những ngày được phép chốt tín hiệu, tính trên chuỗi ngày GỐC của quỹ tín hiệu.
+ *
+ * Phải tính trên chuỗi gốc chứ không phải trên lưới ngày đã gộp, vì "cuối tháng" nghĩa
+ * là PHIÊN GIAO DỊCH cuối cùng của tháng. Lấy theo lưới đã gộp thì ngày 31 rơi vào Chủ
+ * nhật sẽ thành mốc chốt, mà hôm đó không có giá thật, chỉ là giá thứ Sáu lặp lại.
+ */
+export function signalCheckpointDates(prices: PricePoint[], freq: SignalFrequency): Set<string> {
+  if (freq === 'daily') return new Set(prices.map(p => p.date))
+  const keyOf = (d: string) => freq === 'monthly' ? d.slice(0, 7) : mondayOfWeek(d)
+  const out = new Set<string>()
+  for (let i = 0; i < prices.length; i++) {
+    const isLastOfPeriod = i === prices.length - 1 || keyOf(prices[i + 1]!.date) !== keyOf(prices[i]!.date)
+    if (isLastOfPeriod) out.add(prices[i]!.date)
+  }
+  return out
+}
+
+/**
+ * Trải chỉ báo tính trên chuỗi ngày GỐC của quỹ tín hiệu (chỉ những ngày quỹ đó thực sự
+ * có giá) lên một lưới ngày khác, rộng hơn, bằng forward-fill. Cùng cách giá được
+ * forward-fill khi gộp lưới ngày ở `alignFundsToCommonGridDaily`.
+ *
+ * Lý do bắt buộc phải làm vậy thay vì tính thẳng SMA/EMA/RSI trên lưới ngày ĐÃ gộp: lưới
+ * đã gộp có thể dày hơn hẳn số phiên giao dịch thật của quỹ tín hiệu, nếu một tài sản
+ * khác trong cùng backtest sinh giá cho MỌI ngày lịch (điển hình: tiết kiệm ngân hàng,
+ * xem `generateSavingsSeries`). Khi đó "N phiên" trong SMA(N) sẽ bị đếm nhầm thành "N
+ * dòng của lưới đã gộp", tức gần với N ngày LỊCH chứ không phải N phiên giao dịch. Với
+ * E1VFVN30 (68% ngày lịch là phiên giao dịch), SMA200 tính kiểu này chỉ còn dùng khoảng
+ * 136 phiên thật, cửa sổ ngắn hơn hẳn 200 phiên như ý định ban đầu, tín hiệu đổi chiều
+ * sớm và nhiều hơn thật sự.
+ */
+function forwardFillIndicatorOntoGrid(
+  gridPoints: { date: string; price: number }[],
+  nativeIndicator: IndicatorPoint[],
+): IndicatorPoint[] {
+  const nativeByDate = new Map(nativeIndicator.map(p => [p.date, p.value]))
+  const out: IndicatorPoint[] = []
+  let lastValue: number | null = null
+  for (const gp of gridPoints) {
+    const v = nativeByDate.get(gp.date)
+    if (v !== undefined) lastValue = v
+    out.push({ date: gp.date, price: gp.price, value: lastValue })
+  }
+  return out
+}
+
 export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBacktestResult | null {
   const validA = input.allocationASlots.filter(s => s.fundId && s.weight > 0)
   const validB = input.allocationBSlots.filter(s => s.fundId && s.weight > 0)
   if (validA.length === 0 || validB.length === 0) return null
   if (!input.signalFundId || !input.rawPrices.has(input.signalFundId)) return null
+
+  // Chỉ báo PHẢI tính trên chuỗi giá GỐC (chưa gộp lưới ngày) của quỹ tín
+  // hiệu. Xem forwardFillIndicatorOntoGrid bên dưới để biết vì sao.
+  const nativeSignalPrices = input.rawPrices.get(input.signalFundId)!
+  if (nativeSignalPrices.length < input.period) return null
+  const nativeIndicator = computeIndicator(nativeSignalPrices, input.indicatorType, input.period)
 
   // Lọc theo khoảng ngày yêu cầu TRƯỚC khi tính — chỉ báo cần dữ liệu TRƯỚC
   // ngày bắt đầu để "khởi động" nên vẫn cho phép dùng dữ liệu trước dateFrom
@@ -282,7 +371,7 @@ export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBackt
   const dailyAligned = alignFundsToCommonGridDaily(input.rawPrices)
 
   const signalPrices = dailyAligned.get(input.signalFundId)
-  if (!signalPrices || signalPrices.length < input.period) return null
+  if (!signalPrices) return null
 
   const dcaResultA = simulateDCA(
     dailyAligned, validA,
@@ -319,9 +408,11 @@ export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBackt
 
   const requestedStartDate = input.dateFrom || commonStart
 
-  // Tính chỉ báo trên TOÀN BỘ chuỗi (kể cả trước dateFrom) để có đủ "khởi
-  // động", rồi mới cắt về đúng khoảng ngày backtest hiệu lực.
-  const indicatorAll = computeIndicator(trimmedSignal, input.indicatorType, input.period)
+  // Trải chỉ báo (đã tính trên chuỗi GỐC ở đầu hàm) lên lưới ngày chung bằng
+  // forward-fill, thay vì tính lại trên `trimmedSignal`. Tính trên TOÀN BỘ
+  // chuỗi (kể cả trước dateFrom) để có đủ "khởi động", rồi mới cắt về đúng
+  // khoảng ngày backtest hiệu lực.
+  const indicatorAll = forwardFillIndicatorOntoGrid(trimmedSignal, nativeIndicator)
   const firstValidIdx = indicatorAll.findIndex(p => p.value !== null)
   if (firstValidIdx === -1) return null
 
@@ -371,10 +462,14 @@ export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBackt
   returnA[0] = 0
   returnB[0] = 0
 
+  const checkpointSet = signalCheckpointDates(nativeSignalPrices, input.signalFrequency ?? 'daily')
+  const isCheckpoint = dates.map(d => checkpointSet.has(d))
+
   const switching = simulateTacticalSwitching({
     dates, compareValue, upperThreshold, lowerThreshold, bullishAbove, returnA, returnB,
     startValue: input.startValue,
     switchCostPct: input.switchCostPct,
+    isCheckpoint,
   })
 
   const buyHoldAValue = compoundFromReturns(returnA, input.startValue)
@@ -394,6 +489,76 @@ export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBackt
     requestedStartDate,
     effectiveStartDate: dates[0]!,
   }
+}
+
+// ─── Phân rã lợi thế ──────────────────────────────────────────────
+
+export interface AdvantageSegment {
+  from: string
+  to: string
+  allocation: AllocationId
+  /** Số phiên trong đoạn (không tính phiên biên chung với đoạn kế tiếp). */
+  days: number
+  /** Hệ số đóng góp của riêng đoạn này vào tỉ lệ strategy/baseline cuối cùng. Nhân dồn
+   * tất cả các đoạn lại đúng bằng `totalFactor`. >1 nghĩa là đoạn này kéo chiến thuật lại
+   * gần/vượt baseline hơn, <1 nghĩa là đoạn này kéo lùi. */
+  factor: number
+}
+
+export interface AdvantageDecomposition {
+  segments: AdvantageSegment[]
+  /** = strategyValue cuối / baselineValue cuối (khi 2 chuỗi xuất phát cùng giá trị đầu). */
+  totalFactor: number
+  /** Tỉ trọng của đoạn đóng lớn nhất trong TOÀN BỘ phần dương (0-1), null nếu không có
+   * đoạn nào dương. Dùng để cảnh báo kiểu: một đoạn chiếm hơn nửa lợi thế. */
+  topPositiveShare: number | null
+}
+
+/**
+ * Phân rã tỉ lệ strategyValue/baselineValue cuối kỳ thành tích các hệ số theo từng đoạn
+ * giữ nguyên 1 allocation, để trả lời "lợi thế của chiến thuật đến từ đoạn nào".
+ *
+ * Biên giữa 2 đoạn liên tiếp CHUNG một điểm (điểm cuối đoạn trước = điểm đầu đoạn sau),
+ * không phải liền kề rời nhau. Nhờ vậy tích các `factor` telescope đúng bằng
+ * strategyValue[cuối]/strategyValue[đầu] chia baselineValue[cuối]/baselineValue[đầu], không
+ * lệch đi đâu cả. Cắt rời từng đoạn kiểu [0..k], [k+1..n-1] sẽ làm tích sai vì hai đầu đoạn
+ * không nối liền giá trị.
+ *
+ * `strategyValue` và `baselineValue` phải cùng lưới ngày với `dates`, cùng độ dài với
+ * `activeAllocation`. Điển hình: baselineValue = mua-giữ-luôn allocation A (buyHoldAValue).
+ */
+export function decomposeAdvantage(
+  dates: string[],
+  strategyValue: number[],
+  baselineValue: number[],
+  activeAllocation: AllocationId[],
+): AdvantageDecomposition {
+  const n = dates.length
+  const segments: AdvantageSegment[] = []
+  let segStartIdx = 0
+  for (let i = 1; i <= n; i++) {
+    if (i === n || activeAllocation[i] !== activeAllocation[segStartIdx]) {
+      const segEndIdx = Math.min(i, n - 1)
+      const factor = (strategyValue[segEndIdx]! / strategyValue[segStartIdx]!)
+        / (baselineValue[segEndIdx]! / baselineValue[segStartIdx]!)
+      segments.push({
+        from: dates[segStartIdx]!,
+        to: dates[segEndIdx]!,
+        allocation: activeAllocation[segStartIdx]!,
+        days: segEndIdx - segStartIdx,
+        factor,
+      })
+      segStartIdx = i
+    }
+  }
+
+  const totalFactor = segments.reduce((p, s) => p * s.factor, 1)
+
+  const positiveLogs = segments.filter(s => s.factor > 1).map(s => Math.log(s.factor))
+  const positiveLogSum = positiveLogs.reduce((a, b) => a + b, 0)
+  const topPositiveShare = positiveLogSum > 0 ? Math.max(...positiveLogs) / positiveLogSum : null
+
+  return { segments, totalFactor, topPositiveShare }
 }
 
 function growthToReturns(growth: number[]): number[] {

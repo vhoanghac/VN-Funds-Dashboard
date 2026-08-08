@@ -7,6 +7,12 @@ const ENTRIES = [
       'Thêm biểu đồ heatmap lợi nhuận theo tháng cho tab So Sánh. Mỗi quỹ hiển thị đầy đủ lịch sử riêng, không bị cắt theo bộ lọc thời gian đang chọn; năm mới nhất luôn ở trên cùng.',
       'Thêm "Tiết kiệm ngân hàng (lãi suất cố định, tự nhập)" vào danh sách chọn quỹ.',
       'Sửa lỗi MWRR bị tính 2 lần (khuếch đại con số thực lên làm 2) trong mục "Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ".',
+      'Thêm biểu đồ "Giá trị tài sản" trong tab Chiến Thuật Phân Bổ, đặt ngay trên biểu đồ lợi nhuận tích lũy: cùng 3 đường (chiến thuật, mua giữ luôn danh mục A, mua giữ luôn danh mục B) nhưng vẽ theo giá trị tiền thật thay vì phần trăm.',
+      'Thêm khối "Phân tích từng giai đoạn" trong tab Chiến Thuật Phân Bổ: tách lợi thế cuối kỳ của chiến thuật thành từng đoạn giữ nguyên một danh mục, cảnh báo khi một đoạn duy nhất chiếm hơn nửa phần lợi thế dương. Nhiều chiến thuật thắng mua-giữ trên giấy thật ra chỉ nhờ đúng một lần chuyển may mắn, không phải nhờ cả trăm lần quyết định.',
+      'Thêm tuỳ chọn "Chốt tín hiệu" (Mỗi phiên / Cuối tuần / Cuối tháng) trong tab Chiến Thuật Phân Bổ.',
+      'Sửa lỗi tab Chiến Thuật Phân Bổ: cửa sổ chỉ báo (SMA/EMA/RSI) bị pha loãng khi tín hiệu hoặc danh mục có tiết kiệm ngân hàng. Tiết kiệm sinh giá cho mọi ngày lịch, kể cả cuối tuần, nên "SMA200" vô tình chỉ còn tính trên khoảng 136 phiên giao dịch thật thay vì 200 phiên như tên gọi.',
+      'Sửa lỗi tab Chiến Thuật Phân Bổ: chọn quỹ khác trong lúc màn hình đang có kết quả làm trang đứng hình vài giây, dù chưa bấm "Chạy lại".',
+      'Đồng bộ giao diện 3 khối kết quả trong tab Chiến Thuật Phân Bổ (Bảng thống kê, Phân tích từng giai đoạn, Nhật ký chuyển đổi) theo đúng kiểu thẻ dùng chung của dashboard, viết lại một số đoạn giải thích cho dễ hiểu hơn.',
     ],
   },
   {

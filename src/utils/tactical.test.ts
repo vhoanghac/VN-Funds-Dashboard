@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { computeSMA, computeEMA, computeRSI, computeIndicator, simulateTacticalSwitching, runTacticalBacktest } from './tactical'
+import { computeSMA, computeEMA, computeRSI, computeIndicator, simulateTacticalSwitching, runTacticalBacktest, decomposeAdvantage, signalCheckpointDates } from './tactical'
 import type { PricePoint } from '../types'
+import type { AllocationId } from './tactical'
 
 describe('computeSMA', () => {
   it('returns null before the window is full, then a rolling average', () => {
@@ -272,6 +273,48 @@ describe('runTacticalBacktest', () => {
     expect(result).toBeNull()
   })
 
+  it('computes the indicator window on the signal fund\'s own trading days, not on the merged grid (calendar-day dilution bug)', () => {
+    // Quỹ tín hiệu SIG chỉ có giá vào các ngày giao dịch thật (thiếu 02/01,
+    // mô phỏng một phiên nghỉ). Tài sản DENSE (đại diện cho tiết kiệm ngân
+    // hàng, xem generateSavingsSeries) có giá ở MỌI ngày lịch, kể cả 02/01.
+    // Khi gộp lưới ngày, 02/01 của SIG được forward-fill từ 01/01 để hiện thị
+    // giá liên tục, đúng vậy. Nhưng chỉ báo TÍNH trên lưới đã gộp đó sẽ đếm nhầm
+    // dòng lặp này là một "phiên" thật, làm cửa sổ SMA ngắn hơn ý định.
+    const sigDates = ['2024-01-01', '2024-01-03', '2024-01-04', '2024-01-05', '2024-01-06', '2024-01-07', '2024-01-08', '2024-01-09', '2024-01-10']
+    const sigPrices = [10, 20, 30, 40, 40, 40, 40, 40, 40]
+    const SIGNAL: PricePoint[] = sigDates.map((date, i) => ({ date, price: sigPrices[i]! }))
+
+    const denseDates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05', '2024-01-06', '2024-01-07', '2024-01-08', '2024-01-09', '2024-01-10']
+    const DENSE: PricePoint[] = denseDates.map(date => ({ date, price: 1 }))
+
+    const raw = new Map<string, PricePoint[]>([
+      ['SIGNAL', SIGNAL],
+      ['DENSE', DENSE],
+    ])
+    const result = runTacticalBacktest({
+      rawPrices: raw,
+      signalFundId: 'SIGNAL',
+      indicatorType: 'SMA',
+      period: 3,
+      toleranceBandPct: 0,
+      allocationASlots: [{ fundId: 'SIGNAL', weight: 100 }],
+      allocationARebalFreq: 'quarterly',
+      allocationBSlots: [{ fundId: 'DENSE', weight: 100 }],
+      allocationBRebalFreq: 'quarterly',
+      startValue: 1_000_000,
+      switchCostPct: 0,
+    })
+    expect(result).not.toBeNull()
+
+    // SMA(3) đúng phải đợi đủ 3 PHIÊN THẬT của SIGNAL: 01/01 (10), 03/01 (20),
+    // 04/01 (30) -> sẵn sàng từ 04/01, giá trị = (10+20+30)/3 = 20.
+    // Bug cũ (tính trên lưới đã gộp, có dòng 02/01 forward-fill từ 01/01):
+    // "3 dòng" đầu tiên là 01/01, 02/01(=10, lặp), 03/01 -> sẵn sàng SAI từ
+    // 03/01, giá trị SAI = (10+10+20)/3 = 13,33.
+    expect(result!.effectiveStartDate).toBe('2024-01-04')
+    expect(result!.indicatorSeries[0]!.value).toBeCloseTo(20, 6)
+  })
+
   it('also works with EMA and RSI indicator types', () => {
     const raw = new Map<string, PricePoint[]>([
       ['SIGNAL', buildDailyPrices(100, 0.0005, 400)],
@@ -310,5 +353,148 @@ describe('runTacticalBacktest', () => {
     })
     expect(rsiResult).not.toBeNull()
     expect(rsiResult!.indicatorSeries.every(p => p.value === null || (p.value >= 0 && p.value <= 100))).toBe(true)
+  })
+})
+
+describe('signalCheckpointDates', () => {
+  /** Tháng 1/2024: bỏ bớt vài ngày cho giống lịch nghỉ thật. */
+  const prices: PricePoint[] = [
+    '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05', // tuần 1, hết tuần ở thứ Sáu 05/01
+    '2024-01-08', '2024-01-09', '2024-01-31',               // 31/01 là phiên cuối tháng 1
+    '2024-02-01', '2024-02-02',                             // sang tháng 2
+  ].map((date, i) => ({ date, price: 100 + i }))
+
+  it('daily: mọi phiên đều là ngày chốt', () => {
+    const s = signalCheckpointDates(prices, 'daily')
+    expect(s.size).toBe(prices.length)
+    for (const p of prices) expect(s.has(p.date)).toBe(true)
+  })
+
+  it('monthly: chỉ phiên GIAO DỊCH cuối cùng của mỗi tháng', () => {
+    const s = signalCheckpointDates(prices, 'monthly')
+    expect([...s].sort()).toEqual(['2024-01-31', '2024-02-02'])
+  })
+
+  it('weekly: chỉ phiên giao dịch cuối cùng của mỗi tuần', () => {
+    const s = signalCheckpointDates(prices, 'weekly')
+    // 05/01 là thứ Sáu, phiên cuối tuần đầu. 09/01 là phiên cuối trước khi nhảy sang
+    // tuần của 31/01. 31/01 là phiên cuối tuần đó. 02/02 là phiên cuối cùng của chuỗi.
+    expect(s.has('2024-01-05')).toBe(true)
+    expect(s.has('2024-01-09')).toBe(true)
+    expect(s.has('2024-02-02')).toBe(true)
+    // Giữa tuần thì không chốt.
+    expect(s.has('2024-01-03')).toBe(false)
+    expect(s.has('2024-01-08')).toBe(false)
+  })
+
+  it('ngày cuối cùng của chuỗi luôn là ngày chốt, dù tháng/tuần chưa trọn', () => {
+    for (const freq of ['weekly', 'monthly'] as const) {
+      expect(signalCheckpointDates(prices, freq).has('2024-02-02')).toBe(true)
+    }
+  })
+})
+
+describe('simulateTacticalSwitching với isCheckpoint', () => {
+  const dates = ['d0', 'd1', 'd2', 'd3', 'd4']
+  const base = {
+    dates,
+    upperThreshold: [100, 100, 100, 100, 100],
+    lowerThreshold: [100, 100, 100, 100, 100],
+    returnA: [0, 0, 0, 0, 0],
+    returnB: [0, 0, 0, 0, 0],
+    startValue: 1_000_000,
+    switchCostPct: 0,
+  }
+  // Giá vượt lên trên ngưỡng ở d1-d2 rồi rơi lại. Cú bật giữa kỳ đúng nghĩa.
+  const compareValue = [90, 110, 110, 90, 90]
+
+  it('không có isCheckpoint thì bắt luôn cú bật giữa kỳ (hành vi cũ)', () => {
+    const r = simulateTacticalSwitching({ ...base, compareValue })
+    expect(r.switches.length).toBeGreaterThan(0)
+    expect(r.activeAllocation).toEqual(['B', 'B', 'A', 'A', 'B'])
+  })
+
+  it('chốt thưa thì bỏ qua cú bật giữa kỳ, không sinh lệnh nào', () => {
+    // Chỉ chốt ở d0 và d4, lúc đó giá đều nằm dưới ngưỡng.
+    const isCheckpoint = [true, false, false, false, true]
+    const r = simulateTacticalSwitching({ ...base, compareValue, isCheckpoint })
+    expect(r.switches).toHaveLength(0)
+    expect(r.activeAllocation.every(a => a === 'B')).toBe(true)
+  })
+
+  it('vẫn đổi khi cú vượt ngưỡng rơi đúng vào ngày chốt', () => {
+    const isCheckpoint = [true, false, true, false, true]
+    const r = simulateTacticalSwitching({ ...base, compareValue, isCheckpoint })
+    // Chốt ở d2 thấy giá 110 vượt ngưỡng nên đổi sang A, thực thi d3 (T+1).
+    // Chốt ở d4 thấy giá rơi lại nên đổi về B, nhưng lệnh đó rơi vào d5 nằm ngoài
+    // chuỗi, chưa kịp thành lệnh thật. Đó là lý do chỉ có đúng 1 lần chuyển.
+    expect(r.switches).toHaveLength(1)
+    expect(r.switches[0]!.date).toBe('d3')
+    expect(r.switches[0]!.to).toBe('A')
+    expect(r.currentSignal).toBe('B')
+  })
+})
+
+describe('decomposeAdvantage', () => {
+  it('returns a single segment with factor 1 when allocation never changes and strategy tracks baseline exactly', () => {
+    const dates = ['d0', 'd1', 'd2']
+    const allocation: AllocationId[] = ['A', 'A', 'A']
+    const result = decomposeAdvantage(dates, [100, 105, 110], [100, 105, 110], allocation)
+    expect(result.segments).toHaveLength(1)
+    expect(result.segments[0]!.factor).toBeCloseTo(1, 10)
+    expect(result.totalFactor).toBeCloseTo(1, 10)
+    expect(result.topPositiveShare).toBeNull()
+  })
+
+  it('splits into segments at each allocation change, with boundary points shared between neighbours', () => {
+    const dates = ['d0', 'd1', 'd2', 'd3', 'd4']
+    const allocation: AllocationId[] = ['A', 'A', 'B', 'B', 'B']
+    const result = decomposeAdvantage(dates, [100, 100, 100, 100, 100], [100, 100, 90, 90, 100], allocation)
+    expect(result.segments).toEqual([
+      { from: 'd0', to: 'd2', allocation: 'A', days: 2, factor: expect.closeTo(100 / 90, 10) },
+      { from: 'd2', to: 'd4', allocation: 'B', days: 2, factor: expect.closeTo(90 / 100, 10) },
+    ])
+  })
+
+  it('telescopes: product of all segment factors equals strategyFinal/baselineFinal (start values equal)', () => {
+    // Chuỗi bất kỳ, không cố ý cho ra số đẹp. Chỉ kiểm bất biến toán học.
+    const dates = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5']
+    const allocation: AllocationId[] = ['A', 'A', 'B', 'A', 'A', 'B']
+    const strategyValue = [1_000_000, 1_020_000, 990_000, 1_050_000, 1_080_000, 1_040_000]
+    const baselineValue = [1_000_000, 1_010_000, 1_005_000, 1_030_000, 1_060_000, 1_070_000]
+    const result = decomposeAdvantage(dates, strategyValue, baselineValue, allocation)
+
+    const productOfFactors = result.segments.reduce((p, s) => p * s.factor, 1)
+    const directRatio = (strategyValue[5]! / strategyValue[0]!) / (baselineValue[5]! / baselineValue[0]!)
+    expect(productOfFactors).toBeCloseTo(directRatio, 10)
+    expect(result.totalFactor).toBeCloseTo(directRatio, 10)
+  })
+
+  it('computes topPositiveShare as the largest positive log-factor over the sum of all positive log-factors', () => {
+    const dates = ['d0', 'd1', 'd2', 'd3']
+    const allocation: AllocationId[] = ['A', 'B', 'A', 'A']
+    // f1=2, f2=3, f3=0.5. Chỉ f1 và f2 dương, f3 âm nên không góp vào mẫu số.
+    const strategyValue = [100, 200, 200, 200]
+    const baselineValue = [100, 100, 100 / 3, 200 / 3]
+    const result = decomposeAdvantage(dates, strategyValue, baselineValue, allocation)
+
+    expect(result.segments[0]!.factor).toBeCloseTo(2, 6)
+    expect(result.segments[1]!.factor).toBeCloseTo(3, 6)
+    expect(result.segments[2]!.factor).toBeCloseTo(0.5, 6)
+    expect(result.totalFactor).toBeCloseTo(3, 6)
+
+    const expectedShare = Math.log(3) / (Math.log(2) + Math.log(3))
+    expect(result.topPositiveShare).toBeCloseTo(expectedShare, 6)
+  })
+
+  it('returns topPositiveShare of 1 when there is exactly one positive segment among negative ones', () => {
+    const dates = ['d0', 'd1', 'd2', 'd3']
+    const allocation: AllocationId[] = ['A', 'B', 'A', 'A']
+    const strategyValue = [100, 90, 180, 170]
+    const baselineValue = [100, 100, 100, 105]
+    const result = decomposeAdvantage(dates, strategyValue, baselineValue, allocation)
+    const positiveCount = result.segments.filter(s => s.factor > 1).length
+    expect(positiveCount).toBe(1)
+    expect(result.topPositiveShare).toBeCloseTo(1, 10)
   })
 })
