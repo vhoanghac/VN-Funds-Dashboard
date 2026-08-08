@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest'
-import { alignFundsToCommonGrid, alignFundsToCommonGridDaily } from './weeklyResample'
+import { alignFundsToCommonGrid, alignFundsToCommonGridDaily, getISOWeekKey } from './weeklyResample'
+
+describe('getISOWeekKey', () => {
+  it('places Monday-Sunday in the same ISO week, with the boundary on Monday', () => {
+    // Tuần ISO 2024-W01: Thứ Hai 01/01 -> Chủ nhật 07/01. Thứ Hai 08/01 sang tuần mới.
+    expect(getISOWeekKey('2024-01-04')).toBe('2024-W01') // Thứ Năm
+    expect(getISOWeekKey('2024-01-05')).toBe('2024-W01') // Thứ Sáu
+    expect(getISOWeekKey('2024-01-07')).toBe('2024-W01') // Chủ nhật
+    expect(getISOWeekKey('2024-01-08')).toBe('2024-W02') // Thứ Hai kế tiếp
+  })
+
+  it('assigns the ISO year of the Thursday when a week straddles new year', () => {
+    // 30-31/12/2024 là Thứ Hai/Ba nhưng thuộc tuần 1 của 2025 (Thứ Năm 02/01/2025).
+    expect(getISOWeekKey('2024-12-30')).toBe('2025-W01')
+    expect(getISOWeekKey('2024-12-31')).toBe('2025-W01')
+    // 01/01/2023 là Chủ nhật, thuộc tuần cuối của 2022 (Thứ Năm 29/12/2022).
+    expect(getISOWeekKey('2023-01-01')).toBe('2022-W52')
+    expect(getISOWeekKey('2023-01-02')).toBe('2023-W01')
+  })
+})
 
 describe('alignFundsToCommonGrid', () => {
   it('returns input unchanged when 1 or fewer funds', () => {

@@ -293,11 +293,10 @@ function cumulativeToPricePoints(cumulative: ReturnPoint[]): PricePoint[] {
 /**
  * Ngày thứ Hai của tuần chứa `d`, dùng làm khoá gom nhóm theo tuần.
  *
- * CỐ Ý không dùng lại `getISOWeekKey` trong `weeklyResample.ts` dù tên nó nghe đúng
- * việc. Hàm đó tính sai ranh giới tuần: đo được tuần của nó chạy từ thứ Sáu tới thứ
- * Năm, ví dụ 04/01/2024 (thứ Năm) và 05/01/2024 (thứ Sáu) rơi vào hai tuần khác nhau,
- * còn 05/01 với 08/01 (thứ Hai) lại chung một tuần. Sửa hàm đó sẽ làm lệch lưới tuần
- * của mấy tab khác đang dùng nó, nên để nguyên và tự tính ở đây.
+ * Không dùng `getISOWeekKey` trong `weeklyResample.ts` (đã sửa đúng ranh giới ISO
+ * 08/08/2026) vì lý do khác: hàm đó trả về khoá dạng "YYYY-WNN", còn ở đây cần trực
+ * tiếp ngày thứ Hai (dùng làm mốc hiển thị/so khớp), nên tự tính cho gọn thay vì
+ * quy đổi ngược từ khoá tuần.
  */
 function mondayOfWeek(d: string): string {
   const dt = new Date(d + 'T00:00:00Z')

@@ -155,17 +155,17 @@ export function alignFundsToCommonGridDaily(
 }
 
 export function getISOWeekKey(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00')
-  const year = date.getFullYear()
+  const date = new Date(dateStr + 'T00:00:00Z')
 
-  // ISO week calculation
-  const jan4 = new Date(year, 0, 4)
-  const dayOfYear = Math.floor(
-    (date.getTime() - new Date(year, 0, 1).getTime()) / 86400000
-  ) + 1
+  // Chuẩn ISO 8601: dời về ngày thứ Năm của cùng tuần (Mon=1..Sun=7), vì
+  // thứ Năm luôn thuộc đúng ISO year của tuần đó, kể cả khi tuần vắt qua
+  // giao thừa dương lịch.
+  const isoDayOfWeek = (date.getUTCDay() + 6) % 7 + 1
+  date.setUTCDate(date.getUTCDate() + 4 - isoDayOfWeek)
 
-  const jan4DayOfWeek = (jan4.getDay() + 6) % 7 // Mon=0
-  const weekNumber = Math.floor((dayOfYear + jan4DayOfWeek - 1) / 7)
+  const isoYear = date.getUTCFullYear()
+  const yearStart = Date.UTC(isoYear, 0, 1)
+  const weekNumber = Math.ceil(((date.getTime() - yearStart) / 86400000 + 1) / 7)
 
-  return `${year}-W${String(weekNumber).padStart(2, '0')}`
+  return `${isoYear}-W${String(weekNumber).padStart(2, '0')}`
 }
