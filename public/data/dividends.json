@@ -18,5 +18,13 @@
       "amountPerCert": 1900,
       "taxRate": 0.025
     }
+  ],
+  "TCBF": [
+    {
+      "exDate": "2025-07-29",
+      "payDate": "2025-08-20",
+      "amountPerCert": 1000,
+      "taxRate": 0.05
+    }
   ]
 }
