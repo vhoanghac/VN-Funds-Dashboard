@@ -43,6 +43,9 @@ jobs:
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
+      - name: Update digiinvest funds (TCBF, TCEF)
+        run: node scripts/update_digiinvest.mjs
+
       - name: Update gold price data
         run: node scripts/update_gold.mjs
 

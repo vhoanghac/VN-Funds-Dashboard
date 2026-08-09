@@ -45,6 +45,9 @@ const ETF_TICKERS = {
   FUEDCMID: 'FUEDCMID',
 }
 
+// Funds not listed on fmarket — handled by scripts/update_digiinvest.mjs
+const DIGIINVEST_FUNDS = new Set(['TCBF', 'TCEF'])
+
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -171,7 +174,7 @@ async function main() {
   console.log(`📂 Found ${metadata.length} funds in metadata\n`)
 
   // Separate mutual funds vs ETFs
-  const mutualFunds = metadata.filter(f => !ETF_TICKERS[f.id])
+  const mutualFunds = metadata.filter(f => !ETF_TICKERS[f.id] && !DIGIINVEST_FUNDS.has(f.id))
   const etfs = metadata.filter(f => ETF_TICKERS[f.id])
 
   // ── Mutual Funds via fmarket ──

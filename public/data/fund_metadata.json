@@ -13,6 +13,8 @@
   {"id": "SSISCA", "name_vi": "SSISCA - Quỹ Đầu Tư Lợi Thế Cạnh Tranh Bền Vững SSI", "type": "mutual_fund", "start_date": "2014-09-26", "csv_file": "SSISCA.csv"},
   {"id": "E1VFVN30", "name_vi": "E1VFVN30 - Quỹ ETF VN30", "type": "etf", "start_date": "2014-10-07", "csv_file": "E1VFVN30.csv"},
   {"id": "MAFEQI", "name_vi": "MAFEQI - Quỹ Đầu Tư Cổ Phiếu Manulife", "type": "mutual_fund", "start_date": "2014-10-21", "csv_file": "MAFEQI.csv"},
+  {"id": "TCBF", "name_vi": "TCBF - Quỹ Đầu Tư Trái Phiếu Techcom", "type": "bond", "start_date": "2015-09-09", "csv_file": "TCBF.csv"},
+  {"id": "TCEF", "name_vi": "TCEF - Quỹ Đầu Tư Cổ Phiếu Techcom", "type": "mutual_fund", "start_date": "2015-09-09", "csv_file": "TCEF.csv"},
   {"id": "BVBF", "name_vi": "BVBF - Quỹ Đầu Tư Trái Phiếu Bảo Việt", "type": "bond", "start_date": "2016-05-16", "csv_file": "BVBF.csv"},
   {"id": "BVPF", "name_vi": "BVPF - Quỹ Đầu Tư Cổ Phiếu Triển Vọng Bảo Việt", "type": "mutual_fund", "start_date": "2017-01-02", "csv_file": "BVPF.csv"},
   {"id": "VESAF", "name_vi": "VESAF - Quỹ Đầu Tư Cổ Phiếu Tiếp Cận Thị Trường VinaCapital", "type": "mutual_fund", "start_date": "2017-04-25", "csv_file": "VESAF.csv"},
