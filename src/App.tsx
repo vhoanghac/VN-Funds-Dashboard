@@ -62,6 +62,12 @@ export function App() {
           LS vs DCA
         </button>
         <button
+          className={`tab ${state.tab === 'overlap' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'overlap' })}
+        >
+          Overlap
+        </button>
+        <button
           className={`tab ${state.tab === 'rebalance' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'rebalance' })}
         >
@@ -84,12 +90,6 @@ export function App() {
           onClick={() => updateState({ tab: 'wallofworry' })}
         >
           Wall of Worry
-        </button>
-        <button
-          className={`tab ${state.tab === 'overlap' ? 'tab-active' : ''}`}
-          onClick={() => updateState({ tab: 'overlap' })}
-        >
-          Overlap
         </button>
         <button
           className={`tab ${state.tab === 'calculator' ? 'tab-active' : ''}`}

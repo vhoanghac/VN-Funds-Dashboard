@@ -170,10 +170,11 @@ def main():
                         'stock_code': h.get('stockCode', ''),
                         'industry': h.get('industry', ''),
                         'weight_pct': fmt_pct(h.get('netAssetPercent', 0)),
+                        'asset_value': int(round(h.get('assetValue', 0) or 0)),
                         'type_asset': 'STOCK',
                     })
                 rows.sort(key=lambda r: r['weight_pct'], reverse=True)
-                write_csv(holdings_path, ['date', 'stock_code', 'industry', 'weight_pct', 'type_asset'], rows)
+                write_csv(holdings_path, ['date', 'stock_code', 'industry', 'weight_pct', 'asset_value', 'type_asset'], rows)
             else:
                 if os.path.exists(holdings_path):
                     os.remove(holdings_path)

@@ -1,8 +1,8 @@
-date,stock_code,industry,weight_pct,type_asset
-2026-07-08,VHM,Bất động sản,3.55,STOCK
-2026-07-08,CTG,Ngân hàng,3.31,STOCK
-2026-07-08,VCB,Ngân hàng,3.01,STOCK
-2026-07-08,HPG,Vật liệu xây dựng,2.86,STOCK
-2026-07-08,TCB,Ngân hàng,2.75,STOCK
-2026-07-08,MWG,Bán lẻ,2.73,STOCK
-2026-07-08,MBB,Ngân hàng,2.69,STOCK
+date,stock_code,industry,weight_pct,asset_value,type_asset
+2026-07-08,VHM,Bất động sản,3.55,11688600000,STOCK
+2026-07-08,CTG,Ngân hàng,3.31,10902838800,STOCK
+2026-07-08,VCB,Ngân hàng,3.01,9917790000,STOCK
+2026-07-08,HPG,Vật liệu xây dựng,2.86,9423638400,STOCK
+2026-07-08,TCB,Ngân hàng,2.75,9045000000,STOCK
+2026-07-08,MWG,Bán lẻ,2.73,8981500000,STOCK
+2026-07-08,MBB,Ngân hàng,2.69,8853264000,STOCK

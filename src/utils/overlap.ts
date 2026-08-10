@@ -15,6 +15,8 @@ export interface Holding {
   stockCode: string
   industry: string
   weightPct: number // % tỷ trọng trong NAV của quỹ
+  /** Tổng giá trị cổ phiếu quỹ đang nắm (VND). Có thể 0 nếu nguồn không trả. */
+  assetValue: number
 }
 
 /** Một hàng trong <fundId>_industry.csv */
@@ -50,6 +52,10 @@ export interface OverlapResult {
   pctInA: number
   /** Σ wB của cổ phiếu trùng / Σ wB toàn bộ — phần danh mục B bị trùng */
   pctInB: number
+  /** Σ wA của cổ phiếu trùng, tính bằng điểm % NAV (tuyệt đối, không chia top-10) */
+  overlapInA: number
+  /** Σ wB của cổ phiếu trùng, tính bằng điểm % NAV (tuyệt đối, không chia top-10) */
+  overlapInB: number
   /** A nắm nhiều hơn B (chênh wA − wB dương), xếp giảm theo chênh lệch */
   overweightA: Array<{ stockCode: string; weightA: number; weightB: number; diff: number }>
   /** A nắm ít hơn B (chênh wA − wB âm), xếp tăng theo độ âm */
@@ -79,6 +85,7 @@ export function parseHoldingsCSV(csvText: string): Holding[] {
   const idxCode = header.indexOf('stock_code')
   const idxInd = header.indexOf('industry')
   const idxW = header.indexOf('weight_pct')
+  const idxVal = header.indexOf('asset_value')
   if (idxDate < 0 || idxCode < 0 || idxInd < 0 || idxW < 0) return []
 
   const rows: Holding[] = []
@@ -91,6 +98,7 @@ export function parseHoldingsCSV(csvText: string): Holding[] {
       stockCode: cells[idxCode]!,
       industry: cells[idxInd]!,
       weightPct: w,
+      assetValue: idxVal >= 0 ? parseFloat(cells[idxVal] ?? '') || 0 : 0,
     })
   }
   if (rows.length === 0) return []
@@ -175,6 +183,8 @@ export function computeOverlap(stocksA: Holding[], stocksB: Holding[]): OverlapR
     weightedOverlapPct,
     pctInA: sumA > 0 ? overlapInA / sumA : 0,
     pctInB: sumB > 0 ? overlapInB / sumB : 0,
+    overlapInA,
+    overlapInB,
     overweightA,
     underweightA,
   }

@@ -8,31 +8,31 @@ import {
 } from './overlap'
 
 // Dữ liệu thật từ public/data/DCDS_holdings.csv (cập nhật 07/08/2026)
-const DCDS_CSV = `date,stock_code,industry,weight_pct,type_asset
-2026-08-07,VIC,Bất động sản,10.08,STOCK
-2026-08-07,BID,Ngân hàng,7.83,STOCK
-2026-08-07,MWG,Bán lẻ,6.17,STOCK
-2026-08-07,VHM,Bất động sản,4.45,STOCK
-2026-08-07,HPG,Vật liệu xây dựng,3.91,STOCK
-2026-08-07,ACB,Ngân hàng,3.46,STOCK
-2026-08-07,HDB,Ngân hàng,3.32,STOCK
-2026-08-07,VPB,Ngân hàng,3.2,STOCK
-2026-08-07,TCB,Ngân hàng,2.46,STOCK
-2026-08-07,POW,Điện,2.02,STOCK
+const DCDS_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
+2026-08-07,VIC,Bất động sản,10.08,602177660000,STOCK
+2026-08-07,BID,Ngân hàng,7.83,467400000000,STOCK
+2026-08-07,MWG,Bán lẻ,6.17,368331060000,STOCK
+2026-08-07,VHM,Bất động sản,4.45,265500000000,STOCK
+2026-08-07,HPG,Vật liệu xây dựng,3.91,233300000000,STOCK
+2026-08-07,ACB,Ngân hàng,3.46,206600000000,STOCK
+2026-08-07,HDB,Ngân hàng,3.32,198200000000,STOCK
+2026-08-07,VPB,Ngân hàng,3.2,190900000000,STOCK
+2026-08-07,TCB,Ngân hàng,2.46,286300000000,STOCK
+2026-08-07,POW,Điện,2.02,125000000000,STOCK
 `
 
 // Dữ liệu thật từ public/data/VESAF_holdings.csv
-const VESAF_CSV = `date,stock_code,industry,weight_pct,type_asset
-2026-08-07,BVH,Bảo hiểm,7.21,STOCK
-2026-08-07,MWG,Bán lẻ,6.32,STOCK
-2026-08-07,VCB,Ngân hàng,6.16,STOCK
-2026-08-07,HPG,Vật liệu xây dựng,5.99,STOCK
-2026-08-07,CTG,Ngân hàng,5.9,STOCK
-2026-08-07,MBB,Ngân hàng,5.84,STOCK
-2026-08-07,FPT,Công nghệ và thông tin,4.36,STOCK
-2026-08-07,GMD,Vận tải - Kho bãi,4.0,STOCK
-2026-08-07,TCB,Ngân hàng,3.85,STOCK
-2026-08-07,ACB,Ngân hàng,3.81,STOCK
+const VESAF_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
+2026-08-07,BVH,Bảo hiểm,7.21,40000000000,STOCK
+2026-08-07,MWG,Bán lẻ,6.32,35000000000,STOCK
+2026-08-07,VCB,Ngân hàng,6.16,34000000000,STOCK
+2026-08-07,HPG,Vật liệu xây dựng,5.99,33000000000,STOCK
+2026-08-07,CTG,Ngân hàng,5.9,32000000000,STOCK
+2026-08-07,MBB,Ngân hàng,5.84,31000000000,STOCK
+2026-08-07,FPT,Công nghệ và thông tin,4.36,30000000000,STOCK
+2026-08-07,GMD,Vận tải - Kho bãi,4.0,29000000000,STOCK
+2026-08-07,TCB,Ngân hàng,3.85,28000000000,STOCK
+2026-08-07,ACB,Ngân hàng,3.81,27000000000,STOCK
 `
 
 // Ngành đầy đủ của DCDS (top vài ngành, đủ để test drift)
@@ -58,6 +58,14 @@ describe('parseHoldingsCSV', () => {
     expect(rows[0]!.stockCode).toBe('VIC')
     expect(rows[0]!.weightPct).toBeCloseTo(10.08, 2)
     expect(rows[0]!.industry).toBe('Bất động sản')
+    expect(rows[0]!.assetValue).toBe(602177660000)
+  })
+
+  it('parses legacy CSV without asset_value as 0', () => {
+    const csv = `date,stock_code,industry,weight_pct,type_asset
+2026-08-07,VIC,Bất động sản,10.08,STOCK`
+    const rows = parseHoldingsCSV(csv)
+    expect(rows[0]!.assetValue).toBe(0)
   })
 
   it('ignores older periods when multiple dates present', () => {
@@ -115,6 +123,13 @@ describe('computeOverlap — real DCDS vs VESAF', () => {
     expect(r.pctInB).toBeCloseTo(19.97 / 53.44, 4)
   })
 
+  it('overlapInA/overlapInB are absolute NAV pct of overlapping stocks', () => {
+    // Σ wA cổ phiếu trùng = 16.0 (điểm % NAV, không chia top-10)
+    expect(r.overlapInA).toBeCloseTo(16.0, 4)
+    // Σ wB cổ phiếu trùng = 19.97
+    expect(r.overlapInB).toBeCloseTo(19.97, 4)
+  })
+
   it('overweight/underweight splits correctly', () => {
     // Với cặp này A nhẹ hơn B ở cả 4 cổ phiếu chung → overweight rỗng
     expect(r.overweightA).toHaveLength(0)
@@ -131,16 +146,16 @@ describe('computeOverlap — real DCDS vs VESAF', () => {
 
 describe('computeOverlap — overweight/underweight directions', () => {
   const a: Holding[] = [
-    { date: '2026-08-07', stockCode: 'VIC', industry: 'BĐS', weightPct: 10 },
-    { date: '2026-08-07', stockCode: 'BID', industry: 'NH', weightPct: 5 },
-    { date: '2026-08-07', stockCode: 'MWG', industry: 'BL', weightPct: 3 },
-    { date: '2026-08-07', stockCode: 'FPT', industry: 'CNTT', weightPct: 2 },
+    { date: '2026-08-07', stockCode: 'VIC', industry: 'BĐS', weightPct: 10, assetValue: 0 },
+    { date: '2026-08-07', stockCode: 'BID', industry: 'NH', weightPct: 5, assetValue: 0 },
+    { date: '2026-08-07', stockCode: 'MWG', industry: 'BL', weightPct: 3, assetValue: 0 },
+    { date: '2026-08-07', stockCode: 'FPT', industry: 'CNTT', weightPct: 2, assetValue: 0 },
   ]
   const b: Holding[] = [
-    { date: '2026-08-07', stockCode: 'VIC', industry: 'BĐS', weightPct: 6 },
-    { date: '2026-08-07', stockCode: 'BID', industry: 'NH', weightPct: 7 },
-    { date: '2026-08-07', stockCode: 'MWG', industry: 'BL', weightPct: 3 },
-    { date: '2026-08-07', stockCode: 'SAB', industry: 'TP', weightPct: 8 },
+    { date: '2026-08-07', stockCode: 'VIC', industry: 'BĐS', weightPct: 6, assetValue: 0 },
+    { date: '2026-08-07', stockCode: 'BID', industry: 'NH', weightPct: 7, assetValue: 0 },
+    { date: '2026-08-07', stockCode: 'MWG', industry: 'BL', weightPct: 3, assetValue: 0 },
+    { date: '2026-08-07', stockCode: 'SAB', industry: 'TP', weightPct: 8, assetValue: 0 },
   ]
   const r = computeOverlap(a, b)!
 

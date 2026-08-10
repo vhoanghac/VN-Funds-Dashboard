@@ -7064,13 +7064,6 @@ h1, h2, h3 {
 }
 
 /* ─── Overlap Tab ─────────────────────────────────────────── */
-.overlap-intro {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--color-text-muted);
-  margin: 0 0 16px;
-}
-
 .overlap-select {
   flex: 1;
   min-width: 0;
@@ -7085,6 +7078,18 @@ h1, h2, h3 {
   border-left: 3px solid #d97706;
   border-radius: 6px;
   padding: 8px 12px;
+}
+
+.overlap-limit-warn {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-text);
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #d97706;
+  border-radius: 6px;
+  padding: 10px 14px;
 }
 
 .overlap-stats {

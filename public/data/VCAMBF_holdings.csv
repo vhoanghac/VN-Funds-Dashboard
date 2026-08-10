@@ -1,11 +1,11 @@
-date,stock_code,industry,weight_pct,type_asset
-2026-07-08,ACB,Ngân hàng,6.79,STOCK
-2026-07-08,MBB,Ngân hàng,4.9,STOCK
-2026-07-08,STB,Ngân hàng,4.58,STOCK
-2026-07-08,VCB,Ngân hàng,3.09,STOCK
-2026-07-08,POW,Tiện ích,2.74,STOCK
-2026-07-08,NVB,Ngân hàng,2.71,STOCK
-2026-07-08,HPG,Vật liệu xây dựng,2.54,STOCK
-2026-07-08,MSN,Thực phẩm - Đồ uống,2.46,STOCK
-2026-07-08,FPT,Công nghệ và thông tin,2.4,STOCK
-2026-07-08,VPB,Ngân hàng,2.26,STOCK
+date,stock_code,industry,weight_pct,asset_value,type_asset
+2026-07-08,ACB,Ngân hàng,6.79,10951275000,STOCK
+2026-07-08,MBB,Ngân hàng,4.9,7895563200,STOCK
+2026-07-08,STB,Ngân hàng,4.58,7380000000,STOCK
+2026-07-08,VCB,Ngân hàng,3.09,4976000000,STOCK
+2026-07-08,POW,Tiện ích,2.74,4410000000,STOCK
+2026-07-08,NVB,Ngân hàng,2.71,4376100000,STOCK
+2026-07-08,HPG,Vật liệu xây dựng,2.54,4100800000,STOCK
+2026-07-08,MSN,Thực phẩm - Đồ uống,2.46,3965500000,STOCK
+2026-07-08,FPT,Công nghệ và thông tin,2.4,3866826600,STOCK
+2026-07-08,VPB,Ngân hàng,2.26,3645000000,STOCK

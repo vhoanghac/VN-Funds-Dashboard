@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import type { FundMeta } from '../types'
 import { loadLS, saveLS } from '../utils/localStorage'
+import { formatVND } from '../utils/vndFormat'
 import {
   parseHoldingsCSV, parseIndustryCSV, computeOverlap, computeSectorDrift,
   type Holding, type IndustryHolding, type OverlapResult, type SectorDriftRow,
@@ -49,6 +50,30 @@ const selectStyles = {
 
 function formatPct(v: number, digits = 2): string {
   return `${v.toFixed(digits)}%`
+}
+
+/** Domain X đối xứng quanh 0 với lề 25% để bar dài nhất không chạm mép chart
+ *  và LabelList (vị trí "right") không bị tràn/đè lên label.
+ *  Bound được làm tròn lên bước "đẹp" (1/2/5/10/25...) và trả ticks tường minh
+ *  để trục X không hiện số thập phân dài (vd 9.712499999999999%). */
+function symmetricDomain(rows: SectorDriftRow[]): { domain: [number, number]; ticks: number[] } {
+  const maxAbs = Math.max(1e-9, ...rows.map(r => Math.abs(r.drift)))
+  const target = maxAbs * 1.25
+
+  let step: number
+  if (maxAbs < 1) step = 0.5
+  else if (maxAbs < 2.5) step = 1
+  else if (maxAbs < 5) step = 2
+  else if (maxAbs < 10) step = 5
+  else if (maxAbs < 25) step = 10
+  else if (maxAbs < 50) step = 25
+  else step = 50
+
+  const bound = Math.ceil(target / step) * step
+  return {
+    domain: [-bound, bound],
+    ticks: [-bound, -bound / 2, 0, bound / 2, bound],
+  }
 }
 
 function OverlapPanelImpl({ funds }: Props) {
@@ -177,16 +202,19 @@ function OverlapPanelImpl({ funds }: Props) {
 
   return (
     <div className="simulation-panel dca-panel">
-      <p className="overlap-intro">
-        So sánh danh mục cổ phiếu của hai quỹ: có bao nhiêu công ty trùng nhau, tỷ trọng
-        trùng là bao nhiêu, và quỹ nào đang nặng hơn ở những cổ phiếu/ngành nào.
-      </p>
+      <div className="rebal-intro-card">
+        <p className="dca-ratio-sub">
+          So sánh danh mục cổ phiếu của hai quỹ: có bao nhiêu công ty trùng nhau, tỷ trọng
+          trùng là bao nhiêu và quỹ nào đang sở hữu cổ phiếu/ngành nào nhiều hơn quỹ còn lại.
+        </p>
+      </div>
 
       {/* ── Thông số ── */}
       <div className="dca-params-card">
         <h3 className="dca-section-title">Thông số</h3>
+        <p className="overlap-limit-warn">Dashboard chỉ hỗ trợ hiển thị top 10 cổ phiếu.</p>
         <div className="dca-param-row">
-          <label className="dca-label">Quỹ A</label>
+          <label className="dca-label">{fundA}</label>
           <div className="overlap-select">
             <Select<FundOption>
               className="fund-search-select"
@@ -202,7 +230,7 @@ function OverlapPanelImpl({ funds }: Props) {
           </div>
         </div>
         <div className="dca-param-row">
-          <label className="dca-label">Quỹ B</label>
+          <label className="dca-label">{fundB}</label>
           <div className="overlap-select">
             <Select<FundOption>
               className="fund-search-select"
@@ -229,16 +257,6 @@ function OverlapPanelImpl({ funds }: Props) {
         <>
           {/* ── Thẻ thông số ── */}
           <div className="dca-journey-grid overlap-stats">
-            <div className="dca-journey-stat">
-              <div className="dca-journey-stat-label">{selectedA?.label ?? fundA}</div>
-              <div className="dca-journey-stat-value">{result.stockCountA}</div>
-              <div className="dca-journey-stat-sub">công ty</div>
-            </div>
-            <div className="dca-journey-stat">
-              <div className="dca-journey-stat-label">{selectedB?.label ?? fundB}</div>
-              <div className="dca-journey-stat-value">{result.stockCountB}</div>
-              <div className="dca-journey-stat-sub">công ty</div>
-            </div>
             <div className="dca-journey-stat overlap-stat--highlight">
               <div className="dca-journey-stat-label">Trùng nhau</div>
               <div className="dca-journey-stat-value">{result.overlapCount}</div>
@@ -250,14 +268,73 @@ function OverlapPanelImpl({ funds }: Props) {
               <div className="dca-journey-stat-sub">Σ min(wA, wB)</div>
             </div>
             <div className="dca-journey-stat">
-              <div className="dca-journey-stat-label">Trong quỹ A</div>
-              <div className="dca-journey-stat-value">{formatPct(result.pctInA * 100)}</div>
-              <div className="dca-journey-stat-sub">danh mục A bị trùng</div>
+              <div className="dca-journey-stat-label">Cổ phiếu trùng trong {fundA}</div>
+              <div className="dca-journey-stat-value">{formatPct(result.overlapInA)}</div>
+              <div className="dca-journey-stat-sub">% NAV {fundA} nằm trong cổ phiếu trùng</div>
             </div>
             <div className="dca-journey-stat">
-              <div className="dca-journey-stat-label">Trong quỹ B</div>
-              <div className="dca-journey-stat-value">{formatPct(result.pctInB * 100)}</div>
-              <div className="dca-journey-stat-sub">danh mục B bị trùng</div>
+              <div className="dca-journey-stat-label">Cổ phiếu trùng trong {fundB}</div>
+              <div className="dca-journey-stat-value">{formatPct(result.overlapInB)}</div>
+              <div className="dca-journey-stat-sub">% NAV {fundB} nằm trong cổ phiếu trùng</div>
+            </div>
+          </div>
+
+          {/* ── Top cổ phiếu từng quỹ (song song) ── */}
+          <div className="overlap-two-col">
+            <div className="chart-container overlap-table-card">
+              <div className="chart-header">
+                <h3>Top cổ phiếu {fundA}</h3>
+              </div>
+              <div className="dca-stats-table-scroll">
+                <table className="dca-stats-table overlap-table">
+                  <thead>
+                    <tr>
+                      <th>Cổ phiếu</th>
+                      <th>Ngành</th>
+                      <th>Tỷ trọng</th>
+                      <th>Giá trị</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.stocksA.slice(0, 10).map(o => (
+                      <tr key={o.stockCode}>
+                        <td className="dca-stats-td-name">{o.stockCode}</td>
+                        <td>{o.industry}</td>
+                        <td>{formatPct(o.weightPct)}</td>
+                        <td>{o.assetValue > 0 ? formatVND(o.assetValue) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="chart-container overlap-table-card">
+              <div className="chart-header">
+                <h3>Top cổ phiếu {fundB}</h3>
+              </div>
+              <div className="dca-stats-table-scroll">
+                <table className="dca-stats-table overlap-table">
+                  <thead>
+                    <tr>
+                      <th>Cổ phiếu</th>
+                      <th>Ngành</th>
+                      <th>Tỷ trọng</th>
+                      <th>Giá trị</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.stocksB.slice(0, 10).map(o => (
+                      <tr key={o.stockCode}>
+                        <td className="dca-stats-td-name">{o.stockCode}</td>
+                        <td>{o.industry}</td>
+                        <td>{formatPct(o.weightPct)}</td>
+                        <td>{o.assetValue > 0 ? formatVND(o.assetValue) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -265,17 +342,17 @@ function OverlapPanelImpl({ funds }: Props) {
           {result.overlap.length > 0 && (
             <div className="chart-container overlap-table-card">
               <div className="chart-header">
-                <h3>Top 10 Overlap</h3>
+                <h3>Top cổ phiếu bị trùng</h3>
               </div>
               <div className="dca-stats-table-scroll">
                 <table className="dca-stats-table overlap-table">
                   <thead>
                     <tr>
-                      <th>Stock</th>
-                      <th>Industry</th>
-                      <th>Weight in A</th>
-                      <th>Weight in B</th>
-                      <th>Min</th>
+                      <th>Cổ phiếu</th>
+                      <th>Ngành</th>
+                      <th>Tỷ trọng {fundA}</th>
+                      <th>Tỷ trọng {fundB}</th>
+                      <th>BỊ TRÙNG</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -298,7 +375,7 @@ function OverlapPanelImpl({ funds }: Props) {
           <div className="overlap-two-col">
             <div className="chart-container overlap-table-card">
               <div className="chart-header">
-                <h3>A overweight vs B</h3>
+                <h3>Tỷ trọng cổ phiếu {fundA} hơn {fundB}</h3>
               </div>
               {result.overweightA.length === 0 ? (
                 <p className="overlap-empty">Không có cổ phiếu nào quỹ A nắm nhiều hơn quỹ B.</p>
@@ -307,10 +384,10 @@ function OverlapPanelImpl({ funds }: Props) {
                   <table className="dca-stats-table overlap-table">
                     <thead>
                       <tr>
-                        <th>Stock</th>
-                        <th>Weight in A</th>
-                        <th>Weight in B</th>
-                        <th>Diff</th>
+                        <th>Cổ phiếu</th>
+                        <th>Tỷ trọng {fundA}</th>
+                        <th>Tỷ trọng {fundB}</th>
+                        <th>Chênh lệch</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -330,7 +407,7 @@ function OverlapPanelImpl({ funds }: Props) {
 
             <div className="chart-container overlap-table-card">
               <div className="chart-header">
-                <h3>A underweight vs B</h3>
+                <h3>Tỷ trọng cổ phiếu {fundA} nhỏ hơn {fundB}</h3>
               </div>
               {result.underweightA.length === 0 ? (
                 <p className="overlap-empty">Không có cổ phiếu nào quỹ A nắm ít hơn quỹ B.</p>
@@ -339,10 +416,10 @@ function OverlapPanelImpl({ funds }: Props) {
                   <table className="dca-stats-table overlap-table">
                     <thead>
                       <tr>
-                        <th>Stock</th>
-                        <th>Weight in A</th>
-                        <th>Weight in B</th>
-                        <th>Diff</th>
+                        <th>Cổ phiếu</th>
+                        <th>Tỷ trọng {fundA}</th>
+                        <th>Tỷ trọng {fundB}</th>
+                        <th>Chênh lệch</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -362,7 +439,9 @@ function OverlapPanelImpl({ funds }: Props) {
           </div>
 
           {/* ── Sector drift ── */}
-          {driftRows.length > 0 && (
+          {driftRows.length > 0 && (() => {
+            const axis = symmetricDomain(driftRows)
+            return (
             <div className="chart-container overlap-drift-card">
               <div className="chart-header">
                 <h3>Sector Drift</h3>
@@ -376,7 +455,12 @@ function OverlapPanelImpl({ funds }: Props) {
               <ResponsiveContainer width="100%" height={Math.max(300, driftRows.length * 28)}>
                 <BarChart data={driftRows} layout="vertical" margin={{ left: 16, right: 48, top: 8, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tickFormatter={v => `${v}%`} />
+                  <XAxis
+                    type="number"
+                    domain={axis.domain}
+                    ticks={axis.ticks}
+                    tickFormatter={v => `${v}%`}
+                  />
                   <YAxis type="category" dataKey="industry" width={170} tick={{ fontSize: 12 }} />
                   <Tooltip
                     formatter={(value: number, name: string, props) => {
@@ -399,7 +483,8 @@ function OverlapPanelImpl({ funds }: Props) {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          )}
+            )
+          })()}
 
           <p className="overlap-note">
             Dữ liệu holdings là <strong>top 10 cổ phiếu</strong> mỗi quỹ (giới hạn nguồn dữ liệu),
