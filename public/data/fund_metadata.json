@@ -42,6 +42,7 @@
   {"id": "FUEDCMID", "name_vi": "FUEDCMID - Quỹ ETF MidCap", "type": "etf", "start_date": "2022-09-29", "csv_file": "FUEDCMID.csv"},
   {"id": "FUESSVFL", "name_vi": "FUESSVFL - Quỹ ETF VNFIN LEAD", "type": "etf", "start_date": "2020-03-18", "csv_file": "FUESSVFL.csv"},
   {"id": "FUEVN100", "name_vi": "FUEVN100 - Quỹ ETF IPAAM VN100", "type": "etf", "start_date": "2020-07-21", "csv_file": "FUEVN100.csv"},
+  {"id": "FUESSV50", "name_vi": "FUESSV50 - Quỹ ETF SSIAM VN50", "type": "etf", "start_date": "2019-06-05", "csv_file": "FUESSV50.csv"},
   {"id": "VCAMFI", "name_vi": "VCAMFI - Quỹ Đầu Tư Trái Phiếu Bản Việt", "type": "bond", "start_date": "2022-09-22", "csv_file": "VCAMFI.csv"},
   {"id": "PHVSF", "name_vi": "PHVSF - Quỹ Đầu Tư Chọn Lọc Phú Hưng Việt Nam", "type": "mutual_fund", "start_date": "2022-11-24", "csv_file": "PHVSF.csv"},
   {"id": "UVEEF", "name_vi": "UVEEF - Quỹ Đầu Tư Cổ Phiếu United ESG Việt Nam", "type": "mutual_fund", "start_date": "2022-11-08", "csv_file": "UVEEF.csv"},
