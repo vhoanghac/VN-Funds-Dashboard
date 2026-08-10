@@ -63,7 +63,7 @@ export type CalculatorId = typeof CALCULATOR_IDS[number]
 /** URL state for the dashboard */
 export interface DashboardState {
   funds: string[] // selected fund IDs for comparison
-  tab: 'compare' | 'dca' | 'lsdca' | 'rebalance' | 'tactical' | 'bitcoin' | 'wallofworry' | 'calculator' | 'methodology' | 'changelog'
+  tab: 'compare' | 'dca' | 'lsdca' | 'rebalance' | 'tactical' | 'bitcoin' | 'wallofworry' | 'overlap' | 'calculator' | 'methodology' | 'changelog'
   rollingPeriod: number // months: 6, 12, 24, 36, 48
   dateFrom: string | null
   dateTo: string | null

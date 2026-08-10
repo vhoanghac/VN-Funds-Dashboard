@@ -4,7 +4,7 @@ import type { CalculatorId, DashboardState } from '../types'
 import { CALCULATOR_IDS, DEFAULT_FUNDS } from '../constants'
 import { loadLS, saveLS } from '../utils/localStorage'
 
-const VALID_TABS = ['compare', 'dca', 'lsdca', 'rebalance', 'tactical', 'bitcoin', 'wallofworry', 'calculator', 'methodology', 'changelog'] as const
+const VALID_TABS = ['compare', 'dca', 'lsdca', 'rebalance', 'tactical', 'bitcoin', 'wallofworry', 'overlap', 'calculator', 'methodology', 'changelog'] as const
 const VALID_PERIODS = [6, 12, 24, 36, 48]
 const DEFAULT_CALC_ID: CalculatorId = 'compound'
 

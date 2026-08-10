@@ -43,6 +43,11 @@ jobs:
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
+      - name: Update fund holdings (Overlap tab)
+        run: python -X utf8 scripts/update_holdings.py
+        env:
+          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
       - name: Update digiinvest funds (TCBF, TCEF)
         run: node scripts/update_digiinvest.mjs
 

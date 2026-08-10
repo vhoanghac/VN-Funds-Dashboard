@@ -9,6 +9,7 @@ import { RebalanceSensitivityPanel } from './components/RebalanceSensitivityPane
 import { TacticalAllocationPanel } from './components/TacticalAllocationPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
+import { OverlapPanel } from './components/OverlapPanel'
 import { CalculatorTab } from './components/calculators/CalculatorTab'
 import { MethodologyPanel } from './components/MethodologyPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
@@ -85,6 +86,12 @@ export function App() {
           Wall of Worry
         </button>
         <button
+          className={`tab ${state.tab === 'overlap' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'overlap' })}
+        >
+          Overlap
+        </button>
+        <button
           className={`tab ${state.tab === 'calculator' ? 'tab-active' : ''}`}
           onClick={() => updateState({ tab: 'calculator' })}
         >
@@ -147,6 +154,11 @@ export function App() {
       {/* Wall of Worry Tab */}
       <div className={state.tab === 'wallofworry' ? undefined : 'tab-panel-hidden'}>
         <WallOfWorryPanel />
+      </div>
+
+      {/* Overlap Tab */}
+      <div className={state.tab === 'overlap' ? undefined : 'tab-panel-hidden'}>
+        <OverlapPanel funds={metadata} />
       </div>
 
       {/* Máy Tính Tab: mỗi calculator tự giữ state riêng, mount lại là mất số đã
