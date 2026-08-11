@@ -7,8 +7,9 @@ import type { FundMeta } from '../types'
 import { loadLS, saveLS } from '../utils/localStorage'
 import { formatVND } from '../utils/vndFormat'
 import {
-  parseHoldingsCSV, parseIndustryCSV, computeOverlap, computeSectorDrift,
-  type Holding, type IndustryHolding, type OverlapResult, type SectorDriftRow,
+  parseHoldingsCSV, parseIndustryCSV, getAvailablePeriods, resolvePeriod,
+  computeOverlap, computeSectorDrift,
+  type OverlapResult, type SectorDriftRow,
 } from '../utils/overlap'
 
 interface Props {
@@ -52,6 +53,13 @@ function formatPct(v: number, digits = 2): string {
   return `${v.toFixed(digits)}%`
 }
 
+/** "2026-07-01" → "Tháng 7/2026" */
+function formatPeriodLabel(dateStr: string): string {
+  const [y, m] = dateStr.split('-')
+  if (!y || !m) return dateStr
+  return `Tháng ${Number(m)}/${y}`
+}
+
 /** Domain X đối xứng quanh 0 với lề 25% để bar dài nhất không chạm mép chart
  *  và LabelList (vị trí "right") không bị tràn/đè lên label.
  *  Bound được làm tròn lên bước "đẹp" (1/2/5/10/25...) và trả ticks tường minh
@@ -81,10 +89,11 @@ function OverlapPanelImpl({ funds }: Props) {
   const [indexError, setIndexError] = useState<string | null>(null)
   const [fundA, setFundA] = useState<string>(() => loadLS<string>('overlap_a', DEFAULT_A))
   const [fundB, setFundB] = useState<string>(() => loadLS<string>('overlap_b', DEFAULT_B))
-  const [holdingsA, setHoldingsA] = useState<Holding[] | null>(null)
-  const [holdingsB, setHoldingsB] = useState<Holding[] | null>(null)
-  const [industryA, setIndustryA] = useState<IndustryHolding[] | null>(null)
-  const [industryB, setIndustryB] = useState<IndustryHolding[] | null>(null)
+  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null)
+  const [holdingsTextA, setHoldingsTextA] = useState<string | null>(null)
+  const [holdingsTextB, setHoldingsTextB] = useState<string | null>(null)
+  const [industryTextA, setIndustryTextA] = useState<string | null>(null)
+  const [industryTextB, setIndustryTextB] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,11 +140,11 @@ function OverlapPanelImpl({ funds }: Props) {
     }
   }, [index, fundA, fundB])
 
-  // Load holdings + industry for both funds.
+  // Fetch raw holdings + industry CSV for both funds.
   useEffect(() => {
     if (!fundA || !fundB || fundA === fundB) {
-      setHoldingsA(null); setHoldingsB(null)
-      setIndustryA(null); setIndustryB(null)
+      setHoldingsTextA(null); setHoldingsTextB(null)
+      setIndustryTextA(null); setIndustryTextB(null)
       setError(null)
       return
     }
@@ -148,17 +157,17 @@ function OverlapPanelImpl({ funds }: Props) {
         fetch(`/data/${id}_holdings.csv`),
         fetch(`/data/${id}_industry.csv`),
       ])
-      const holdings = hResp.ok ? parseHoldingsCSV(await hResp.text()) : []
-      const industry = iResp.ok ? parseIndustryCSV(await iResp.text()) : []
+      const holdings = hResp.ok ? await hResp.text() : ''
+      const industry = iResp.ok ? await iResp.text() : ''
       return { holdings, industry }
     }
 
     Promise.all([loadPair(fundA), loadPair(fundB)])
       .then(([a, b]) => {
         if (cancelled) return
-        setHoldingsA(a.holdings); setHoldingsB(b.holdings)
-        setIndustryA(a.industry); setIndustryB(b.industry)
-        if (a.holdings.length === 0 || b.holdings.length === 0) {
+        setHoldingsTextA(a.holdings); setHoldingsTextB(b.holdings)
+        setIndustryTextA(a.industry); setIndustryTextB(b.industry)
+        if (!a.holdings || !b.holdings) {
           setError('Một trong hai quỹ chưa có dữ liệu holdings.')
         }
         setLoading(false)
@@ -172,6 +181,42 @@ function OverlapPanelImpl({ funds }: Props) {
     return () => { cancelled = true }
   }, [fundA, fundB])
 
+  // Các kỳ báo cáo có sẵn (union của 2 quỹ), dùng cho selector.
+  const availablePeriods = useMemo(() => {
+    const dates = new Set<string>()
+    for (const text of [holdingsTextA, holdingsTextB]) {
+      for (const d of text ? getAvailablePeriods(text) : []) dates.add(d)
+    }
+    return [...dates].sort().reverse()
+  }, [holdingsTextA, holdingsTextB])
+
+  // Kỳ thực tế mỗi quỹ dùng theo kỳ người dùng chọn (fallback kỳ gần nhất ≤ đích).
+  const periodA = useMemo(
+    () => holdingsTextA ? resolvePeriod(getAvailablePeriods(holdingsTextA), selectedPeriod) : '',
+    [holdingsTextA, selectedPeriod],
+  )
+  const periodB = useMemo(
+    () => holdingsTextB ? resolvePeriod(getAvailablePeriods(holdingsTextB), selectedPeriod) : '',
+    [holdingsTextB, selectedPeriod],
+  )
+
+  const holdingsA = useMemo(
+    () => holdingsTextA ? parseHoldingsCSV(holdingsTextA, selectedPeriod) : null,
+    [holdingsTextA, selectedPeriod],
+  )
+  const holdingsB = useMemo(
+    () => holdingsTextB ? parseHoldingsCSV(holdingsTextB, selectedPeriod) : null,
+    [holdingsTextB, selectedPeriod],
+  )
+  const industryA = useMemo(
+    () => industryTextA ? parseIndustryCSV(industryTextA, selectedPeriod) : null,
+    [industryTextA, selectedPeriod],
+  )
+  const industryB = useMemo(
+    () => industryTextB ? parseIndustryCSV(industryTextB, selectedPeriod) : null,
+    [industryTextB, selectedPeriod],
+  )
+
   const result: OverlapResult | null = useMemo(() => {
     if (!holdingsA || !holdingsB) return null
     return computeOverlap(holdingsA, holdingsB)
@@ -184,9 +229,6 @@ function OverlapPanelImpl({ funds }: Props) {
 
   const selectedA = options.find(o => o.value === fundA) || null
   const selectedB = options.find(o => o.value === fundB) || null
-  const updateAt = index?.find(e => e.id === fundA)?.update_at
-    ?? index?.find(e => e.id === fundB)?.update_at
-    ?? null
 
   if (indexError) {
     return (
@@ -245,6 +287,32 @@ function OverlapPanelImpl({ funds }: Props) {
             />
           </div>
         </div>
+        <div className="dca-param-row">
+          <label className="dca-label">Kỳ báo cáo</label>
+          <div className="overlap-select">
+            <Select<{ value: string | null; label: string }>
+              className="fund-search-select"
+              classNamePrefix="fund-search"
+              options={[
+                { value: null, label: 'Mới nhất' },
+                ...availablePeriods.map(p => ({ value: p, label: formatPeriodLabel(p) })),
+              ]}
+              value={selectedPeriod === null
+                ? { value: null, label: 'Mới nhất' }
+                : { value: selectedPeriod, label: formatPeriodLabel(selectedPeriod) }}
+              onChange={opt => opt && setSelectedPeriod(opt.value)}
+              isClearable={false}
+              styles={selectStyles}
+            />
+          </div>
+        </div>
+        {periodA && periodB && periodA !== periodB && (
+          <div className="overlap-period-warn">
+            {selectedA?.value ?? fundA} đang dùng thông tin {formatPeriodLabel(periodA)},&nbsp;
+            {selectedB?.value ?? fundB} đang dùng thông tin {formatPeriodLabel(periodB)}&nbsp;
+            vì quỹ chưa được cập nhật tới kỳ đã chọn.
+          </div>
+        )}
         {fundA === fundB && (
           <p className="overlap-warn">Hai quỹ đang giống nhau. Chọn hai quỹ khác nhau để so sánh.</p>
         )}
@@ -488,8 +556,8 @@ function OverlapPanelImpl({ funds }: Props) {
 
           <p className="overlap-note">
             Dữ liệu holdings là <strong>top 10 cổ phiếu</strong> mỗi quỹ (giới hạn nguồn dữ liệu),
-            cập nhật {updateAt ? `ngày ${updateAt}` : 'gần nhất'}. Chưa có lịch sử theo kỳ báo cáo —
-            chỉ so danh mục hiện tại. Ngành thì đầy đủ 100%.
+            kỳ báo cáo {periodA ? formatPeriodLabel(periodA) : 'gần nhất'}. Lịch sử theo kỳ báo cáo
+            đang được tích lũy — hiện tại chỉ so danh mục mới nhất. Ngành thì đầy đủ 100%.
           </p>
         </>
       )}

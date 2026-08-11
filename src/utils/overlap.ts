@@ -73,11 +73,46 @@ export interface SectorDriftRow {
 const ZERO = 1e-9
 
 /**
- * Parse nội dung `<fundId>_holdings.csv` (cột: date,stock_code,industry,weight_pct,type_asset).
- * Chỉ lấy hàng mới nhất theo date (một CSV hiện chỉ có 1 kỳ, nhưng để sẵn
- * cho tương lai khi có nhiều kỳ).
+ * Danh sách các kỳ báo cáo (cột `date`) có trong file CSV, sắp giảm dần.
+ * Dùng để dựng selector chọn kỳ trong UI.
  */
-export function parseHoldingsCSV(csvText: string): Holding[] {
+export function getAvailablePeriods(csvText: string): string[] {
+  const lines = csvText.trim().split('\n')
+  if (lines.length <= 1) return []
+  const header = lines[0]!.split(',').map(h => h.trim())
+  const idxDate = header.indexOf('date')
+  if (idxDate < 0) return []
+  const dates = new Set<string>()
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i]!.split(',').map(c => c.trim())
+    const d = cells[idxDate]
+    if (d) dates.add(d)
+  }
+  return [...dates].sort().reverse()
+}
+
+/**
+ * Kỳ báo cáo sẽ dùng cho một quỹ khi người dùng chọn `targetPeriod`:
+ * - targetPeriod null → kỳ mới nhất.
+ * - Ngược lại → kỳ gần nhất KHÔNG MUỘN HƠN targetPeriod (quỹ chưa có báo cáo
+ *   tháng đích thì fallback về kỳ sớm hơn gần nhất). Nếu target sớm hơn mọi
+ *   kỳ → kỳ sớm nhất (dữ liệu cũ nhất có thể).
+ */
+export function resolvePeriod(periods: string[], targetPeriod: string | null): string {
+  const sorted = [...periods].sort()
+  if (sorted.length === 0) return ''
+  if (!targetPeriod) return sorted[sorted.length - 1]!
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i]! <= targetPeriod) return sorted[i]!
+  }
+  return sorted[0]!
+}
+
+/**
+ * Parse nội dung `<fundId>_holdings.csv` (cột: date,stock_code,industry,weight_pct,type_asset).
+ * Lấy kỳ theo `targetPeriod` (xem resolvePeriod); targetPeriod null = kỳ mới nhất.
+ */
+export function parseHoldingsCSV(csvText: string, targetPeriod: string | null = null): Holding[] {
   const lines = csvText.trim().split('\n')
   if (lines.length <= 1) return []
   const header = lines[0]!.split(',').map(h => h.trim())
@@ -103,13 +138,12 @@ export function parseHoldingsCSV(csvText: string): Holding[] {
   }
   if (rows.length === 0) return []
 
-  // Chỉ lấy kỳ mới nhất
-  const latest = rows.reduce((a, b) => (a.date > b.date ? a : b)).date
-  return rows.filter(r => r.date === latest)
+  const period = resolvePeriod(getAvailablePeriods(csvText), targetPeriod)
+  return rows.filter(r => r.date === period)
 }
 
-/** Parse `<fundId>_industry.csv` (date,industry,weight_pct) — chỉ kỳ mới nhất. */
-export function parseIndustryCSV(csvText: string): IndustryHolding[] {
+/** Parse `<fundId>_industry.csv` (date,industry,weight_pct) theo targetPeriod. */
+export function parseIndustryCSV(csvText: string, targetPeriod: string | null = null): IndustryHolding[] {
   const lines = csvText.trim().split('\n')
   if (lines.length <= 1) return []
   const header = lines[0]!.split(',').map(h => h.trim())
@@ -126,8 +160,8 @@ export function parseIndustryCSV(csvText: string): IndustryHolding[] {
     rows.push({ date: cells[idxDate]!, industry: cells[idxInd]!, weightPct: w })
   }
   if (rows.length === 0) return []
-  const latest = rows.reduce((a, b) => (a.date > b.date ? a : b)).date
-  return rows.filter(r => r.date === latest)
+  const period = resolvePeriod(getAvailablePeriods(csvText), targetPeriod)
+  return rows.filter(r => r.date === period)
 }
 
 /**

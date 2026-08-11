@@ -19,10 +19,11 @@ Output files (public/data/):
   <ID>_industry.csv  -> date,industry,weight_pct
   holdings_index.json -> [{id, update_at}]
 
-Schema note: `date` column = report date. fmarket only exposes the latest
-period today (no history). The schema already supports future periods —
-when a source with monthly history appears, append rows with other dates,
-no schema change needed.
+History: `date` column = REPORT PERIOD (fundReport.reportTime), not the daily
+update timestamp. Holdings only change per reporting period, so we APPEND one
+snapshot per new period and skip periods already present — this accumulates a
+monthly history of each fund's portfolio. fmarket only exposes the latest
+period when first enabled, so history starts from today (no backfill).
 
 Usage:  python -X utf8 scripts/update_holdings.py
 """
@@ -137,6 +138,15 @@ def main():
     index = []
     errors = []
 
+    # Load existing index so funds whose period is already recorded (skipped
+    # this run) are NOT dropped when we rewrite the index below.
+    if os.path.exists(INDEX_FILE):
+        try:
+            with open(INDEX_FILE, encoding='utf-8') as fh:
+                index = json.load(fh)
+        except Exception:
+            index = []
+
     for fund in funds:
         fund_id = fund['id']
         holdings_path = os.path.join(DATA_DIR, f'{fund_id}_holdings.csv')
@@ -153,20 +163,48 @@ def main():
             top = data.get('productTopHoldingList') or []
             ind = data.get('productIndustriesHoldingList') or []
 
-            # report date: prefer holding update time
-            update_at = ''
-            if top:
-                update_at = parse_date_ms(top[0].get('updateAt'))
-            elif ind:
-                update_at = parse_date_ms(data.get('updateAt'))
+            # Report PERIOD (fundReport.reportTime) — holdings are a snapshot at
+            # the end of this period. Funds without a report period yet (brand-new,
+            # no published report) are SKIPPED entirely: falling back to the daily
+            # update timestamp would append a near-identical snapshot every day and
+            # bloat the file.
+            fr = data.get('fundReport') or {}
+            report_period = parse_date_ms(fr.get('reportTime'))
+            if not report_period:
+                print(f'✅ {fund_id}: no report period yet — skipped')
+                continue
 
-            # ── top holdings (stocks only) ──
+            # ── top holdings (stocks only) — cần sớm để so chữ ký trong nhánh skip ──
             stocks = [h for h in top if (h.get('type') or '').upper() == 'STOCK']
+
+            # ── skip if this period already recorded ──
+            existing = read_csv_dates(holdings_path)
+            if report_period in existing:
+                # File đã có dữ liệu kỳ này — quỹ vẫn có holdings, chỉ không append
+                # lại. Upsert index để không bị mất khỏi danh sách.
+                idx_entry = next((e for e in index if e['id'] == fund_id), None)
+                if idx_entry:
+                    idx_entry['update_at'] = report_period
+                else:
+                    index.append({'id': fund_id, 'update_at': report_period})
+
+                # Cảnh báo (không ghi đè): nếu holdings HIỆN TẠI khác bản đang lưu
+                # trong khi reportTime không đổi, tức quỹ đã sửa lại báo cáo giữa
+                # kỳ — chúng ta cố tình bỏ qua (phương án A), chỉ log để người dùng
+                # biết. So sánh bằng chữ ký (stock_code + weight_pct) sắp xếp.
+                if stocks:
+                    current = signature(stocks)
+                    stored = read_holdings_signature(holdings_path, report_period)
+                    if stored and current != stored:
+                        print(f'⚠️  {fund_id}: holdings CHANGED for period {report_period} but reportTime unchanged — skipped (would be missed revision). Run investigate if unexpected.')
+                print(f'✅ {fund_id}: period {report_period} already recorded — skipped')
+                continue
+
             if stocks:
                 rows = []
                 for h in stocks:
                     rows.append({
-                        'date': update_at,
+                        'date': report_period,
                         'stock_code': h.get('stockCode', ''),
                         'industry': h.get('industry', ''),
                         'weight_pct': fmt_pct(h.get('netAssetPercent', 0)),
@@ -174,7 +212,7 @@ def main():
                         'type_asset': 'STOCK',
                     })
                 rows.sort(key=lambda r: r['weight_pct'], reverse=True)
-                write_csv(holdings_path, ['date', 'stock_code', 'industry', 'weight_pct', 'asset_value', 'type_asset'], rows)
+                append_csv(holdings_path, ['date', 'stock_code', 'industry', 'weight_pct', 'asset_value', 'type_asset'], rows)
             else:
                 if os.path.exists(holdings_path):
                     os.remove(holdings_path)
@@ -184,19 +222,25 @@ def main():
                 rows = []
                 for h in ind:
                     rows.append({
-                        'date': update_at,
+                        'date': report_period,
                         'industry': h.get('industry', ''),
                         'weight_pct': fmt_pct(h.get('assetPercent', 0)),
                     })
                 rows.sort(key=lambda r: r['weight_pct'], reverse=True)
-                write_csv(industry_path, ['date', 'industry', 'weight_pct'], rows)
+                append_csv(industry_path, ['date', 'industry', 'weight_pct'], rows)
             else:
                 if os.path.exists(industry_path):
                     os.remove(industry_path)
 
             if stocks:
-                index.append({'id': fund_id, 'update_at': update_at})
-                print(f'📈 {fund_id}: {len(stocks)} stocks / {len(ind)} industries @ {update_at or "?"}')
+                # Upsert: quỹ đã có entry (từ lần chạy cũ) thì cập nhật update_at,
+                # chưa có thì thêm mới. Không append trùng id.
+                idx_entry = next((e for e in index if e['id'] == fund_id), None)
+                if idx_entry:
+                    idx_entry['update_at'] = report_period
+                else:
+                    index.append({'id': fund_id, 'update_at': report_period})
+                print(f'📈 {fund_id}: +{len(stocks)} stocks / {len(ind)} industries @ {report_period}')
             else:
                 print(f'✅ {fund_id}: no stock holdings (skipped)')
 
@@ -222,9 +266,63 @@ def main():
     print(f'{"─" * 60}\n')
 
 
-def write_csv(path, header, rows):
-    with open(path, 'w', encoding='utf-8', newline='') as fh:
-        fh.write(','.join(header) + '\n')
+def read_csv_dates(path):
+    """Tập hợp các `date` (kỳ báo cáo) đã có trong file CSV. Rỗng nếu chưa có file."""
+    if not os.path.exists(path):
+        return set()
+    with open(path, encoding='utf-8') as fh:
+        header = fh.readline().strip().split(',')
+        try:
+            idx = header.index('date')
+        except ValueError:
+            return set()
+        dates = set()
+        for line in fh:
+            cells = line.strip().split(',')
+            if len(cells) > idx and cells[idx]:
+                dates.add(cells[idx])
+        return dates
+
+
+def signature(stocks):
+    """Chữ ký holdings: (stock_code, weight_pct) sắp xếp — để so khác biệt giữa 2 bản."""
+    return tuple(sorted((h.get('stockCode', ''), round(float(h.get('netAssetPercent', 0)), 2)) for h in stocks))
+
+
+def read_holdings_signature(path, period):
+    """Đọc holdings của một kỳ trong file CSV → chữ ký. None nếu file/kỳ không tồn tại."""
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding='utf-8') as fh:
+        header = fh.readline().strip().split(',')
+        try:
+            idx_date = header.index('date')
+            idx_code = header.index('stock_code')
+            idx_w = header.index('weight_pct')
+        except ValueError:
+            return None
+        pairs = []
+        for line in fh:
+            cells = line.strip().split(',')
+            if len(cells) <= max(idx_date, idx_code, idx_w):
+                continue
+            if cells[idx_date] != period:
+                continue
+            try:
+                pairs.append((cells[idx_code], round(float(cells[idx_w]), 2)))
+            except ValueError:
+                continue
+    if not pairs:
+        return None
+    return tuple(sorted(pairs))
+
+
+def append_csv(path, header, rows):
+    """Append snapshot cho kỳ mới xuống cuối file (giữ các kỳ cũ). Tạo header nếu file mới."""
+    existed = os.path.exists(path) and os.path.getsize(path) > 0
+    with open(path, 'a', encoding='utf-8', newline='') as fh:
+        if not existed:
+            fh.write(','.join(header) + '\n')
         for r in rows:
             fh.write(','.join(str(r[c]) for c in header) + '\n')
 

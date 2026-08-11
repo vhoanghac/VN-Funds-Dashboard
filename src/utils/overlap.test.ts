@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   parseHoldingsCSV,
   parseIndustryCSV,
+  getAvailablePeriods,
+  resolvePeriod,
   computeOverlap,
   computeSectorDrift,
   type Holding,
@@ -78,8 +80,59 @@ describe('parseHoldingsCSV', () => {
     expect(rows.every(r => r.date === '2026-08-07')).toBe(true)
   })
 
+  it('targetPeriod selects an earlier specific period', () => {
+    const csv = `date,stock_code,industry,weight_pct,type_asset
+2026-06-01,VIC,Bất động sản,8.0,STOCK
+2026-07-01,VIC,Bất động sản,9.0,STOCK
+2026-07-01,BID,Ngân hàng,7.0,STOCK
+2026-08-07,VIC,Bất động sản,10.08,STOCK`
+    const rows = parseHoldingsCSV(csv, '2026-07-01')
+    expect(rows).toHaveLength(2)
+    expect(rows.every(r => r.date === '2026-07-01')).toBe(true)
+    expect(rows[0]!.weightPct).toBeCloseTo(9.0, 2)
+  })
+
+  it('targetPeriod with no exact match falls back to nearest earlier period', () => {
+    const csv = `date,stock_code,industry,weight_pct,type_asset
+2026-07-01,VIC,Bất động sản,9.0,STOCK
+2026-08-07,VIC,Bất động sản,10.08,STOCK`
+    // Quỹ chưa có tháng 8 báo cáo → chọn 08-07 sẽ rơi về 07-01
+    const rows = parseHoldingsCSV(csv, '2026-08-07')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.date).toBe('2026-08-07')
+    // Chọn 08-30 (chưa có) → rơi về 08-07
+    const rows2 = parseHoldingsCSV(csv, '2026-08-30')
+    expect(rows2).toHaveLength(1)
+    expect(rows2[0]!.date).toBe('2026-08-07')
+  })
+
   it('returns [] on header-only', () => {
     expect(parseHoldingsCSV('date,stock_code,industry,weight_pct,type_asset\n')).toEqual([])
+  })
+})
+
+describe('getAvailablePeriods / resolvePeriod', () => {
+  const csv = `date,stock_code,industry,weight_pct,type_asset
+2026-06-01,VIC,Bất động sản,8.0,STOCK
+2026-07-01,VIC,Bất động sản,9.0,STOCK
+2026-08-07,VIC,Bất động sản,10.08,STOCK`
+
+  it('lists distinct periods sorted descending', () => {
+    expect(getAvailablePeriods(csv)).toEqual(['2026-08-07', '2026-07-01', '2026-06-01'])
+  })
+
+  it('resolvePeriod: null → latest; exact target → that period; missing → nearest earlier', () => {
+    expect(resolvePeriod(getAvailablePeriods(csv), null)).toBe('2026-08-07')
+    expect(resolvePeriod(getAvailablePeriods(csv), '2026-07-01')).toBe('2026-07-01')
+    // Chọn 08-30 (chưa tồn tại) → rơi về 08-07
+    expect(resolvePeriod(getAvailablePeriods(csv), '2026-08-30')).toBe('2026-08-07')
+    // Target sớm hơn mọi kỳ → kỳ sớm nhất
+    expect(resolvePeriod(getAvailablePeriods(csv), '2026-01-01')).toBe('2026-06-01')
+  })
+
+  it('returns [] / "" for empty input', () => {
+    expect(getAvailablePeriods('')).toEqual([])
+    expect(resolvePeriod([], null)).toBe('')
   })
 })
 
@@ -88,6 +141,18 @@ describe('parseIndustryCSV', () => {
     const rows = parseIndustryCSV(DCDS_INDUSTRY_CSV)
     expect(rows).toHaveLength(4)
     expect(rows[0]!.industry).toBe('Ngân hàng')
+    expect(rows[0]!.weightPct).toBeCloseTo(28.23, 2)
+  })
+
+  it('returns only the latest period when multiple report periods present', () => {
+    const csv = `date,industry,weight_pct
+2026-07-01,Ngân hàng,26.0
+2026-07-01,Bán lẻ,5.0
+2026-08-07,Ngân hàng,28.23
+2026-08-07,Bất động sản,15.23`
+    const rows = parseIndustryCSV(csv)
+    expect(rows).toHaveLength(2)
+    expect(rows.every(r => r.date === '2026-08-07')).toBe(true)
     expect(rows[0]!.weightPct).toBeCloseTo(28.23, 2)
   })
 })
