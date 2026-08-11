@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 /**
- * Daily update of SJC gold price data — loops over every asset in GOLD_ASSETS
- * below (currently: vàng miếng SJC 1L/10L/1KG, vàng nhẫn SJC 99,99%).
+ * Daily update of gold price data — loops over every asset in GOLD_ASSETS
+ * below (currently: vàng miếng SJC 1L/10L/1KG, vàng nhẫn SJC 99,99%, vàng
+ * nhẫn DOJI).
  *
  * Per asset:
  * - Reads the last date in its CSV
- * - Fetches only newer prices, primary source: sjc.com.vn PriceService.ashx
- *   (same endpoint as scripts/backfill_gold_sjc.mjs, <90-day window per call)
- * - Fallback source: giavang.org's homepage, used when SJC fails/returns
- *   nothing. Vàng miếng đọc chuỗi Highcharts (~30 ngày gần nhất, nhiều điểm
- *   cùng lúc); vàng nhẫn KHÔNG có chuỗi lịch sử trên giavang.org, chỉ có bảng
- *   so sánh giá TRONG NGÀY (mục "Bảng so sánh giá Vàng Nhẫn") — nhưng vì cập
- *   nhật hàng đêm chỉ cần đúng 1 dòng của HÔM NAY (lịch sử cũ đã có sẵn), bảng
- *   này vẫn dùng được làm fallback, chỉ trả về đúng 1 ngày thay vì cả chuỗi.
+ * - Fetches only newer prices from the asset's primary source (`fetch`):
+ *   + Vàng SJC (miếng + nhẫn): sjc.com.vn PriceService.ashx (<90-day window
+ *     per call; lịch sử gốc đã có sẵn trong CSV từ các backfill một lần trước)
+ *   + Vàng nhẫn DOJI: simplize.vn's chart API (period=3y_d trả cả chuỗi ~2,4
+ *     năm mỗi lần gọi; updateAsset lọc `> lastDate` rồi append, tự vá luôn
+ *     ngày thiếu gần đây nếu nguồn bổ sung)
+ * - Fallback source per asset (`fallback`), used when the primary fails:
+ *   + Vàng SJC: giavang.org (miếng đọc chuỗi Highcharts ~30 ngày; nhẫn chỉ có
+ *     bảng so sánh TRONG NGÀY, đủ cho 1 dòng của hôm nay)
+ *   + Vàng nhẫn DOJI: 24hmoney.vn (type=5 trả ~129 ngày gần nhất)
  * - Appends new rows (date,buy,sell) — never rewrites existing data
  * - Failures are logged and skipped per-asset, never thrown — the daily NAV
  *   workflow must still commit fund updates even if gold fails entirely
@@ -36,27 +39,38 @@ const PRICE_SERVICE_URL = 'https://sjc.com.vn/GoldPrice/Services/PriceService.as
 const GIAVANG_URL = 'https://giavang.org/'
 const CHUNK_DAYS = 85 // API caps each request at under 90 days
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+const SIMPLIZE_CHART_URL = 'https://api2.simplize.vn/api/historical/prices/chart'
+const SIMPLIZE_PERIOD = '3y_d' // 3y mốc theo ngày — sâu nhất simplize có (từ 2024-03-18)
+const TWENTYFOURHMONEY_GRAPH_URL = 'https://api-finance-t19.24hmoney.vn/v1/web/world-stock/gold/graph'
 
 /**
- * Mỗi loại vàng SJC theo dõi: goldPriceId khớp với PriceService.ashx
- * (xem GetCurrentGoldPriceByBranch để tra Id ↔ TypeName nếu SJC thêm sản
- * phẩm mới). `fallback` trỏ tới hàm đọc giavang.org tương ứng — null nếu
- * chưa tìm được nguồn dự phòng cho loại vàng đó.
+ * Mỗi loại vàng theo dõi: `fetch(lastDate)` là nguồn chính, trả danh sách
+ * `{date,buy,sell}` (với SJC = gọi PriceService.ashx theo goldPriceId, xem
+ * GetCurrentGoldPriceByBranch để tra Id ↔ TypeName nếu SJC thêm sản phẩm mới;
+ * với vàng nhẫn DOJI = gọi simplize, trả cả chuỗi ~2,4 năm). `fallback` là
+ * nguồn dự phòng khi nguồn chính lỗi.
  */
 const GOLD_ASSETS = [
   {
     id: 'GOLD_SJC',
     label: 'Vàng miếng SJC',
-    goldPriceId: '1',
     csvFile: path.join(DATA_DIR, 'GOLD_SJC.csv'),
+    fetch: (lastDate) => fetchFromSJC('1', new Date(lastDate), new Date()),
     fallback: fetchMieuFromGiavang,
   },
   {
     id: 'GOLD_NHAN_SJC',
     label: 'Vàng nhẫn SJC 99,99%',
-    goldPriceId: '49',
     csvFile: path.join(DATA_DIR, 'GOLD_NHAN_SJC.csv'),
+    fetch: (lastDate) => fetchFromSJC('49', new Date(lastDate), new Date()),
     fallback: fetchNhanFromGiavang,
+  },
+  {
+    id: 'GOLD_NHAN_DOJI',
+    label: 'Vàng nhẫn DOJI (Hưng Thịnh Vượng)',
+    csvFile: path.join(DATA_DIR, 'GOLD_NHAN_DOJI.csv'),
+    fetch: () => fetchDojiNhanFromSimplize(),
+    fallback: fetchDojiNhanFrom24hmoney,
   },
 ]
 
@@ -72,6 +86,12 @@ function fmtDDMMYYYY(d) {
 
 function toDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Ngày (UTC) từ timestamp giây — dùng cho API trả epoch (simplize, 24hmoney). */
+function utcDateStr(tsSeconds) {
+  const d = new Date(tsSeconds * 1000)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
 /** Last date (YYYY-MM-DD) already in the CSV, or null if missing/empty. */
@@ -220,6 +240,55 @@ async function fetchNhanFromGiavang() {
   return [{ date: toDateStr(new Date()), buy, sell }]
 }
 
+// ─── Vàng nhẫn DOJI: simplize.vn (chính) + 24hmoney (dự phòng) ──
+
+/**
+ * simplize.vn lưu lịch sử vàng nhẫn DOJI sâu hơn hẳn các nguồn khác (~2,4
+ * năm với period=3y_d; banggia.doji.vn và 24hmoney chỉ ~4,5 tháng). Mỗi lần
+ * gọi trả cả chuỗi dạng [ts, open, high, low, close, volume] (chỉ close có
+ * số, VND/lượng). Ghép buy/sell theo ngày rồi trả toàn bộ {date,buy,sell};
+ * updateAsset lọc `> lastDate` nên chỉ nối thêm ngày mới.
+ */
+async function fetchDojiNhanFromSimplize() {
+  async function series(ticker) {
+    const body = await curlGet(`${SIMPLIZE_CHART_URL}?ticker=${encodeURIComponent(ticker)}&period=${SIMPLIZE_PERIOD}&type=gold`)
+    const json = JSON.parse(body)
+    if (!json.data || !Array.isArray(json.data)) throw new Error(`simplize: unexpected payload for ${ticker}`)
+    const byDate = new Map()
+    for (const row of json.data) {
+      const close = row[4] // [ts, open, high, low, close, volume]
+      if (typeof close !== 'number' || !isFinite(close) || close <= 0) continue
+      byDate.set(utcDateStr(row[0]), Math.round(close))
+    }
+    return byDate
+  }
+
+  const buy = await series('DOJI:T9999:BUY')
+  const sell = await series('DOJI:T9999:SELL')
+  const dates = [...buy.keys()].filter(d => sell.has(d)).sort()
+  if (dates.length === 0) throw new Error('simplize: no overlapping buy/sell dates')
+  return dates.map(d => ({ date: d, buy: buy.get(d), sell: sell.get(d) }))
+}
+
+/**
+ * 24hmoney dự phòng khi simplize lỗi: type=5 trả ~129 ngày gần nhất dạng
+ * {timestamp, buy_value, sell_value} (VND/lượng). Đủ cho việc nối thêm từng
+ * ngày, vì update chỉ cần các ngày sau lastDate.
+ */
+async function fetchDojiNhanFrom24hmoney() {
+  const body = await curlGet(`${TWENTYFOURHMONEY_GRAPH_URL}?symbol=${encodeURIComponent('doji_vang_nhan')}&type=5`)
+  const json = JSON.parse(body)
+  if (!json.data || !Array.isArray(json.data)) throw new Error('24hmoney: unexpected payload')
+  const byDate = new Map()
+  for (const item of json.data) {
+    if (!item.buy_value || !item.sell_value) continue
+    byDate.set(utcDateStr(item.timestamp), { buy: Math.round(item.buy_value), sell: Math.round(item.sell_value) })
+  }
+  const dates = [...byDate.keys()].sort()
+  if (dates.length === 0) throw new Error('24hmoney: no data rows')
+  return dates.map(d => ({ date: d, ...byDate.get(d) }))
+}
+
 // ─── Per-asset update ─────────────────────────────────────
 
 async function updateAsset(asset) {
@@ -235,25 +304,27 @@ async function updateAsset(asset) {
     return
   }
 
-  // Refetch từ chính ngày lastDate (không phải hôm sau): giá SJC cập nhật nhiều
+  // Refetch từ chính ngày lastDate (không phải hôm sau): giá cập nhật nhiều
   // lần trong ngày, dòng cuối CSV có thể là tick giữa phiên — lấy lại cả ngày
-  // đó rồi lọc `> lastDate` để chỉ append ngày mới, ngày cũ giữ nguyên.
+  // đó rồi lọc `> lastDate` để chỉ append ngày mới, ngày cũ giữ nguyên. (Với
+  // vàng nhẫn DOJI, simplize trả cả chuỗi ~2,4 năm mỗi lần gọi nên bước lọc
+  // này tự loại mọi ngày đã có.)
   let rows = null
   try {
-    rows = await fetchFromSJC(asset.goldPriceId, new Date(lastDate), new Date())
-    console.log(`📡 ${asset.id}: sjc.com.vn fetched ${rows.length} daily rows`)
+    rows = await asset.fetch(lastDate)
+    console.log(`📡 ${asset.id}: fetched ${rows.length} daily rows`)
   } catch (err) {
-    console.error(`⚠️  ${asset.id}: sjc.com.vn failed (${err.message})`)
+    console.error(`⚠️  ${asset.id}: primary source failed (${err.message})`)
     if (!asset.fallback) {
       console.error(`❌ ${asset.id}: no update this run (no fallback source configured)`)
       return
     }
-    console.error(`   falling back to giavang.org...`)
+    console.error(`   falling back to alternate source...`)
     try {
       rows = await asset.fallback()
-      console.log(`📡 ${asset.id}: giavang.org fetched ${rows.length} daily rows`)
+      console.log(`📡 ${asset.id}: fallback fetched ${rows.length} daily rows`)
     } catch (err2) {
-      console.error(`❌ ${asset.id}: giavang.org also failed (${err2.message})`)
+      console.error(`❌ ${asset.id}: fallback also failed (${err2.message})`)
       console.error(`❌ ${asset.id}: no update this run (both sources failed)`)
       return
     }
