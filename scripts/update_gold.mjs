@@ -9,13 +9,16 @@
  * - Fetches only newer prices from the asset's primary source (`fetch`):
  *   + Vàng SJC (miếng + nhẫn): sjc.com.vn PriceService.ashx (<90-day window
  *     per call; lịch sử gốc đã có sẵn trong CSV từ các backfill một lần trước)
- *   + Vàng nhẫn DOJI: simplize.vn's chart API (period=3y_d trả cả chuỗi ~2,4
- *     năm mỗi lần gọi; updateAsset lọc `> lastDate` rồi append, tự vá luôn
- *     ngày thiếu gần đây nếu nguồn bổ sung)
+ *   + Vàng nhẫn DOJI: banggia.doji.vn GetTablePrice (giá HÔM NAY của chính
+ *     DOJI, mã hoá AES — chính xác hơn aggregator, dòng nhẫn lấy theo
+ *     materialCode 03 "NHẪN TRÒN 9999 HƯNG THỊNH VƯỢNG", đơn vị nghìn
+ *     VND/chỉ × 10.000 ra VND/lượng)
  * - Fallback source per asset (`fallback`), used when the primary fails:
  *   + Vàng SJC: giavang.org (miếng đọc chuỗi Highcharts ~30 ngày; nhẫn chỉ có
  *     bảng so sánh TRONG NGÀY, đủ cho 1 dòng của hôm nay)
- *   + Vàng nhẫn DOJI: 24hmoney.vn (type=5 trả ~129 ngày gần nhất)
+ *   + Vàng nhẫn DOJI: simplize.vn's chart API (period=3y_d trả cả chuỗi ~2,4
+ *     năm mỗi lần gọi; updateAsset lọc `> lastDate` rồi append, tự vá luôn
+ *     ngày thiếu gần đây nếu nguồn bổ sung)
  * - Appends new rows (date,buy,sell) — never rewrites existing data
  * - Failures are logged and skipped per-asset, never thrown — the daily NAV
  *   workflow must still commit fund updates even if gold fails entirely
@@ -26,6 +29,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import crypto from 'crypto'
 import { fileURLToPath } from 'url'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
@@ -41,14 +45,16 @@ const CHUNK_DAYS = 85 // API caps each request at under 90 days
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 const SIMPLIZE_CHART_URL = 'https://api2.simplize.vn/api/historical/prices/chart'
 const SIMPLIZE_PERIOD = '3y_d' // 3y mốc theo ngày — sâu nhất simplize có (từ 2024-03-18)
-const TWENTYFOURHMONEY_GRAPH_URL = 'https://api-finance-t19.24hmoney.vn/v1/web/world-stock/gold/graph'
+const DOJI_BANGGIA_URL = 'https://banggia.doji.vn/api/TablePrice/GetTablePrice'
+// Key AES-256 lấy từ JS của chính banggia.doji.vn (chunk c1, class Z0._k).
+const DOJI_DECRYPT_KEY = '7a4b8c3d1e9f2a5b6c0d4e8f3a7b1c5d9e2f6a0b4c8d3e7f1a5b9c2d6e0f4a8b'
 
 /**
  * Mỗi loại vàng theo dõi: `fetch(lastDate)` là nguồn chính, trả danh sách
  * `{date,buy,sell}` (với SJC = gọi PriceService.ashx theo goldPriceId, xem
  * GetCurrentGoldPriceByBranch để tra Id ↔ TypeName nếu SJC thêm sản phẩm mới;
- * với vàng nhẫn DOJI = gọi simplize, trả cả chuỗi ~2,4 năm). `fallback` là
- * nguồn dự phòng khi nguồn chính lỗi.
+ * với vàng nhẫn DOJI = gọi banggia.doji.vn, trả 1 dòng của hôm nay). `fallback`
+ * là nguồn dự phòng khi nguồn chính lỗi.
  */
 const GOLD_ASSETS = [
   {
@@ -69,8 +75,8 @@ const GOLD_ASSETS = [
     id: 'GOLD_NHAN_DOJI',
     label: 'Vàng nhẫn DOJI (Hưng Thịnh Vượng)',
     csvFile: path.join(DATA_DIR, 'GOLD_NHAN_DOJI.csv'),
-    fetch: () => fetchDojiNhanFromSimplize(),
-    fallback: fetchDojiNhanFrom24hmoney,
+    fetch: () => fetchDojiNhanFromBanggia(),
+    fallback: fetchDojiNhanFromSimplize,
   },
 ]
 
@@ -88,9 +94,15 @@ function toDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/** Ngày (UTC) từ timestamp giây — dùng cho API trả epoch (simplize, 24hmoney). */
+/** Ngày (UTC) từ timestamp giây — dùng cho API trả epoch (simplize). */
 function utcDateStr(tsSeconds) {
   const d = new Date(tsSeconds * 1000)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+}
+
+/** Ngày lịch Việt Nam (UTC+7) từ chuỗi ISO có 'Z' — DOJI updateDate. */
+function vnDateStr(iso) {
+  const d = new Date(new Date(iso).getTime() + 7 * 3600 * 1000)
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
@@ -240,14 +252,49 @@ async function fetchNhanFromGiavang() {
   return [{ date: toDateStr(new Date()), buy, sell }]
 }
 
-// ─── Vàng nhẫn DOJI: simplize.vn (chính) + 24hmoney (dự phòng) ──
+// ─── Vàng nhẫn DOJI: banggia.doji.vn (chính) + simplize (dự phòng) ──
 
 /**
- * simplize.vn lưu lịch sử vàng nhẫn DOJI sâu hơn hẳn các nguồn khác (~2,4
- * năm với period=3y_d; banggia.doji.vn và 24hmoney chỉ ~4,5 tháng). Mỗi lần
- * gọi trả cả chuỗi dạng [ts, open, high, low, close, volume] (chỉ close có
- * số, VND/lượng). Ghép buy/sell theo ngày rồi trả toàn bộ {date,buy,sell};
- * updateAsset lọc `> lastDate` nên chỉ nối thêm ngày mới.
+ * Giải mã payload AES-256-CBC của banggia.doji.vn: base64 → IV 16 byte đầu,
+ * phần còn lại là ciphertext, key hex, PKCS7. Trả JSON đã parse.
+ */
+function decryptDojiPayload(b64) {
+  const buf = Buffer.from(b64, 'base64')
+  const iv = buf.subarray(0, 16)
+  const ct = buf.subarray(16)
+  const key = Buffer.from(DOJI_DECRYPT_KEY, 'hex')
+  const dec = crypto.createDecipheriv('aes-256-cbc', key, iv)
+  return JSON.parse(dec.update(ct, undefined, 'utf8') + dec.final('utf8'))
+}
+
+/**
+ * Nguồn chính thức: banggia.doji.vn GetTablePrice trả bảng giá HÔM NAY của
+ * chính DOJI (chính xác hơn aggregator simplize, vốn chậm và lệch giá). Giải
+ * mã rồi lấy dòng nhẫn tròn (materialCode 03 "NHẪN TRÒN 9999 HƯNG THỊNH
+ * VƯỢNG"); giá nghìn VND/chỉ × 10.000 ra VND/lượng. Trả 1 dòng của hôm nay,
+ * ngày lấy từ updateDate của DOJI quy về giờ VN.
+ */
+async function fetchDojiNhanFromBanggia() {
+  const body = await curlGet(DOJI_BANGGIA_URL)
+  const json = JSON.parse(body)
+  if (!json.data) throw new Error('banggia.doji.vn: unexpected payload')
+  const rows = decryptDojiPayload(json.data)
+  const row = rows.find(r => r.materialCode === '03' || String(r.materialName || '').includes('NHẪN TRÒN'))
+  if (!row || !row.priceDojiBuyIn || !row.priceDojiSellOut) {
+    throw new Error('banggia.doji.vn: NHẪN TRÒN row not found')
+  }
+  return [{
+    date: row.updateDate ? vnDateStr(row.updateDate) : toDateStr(new Date()),
+    buy: Math.round(row.priceDojiBuyIn * 10000),
+    sell: Math.round(row.priceDojiSellOut * 10000),
+  }]
+}
+
+/**
+ * simplize.vn dự phòng khi banggia.doji.vn lỗi: lưu lịch sử vàng nhẫn DOJI
+ * ~2,4 năm (period=3y_d), trả cả chuỗi dạng [ts, open, high, low, close,
+ * volume] (chỉ close có số, VND/lượng). Ghép buy/sell theo ngày rồi trả toàn
+ * bộ {date,buy,sell}; updateAsset lọc `> lastDate` nên chỉ nối thêm ngày mới.
  */
 async function fetchDojiNhanFromSimplize() {
   async function series(ticker) {
@@ -270,25 +317,6 @@ async function fetchDojiNhanFromSimplize() {
   return dates.map(d => ({ date: d, buy: buy.get(d), sell: sell.get(d) }))
 }
 
-/**
- * 24hmoney dự phòng khi simplize lỗi: type=5 trả ~129 ngày gần nhất dạng
- * {timestamp, buy_value, sell_value} (VND/lượng). Đủ cho việc nối thêm từng
- * ngày, vì update chỉ cần các ngày sau lastDate.
- */
-async function fetchDojiNhanFrom24hmoney() {
-  const body = await curlGet(`${TWENTYFOURHMONEY_GRAPH_URL}?symbol=${encodeURIComponent('doji_vang_nhan')}&type=5`)
-  const json = JSON.parse(body)
-  if (!json.data || !Array.isArray(json.data)) throw new Error('24hmoney: unexpected payload')
-  const byDate = new Map()
-  for (const item of json.data) {
-    if (!item.buy_value || !item.sell_value) continue
-    byDate.set(utcDateStr(item.timestamp), { buy: Math.round(item.buy_value), sell: Math.round(item.sell_value) })
-  }
-  const dates = [...byDate.keys()].sort()
-  if (dates.length === 0) throw new Error('24hmoney: no data rows')
-  return dates.map(d => ({ date: d, ...byDate.get(d) }))
-}
-
 // ─── Per-asset update ─────────────────────────────────────
 
 async function updateAsset(asset) {
@@ -307,8 +335,8 @@ async function updateAsset(asset) {
   // Refetch từ chính ngày lastDate (không phải hôm sau): giá cập nhật nhiều
   // lần trong ngày, dòng cuối CSV có thể là tick giữa phiên — lấy lại cả ngày
   // đó rồi lọc `> lastDate` để chỉ append ngày mới, ngày cũ giữ nguyên. (Với
-  // vàng nhẫn DOJI, simplize trả cả chuỗi ~2,4 năm mỗi lần gọi nên bước lọc
-  // này tự loại mọi ngày đã có.)
+  // vàng nhẫn DOJI, nguồn chính banggia.doji.vn trả đúng 1 dòng của hôm nay;
+  // nếu rơi về fallback simplize thì cả chuỗi ~2,4 năm được lọc như nhau.)
   let rows = null
   try {
     rows = await asset.fetch(lastDate)
