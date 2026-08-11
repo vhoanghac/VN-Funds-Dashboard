@@ -41,9 +41,10 @@ INDEX_FILE = os.path.join(DATA_DIR, 'holdings_index.json')
 BASE_URL = 'https://api.fmarket.vn/res/products'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (VN-Funds-Dashboard/1.0)'}
 
-# Fund types tracked for overlap: equity & balanced only. Bond funds hold
-# bonds (not stocks), crypto/gold/etf have no stock holdings.
-TRACKED_TYPES = {'mutual_fund', 'balanced'}
+# Fund types tracked for overlap: equity, balanced & bond. Bond funds (DCBF...)
+# have no stock holdings; update_holdings only records their fmarket top-10 when
+# the API returns one. digiinvest backfill is the richer source for bond funds.
+TRACKED_TYPES = {'mutual_fund', 'balanced', 'bond'}
 
 
 # ─── Helpers ───────────────────────────────────────────────
@@ -181,21 +182,28 @@ def main():
             existing = read_csv_dates(holdings_path)
             if report_period in existing:
                 # File đã có dữ liệu kỳ này — quỹ vẫn có holdings, chỉ không append
-                # lại. Upsert index để không bị mất khỏi danh sách.
+                # lại. Upsert index để không bị mất khỏi danh sách. Giữ nguyên
+                # `source` nếu có (digiinvest backfill); quỹ mới → 'fmarket'.
                 idx_entry = next((e for e in index if e['id'] == fund_id), None)
                 if idx_entry:
                     idx_entry['update_at'] = report_period
+                    idx_entry.setdefault('source', 'fmarket')
                 else:
-                    index.append({'id': fund_id, 'update_at': report_period})
+                    index.append({'id': fund_id, 'update_at': report_period, 'source': 'fmarket'})
 
                 # Cảnh báo (không ghi đè): nếu holdings HIỆN TẠI khác bản đang lưu
                 # trong khi reportTime không đổi, tức quỹ đã sửa lại báo cáo giữa
                 # kỳ — chúng ta cố tình bỏ qua (phương án A), chỉ log để người dùng
                 # biết. So sánh bằng chữ ký (stock_code + weight_pct) sắp xếp.
+                #
+                # Từ 11/08/2026, các quỹ đã được backfill bởi digiinvest với danh
+                # mục ĐẦY ĐỦ (44 cổ phiếu) trong khi fmarket chỉ trả top-10. Khi số
+                # lượng khác nhau như vậy thì không phải quỹ sửa giữa kỳ mà là hai
+                # nguồn khác nhau — bỏ cảnh báo để không báo giả mỗi ngày.
                 if stocks:
                     current = signature(stocks)
                     stored = read_holdings_signature(holdings_path, report_period)
-                    if stored and current != stored:
+                    if stored and len(stored) == len(current) and current != stored:
                         print(f'⚠️  {fund_id}: holdings CHANGED for period {report_period} but reportTime unchanged — skipped (would be missed revision). Run investigate if unexpected.')
                 print(f'✅ {fund_id}: period {report_period} already recorded — skipped')
                 continue
@@ -234,12 +242,14 @@ def main():
 
             if stocks:
                 # Upsert: quỹ đã có entry (từ lần chạy cũ) thì cập nhật update_at,
-                # chưa có thì thêm mới. Không append trùng id.
+                # chưa có thì thêm mới. Không append trùng id. Giữ `source` cũ nếu
+                # có (digiinvest backfill); quỹ mới → 'fmarket'.
                 idx_entry = next((e for e in index if e['id'] == fund_id), None)
                 if idx_entry:
                     idx_entry['update_at'] = report_period
+                    idx_entry.setdefault('source', 'fmarket')
                 else:
-                    index.append({'id': fund_id, 'update_at': report_period})
+                    index.append({'id': fund_id, 'update_at': report_period, 'source': 'fmarket'})
                 print(f'📈 {fund_id}: +{len(stocks)} stocks / {len(ind)} industries @ {report_period}')
             else:
                 print(f'✅ {fund_id}: no stock holdings (skipped)')

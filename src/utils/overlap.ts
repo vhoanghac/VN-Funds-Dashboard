@@ -1,13 +1,18 @@
 /**
  * Overlap analysis between two funds' stock holdings (tab "Overlap").
  *
- * Nguồn dữ liệu: `<fundId>_holdings.csv` (top-10 cổ phiếu) và
- * `<fundId>_industry.csv` (toàn bộ ngành), sinh bởi scripts/update_holdings.py.
+ * Nguồn dữ liệu: `<fundId>_holdings.csv` (danh mục đầy đủ: cổ phiếu, trái phiếu,
+ * tiền mặt, tài sản khác) và `<fundId>_industry.csv` (ngành theo cổ phiếu), sinh
+ * bởi scripts/backfill_holdings_digiinvest.py (digiinvest) + scripts/update_holdings.py
+ * (fmarket top-10 cho quỹ chưa có digiinvest).
  *
- * Lưu ý trung thực: holdings chỉ là TOP 10 cổ phiếu mỗi quỹ (giới hạn của API
- * fmarket/vnstock), nên mọi con số overlap đo trên top 10, không phải toàn bộ
- * danh mục. Ngành thì đầy đủ (industry_holding trả 100%).
+ * Lưu ý trung thực: overlap / tỷ trọng trùng chỉ đo trên CỔ PHIẾU (type === 'STOCK').
+ * Trái phiếu, tiền mặt và tài sản khác được hiển thị trong danh mục nhưng không
+ * tham gia tính overlap. Ngành chỉ có cho cổ phiếu.
  */
+
+/** Loại tài sản trong danh mục quỹ. */
+export type AssetType = 'STOCK' | 'BOND' | 'CASH' | 'OTHER'
 
 /** Một hàng trong <fundId>_holdings.csv */
 export interface Holding {
@@ -17,6 +22,8 @@ export interface Holding {
   weightPct: number // % tỷ trọng trong NAV của quỹ
   /** Tổng giá trị cổ phiếu quỹ đang nắm (VND). Có thể 0 nếu nguồn không trả. */
   assetValue: number
+  /** Loại tài sản: STOCK / BOND / CASH / OTHER. File cũ không có cột này → 'STOCK'. */
+  type: AssetType
 }
 
 /** Một hàng trong <fundId>_industry.csv */
@@ -28,9 +35,11 @@ export interface IndustryHolding {
 
 /** Kết quả so sánh overlap giữa 2 quỹ */
 export interface OverlapResult {
+  /** Toàn bộ danh mục quỹ A (cổ phiếu + trái phiếu + tiền mặt + tài sản khác) */
   stocksA: Holding[]
+  /** Toàn bộ danh mục quỹ B */
   stocksB: Holding[]
-  /** Các cổ phiếu xuất hiện ở cả A và B */
+  /** Các cổ phiếu xuất hiện ở cả A và B (chỉ tính STOCK) */
   overlap: Array<{
     stockCode: string
     industryA: string
@@ -39,7 +48,7 @@ export interface OverlapResult {
     weightB: number
     minWeight: number
   }>
-  /** Số công ty mỗi quỹ nắm */
+  /** Số cổ phiếu mỗi quỹ nắm (chỉ đếm STOCK) */
   stockCountA: number
   stockCountB: number
   overlapCount: number
@@ -48,13 +57,13 @@ export interface OverlapResult {
    * Đo bằng điểm phần trăm của NAV (có thể hiểu như "đô la trùng trên 100đ".
    */
   weightedOverlapPct: number
-  /** Σ wA của cổ phiếu trùng / Σ wA toàn bộ — phần danh mục A bị trùng */
+  /** Σ wA của cổ phiếu trùng / Σ wA cổ phiếu — phần danh mục cổ phiếu A bị trùng */
   pctInA: number
-  /** Σ wB của cổ phiếu trùng / Σ wB toàn bộ — phần danh mục B bị trùng */
+  /** Σ wB của cổ phiếu trùng / Σ wB cổ phiếu — phần danh mục cổ phiếu B bị trùng */
   pctInB: number
-  /** Σ wA của cổ phiếu trùng, tính bằng điểm % NAV (tuyệt đối, không chia top-10) */
+  /** Σ wA của cổ phiếu trùng, tính bằng điểm % NAV (tuyệt đối, không chia danh mục) */
   overlapInA: number
-  /** Σ wB của cổ phiếu trùng, tính bằng điểm % NAV (tuyệt đối, không chia top-10) */
+  /** Σ wB của cổ phiếu trùng, tính bằng điểm % NAV (tuyệt đối, không chia danh mục) */
   overlapInB: number
   /** A nắm nhiều hơn B (chênh wA − wB dương), xếp giảm theo chênh lệch */
   overweightA: Array<{ stockCode: string; weightA: number; weightB: number; diff: number }>
@@ -109,8 +118,9 @@ export function resolvePeriod(periods: string[], targetPeriod: string | null): s
 }
 
 /**
- * Parse nội dung `<fundId>_holdings.csv` (cột: date,stock_code,industry,weight_pct,type_asset).
+ * Parse nội dung `<fundId>_holdings.csv` (cột: date,stock_code,industry,weight_pct,asset_value,type_asset).
  * Lấy kỳ theo `targetPeriod` (xem resolvePeriod); targetPeriod null = kỳ mới nhất.
+ * Cột type_asset: STOCK / BOND / CASH / OTHER. File cũ không có cột này → coi là 'STOCK'.
  */
 export function parseHoldingsCSV(csvText: string, targetPeriod: string | null = null): Holding[] {
   const lines = csvText.trim().split('\n')
@@ -121,6 +131,7 @@ export function parseHoldingsCSV(csvText: string, targetPeriod: string | null = 
   const idxInd = header.indexOf('industry')
   const idxW = header.indexOf('weight_pct')
   const idxVal = header.indexOf('asset_value')
+  const idxType = header.indexOf('type_asset')
   if (idxDate < 0 || idxCode < 0 || idxInd < 0 || idxW < 0) return []
 
   const rows: Holding[] = []
@@ -128,12 +139,16 @@ export function parseHoldingsCSV(csvText: string, targetPeriod: string | null = 
     const cells = lines[i]!.split(',').map(c => c.trim())
     const w = parseFloat(cells[idxW] ?? '')
     if (Number.isNaN(w)) continue
+    const rawType = (idxType >= 0 ? cells[idxType] : '') || 'STOCK'
     rows.push({
       date: cells[idxDate]!,
       stockCode: cells[idxCode]!,
       industry: cells[idxInd]!,
       weightPct: w,
       assetValue: idxVal >= 0 ? parseFloat(cells[idxVal] ?? '') || 0 : 0,
+      type: (['STOCK', 'BOND', 'CASH', 'OTHER'] as const).includes(rawType as AssetType)
+        ? (rawType as AssetType)
+        : 'STOCK',
     })
   }
   if (rows.length === 0) return []
@@ -166,9 +181,14 @@ export function parseIndustryCSV(csvText: string, targetPeriod: string | null = 
 
 /**
  * Tính overlap giữa holdings của quỹ A và B.
- * Bỏ qua nếu một bên không có dữ liệu → trả null (UI hiển thị cảnh báo).
+ *
+ * Chỉ tính trên CỔ PHIẾU (type === 'STOCK'). Trái phiếu, tiền mặt, tài sản khác
+ * được giữ trong `stocksA`/`stocksB` (để UI hiển thị danh mục đầy đủ) nhưng không
+ * tham gia overlap. Bỏ qua nếu một bên không có cổ phiếu nào → trả null.
  */
-export function computeOverlap(stocksA: Holding[], stocksB: Holding[]): OverlapResult | null {
+export function computeOverlap(allStocksA: Holding[], allStocksB: Holding[]): OverlapResult | null {
+  const stocksA = allStocksA.filter(h => h.type === 'STOCK')
+  const stocksB = allStocksB.filter(h => h.type === 'STOCK')
   if (stocksA.length === 0 || stocksB.length === 0) return null
 
   const byCodeB = new Map(stocksB.map(h => [h.stockCode, h]))
@@ -208,8 +228,8 @@ export function computeOverlap(stocksA: Holding[], stocksB: Holding[]): OverlapR
     .sort((x, y) => x.diff - y.diff)
 
   return {
-    stocksA,
-    stocksB,
+    stocksA: allStocksA,
+    stocksB: allStocksB,
     overlap,
     stockCountA: stocksA.length,
     stockCountB: stocksB.length,

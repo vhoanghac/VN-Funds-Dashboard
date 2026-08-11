@@ -1,7 +1,13 @@
 [
   {
+    "id": "ABBF",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
     "id": "ABEF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "AEIF",
@@ -9,7 +15,8 @@
   },
   {
     "id": "BMFF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "BVFED",
@@ -21,15 +28,28 @@
   },
   {
     "id": "DCAF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
+    "id": "DCBF",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "DCDE",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "DCDS",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
+    "id": "DCIP",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "ENF",
@@ -45,7 +65,8 @@
   },
   {
     "id": "KDEF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "LHCDF",
@@ -57,23 +78,37 @@
   },
   {
     "id": "MAFBAL",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "MAFEQI",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "MAGEF",
     "update_at": "2026-07-01"
   },
   {
+    "id": "MBAM",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
+    "id": "MBBOND",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
     "id": "MBVF",
-    "update_at": "2026-05-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "MDI",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "NTPPF",
@@ -85,11 +120,17 @@
   },
   {
     "id": "PHVSF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "RVPIF",
     "update_at": "2026-07-01"
+  },
+  {
+    "id": "SSIBF",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "SSIEF",
@@ -97,11 +138,22 @@
   },
   {
     "id": "SSISCA",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "TBLF",
     "update_at": "2026-07-01"
+  },
+  {
+    "id": "TCBF",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
+    "id": "TCEF",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "TCGF",
@@ -129,31 +181,43 @@
   },
   {
     "id": "VCBFBCF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VCBFMGF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VCBFTBF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VDEF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VEOF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VESAF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
+  },
+  {
+    "id": "VFF",
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VIBF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VLGF",
@@ -161,7 +225,8 @@
   },
   {
     "id": "VMEEF",
-    "update_at": "2026-07-01"
+    "update_at": "2026-07-01",
+    "source": "digiinvest"
   },
   {
     "id": "VNDAF",

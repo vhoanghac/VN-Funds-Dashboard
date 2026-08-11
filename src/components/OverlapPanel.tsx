@@ -9,7 +9,7 @@ import { formatVND } from '../utils/vndFormat'
 import {
   parseHoldingsCSV, parseIndustryCSV, getAvailablePeriods, resolvePeriod,
   computeOverlap, computeSectorDrift,
-  type OverlapResult, type SectorDriftRow,
+  type OverlapResult, type SectorDriftRow, type Holding, type AssetType,
 } from '../utils/overlap'
 
 interface Props {
@@ -19,6 +19,8 @@ interface Props {
 interface HoldingsIndexEntry {
   id: string
   update_at: string
+  /** Nguồn dữ liệu: 'digiinvest' nếu từ digiinvest.vn; thiếu = fmarket/vnstock. */
+  source?: string
 }
 
 interface FundOption {
@@ -51,6 +53,16 @@ const selectStyles = {
 
 function formatPct(v: number, digits = 2): string {
   return `${v.toFixed(digits)}%`
+}
+
+/** Nhãn tiếng Việt cho loại tài sản. */
+function assetTypeLabel(type: string): string {
+  switch (type) {
+    case 'BOND': return 'Trái phiếu'
+    case 'CASH': return 'Tiền mặt'
+    case 'OTHER': return 'Tài sản khác'
+    default: return 'Cổ phiếu'
+  }
 }
 
 /** "2026-07-01" → "Tháng 7/2026" */
@@ -227,6 +239,23 @@ function OverlapPanelImpl({ funds }: Props) {
     return computeSectorDrift(industryA, industryB)
   }, [industryA, industryB])
 
+  // Nguồn dữ liệu của từng quỹ đang chọn: 'digiinvest' nếu index ghi digiinvest,
+  // 'fmarket' nếu quỹ có trong index nhưng không ghi nguồn, null nếu chưa có holdings.
+  const sourceA = useMemo(
+    () => {
+      const e = index?.find(e => e.id === fundA)
+      return e ? (e.source ?? 'fmarket') : null
+    },
+    [index, fundA],
+  )
+  const sourceB = useMemo(
+    () => {
+      const e = index?.find(e => e.id === fundB)
+      return e ? (e.source ?? 'fmarket') : null
+    },
+    [index, fundB],
+  )
+
   const selectedA = options.find(o => o.value === fundA) || null
   const selectedB = options.find(o => o.value === fundB) || null
 
@@ -254,7 +283,7 @@ function OverlapPanelImpl({ funds }: Props) {
       {/* ── Thông số ── */}
       <div className="dca-params-card">
         <h3 className="dca-section-title">Thông số</h3>
-        <p className="overlap-limit-warn">Dashboard chỉ hỗ trợ hiển thị top 10 cổ phiếu.</p>
+        <p className="overlap-limit-warn">So sánh trên danh mục cổ phiếu đầy đủ của hai quỹ, theo từng kỳ báo cáo.</p>
         <div className="dca-param-row">
           <label className="dca-label">{fundA}</label>
           <div className="overlap-select">
@@ -306,6 +335,13 @@ function OverlapPanelImpl({ funds }: Props) {
             />
           </div>
         </div>
+        {sourceA && sourceB && (
+          <p className="overlap-source-info">
+            {fundA} lấy dữ liệu từ {sourceA === 'digiinvest' ? 'digiinvest.vn' : 'fmarket'}
+            {' · '}
+            {fundB} lấy dữ liệu từ {sourceB === 'digiinvest' ? 'digiinvest.vn' : 'fmarket'}
+          </p>
+        )}
         {periodA && periodB && periodA !== periodB && (
           <div className="overlap-period-warn">
             {selectedA?.value ?? fundA} đang dùng thông tin {formatPeriodLabel(periodA)},&nbsp;
@@ -321,9 +357,10 @@ function OverlapPanelImpl({ funds }: Props) {
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
       {error && <div className="error-banner">{error}</div>}
 
-      {result && fundA !== fundB && (
+      {holdingsA && holdingsB && fundA !== fundB && (
         <>
-          {/* ── Thẻ thông số ── */}
+          {/* ── Thẻ thông số (chỉ khi có cổ phiếu để tính overlap) ── */}
+          {result && (
           <div className="dca-journey-grid overlap-stats">
             <div className="dca-journey-stat overlap-stat--highlight">
               <div className="dca-journey-stat-label">Trùng nhau</div>
@@ -346,71 +383,32 @@ function OverlapPanelImpl({ funds }: Props) {
               <div className="dca-journey-stat-sub">% NAV {fundB} nằm trong cổ phiếu trùng</div>
             </div>
           </div>
+          )}
 
-          {/* ── Top cổ phiếu từng quỹ (song song) ── */}
+          {/* ── Danh mục tài sản từng quỹ (song song), nhóm theo loại ── */}
           <div className="overlap-two-col">
             <div className="chart-container overlap-table-card">
               <div className="chart-header">
-                <h3>Top cổ phiếu {fundA}</h3>
+                <h3>Danh mục tài sản {fundA}</h3>
               </div>
-              <div className="dca-stats-table-scroll">
-                <table className="dca-stats-table overlap-table">
-                  <thead>
-                    <tr>
-                      <th>Cổ phiếu</th>
-                      <th>Ngành</th>
-                      <th>Tỷ trọng</th>
-                      <th>Giá trị</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.stocksA.slice(0, 10).map(o => (
-                      <tr key={o.stockCode}>
-                        <td className="dca-stats-td-name">{o.stockCode}</td>
-                        <td>{o.industry}</td>
-                        <td>{formatPct(o.weightPct)}</td>
-                        <td>{o.assetValue > 0 ? formatVND(o.assetValue) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {holdingsA && <PortfolioTable rows={holdingsA} />}
             </div>
 
             <div className="chart-container overlap-table-card">
               <div className="chart-header">
-                <h3>Top cổ phiếu {fundB}</h3>
+                <h3>Danh mục tài sản {fundB}</h3>
               </div>
-              <div className="dca-stats-table-scroll">
-                <table className="dca-stats-table overlap-table">
-                  <thead>
-                    <tr>
-                      <th>Cổ phiếu</th>
-                      <th>Ngành</th>
-                      <th>Tỷ trọng</th>
-                      <th>Giá trị</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.stocksB.slice(0, 10).map(o => (
-                      <tr key={o.stockCode}>
-                        <td className="dca-stats-td-name">{o.stockCode}</td>
-                        <td>{o.industry}</td>
-                        <td>{formatPct(o.weightPct)}</td>
-                        <td>{o.assetValue > 0 ? formatVND(o.assetValue) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {holdingsB && <PortfolioTable rows={holdingsB} />}
             </div>
           </div>
 
-          {/* ── Top overlaps ── */}
+          {/* ── Cổ phiếu bị trùng, overweight/underweight, sector drift (chỉ khi tính được overlap) ── */}
+          {result && (<>
+          {/* ── Cổ phiếu bị trùng ── */}
           {result.overlap.length > 0 && (
             <div className="chart-container overlap-table-card">
               <div className="chart-header">
-                <h3>Top cổ phiếu bị trùng</h3>
+                <h3>Cổ phiếu bị trùng</h3>
               </div>
               <div className="dca-stats-table-scroll">
                 <table className="dca-stats-table overlap-table">
@@ -420,17 +418,15 @@ function OverlapPanelImpl({ funds }: Props) {
                       <th>Ngành</th>
                       <th>Tỷ trọng {fundA}</th>
                       <th>Tỷ trọng {fundB}</th>
-                      <th>BỊ TRÙNG</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {result.overlap.slice(0, 10).map(o => (
+                    {result.overlap.map(o => (
                       <tr key={o.stockCode}>
                         <td className="dca-stats-td-name">{o.stockCode}</td>
                         <td>{o.industryA || o.industryB}</td>
                         <td>{formatPct(o.weightA)}</td>
                         <td>{formatPct(o.weightB)}</td>
-                        <td>{formatPct(o.minWeight)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -553,18 +549,64 @@ function OverlapPanelImpl({ funds }: Props) {
             </div>
             )
           })()}
-
+          </>)}
           <p className="overlap-note">
-            Dữ liệu holdings là <strong>top 10 cổ phiếu</strong> mỗi quỹ (giới hạn nguồn dữ liệu),
-            kỳ báo cáo {periodA ? formatPeriodLabel(periodA) : 'gần nhất'}. Lịch sử theo kỳ báo cáo
-            đang được tích lũy — hiện tại chỉ so danh mục mới nhất. Ngành thì đầy đủ 100%.
+            Danh mục gồm cổ phiếu, trái phiếu, tiền mặt và tài sản khác tại kỳ báo cáo
+            {periodA ? ` ${formatPeriodLabel(periodA)}` : ' gần nhất'}, nguồn digiinvest.
+            Overlap chỉ đo trên cổ phiếu; trái phiếu, tiền mặt và tài sản khác được hiển thị
+            để bạn thấy cấu trúc danh mục nhưng không tham gia tính trùng.
           </p>
         </>
       )}
 
-      {!loading && !result && fundA !== fundB && !error && (
+      {!holdingsA && !loading && !error && fundA !== fundB && (
         <div className="error-banner">Không đủ dữ liệu để tính overlap.</div>
       )}
+    </div>
+  )
+}
+
+/** Render danh mục một quỹ, nhóm theo loại tài sản (cổ phiếu → trái phiếu → tiền mặt → khác). */
+function PortfolioTable({ rows }: { rows: Holding[] }) {
+  const groups: Array<{ type: AssetType; label: string; rows: Holding[] }> = []
+  for (const type of ['STOCK', 'BOND', 'CASH', 'OTHER'] as AssetType[]) {
+    const group = rows.filter(h => h.type === type)
+    if (group.length > 0) {
+      groups.push({ type, label: assetTypeLabel(type), rows: group })
+    }
+  }
+
+  return (
+    <div className="overlap-portfolio">
+      {groups.map(g => (
+        <div key={g.type} className="overlap-portfolio-group">
+          <div className="overlap-portfolio-group-title">
+            {g.label} ({g.rows.length})
+          </div>
+          <div className="dca-stats-table-scroll">
+            <table className="dca-stats-table overlap-table">
+              <thead>
+                <tr>
+                  <th>{g.type === 'STOCK' ? 'Cổ phiếu' : 'Mã'}</th>
+                  {g.type === 'STOCK' && <th>Ngành</th>}
+                  <th>Tỷ trọng</th>
+                  <th>Giá trị</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.rows.map(o => (
+                  <tr key={`${g.type}-${o.stockCode}`}>
+                    <td className="dca-stats-td-name">{o.stockCode}</td>
+                    {g.type === 'STOCK' && <td>{o.industry}</td>}
+                    <td>{formatPct(o.weightPct)}</td>
+                    <td>{o.assetValue > 0 ? formatVND(o.assetValue) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
