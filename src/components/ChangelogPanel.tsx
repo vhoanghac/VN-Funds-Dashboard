@@ -3,7 +3,7 @@ const ENTRIES = [
     version: 'v4.1',
     date: '11/08/2026',
     items: [
-      'Thêm tab Overlap: So sánh mức độ trùng lập của các quỹ cổ phiếu',
+      'Thêm tab Overlap: So sánh mức độ trùng lặp của các quỹ cổ phiếu',
       'Thêm dữ liệu vàng nhẫn DOJI',
       'Bổ sung thêm các quỹ mở',
     ],
