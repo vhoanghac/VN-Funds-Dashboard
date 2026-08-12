@@ -11,6 +11,7 @@ import {
   monthlyReturns,
   rollingReturns,
   rollingAverage,
+  availableRollingPeriods,
   winRateAmong,
 } from '../utils/calculations'
 
@@ -35,6 +36,8 @@ export interface ComparisonResult {
   funds: FundComparisonData[]
   startDate: string
   endDate: string
+  /** Các chu kỳ rolling (tháng) có đủ dữ liệu để tính cho ít nhất một quỹ. */
+  availableRollingPeriods: number[]
 }
 
 export interface ComparisonError {
@@ -128,6 +131,7 @@ export function useMultiComparison(
           funds,
           startDate: aligned.dates[0]!,
           endDate: aligned.dates[aligned.dates.length - 1]!,
+          availableRollingPeriods: availableRollingPeriods(allReturns, [6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]),
         },
       }
     } catch (err) {

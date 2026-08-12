@@ -12,6 +12,8 @@ import {
   winRateAmong,
   rollingReturns,
   rollingAverage,
+  availableRollingPeriods,
+  rollingReturnDistribution,
   rollingCumulativeReturns,
   rollingAnnualizedStdev,
   rollingMaxDrawdown,
@@ -472,6 +474,66 @@ describe('rollingAverage', () => {
 })
 
 // ─── annualizedStdev ─────────────────────────────────────────
+
+describe('availableRollingPeriods', () => {
+  it('returns only periods that at least one fund can compute', () => {
+    // 6 điểm cách 1 tháng → trải ~6 tháng, chu kỳ 12 trống
+    const short = makeReturns(
+      ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'],
+      [0.01, 0.02, 0.03, 0.04, 0.05, 0.06],
+    )
+    // 18 điểm cách nhau ~1 tháng → trải ~18 tháng, đủ 12 nhưng chưa đủ 24
+    const long: ReturnPoint[] = []
+    const start = new Date('2023-01-01')
+    for (let m = 0; m < 18; m++) {
+      const d = new Date(start)
+      d.setMonth(start.getMonth() + m)
+      long.push({ date: d.toISOString().slice(0, 10), value: 0.01 })
+    }
+    const periods = [6, 12, 24]
+    // short đủ 6; long đủ 6 và 12; không ai đủ 24
+    const result = availableRollingPeriods([short, long], periods)
+    expect(result).toContain(6)
+    expect(result).toContain(12)
+    expect(result).not.toContain(24)
+  })
+
+  it('returns empty when no fund has data', () => {
+    expect(availableRollingPeriods([], [6, 12])).toEqual([])
+    expect(availableRollingPeriods([[]], [6, 12])).toEqual([])
+  })
+})
+
+// ─── rollingReturnDistribution ───────────────────────────────
+
+describe('rollingReturnDistribution', () => {
+  it('counts each observation into exactly one bucket, totals to 1', () => {
+    // 10 quan sát trải đều cả 5 khoảng
+    const values = [
+      -0.02, -0.01, 0.0, 0.03, 0.05, 0.07, 0.10, 0.15, 0.20, 0.30,
+    ]
+    const pcts = rollingReturnDistribution(values)
+    expect(pcts.length).toBe(5)
+    expect(pcts[0]).toBeCloseTo(0.2, 10)  // Âm: 2/10
+    expect(pcts[1]).toBeCloseTo(0.2, 10)  // 0–5%: 2/10 (0.0, 0.03)
+    expect(pcts[2]).toBeCloseTo(0.2, 10)  // 5–10%: 2/10 (0.05, 0.07)
+    expect(pcts[3]).toBeCloseTo(0.2, 10)  // 10–20%: 2/10 (0.10, 0.15)
+    expect(pcts[4]).toBeCloseTo(0.2, 10)  // >20%: 2/10 (0.20, 0.30)
+    expect(pcts.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 10)
+  })
+
+  it('handles bucket boundaries as half-open [a, b), right bucket takes >= 0.20', () => {
+    expect(rollingReturnDistribution([0])[1]).toBe(1)      // 0 → 0–5%
+    expect(rollingReturnDistribution([0.05])[2]).toBe(1)   // 5% → 5–10%
+    expect(rollingReturnDistribution([0.10])[3]).toBe(1)   // 10% → 10–20%
+    expect(rollingReturnDistribution([0.20])[4]).toBe(1)   // 20% → >20%
+    expect(rollingReturnDistribution([-0.0001])[0]).toBe(1) // âm nhỏ vẫn là Âm
+  })
+
+  it('returns all zeros for empty input', () => {
+    expect(rollingReturnDistribution([])).toEqual([0, 0, 0, 0, 0])
+  })
+})
 
 describe('annualizedStdev', () => {
   it('infers periods/year from the actual date span, not a fixed constant', () => {

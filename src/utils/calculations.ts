@@ -818,3 +818,62 @@ export function rollingAverage(rolling: ReturnPoint[]): number | null {
   const sum = rolling.reduce((acc, r) => acc + r.value, 0)
   return sum / rolling.length
 }
+
+/**
+ * Liệt kê các chu kỳ rolling có đủ dữ liệu để tính. Một chu kỳ được coi là
+ * "có dữ liệu" nếu ít nhất một quỹ trong danh sách sinh ra ít nhất một điểm
+ * rolling. Dùng để làm mờ button chu kỳ không tính được.
+ */
+export function availableRollingPeriods(
+  returnsList: ReturnPoint[][],
+  periods: number[],
+): number[] {
+  return periods.filter(p =>
+    returnsList.some(r => rollingReturns(r, p).length > 0),
+  )
+}
+
+/** Nhãn 5 khoảng phân bổ lợi nhuận rolling, theo thứ tự từ thấp đến cao. */
+export const ROLLING_DISTRIBUTION_LABELS = [
+  'Âm',
+  '0–5%',
+  '5–10%',
+  '10–20%',
+  '>20%',
+] as const
+
+/**
+ * Đếm tần suất các quan sát rơi vào 5 khoảng lợi nhuận rolling, trả về tỉ lệ
+ * phần trăm trên tổng số quan sát (mỗi quan sát thuộc đúng một khoảng).
+ *
+ * Khoảng là nửa mở [a, b), riêng khoảng cuối nhận cả cận trên:
+ *   Âm:     x < 0
+ *   0–5%:   0 ≤ x < 0.05
+ *   5–10%:  0.05 ≤ x < 0.10
+ *   10–20%: 0.10 ≤ x < 0.20
+ *   >20%:   x ≥ 0.20
+ *
+ * Trả về mảng 5 số thập phân (0.15 = 15%), cùng thứ tự ROLLING_DISTRIBUTION_LABELS.
+ * Tổng 5 số luôn bằng 1 khi có ít nhất một quan sát.
+ */
+export function rollingReturnDistribution(values: number[]): number[] {
+  const counts = [0, 0, 0, 0, 0]
+  const n = values.length
+  if (n === 0) return counts
+
+  for (const v of values) {
+    if (v < 0) {
+      counts[0]!++
+    } else if (v < 0.05) {
+      counts[1]!++
+    } else if (v < 0.10) {
+      counts[2]!++
+    } else if (v < 0.20) {
+      counts[3]!++
+    } else {
+      counts[4]!++
+    }
+  }
+
+  return counts.map(c => c / n)
+}

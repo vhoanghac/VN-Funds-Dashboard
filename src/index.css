@@ -2273,6 +2273,17 @@ h1, h2, h3 {
   border-color: var(--color-primary);
 }
 
+.period-btn-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.period-btn-disabled:hover {
+  border-color: var(--color-border);
+  color: inherit;
+}
+
 /* ─── Simulation Panel ────────────────────────── */
 .simulation-panel {
   margin-bottom: 20px;
@@ -5796,6 +5807,48 @@ h1, h2, h3 {
   grid-template-columns: 1.5fr 1fr 1.5fr;
 }
 
+/* Bảng thống kê Rolling Returns. Nhiều cột nên trên màn hình hẹp cho cuộn
+   ngang thay vì bóp cột, giữ nguyên head để biết mỗi cột là gì. */
+.cmp-table--rolling {
+  position: relative;
+  overflow-x: auto;
+}
+
+/* Vạch ngăn cách liên tục giữa nhóm Thống Kê và nhóm Phân bổ, chạy suốt
+   chiều cao bảng. Vị trí left được tính từ header cột "Âm" (JS). */
+.cmp-table--rolling__divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px solid #d8d5c9;
+  pointer-events: none;
+}
+
+.cmp-table--rolling .cmp-table-row {
+  grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  min-width: 1120px;
+}
+
+/* Hàng nhóm: Quỹ (1 cột) + Thống Kê (span 6) + Phân bổ (span 5).
+   Giữ nguyên grid 12 cột để cột khớp chính xác với hàng dưới (gap 12px giữa
+   các cell đồng nhất ở mọi hàng). */
+.cmp-table--rolling .cmp-table-group-head {
+  min-width: 1120px;
+}
+
+.cmp-table--rolling .cmp-table-group-head > :nth-child(2) {
+  grid-column: span 6;
+}
+
+.cmp-table--rolling .cmp-table-group-head > :nth-child(3) {
+  grid-column: span 5;
+}
+
+.cmp-group-title {
+  text-align: center;
+}
+
 .cmp-table-head {
   background: #faf9f5;
   font-size: 0.82rem;
@@ -5939,9 +5992,22 @@ h1, h2, h3 {
     grid-template-columns: 1fr 1fr;
     row-gap: 4px;
   }
+  .cmp-table--rolling .cmp-table-row,
+  .cmp-table--rolling .cmp-table-row--rolling {
+    grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    min-width: 1120px;
+    row-gap: 0;
+  }
+  .cmp-table--rolling .cmp-table-group-head {
+    min-width: 1120px;
+  }
   .cmp-table-head,
   .cmp-table-head--dd {
     display: none;
+  }
+  .cmp-table-head--rolling,
+  .cmp-table--rolling .cmp-table-group-head {
+    display: grid;
   }
   .cmp-verdict-badge {
     margin-left: 0;
@@ -5975,6 +6041,26 @@ h1, h2, h3 {
 .dca-rolling-sub strong {
   color: #141413;
   font-weight: 600;
+}
+
+/* Chú thích giải thích khái niệm Lợi nhuận cuốn chiếu, đặt dưới bảng thống kê. */
+.rolling-note {
+  margin: 10px 0 0 0;
+  padding: 14px 16px;
+  background: #faf9f5;
+  border: 1px solid #e8e6dc;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #5e5d59;
+}
+
+.rolling-note p {
+  margin: 0;
+}
+
+.rolling-note p + p {
+  margin-top: 10px;
 }
 
 .dca-rolling-controls {

@@ -186,6 +186,7 @@ function CompareTabImpl({
           <RollingReturnChart
             series={rollingSeries}
             period={rollingPeriod}
+            availablePeriods={comparison.data.availableRollingPeriods}
             onPeriodChange={onChangeRollingPeriod}
           />
 
