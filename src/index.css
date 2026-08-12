@@ -5807,8 +5807,8 @@ h1, h2, h3 {
   grid-template-columns: 1.5fr 1fr 1.5fr;
 }
 
-/* Bảng thống kê Rolling Returns. Nhiều cột nên trên màn hình hẹp cho cuộn
-   ngang thay vì bóp cột, giữ nguyên head để biết mỗi cột là gì. */
+/* Bảng thống kê Rolling Returns. 12 cột: nhóm Thống Kê (7) + nhóm Phân bổ (5).
+   Trên desktop bảng co theo container; chỉ cuộn ngang khi màn hình hẹp. */
 .cmp-table--rolling {
   position: relative;
   overflow-x: auto;
@@ -5826,17 +5826,14 @@ h1, h2, h3 {
 }
 
 .cmp-table--rolling .cmp-table-row {
-  grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
-  min-width: 1120px;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px 10px;
 }
 
 /* Hàng nhóm: Quỹ (1 cột) + Thống Kê (span 6) + Phân bổ (span 5).
-   Giữ nguyên grid 12 cột để cột khớp chính xác với hàng dưới (gap 12px giữa
+   Giữ nguyên grid 12 cột để cột khớp chính xác với hàng dưới (gap 8px giữa
    các cell đồng nhất ở mọi hàng). */
-.cmp-table--rolling .cmp-table-group-head {
-  min-width: 1120px;
-}
-
 .cmp-table--rolling .cmp-table-group-head > :nth-child(2) {
   grid-column: span 6;
 }
@@ -5847,6 +5844,26 @@ h1, h2, h3 {
 
 .cmp-group-title {
   text-align: center;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+  color: #141413;
+}
+
+/* Header cột con của bảng rolling: bỏ uppercase để tiếng Việt có dấu đọc
+   thoải và không wrap 2 dòng trong cột hẹp. */
+.cmp-table--rolling .cmp-table-head--rolling {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Ô số trong bảng rolling căn phải để dễ so sánh dọc, dùng tabular-nums
+   cho các chữ số thẳng hàng. */
+.cmp-table--rolling .cmp-table-row--rolling > :not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .cmp-table-head {
@@ -5994,12 +6011,12 @@ h1, h2, h3 {
   }
   .cmp-table--rolling .cmp-table-row,
   .cmp-table--rolling .cmp-table-row--rolling {
-    grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
-    min-width: 1120px;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    min-width: 900px;
     row-gap: 0;
   }
   .cmp-table--rolling .cmp-table-group-head {
-    min-width: 1120px;
+    min-width: 900px;
   }
   .cmp-table-head,
   .cmp-table-head--dd {
