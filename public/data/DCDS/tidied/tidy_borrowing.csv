@@ -1,4 +1,870 @@
 period_end,item,amount,balance_nav_pct,asOf
+2018-12-31,Borowings/NAV,,,2019-01-05
+2018-12-31,Borrowings (detail by each contract),,,2019-01-05
+2018-12-31,Margin (detail by each contract),,,2019-01-05
+2018-12-31,Repo (detail by each contract),,,2019-01-05
+2018-12-31,Repo/NAV,,,2019-01-05
+2018-12-31,Reverse Repo (Detail by each contract),,,2019-01-05
+2018-12-31,Reverse Repo/NAV,,,2019-01-05
+2018-12-31,"Total Borrowings, Repo/NAV",,,2019-01-05
+2018-12-31,Total Loans/NAV,,,2019-01-05
+2018-12-31,Total Margin/NAV,,,2019-01-05
+2019-01-31,Borowings/NAV,,,2019-02-12
+2019-01-31,Borrowings (detail by each contract),,,2019-02-12
+2019-01-31,Margin (detail by each contract),,,2019-02-12
+2019-01-31,Repo (detail by each contract),,,2019-02-12
+2019-01-31,Repo/NAV,,,2019-02-12
+2019-01-31,Reverse Repo (Detail by each contract),,,2019-02-12
+2019-01-31,Reverse Repo/NAV,,,2019-02-12
+2019-01-31,"Total Borrowings, Repo/NAV",,,2019-02-12
+2019-01-31,Total Loans/NAV,,,2019-02-12
+2019-01-31,Total Margin/NAV,,,2019-02-12
+2019-02-28,Borowings/NAV,,,2019-03-01
+2019-02-28,Borrowings (detail by each contract),,,2019-03-01
+2019-02-28,Margin (detail by each contract),,,2019-03-01
+2019-02-28,Repo (detail by each contract),,,2019-03-01
+2019-02-28,Repo/NAV,,,2019-03-01
+2019-02-28,Reverse Repo (Detail by each contract),,,2019-03-01
+2019-02-28,Reverse Repo/NAV,,,2019-03-01
+2019-02-28,"Total Borrowings, Repo/NAV",,,2019-03-01
+2019-02-28,Total Loans/NAV,,,2019-03-01
+2019-02-28,Total Margin/NAV,,,2019-03-01
+2019-03-31,Borowings/NAV,,,2019-04-01
+2019-03-31,Borrowings (detail by each contract),,,2019-04-01
+2019-03-31,Margin (detail by each contract),,,2019-04-01
+2019-03-31,Repo (detail by each contract),,,2019-04-01
+2019-03-31,Repo/NAV,,,2019-04-01
+2019-03-31,Reverse Repo (Detail by each contract),,,2019-04-01
+2019-03-31,Reverse Repo/NAV,,,2019-04-01
+2019-03-31,"Total Borrowings, Repo/NAV",,,2019-04-01
+2019-03-31,Total Loans/NAV,,,2019-04-01
+2019-03-31,Total Margin/NAV,,,2019-04-01
+2019-04-30,Borowings/NAV,,,2019-05-02
+2019-04-30,Borrowings (detail by each contract),,,2019-05-02
+2019-04-30,Margin (detail by each contract),,,2019-05-02
+2019-04-30,Repo (detail by each contract),,,2019-05-02
+2019-04-30,Repo/NAV,,,2019-05-02
+2019-04-30,Reverse Repo (Detail by each contract),,,2019-05-02
+2019-04-30,Reverse Repo/NAV,,,2019-05-02
+2019-04-30,"Total Borrowings, Repo/NAV",,,2019-05-02
+2019-04-30,Total Loans/NAV,,,2019-05-02
+2019-04-30,Total Margin/NAV,,,2019-05-02
+2019-05-31,Borowings/NAV,,,2019-06-04
+2019-05-31,Borrowings (detail by each contract),,,2019-06-04
+2019-05-31,Margin (detail by each contract),,,2019-06-04
+2019-05-31,Repo (detail by each contract),,,2019-06-04
+2019-05-31,Repo/NAV,,,2019-06-04
+2019-05-31,Reverse Repo (Detail by each contract),,,2019-06-04
+2019-05-31,Reverse Repo/NAV,,,2019-06-04
+2019-05-31,"Total Borrowings, Repo/NAV",,,2019-06-04
+2019-05-31,Total Loans/NAV,,,2019-06-04
+2019-05-31,Total Margin/NAV,,,2019-06-04
+2019-06-30,Borowings/NAV,,,2019-07-02
+2019-06-30,Borrowings (detail by each contract),,,2019-07-02
+2019-06-30,Margin (detail by each contract),,,2019-07-02
+2019-06-30,Repo (detail by each contract),,,2019-07-02
+2019-06-30,Repo/NAV,,,2019-07-02
+2019-06-30,Reverse Repo (Detail by each contract),,,2019-07-02
+2019-06-30,Reverse Repo/NAV,,,2019-07-02
+2019-06-30,"Total Borrowings, Repo/NAV",,,2019-07-02
+2019-06-30,Total Loans/NAV,,,2019-07-02
+2019-06-30,Total Margin/NAV,,,2019-07-02
+2019-07-31,Borrowings (detail by each contract),,,2019-08-02
+2019-07-31,Borrowings/NAV,,,2019-08-02
+2019-07-31,Margin (detail by each contract),,,2019-08-02
+2019-07-31,Repo (detail by each contract),,,2019-08-02
+2019-07-31,Repo/NAV,,,2019-08-02
+2019-07-31,Reverse Repo (Detail by each contract),,,2019-08-02
+2019-07-31,Reverse Repo/NAV,,,2019-08-02
+2019-07-31,"Total Borrowings, Repo/NAV",,,2019-08-02
+2019-07-31,Total Loans/NAV,,,2019-08-02
+2019-07-31,Total Margin/NAV,,,2019-08-02
+2019-08-31,Borrowings (detail by each contract),,,2019-09-03
+2019-08-31,Borrowings/NAV,,,2019-09-03
+2019-08-31,Margin (detail by each contract),,,2019-09-03
+2019-08-31,Repo (detail by each contract),,,2019-09-03
+2019-08-31,Repo/NAV,,,2019-09-03
+2019-08-31,Reverse Repo (Detail by each contract),,,2019-09-03
+2019-08-31,Reverse Repo/NAV,,,2019-09-03
+2019-08-31,"Total Borrowings, Repo/NAV",,,2019-09-03
+2019-08-31,Total Loans/NAV,,,2019-09-03
+2019-08-31,Total Margin/NAV,,,2019-09-03
+2019-09-30,Borrowings (detail by each contract),,,2019-10-02
+2019-09-30,Borrowings/NAV,,,2019-10-02
+2019-09-30,Margin (detail by each contract),,,2019-10-02
+2019-09-30,Repo (detail by each contract),,,2019-10-02
+2019-09-30,Repo/NAV,,,2019-10-02
+2019-09-30,Reverse Repo (Detail by each contract),,,2019-10-02
+2019-09-30,Reverse Repo/NAV,,,2019-10-02
+2019-09-30,"Total Borrowings, Repo/NAV",,,2019-10-02
+2019-09-30,Total Loans/NAV,,,2019-10-02
+2019-09-30,Total Margin/NAV,,,2019-10-02
+2019-10-31,Borrowings (detail by each contract),,,2019-11-04
+2019-10-31,Borrowings/NAV,,,2019-11-04
+2019-10-31,Margin (detail by each contract),,,2019-11-04
+2019-10-31,Repo (detail by each contract),,,2019-11-04
+2019-10-31,Repo/NAV,,,2019-11-04
+2019-10-31,Reverse Repo (Detail by each contract),,,2019-11-04
+2019-10-31,Reverse Repo/NAV,,,2019-11-04
+2019-10-31,"Total Borrowings, Repo/NAV",,,2019-11-04
+2019-10-31,Total Loans/NAV,,,2019-11-04
+2019-10-31,Total Margin/NAV,,,2019-11-04
+2019-11-30,Borrowings (detail by each contract),,,2019-12-03
+2019-11-30,Borrowings/NAV,,,2019-12-03
+2019-11-30,Margin (detail by each contract),,,2019-12-03
+2019-11-30,Repo (detail by each contract),,,2019-12-03
+2019-11-30,Repo/NAV,,,2019-12-03
+2019-11-30,Reverse Repo (Detail by each contract),,,2019-12-03
+2019-11-30,Reverse Repo/NAV,,,2019-12-03
+2019-11-30,"Total Borrowings, Repo/NAV",,,2019-12-03
+2019-11-30,Total Loans/NAV,,,2019-12-03
+2019-11-30,Total Margin/NAV,,,2019-12-03
+2019-12-31,Borrowings (detail by each contract),,,2020-01-06
+2019-12-31,Borrowings/NAV,,,2020-01-06
+2019-12-31,Margin (detail by each contract),,,2020-01-06
+2019-12-31,Repo (detail by each contract),,,2020-01-06
+2019-12-31,Repo/NAV,,,2020-01-06
+2019-12-31,Reverse Repo (Detail by each contract),,,2020-01-06
+2019-12-31,Reverse Repo/NAV,,,2020-01-06
+2019-12-31,"Total Borrowings, Repo/NAV",,,2020-01-06
+2019-12-31,Total Loans/NAV,,,2020-01-06
+2019-12-31,Total Margin/NAV,,,2020-01-06
+2020-01-31,Borrowings (detail by each contract),,,2020-02-04
+2020-01-31,Borrowings/NAV,,,2020-02-04
+2020-01-31,Margin (detail by each contract),,,2020-02-04
+2020-01-31,Repo (detail by each contract),,,2020-02-04
+2020-01-31,Repo/NAV,,,2020-02-04
+2020-01-31,Reverse Repo (Detail by each contract),,,2020-02-04
+2020-01-31,Reverse Repo/NAV,,,2020-02-04
+2020-01-31,"Total Borrowings, Repo/NAV",,,2020-02-04
+2020-01-31,Total Loans/NAV,,,2020-02-04
+2020-01-31,Total Margin/NAV,,,2020-02-04
+2020-02-29,Borrowings (detail by each contract),,,2020-03-03
+2020-02-29,Borrowings/NAV,,,2020-03-03
+2020-02-29,Repo contract (detail by each contract),,,2020-03-03
+2020-02-29,Reverse Repo contract (Detail by each contract),,,2020-03-03
+2020-02-29,Securities lending (detail by each contract),,,2020-03-03
+2020-02-29,"Total Borrowings, Repo/NAV (=I+II)",,,2020-03-03
+2020-02-29,Total Loans/NAV (=III + IV),,,2020-03-03
+2020-02-29,Total contract value/NAV,,,2020-03-03
+2020-02-29,Total value of Repo contracts/NAV,,,2020-03-03
+2020-03-31,Borrowings (detail by each contract),,,2020-04-03
+2020-03-31,Borrowings/NAV,,,2020-04-03
+2020-03-31,Repo contract (detail by each contract),,,2020-04-03
+2020-03-31,Reverse Repo contract (Detail by each contract),,,2020-04-03
+2020-03-31,Securities lending (detail by each contract),,,2020-04-03
+2020-03-31,"Total Borrowings, Repo/NAV (=I+II)",,,2020-04-03
+2020-03-31,Total Loans/NAV (=III + IV),,,2020-04-03
+2020-03-31,Total contract value/NAV,,,2020-04-03
+2020-03-31,Total value of Repo contracts/NAV,,,2020-04-03
+2020-04-30,Borrowings (detail by each contract),,,2020-05-05
+2020-04-30,Borrowings/NAV,,,2020-05-05
+2020-04-30,Repo contract (detail by each contract),,,2020-05-05
+2020-04-30,Reverse Repo contract (Detail by each contract),,,2020-05-05
+2020-04-30,Securities lending (detail by each contract),,,2020-05-05
+2020-04-30,"Total Borrowings, Repo/NAV (=I+II)",,,2020-05-05
+2020-04-30,Total Loans/NAV (=III + IV),,,2020-05-05
+2020-04-30,Total contract value/NAV,,,2020-05-05
+2020-04-30,Total value of Repo contracts/NAV,,,2020-05-05
+2020-05-31,Borrowings (detail by each contract),,,2020-06-01
+2020-05-31,Borrowings/NAV,,,2020-06-01
+2020-05-31,Repo contract (detail by each contract),,,2020-06-01
+2020-05-31,Reverse Repo contract (Detail by each contract),,,2020-06-01
+2020-05-31,Securities lending (detail by each contract),,,2020-06-01
+2020-05-31,"Total Borrowings, Repo/NAV (=I+II)",,,2020-06-01
+2020-05-31,Total Loans/NAV (=III + IV),,,2020-06-01
+2020-05-31,Total contract value/NAV,,,2020-06-01
+2020-05-31,Total value of Repo contracts/NAV,,,2020-06-01
+2020-06-30,Borrowings (detail by each contract),,,2020-07-02
+2020-06-30,Borrowings/NAV,,,2020-07-02
+2020-06-30,Repo contract (detail by each contract),,,2020-07-02
+2020-06-30,Reverse Repo contract (Detail by each contract),,,2020-07-02
+2020-06-30,Securities lending (detail by each contract),,,2020-07-02
+2020-06-30,"Total Borrowings, Repo/NAV (=I+II)",,,2020-07-02
+2020-06-30,Total Loans/NAV (=III + IV),,,2020-07-02
+2020-06-30,Total contract value/NAV,,,2020-07-02
+2020-06-30,Total value of Repo contracts/NAV,,,2020-07-02
+2020-07-31,Borrowings (detail by each contract),,,2020-08-03
+2020-07-31,Borrowings/NAV,,,2020-08-03
+2020-07-31,Repo contract (detail by each contract),,,2020-08-03
+2020-07-31,Reverse Repo contract (Detail by each contract),,,2020-08-03
+2020-07-31,Securities lending (detail by each contract),,,2020-08-03
+2020-07-31,"Total Borrowings, Repo/NAV (=I+II)",,,2020-08-03
+2020-07-31,Total Loans/NAV (=III + IV),,,2020-08-03
+2020-07-31,Total contract value/NAV,,,2020-08-03
+2020-07-31,Total value of Repo contracts/NAV,,,2020-08-03
+2020-08-31,Borrowings (detail by each contract),,,2020-09-03
+2020-08-31,Borrowings/NAV,,,2020-09-03
+2020-08-31,Repo contract (detail by each contract),,,2020-09-03
+2020-08-31,Reverse Repo contract (Detail by each contract),,,2020-09-03
+2020-08-31,Securities lending (detail by each contract),,,2020-09-03
+2020-08-31,"Total Borrowings, Repo/NAV (=I+II)",,,2020-09-03
+2020-08-31,Total Loans/NAV (=III + IV),,,2020-09-03
+2020-08-31,Total contract value/NAV,,,2020-09-03
+2020-08-31,Total value of Repo contracts/NAV,,,2020-09-03
+2020-09-30,Borrowings (detail by each contract),,,2020-10-02
+2020-09-30,Borrowings/NAV,,,2020-10-02
+2020-09-30,Repo contract (detail by each contract),,,2020-10-02
+2020-09-30,Reverse Repo contract (Detail by each contract),,,2020-10-02
+2020-09-30,Securities lending (detail by each contract),,,2020-10-02
+2020-09-30,"Total Borrowings, Repo/NAV (=I+II)",,,2020-10-02
+2020-09-30,Total Loans/NAV (=III + IV),,,2020-10-02
+2020-09-30,Total contract value/NAV,,,2020-10-02
+2020-09-30,Total value of Repo contracts/NAV,,,2020-10-02
+2020-10-31,Borrowings (detail by each contract),,,2020-11-03
+2020-10-31,Borrowings/NAV,,,2020-11-03
+2020-10-31,Repo contract (detail by each contract),,,2020-11-03
+2020-10-31,Reverse Repo contract (Detail by each contract),,,2020-11-03
+2020-10-31,Securities lending (detail by each contract),,,2020-11-03
+2020-10-31,"Total Borrowings, Repo/NAV (=I+II)",,,2020-11-03
+2020-10-31,Total Loans/NAV (=III + IV),,,2020-11-03
+2020-10-31,Total contract value/NAV,,,2020-11-03
+2020-10-31,Total value of Repo contracts/NAV,,,2020-11-03
+2020-11-30,Borrowings (detail by each contract),,,2020-12-02
+2020-11-30,Borrowings/NAV,,,2020-12-02
+2020-11-30,Repo contract (detail by each contract),,,2020-12-02
+2020-11-30,Reverse Repo contract (Detail by each contract),,,2020-12-02
+2020-11-30,Securities lending (detail by each contract),,,2020-12-02
+2020-11-30,"Total Borrowings, Repo/NAV (=I+II)",,,2020-12-02
+2020-11-30,Total Loans/NAV (=III + IV),,,2020-12-02
+2020-11-30,Total contract value/NAV,,,2020-12-02
+2020-11-30,Total value of Repo contracts/NAV,,,2020-12-02
+2020-12-31,Borrowings (detail by each contract),,,2021-01-05
+2020-12-31,Borrowings/NAV,,,2021-01-05
+2020-12-31,Repo contract (detail by each contract),,,2021-01-05
+2020-12-31,Reverse Repo contract (Detail by each contract),,,2021-01-05
+2020-12-31,Securities lending (detail by each contract),,,2021-01-05
+2020-12-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-01-05
+2020-12-31,Total Loans/NAV (=III + IV),,,2021-01-05
+2020-12-31,Total contract value/NAV,,,2021-01-05
+2020-12-31,Total value of Repo contracts/NAV,,,2021-01-05
+2021-01-31,Borrowings (detail by each contract),,,2021-02-02
+2021-01-31,Borrowings/NAV,,,2021-02-02
+2021-01-31,Repo contract (detail by each contract),,,2021-02-02
+2021-01-31,Reverse Repo contract (Detail by each contract),,,2021-02-02
+2021-01-31,Securities lending (detail by each contract),,,2021-02-02
+2021-01-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-02-02
+2021-01-31,Total Loans/NAV (=III + IV),,,2021-02-02
+2021-01-31,Total contract value/NAV,,,2021-02-02
+2021-01-31,Total value of Repo contracts/NAV,,,2021-02-02
+2021-02-28,Borrowings (detail by each contract),,,2021-03-02
+2021-02-28,Borrowings/NAV,,,2021-03-02
+2021-02-28,Repo contract (detail by each contract),,,2021-03-02
+2021-02-28,Reverse Repo contract (Detail by each contract),,,2021-03-02
+2021-02-28,Securities lending (detail by each contract),,,2021-03-02
+2021-02-28,"Total Borrowings, Repo/NAV (=I+II)",,,2021-03-02
+2021-02-28,Total Loans/NAV (=III + IV),,,2021-03-02
+2021-02-28,Total contract value/NAV,,,2021-03-02
+2021-02-28,Total value of Repo contracts/NAV,,,2021-03-02
+2021-03-31,Borrowings (detail by each contract),,,2021-04-02
+2021-03-31,Borrowings/NAV,,,2021-04-02
+2021-03-31,Repo contract (detail by each contract),,,2021-04-02
+2021-03-31,Reverse Repo contract (Detail by each contract),,,2021-04-02
+2021-03-31,Securities lending (detail by each contract),,,2021-04-02
+2021-03-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-04-02
+2021-03-31,Total Loans/NAV (=III + IV),,,2021-04-02
+2021-03-31,Total contract value/NAV,,,2021-04-02
+2021-03-31,Total value of Repo contracts/NAV,,,2021-04-02
+2021-04-30,Borrowings (detail by each contract),,,2021-05-05
+2021-04-30,Borrowings/NAV,,,2021-05-05
+2021-04-30,Repo contract (detail by each contract),,,2021-05-05
+2021-04-30,Reverse Repo contract (Detail by each contract),,,2021-05-05
+2021-04-30,Securities lending (detail by each contract),,,2021-05-05
+2021-04-30,"Total Borrowings, Repo/NAV (=I+II)",,,2021-05-05
+2021-04-30,Total Loans/NAV (=III + IV),,,2021-05-05
+2021-04-30,Total contract value/NAV,,,2021-05-05
+2021-04-30,Total value of Repo contracts/NAV,,,2021-05-05
+2021-05-31,Borrowings (detail by each contract),,,2021-06-02
+2021-05-31,Borrowings/NAV,,,2021-06-02
+2021-05-31,Repo contract (detail by each contract),,,2021-06-02
+2021-05-31,Reverse Repo contract (Detail by each contract),,,2021-06-02
+2021-05-31,Securities lending (detail by each contract),,,2021-06-02
+2021-05-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-06-02
+2021-05-31,Total Loans/NAV (=III + IV),,,2021-06-02
+2021-05-31,Total contract value/NAV,,,2021-06-02
+2021-05-31,Total value of Repo contracts/NAV,,,2021-06-02
+2021-06-30,Borrowings (detail by each contract),,,2021-07-02
+2021-06-30,Borrowings/NAV,,,2021-07-02
+2021-06-30,Repo contract (detail by each contract),,,2021-07-02
+2021-06-30,Reverse Repo contract (Detail by each contract),,,2021-07-02
+2021-06-30,Securities lending (detail by each contract),,,2021-07-02
+2021-06-30,"Total Borrowings, Repo/NAV (=I+II)",,,2021-07-02
+2021-06-30,Total Loans/NAV (=III + IV),,,2021-07-02
+2021-06-30,Total contract value/NAV,,,2021-07-02
+2021-06-30,Total value of Repo contracts/NAV,,,2021-07-02
+2021-07-31,Borrowings (detail by each contract),,,2021-08-02
+2021-07-31,Borrowings/NAV,,,2021-08-02
+2021-07-31,Repo contract (detail by each contract),,,2021-08-02
+2021-07-31,Reverse Repo contract (Detail by each contract),,,2021-08-02
+2021-07-31,Securities lending (detail by each contract),,,2021-08-02
+2021-07-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-08-02
+2021-07-31,Total Loans/NAV (=III + IV),,,2021-08-02
+2021-07-31,Total contract value/NAV,,,2021-08-02
+2021-07-31,Total value of Repo contracts/NAV,,,2021-08-02
+2021-08-31,Borrowings (detail by each contract),,,2021-09-01
+2021-08-31,Borrowings/NAV,,,2021-09-01
+2021-08-31,Repo contract (detail by each contract),,,2021-09-01
+2021-08-31,Reverse Repo contract (Detail by each contract),,,2021-09-01
+2021-08-31,Securities lending (detail by each contract),,,2021-09-01
+2021-08-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-09-01
+2021-08-31,Total Loans/NAV (=III + IV),,,2021-09-01
+2021-08-31,Total contract value/NAV,,,2021-09-01
+2021-08-31,Total value of Repo contracts/NAV,,,2021-09-01
+2021-09-30,Borrowings (detail by each contract),,,2021-10-01
+2021-09-30,Borrowings/NAV,,,2021-10-01
+2021-09-30,Repo contract (detail by each contract),,,2021-10-01
+2021-09-30,Reverse Repo contract (Detail by each contract),,,2021-10-01
+2021-09-30,Securities lending (detail by each contract),,,2021-10-01
+2021-09-30,"Total Borrowings, Repo/NAV (=I+II)",,,2021-10-01
+2021-09-30,Total Loans/NAV (=III + IV),,,2021-10-01
+2021-09-30,Total contract value/NAV,,,2021-10-01
+2021-09-30,Total value of Repo contracts/NAV,,,2021-10-01
+2021-10-31,Borrowings (detail by each contract),,,2021-11-03
+2021-10-31,Borrowings/NAV,,,2021-11-03
+2021-10-31,Repo contract (detail by each contract),,,2021-11-03
+2021-10-31,Reverse Repo contract (Detail by each contract),,,2021-11-03
+2021-10-31,Securities lending (detail by each contract),,,2021-11-03
+2021-10-31,"Total Borrowings, Repo/NAV (=I+II)",,,2021-11-03
+2021-10-31,Total Loans/NAV (=III + IV),,,2021-11-03
+2021-10-31,Total contract value/NAV,,,2021-11-03
+2021-10-31,Total value of Repo contracts/NAV,,,2021-11-03
+2021-11-30,Borrowings (detail by each contract),,,2021-12-01
+2021-11-30,Borrowings/NAV,,,2021-12-01
+2021-11-30,Repo contract (detail by each contract),,,2021-12-01
+2021-11-30,Reverse Repo contract (Detail by each contract),,,2021-12-01
+2021-11-30,Securities lending (detail by each contract),,,2021-12-01
+2021-11-30,"Total Borrowings, Repo/NAV (=I+II)",,,2021-12-01
+2021-11-30,Total Loans/NAV (=III + IV),,,2021-12-01
+2021-11-30,Total contract value/NAV,,,2021-12-01
+2021-11-30,Total value of Repo contracts/NAV,,,2021-12-01
+2021-12-31,Borrowings (detail by each contract),,,2022-01-04
+2021-12-31,Borrowings/NAV,,,2022-01-04
+2021-12-31,Repo contract (detail by each contract),,,2022-01-04
+2021-12-31,Reverse Repo contract (Detail by each contract),,,2022-01-04
+2021-12-31,Securities lending (detail by each contract),,,2022-01-04
+2021-12-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-01-04
+2021-12-31,Total Loans/NAV (=III + IV),,,2022-01-04
+2021-12-31,Total contract value/NAV,,,2022-01-04
+2021-12-31,Total value of Repo contracts/NAV,,,2022-01-04
+2022-01-31,Borrowings (detail by each contract),,,2022-02-08
+2022-01-31,Borrowings/NAV,,,2022-02-08
+2022-01-31,Repo contract (detail by each contract),,,2022-02-08
+2022-01-31,Reverse Repo contract (Detail by each contract),,,2022-02-08
+2022-01-31,Securities lending (detail by each contract),,,2022-02-08
+2022-01-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-02-08
+2022-01-31,Total Loans/NAV (=III + IV),,,2022-02-08
+2022-01-31,Total contract value/NAV,,,2022-02-08
+2022-01-31,Total value of Repo contracts/NAV,,,2022-02-08
+2022-02-28,Borrowings (detail by each contract),,,2022-03-01
+2022-02-28,Borrowings/NAV,,,2022-03-01
+2022-02-28,Repo contract (detail by each contract),,,2022-03-01
+2022-02-28,Reverse Repo contract (Detail by each contract),,,2022-03-01
+2022-02-28,Securities lending (detail by each contract),,,2022-03-01
+2022-02-28,"Total Borrowings, Repo/NAV (=I+II)",,,2022-03-01
+2022-02-28,Total Loans/NAV (=III + IV),,,2022-03-01
+2022-02-28,Total contract value/NAV,,,2022-03-01
+2022-02-28,Total value of Repo contracts/NAV,,,2022-03-01
+2022-03-31,Borrowings (detail by each contract),,,2022-04-04
+2022-03-31,Borrowings/NAV,,,2022-04-04
+2022-03-31,Repo contract (detail by each contract),,,2022-04-04
+2022-03-31,Reverse Repo contract (Detail by each contract),,,2022-04-04
+2022-03-31,Securities lending (detail by each contract),,,2022-04-04
+2022-03-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-04-04
+2022-03-31,Total Loans/NAV (=III + IV),,,2022-04-04
+2022-03-31,Total contract value/NAV,,,2022-04-04
+2022-03-31,Total value of Repo contracts/NAV,,,2022-04-04
+2022-04-30,Borrowings (detail by each contract),,,2022-05-05
+2022-04-30,Borrowings/NAV,,,2022-05-05
+2022-04-30,Repo contract (detail by each contract),,,2022-05-05
+2022-04-30,Reverse Repo contract (Detail by each contract),,,2022-05-05
+2022-04-30,Securities lending (detail by each contract),,,2022-05-05
+2022-04-30,"Total Borrowings, Repo/NAV (=I+II)",,,2022-05-05
+2022-04-30,Total Loans/NAV (=III + IV),,,2022-05-05
+2022-04-30,Total contract value/NAV,,,2022-05-05
+2022-04-30,Total value of Repo contracts/NAV,,,2022-05-05
+2022-05-31,Borrowings (detail by each contract),,,2022-06-01
+2022-05-31,Borrowings/NAV,,,2022-06-01
+2022-05-31,Repo contract (detail by each contract),,,2022-06-01
+2022-05-31,Reverse Repo contract (Detail by each contract),,,2022-06-01
+2022-05-31,Securities lending (detail by each contract),,,2022-06-01
+2022-05-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-06-01
+2022-05-31,Total Loans/NAV (=III + IV),,,2022-06-01
+2022-05-31,Total contract value/NAV,,,2022-06-01
+2022-05-31,Total value of Repo contracts/NAV,,,2022-06-01
+2022-06-30,Borrowings (detail by each contract),,,2022-07-01
+2022-06-30,Borrowings/NAV,,,2022-07-01
+2022-06-30,Repo contract (detail by each contract),,,2022-07-01
+2022-06-30,Reverse Repo contract (Detail by each contract),,,2022-07-01
+2022-06-30,Securities lending (detail by each contract),,,2022-07-01
+2022-06-30,"Total Borrowings, Repo/NAV (=I+II)",,,2022-07-01
+2022-06-30,Total Loans/NAV (=III + IV),,,2022-07-01
+2022-06-30,Total contract value/NAV,,,2022-07-01
+2022-06-30,Total value of Repo contracts/NAV,,,2022-07-01
+2022-07-31,Borrowings (detail by each contract),,,2022-08-01
+2022-07-31,Borrowings/NAV,,,2022-08-01
+2022-07-31,Repo contract (detail by each contract),,,2022-08-01
+2022-07-31,Reverse Repo contract (Detail by each contract),,,2022-08-01
+2022-07-31,Securities lending (detail by each contract),,,2022-08-01
+2022-07-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-08-01
+2022-07-31,Total Loans/NAV (=III + IV),,,2022-08-01
+2022-07-31,Total contract value/NAV,,,2022-08-01
+2022-07-31,Total value of Repo contracts/NAV,,,2022-08-01
+2022-08-31,Borrowings (detail by each contract),,,2022-09-05
+2022-08-31,Borrowings/NAV,,,2022-09-05
+2022-08-31,Repo contract (detail by each contract),,,2022-09-05
+2022-08-31,Reverse Repo contract (Detail by each contract),,,2022-09-05
+2022-08-31,Securities lending (detail by each contract),,,2022-09-05
+2022-08-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-09-05
+2022-08-31,Total Loans/NAV (=III + IV),,,2022-09-05
+2022-08-31,Total contract value/NAV,,,2022-09-05
+2022-08-31,Total value of Repo contracts/NAV,,,2022-09-05
+2022-09-30,Borrowings (detail by each contract),,,2022-10-03
+2022-09-30,Borrowings/NAV,,,2022-10-03
+2022-09-30,Repo contract (detail by each contract),,,2022-10-03
+2022-09-30,Reverse Repo contract (Detail by each contract),,,2022-10-03
+2022-09-30,Securities lending (detail by each contract),,,2022-10-03
+2022-09-30,"Total Borrowings, Repo/NAV (=I+II)",,,2022-10-03
+2022-09-30,Total Loans/NAV (=III + IV),,,2022-10-03
+2022-09-30,Total contract value/NAV,,,2022-10-03
+2022-09-30,Total value of Repo contracts/NAV,,,2022-10-03
+2022-10-31,Borrowings (detail by each contract),,,2022-11-01
+2022-10-31,Borrowings/NAV,,,2022-11-01
+2022-10-31,Repo contract (detail by each contract),,,2022-11-01
+2022-10-31,Reverse Repo contract (Detail by each contract),,,2022-11-01
+2022-10-31,Securities lending (detail by each contract),,,2022-11-01
+2022-10-31,"Total Borrowings, Repo/NAV (=I+II)",,,2022-11-01
+2022-10-31,Total Loans/NAV (=III + IV),,,2022-11-01
+2022-10-31,Total contract value/NAV,,,2022-11-01
+2022-10-31,Total value of Repo contracts/NAV,,,2022-11-01
+2022-11-30,Borrowings (detail by each contract),,,2022-12-01
+2022-11-30,Borrowings/NAV,,,2022-12-01
+2022-11-30,Repo contract (detail by each contract),,,2022-12-01
+2022-11-30,Reverse Repo contract (Detail by each contract),,,2022-12-01
+2022-11-30,Securities lending (detail by each contract),,,2022-12-01
+2022-11-30,"Total Borrowings, Repo/NAV (=I+II)",,,2022-12-01
+2022-11-30,Total Loans/NAV (=III + IV),,,2022-12-01
+2022-11-30,Total contract value/NAV,,,2022-12-01
+2022-11-30,Total value of Repo contracts/NAV,,,2022-12-01
+2022-12-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-01-04
+2022-12-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-01-04
+2022-12-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-01-04
+2022-12-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-01-04
+2022-12-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,,2023-01-04
+2022-12-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,,2023-01-04
+2022-12-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,,2023-01-04
+2022-12-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,,2023-01-04
+2022-12-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,,2023-01-04
+2022-12-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,,2023-01-04
+2023-01-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-02-01
+2023-01-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-02-01
+2023-01-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-02-01
+2023-01-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-02-01
+2023-01-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,,2023-02-01
+2023-01-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,,2023-02-01
+2023-01-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,,2023-02-01
+2023-01-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,,2023-02-01
+2023-01-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,,2023-02-01
+2023-01-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,,2023-02-01
+2023-02-28,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-03-02
+2023-02-28,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-03-02
+2023-02-28,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-03-02
+2023-02-28,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-03-02
+2023-02-28,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-03-02
+2023-02-28,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-03-02
+2023-02-28,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-03-02
+2023-02-28,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-03-02
+2023-02-28,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-03-02
+2023-02-28,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-03-02
+2023-03-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-04-03
+2023-03-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-04-03
+2023-03-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-04-03
+2023-03-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-04-03
+2023-03-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-04-03
+2023-03-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-04-03
+2023-03-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-04-03
+2023-03-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-04-03
+2023-03-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-04-03
+2023-03-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-04-03
+2023-04-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-05-05
+2023-04-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-05-05
+2023-04-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-05-05
+2023-04-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-05-05
+2023-04-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-05-05
+2023-04-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-05-05
+2023-04-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-05-05
+2023-04-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-05-05
+2023-04-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-05-05
+2023-04-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-05-05
+2023-05-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-06-02
+2023-05-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-06-02
+2023-05-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-06-02
+2023-05-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-06-02
+2023-05-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-06-02
+2023-05-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-06-02
+2023-05-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-06-02
+2023-05-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-06-02
+2023-05-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-06-02
+2023-05-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-06-02
+2023-06-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-07-04
+2023-06-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-07-04
+2023-06-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-07-04
+2023-06-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-07-04
+2023-06-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-07-04
+2023-06-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-07-04
+2023-06-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-07-04
+2023-06-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-07-04
+2023-06-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-07-04
+2023-06-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-07-04
+2023-07-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-08-02
+2023-07-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-08-02
+2023-07-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-08-02
+2023-07-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-08-02
+2023-07-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-08-02
+2023-07-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-08-02
+2023-07-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-08-02
+2023-07-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-08-02
+2023-07-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-08-02
+2023-07-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-08-02
+2023-08-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-09-06
+2023-08-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-09-06
+2023-08-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-09-06
+2023-08-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-09-06
+2023-08-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-09-06
+2023-08-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-09-06
+2023-08-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-09-06
+2023-08-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-09-06
+2023-08-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-09-06
+2023-08-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-09-06
+2023-09-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-10-02
+2023-09-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-10-02
+2023-09-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-10-02
+2023-09-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-10-02
+2023-09-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-10-02
+2023-09-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-10-02
+2023-09-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-10-02
+2023-09-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-10-02
+2023-09-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-10-02
+2023-09-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-10-02
+2023-10-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-11-02
+2023-10-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-11-02
+2023-10-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-11-02
+2023-10-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-11-02
+2023-10-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-11-02
+2023-10-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-11-02
+2023-10-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-11-02
+2023-10-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-11-02
+2023-10-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-11-02
+2023-10-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-11-02
+2023-11-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2023-12-01
+2023-11-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2023-12-01
+2023-11-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2023-12-01
+2023-11-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2023-12-01
+2023-11-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2023-12-01
+2023-11-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2023-12-01
+2023-11-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2023-12-01
+2023-11-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2023-12-01
+2023-11-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2023-12-01
+2023-11-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2023-12-01
+2023-12-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-01-02
+2023-12-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-01-02
+2023-12-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-01-02
+2023-12-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-01-02
+2023-12-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-01-02
+2023-12-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-01-02
+2023-12-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-01-02
+2023-12-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-01-02
+2023-12-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-01-02
+2023-12-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-01-02
+2024-01-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-02-02
+2024-01-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-02-02
+2024-01-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-02-02
+2024-01-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-02-02
+2024-01-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-02-02
+2024-01-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-02-02
+2024-01-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-02-02
+2024-01-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-02-02
+2024-01-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-02-02
+2024-01-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-02-02
+2024-02-29,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-03-01
+2024-02-29,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-03-01
+2024-02-29,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-03-01
+2024-02-29,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-03-01
+2024-02-29,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-03-01
+2024-02-29,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-03-01
+2024-02-29,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-03-01
+2024-02-29,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-03-01
+2024-02-29,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-03-01
+2024-02-29,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-03-01
+2024-03-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-04-01
+2024-03-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-04-01
+2024-03-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-04-01
+2024-03-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-04-01
+2024-03-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-04-01
+2024-03-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-04-01
+2024-03-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-04-01
+2024-03-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-04-01
+2024-03-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-04-01
+2024-03-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-04-01
+2024-04-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-05-03
+2024-04-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-05-03
+2024-04-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-05-03
+2024-04-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-05-03
+2024-04-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-05-03
+2024-04-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-05-03
+2024-04-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-05-03
+2024-04-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-05-03
+2024-04-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-05-03
+2024-04-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-05-03
+2024-05-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-06-03
+2024-05-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-06-03
+2024-05-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-06-03
+2024-05-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-06-03
+2024-05-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-06-03
+2024-05-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-06-03
+2024-05-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-06-03
+2024-05-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-06-03
+2024-05-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-06-03
+2024-05-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-06-03
+2024-06-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-07-01
+2024-06-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-07-01
+2024-06-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-07-01
+2024-06-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-07-01
+2024-06-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-07-01
+2024-06-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-07-01
+2024-06-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-07-01
+2024-06-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-07-01
+2024-06-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-07-01
+2024-06-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-07-01
+2024-07-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-08-06
+2024-07-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-08-06
+2024-07-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-08-06
+2024-07-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-08-06
+2024-07-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-08-06
+2024-07-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-08-06
+2024-07-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-08-06
+2024-07-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-08-06
+2024-07-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-08-06
+2024-07-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-08-06
+2024-08-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-09-04
+2024-08-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-09-04
+2024-08-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-09-04
+2024-08-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-09-04
+2024-08-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-09-04
+2024-08-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-09-04
+2024-08-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-09-04
+2024-08-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-09-04
+2024-08-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-09-04
+2024-08-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-09-04
+2024-09-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-10-01
+2024-09-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-10-01
+2024-09-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-10-01
+2024-09-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-10-01
+2024-09-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-10-01
+2024-09-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-10-01
+2024-09-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-10-01
+2024-09-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-10-01
+2024-09-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-10-01
+2024-09-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-10-01
+2024-10-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-11-01
+2024-10-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-11-01
+2024-10-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-11-01
+2024-10-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-11-01
+2024-10-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-11-01
+2024-10-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-11-01
+2024-10-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-11-01
+2024-10-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-11-01
+2024-10-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-11-01
+2024-10-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-11-01
+2024-11-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2024-12-02
+2024-11-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2024-12-02
+2024-11-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2024-12-02
+2024-11-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2024-12-02
+2024-11-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2024-12-02
+2024-11-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2024-12-02
+2024-11-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2024-12-02
+2024-11-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2024-12-02
+2024-11-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2024-12-02
+2024-11-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2024-12-02
+2024-12-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-01-02
+2024-12-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-01-02
+2024-12-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-01-02
+2024-12-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-01-02
+2024-12-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-01-02
+2024-12-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-01-02
+2024-12-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-01-02
+2024-12-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-01-02
+2024-12-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-01-02
+2024-12-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-01-02
+2025-01-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-02-03
+2025-01-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-02-03
+2025-01-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-02-03
+2025-01-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-02-03
+2025-01-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-02-03
+2025-01-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-02-03
+2025-01-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-02-03
+2025-01-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-02-03
+2025-01-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-02-03
+2025-01-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-02-03
+2025-02-28,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-03-03
+2025-02-28,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-03-03
+2025-02-28,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-03-03
+2025-02-28,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-03-03
+2025-02-28,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-03-03
+2025-02-28,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-03-03
+2025-02-28,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-03-03
+2025-02-28,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-03-03
+2025-02-28,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-03-03
+2025-02-28,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-03-03
+2025-03-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-04-01
+2025-03-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-04-01
+2025-03-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-04-01
+2025-03-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-04-01
+2025-03-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-04-01
+2025-03-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-04-01
+2025-03-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-04-01
+2025-03-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-04-01
+2025-03-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-04-01
+2025-03-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-04-01
+2025-04-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-05-06
+2025-04-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-05-06
+2025-04-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-05-06
+2025-04-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-05-06
+2025-04-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-05-06
+2025-04-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-05-06
+2025-04-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-05-06
+2025-04-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-05-06
+2025-04-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-05-06
+2025-04-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-05-06
+2025-05-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-06-02
+2025-05-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-06-02
+2025-05-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-06-02
+2025-05-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-06-02
+2025-05-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-06-02
+2025-05-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-06-02
+2025-05-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-06-02
+2025-05-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-06-02
+2025-05-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-06-02
+2025-05-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-06-02
+2025-06-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-07-01
+2025-06-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-07-01
+2025-06-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-07-01
+2025-06-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-07-01
+2025-06-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-07-01
+2025-06-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-07-01
+2025-06-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-07-01
+2025-06-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-07-01
+2025-06-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-07-01
+2025-06-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-07-01
+2025-07-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-08-01
+2025-07-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-08-01
+2025-07-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-08-01
+2025-07-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-08-01
+2025-07-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-08-01
+2025-07-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-08-01
+2025-07-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-08-01
+2025-07-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-08-01
+2025-07-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-08-01
+2025-07-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-08-01
+2025-08-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-09-03
+2025-08-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-09-03
+2025-08-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-09-03
+2025-08-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-09-03
+2025-08-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-09-03
+2025-08-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-09-03
+2025-08-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-09-03
+2025-08-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-09-03
+2025-08-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-09-03
+2025-08-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-09-03
+2025-09-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-10-03
+2025-09-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-10-03
+2025-09-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-10-03
+2025-09-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-10-03
+2025-09-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-10-03
+2025-09-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-10-03
+2025-09-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-10-03
+2025-09-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-10-03
+2025-09-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-10-03
+2025-09-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-10-03
+2025-10-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-11-03
+2025-10-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-11-03
+2025-10-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-11-03
+2025-10-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-11-03
+2025-10-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-11-03
+2025-10-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-11-03
+2025-10-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-11-03
+2025-10-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-11-03
+2025-10-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-11-03
+2025-10-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-11-03
+2025-11-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2025-12-01
+2025-11-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2025-12-01
+2025-11-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2025-12-01
+2025-11-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2025-12-01
+2025-11-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2025-12-01
+2025-11-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2025-12-01
+2025-11-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2025-12-01
+2025-11-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2025-12-01
+2025-11-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2025-12-01
+2025-11-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2025-12-01
+2025-12-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-01-06
+2025-12-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-01-06
+2025-12-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-01-06
+2025-12-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2026-01-06
+2025-12-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2026-01-06
+2025-12-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2026-01-06
+2025-12-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2026-01-06
+2025-12-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2026-01-06
+2025-12-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2026-01-06
+2025-12-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2026-01-06
+2026-01-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-02-02
+2026-01-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-02-02
+2026-01-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-02-02
+2026-01-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2026-02-02
+2026-01-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2026-02-02
+2026-01-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2026-02-02
+2026-01-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2026-02-02
+2026-01-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2026-02-02
+2026-01-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2026-02-02
+2026-01-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2026-02-02
+2026-02-28,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-03-02
+2026-02-28,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-03-02
+2026-02-28,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-03-02
+2026-02-28,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2026-03-02
+2026-02-28,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2026-03-02
+2026-02-28,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2026-03-02
+2026-02-28,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2026-03-02
+2026-02-28,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2026-03-02
+2026-02-28,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2026-03-02
+2026-02-28,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2026-03-02
+2026-03-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-04-01
+2026-03-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-04-01
+2026-03-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-04-01
+2026-03-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2026-04-01
+2026-03-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2026-04-01
+2026-03-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2026-04-01
+2026-03-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2026-04-01
+2026-03-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2026-04-01
+2026-03-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2026-04-01
+2026-03-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2026-04-01
+2026-04-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-05-04
+2026-04-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-05-04
+2026-04-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-05-04
+2026-04-30,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2026-05-04
+2026-04-30,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2026-05-04
+2026-04-30,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2026-05-04
+2026-04-30,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2026-05-04
+2026-04-30,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2026-05-04
+2026-04-30,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2026-05-04
+2026-04-30,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2026-05-04
+2026-05-31,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-06-02
+2026-05-31,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-06-02
+2026-05-31,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-06-02
+2026-05-31,Hợp đồng Reverse Repo (nêu chi tiết từng hợp đồng),,,2026-06-02
+2026-05-31,Tổng giá trị các hợp đồng Repo/giá trị tài sản ròng,0,0,2026-06-02
+2026-05-31,Tổng giá trị các hợp đồng/ giá trị tài sản ròng,0,0,2026-06-02
+2026-05-31,Tổng giá trị các hợp đồng/giá trị tài sản ròng,0,0,2026-06-02
+2026-05-31,Tổng giá trị các khoản cho vay/giá trị tài sản ròng (=III + IV),0,0,2026-06-02
+2026-05-31,Tổng giá trị các khoản vay tiền/giá trị tài sản ròng,0,0,2026-06-02
+2026-05-31,Tổng giá trị các khoản vay/giá trị tài sản ròng (=I+II),0,0,2026-06-02
 2026-06-30,Cho vay chứng khoán (nêu chi tiết từng hợp đồng),,,2026-07-02
 2026-06-30,Các khoản vay tiền (nêu chi tiết từng hợp đồng),,,2026-07-02
 2026-06-30,Hợp đồng Repo (nêu chi tiết từng hợp đồng),,,2026-07-02

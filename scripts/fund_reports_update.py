@@ -7,11 +7,11 @@ Usage:
   python scripts/fund_reports_update.py <file.xlsx> ...    # specific files
   python scripts/fund_reports_update.py --check            # compare without writing
 
-File names must follow the standard <FUND>_BC_THANG_<MM><YYYY>.xlsx pattern,
-e.g. DCDS_BC_THANG_072026.xlsx. The fund id is taken from the file name and
-each fund is written to its own directory:
+File names must follow the standard <FUND>_<YYYY>_<MM>.xlsx pattern,
+e.g. DCDS_2026_07.xlsx. The fund id is taken from the file name and each
+fund is written to its own directory:
 
-  public/data/<FUND>/raw/<FUND>_BC_THANG_<MM><YYYY>.xlsx
+  public/data/<FUND>/raw/<FUND>_<YYYY>_<MM>.xlsx
   public/data/<FUND>/tidied/:
     tidy_assets.csv      <- BCTaiSan           (balance sheet)
     tidy_income.csv      <- BCKetQuaHoatDong   (profit & loss)
@@ -41,6 +41,7 @@ import calendar
 import json
 import re
 import sys
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -54,8 +55,8 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "public" / "data"
 
-# Standard report file name: <FUND>_BC_THANG_<MM><YYYY>.xlsx
-FUND_FILE_RE = re.compile(r"^([A-Za-z0-9]+)_BC_THANG_\d{6}\.xlsx$")
+# Standard report file name: <FUND>_<YYYY>_<MM>.xlsx
+FUND_FILE_RE = re.compile(r"^([A-Za-z0-9]+)_(\d{4})_(\d{2})\.xlsx$")
 
 TABLES = ["assets", "income", "portfolio", "indicators", "borrowing"]
 
@@ -98,14 +99,18 @@ VALUE_COLS = {
 
 
 def fund_from_name(name):
-    """Fund id from the standard '<FUND>_BC_THANG_<MM><YYYY>.xlsx' file name."""
+    """Fund id from the standard '<FUND>_<YYYY>_<MM>.xlsx' file name."""
     m = FUND_FILE_RE.match(name)
     if not m:
         raise ValueError(
             f"file '{name}' does not match the standard name "
-            f"<FUND>_BC_THANG_<MM><YYYY>.xlsx (e.g. DCDS_BC_THANG_072026.xlsx)"
+            f"<FUND>_<YYYY>_<MM>.xlsx (e.g. DCDS_2026_07.xlsx)"
         )
-    return m.group(1).upper()
+    fund = m.group(1).upper()
+    year, month = int(m.group(2)), int(m.group(3))
+    if not (2000 <= year <= 2100 and 1 <= month <= 12):
+        raise ValueError(f"file '{name}' has an invalid year/month ({year}-{month:02d})")
+    return fund
 
 
 def fund_dirs(fund):
@@ -135,6 +140,9 @@ def parse_vn_date(text):
         return text
     if not isinstance(text, str):
         return None
+    # Old reports (2018-2020) store Vietnamese in NFD (decomposed) form:
+    # 'a' + U+0300 instead of 'a'. Normalize so the regex matches both.
+    text = unicodedata.normalize("NFC", text)
     m = re.search(r"Ng\u00e0y\s+(\d{1,2})\s+th\u00e1ng\s+(\d{1,2})\s+n\u0103m\s+(\d{4})", text, re.IGNORECASE)
     if m:
         return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
@@ -267,6 +275,10 @@ def build_assets(ws, header, as_of):
     out = []
     for _r, b, code, (d, e) in table_rows(ws, "assets", header, as_of):
         label = english_part(b)
+        # The 2018-2020 template numbers the sections differently, so the
+        # NAV row reads 'Net Asset Value ( = I.8 - II.3)' there while 2021+
+        # uses '= I.10 - II.4'. Normalize so the same line item merges.
+        label = label.replace("= I.8 - II.3", "= I.10 - II.4")
         out.append([code, label, cur.isoformat(), cell_str(d), as_of])
         out.append([code, label, prev.isoformat(), cell_str(e), as_of])
     return out
@@ -299,9 +311,12 @@ def build_portfolio(ws, header, as_of):
     period = _require_date(parse_vn_date(ws.cell(5, 1).value), "reporting", ws.title)
     section = ""
     out = []
-    for _r, b, code, (d, e, f, g) in table_rows(ws, "portfolio", header, as_of):
+    for _r, b, code, (d, e, f, g) in table_rows(ws, "portfolio", header, as_of, keep_text_rows=True):
         a_str = cell_str(ws.cell(_r, 1).value).strip()
-        if re.fullmatch(r"[IVX]+", a_str) and code:
+        # Section headers have a roman-numeral STT. In 2021-2022 reports the
+        # code column (C) is empty on every row, so the header test must not
+        # require a code.
+        if re.fullmatch(r"[IVX]+", a_str) and b.strip():
             section = english_part(b)
             ticker = ""
         elif b.strip().startswith("T\u1ed4NG"):
@@ -312,6 +327,11 @@ def build_portfolio(ws, header, as_of):
             period.isoformat(), section, code, ticker,
             cell_str(d), cell_str(e), cell_str(f), cell_str(g), as_of,
         ])
+        # The 2018-2020 reports append a second table (futures positions) to
+        # this sheet below the grand total. Stop at "Total value of portfolio"
+        # so that table never leaks into the portfolio data.
+        if "Total value of portfolio" in b:
+            break
     return out
 
 
@@ -346,9 +366,16 @@ def _value_map(ws, header, col):
         raw = ws.cell(r, col).value
         if is_spacer(raw):
             continue
-        v = numeric_or_none(raw)
-        if v is not None:
-            out[str(code).strip()] = v
+        # Some old reports put a text label in a numeric column (e.g. the
+        # futures-position table inside the portfolio sheet). Never crash on
+        # that; only numeric cells take part in the reconciliation.
+        if isinstance(raw, (int, float)):
+            out[str(code).strip()] = float(raw)
+        elif isinstance(raw, str):
+            try:
+                out[str(code).strip()] = float(raw)
+            except ValueError:
+                pass
     return out
 
 
@@ -421,6 +448,34 @@ def natural_parts(v):
     return tuple(int(p) if p.isdigit() else p for p in re.split(r"\.", str(v)))
 
 
+def backfill_codes(df, table):
+    """Fill empty codes from an unambiguous {line_item: code} map.
+
+    The 2021-2022 reports left the code column empty in BCTaiSan. Rows whose
+    English line_item maps to exactly one code in the coded era (2023+) are
+    given that code. Ambiguous labels (e.g. 'Other payables' = 2215.17 and
+    2215.17.4) stay empty rather than risk a wrong assignment.
+    """
+    if table not in ("assets", "income", "indicators"):
+        return df
+    coded = df[df["code"] != ""]
+    if coded.empty:
+        return df
+    label_to_codes = {}
+    for li, code in zip(coded["line_item"], coded["code"]):
+        label_to_codes.setdefault(li, set()).add(code)
+    unambiguous = {
+        li: next(iter(codes))
+        for li, codes in label_to_codes.items()
+        if len(codes) == 1
+    }
+    if not unambiguous:
+        return df
+    empty = df["code"] == ""
+    df.loc[empty, "code"] = df.loc[empty, "line_item"].map(unambiguous).fillna("")
+    return df
+
+
 def merge_table(table, new_rows, tidy_dir):
     """Merge new rows into the table's CSV content (or a fresh frame)."""
     path = tidy_dir / f"tidy_{table}.csv"
@@ -431,9 +486,38 @@ def merge_table(table, new_rows, tidy_dir):
         df = pd.concat([old_df, new_df], ignore_index=True)
     else:
         df = new_df
+    df = backfill_codes(df, table)
+    if table == "portfolio":
+        # Portfolio rows carry no stable natural key: in the 2021-2022 era the
+        # code column is empty on every row (section headers and totals
+        # included), so keying on (period_end, code) collapses them. Dedupe
+        # exact duplicates only; re-running a file is idempotent, distinct
+        # rows always survive.
+        df = df.drop_duplicates(keep="last")
+        df = df.sort_values(["period_end"], kind="stable")
+        return df
     keys = KEYS[table]
-    df = df.sort_values(keys + ["asOf"], kind="stable")
-    df = df.drop_duplicates(subset=keys, keep="last")
+    if table in ("assets", "income", "indicators"):
+        # In the 2021-2022 era the code column is empty on many rows, and two
+        # genuinely different line items can share the same English label
+        # (e.g. 'Other payables' parent vs sub-item). Keying such rows by
+        # (code, line_item, period) would collapse them and keep a wrong value.
+        # For empty-code rows key on (line_item, period, value): identical
+        # rows from overlapping months merge (newest asOf), distinct rows
+        # survive.
+        coded = df[df["code"] != ""]
+        empty = df[df["code"] == ""]
+        if not coded.empty:
+            coded = coded.sort_values(keys + ["asOf"], kind="stable") \
+                         .drop_duplicates(subset=keys, keep="last")
+        if not empty.empty:
+            ekeys = [k for k in keys if k != "code"]
+            empty = empty.sort_values(ekeys + ["value", "asOf"], kind="stable") \
+                         .drop_duplicates(subset=ekeys + ["value"], keep="last")
+        df = pd.concat([coded, empty], ignore_index=True)
+    else:
+        df = df.sort_values(keys + ["asOf"], kind="stable")
+        df = df.drop_duplicates(subset=keys, keep="last")
     if table == "borrowing":
         df = df.sort_values(["period_end", "item"], kind="stable")
     else:
@@ -492,6 +576,12 @@ def write_manifests(meta_per_file, tidy_dir, fund):
 
 def process_file(path):
     fund = fund_from_name(path.name)
+    raw_dir, _ = fund_dirs(fund)
+    if path.parent.resolve() != raw_dir.resolve():
+        raise ValueError(
+            f"file '{path.name}' names fund '{fund}' but is not in {raw_dir} — "
+            f"a misnamed or misplaced file would be written into the wrong fund's tidied files"
+        )
     wb = openpyxl.load_workbook(path, data_only=True)
     print(f"== {path.name} (fund {fund})")
     sheets = {}
