@@ -5826,9 +5826,16 @@ h1, h2, h3 {
 }
 
 .cmp-table--rolling .cmp-table-row {
-  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  /* Cột đầu dùng minmax để mọi hàng khởi đầu cùng chiều rộng, không bị tên
+     quỹ dài (vd GOLD_NHAN_SJC) đẩy lệch các cột số phía sau. Cột số dùng
+     minmax(0, 1fr) để nội dung không giãn cột riêng lẻ theo từng hàng. */
+  grid-template-columns: minmax(150px, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   padding: 8px 10px;
+}
+
+.cmp-table--rolling .cmp-table-row > * {
+  min-width: 0;
 }
 
 /* Hàng nhóm: Quỹ (1 cột) + Thống Kê (span 5) + Phân bổ (span 5).
@@ -5855,7 +5862,6 @@ h1, h2, h3 {
 .cmp-table--rolling .cmp-table-head--rolling {
   text-transform: none;
   letter-spacing: 0.01em;
-  white-space: nowrap;
   text-align: center;
 }
 
@@ -6011,7 +6017,7 @@ h1, h2, h3 {
   }
   .cmp-table--rolling .cmp-table-row,
   .cmp-table--rolling .cmp-table-row--rolling {
-    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: minmax(150px, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
     min-width: 830px;
     row-gap: 0;
   }
