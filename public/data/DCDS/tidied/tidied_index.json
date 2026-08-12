@@ -1,0 +1,17 @@
+{
+  "fund": "DCDS",
+  "sheets": [
+    "assets",
+    "income",
+    "portfolio",
+    "indicators",
+    "borrowing"
+  ],
+  "source_files": [
+    "DCDS_BC_THANG_062026.xlsx",
+    "DCDS_BC_THANG_072026.xlsx"
+  ],
+  "latest_period": "2026-07-31",
+  "latest_as_of": "2026-08-03",
+  "updated": "2026-08-12"
+}

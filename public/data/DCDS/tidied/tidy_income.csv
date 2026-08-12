@@ -1,0 +1,316 @@
+code,line_item,period_end,measure,value,asOf
+,Real Estate Management Service fee (not applicable),2026-05-31,month,0,2026-07-02
+,Real estate valuation service fees (not applicable),2026-05-31,month,0,2026-07-02
+2220,Income from Investment Activities,2026-05-31,month,31216879940,2026-07-02
+2221,"Dividend income, interest income from bonds",2026-05-31,month,31121435000,2026-07-02
+2221.1,Dividends income,2026-05-31,month,31121435000,2026-07-02
+2221.2,Interest income from bonds,2026-05-31,month,0,2026-07-02
+2222,Interest income,2026-05-31,month,95444940,2026-07-02
+2222.1,Interest income from bank deposits,2026-05-31,month,95444940,2026-07-02
+2222.2,Interest income from Money market instruments,2026-05-31,month,0,2026-07-02
+2222.3,Interest income from reverse repo contracts,2026-05-31,month,0,2026-07-02
+2223,Income from rental property (not applicable),2026-05-31,month,0,2026-07-02
+2223,Other incomes,2026-05-31,month,0,2026-07-02
+2223.1,Other investment incomes,2026-05-31,month,0,2026-07-02
+2223.2,Other incomes,2026-05-31,month,0,2026-07-02
+2223.3,"Provision expense for bad debts from dividends, interest income and written off bad debts from dividends, interest income",2026-05-31,month,0,2026-07-02
+2224,Expenses,2026-05-31,month,17265323210,2026-07-02
+2225,Management Fee paid to Fund Management Company,2026-05-31,month,10158499737,2026-07-02
+2226,"Custody fee, Supervising fee paid to Supervising Bank/VSDC",2026-05-31,month,554713741,2026-07-02
+2226.1,Custodian service - Safe Custody Fee,2026-05-31,month,208379479,2026-07-02
+2226.2,Custodian service - Transaction fee,2026-05-31,month,82100000,2026-07-02
+2226.3,"Custodian service -  Depository fee, Position and Margin management fee paid to VSDC",2026-05-31,month,35016830,2026-07-02
+2226.4,Supervisory fee,2026-05-31,month,229217432,2026-07-02
+2227,"Fund Administration Fee, and other fees paid to relevant Fund's service providers",2026-05-31,month,156460892,2026-07-02
+2227.1,Fund Administration Fee,2026-05-31,month,143260892,2026-07-02
+2227.2,Transfer Agency Fee,2026-05-31,month,13200000,2026-07-02
+2228,Audit fee,2026-05-31,month,17937535,2026-07-02
+2229,"Legal consultancy expenses, price feed fee, other valid expenses, remuneration paid to Fund's Board of Representatives",2026-05-31,month,25282915,2026-07-02
+2229.1,Remuneration of Fund's Board of Representatives,2026-05-31,month,13019179,2026-07-02
+2229.2,Price feed fee,2026-05-31,month,12263736,2026-07-02
+2229.3,Legal consultancy expenses,2026-05-31,month,0,2026-07-02
+2230,"Fee for drafting, printing, distribution of prospectus, summarised prospectus, financial statements, transaction confirmations, account statements and other documents to investors; information disclosure fee; fee for organising annual general meeting, board of representatives meeting",2026-05-31,month,9029236,2026-07-02
+2230.1,Meeting expenses,2026-05-31,month,9029236,2026-07-02
+2230.2,Annual report expenses,2026-05-31,month,0,2026-07-02
+2230.3,"Fund's Board of Representatives meeting, travelling expenses",2026-05-31,month,0,2026-07-02
+2230.4,Expenses of information disclosure of the Fund,2026-05-31,month,0,2026-07-02
+2230.5,"Designing, printing, posting... expenses",2026-05-31,month,0,2026-07-02
+2231,Expenses related to execution of Fund’s asset transactions,2026-05-31,month,6334918617,2026-07-02
+2231.1,Brokerage & transfer fee,2026-05-31,month,6311469370,2026-07-02
+2231.2,Clearing settlement fee,2026-05-31,month,23449247,2026-07-02
+2231.3,Other Expenses,2026-05-31,month,0,2026-07-02
+2232,Other expenses,2026-05-31,month,8480537,2026-07-02
+2232.1,Set up Expenses,2026-05-31,month,0,2026-07-02
+2232.2,"Listing, registration fees",2026-05-31,month,0,2026-07-02
+2232.3,Annual management fee paid to SSC,2026-05-31,month,636987,2026-07-02
+2232.4,Bank charges,2026-05-31,month,7843550,2026-07-02
+2232.5,Borrowing expense,2026-05-31,month,0,2026-07-02
+2232.6,Other Expenses,2026-05-31,month,0,2026-07-02
+2232.7,Fee paid to VSDC for getting the list of investors,2026-05-31,month,0,2026-07-02
+2233,Net Income from Investment Activities (= I - II),2026-05-31,month,13951556730,2026-07-02
+2234,Gain / (Loss) from Investment Activities,2026-05-31,month,-164629252040,2026-07-02
+2235,Realised Gain / (Loss) from disposal of investment or real estate transfer,2026-05-31,month,12133695576,2026-07-02
+2236,Unrealised Gain / (Loss) due to market price,2026-05-31,month,-176762947616,2026-07-02
+2237,Change of Net Asset Value of the Fund due to investment activities during the period (= III + IV),2026-05-31,month,-150677695310,2026-07-02
+2238,Net Asset Value at the beginning of period,2026-05-31,month,6120936537919,2026-07-02
+2239,"Change of Net Asset Value of the Fund during the period, of which",2026-05-31,month,-168906155566,2026-07-02
+2239.1,Change of Net Asset Value due to investment activities during the period,2026-05-31,month,-150677695310,2026-07-02
+2239.2,Change of Net Asset Value due to  dividends payment to investors during the period,2026-05-31,month,0,2026-07-02
+2239.3,Change of Net Asset Value due to subscription/redemption during the period,2026-05-31,month,-18228460256,2026-07-02
+2239.3.1,Change of Net Asset Value due to subscription during the period,2026-05-31,month,205954922232,2026-07-02
+2239.3.2,Change of Net Asset Value due to redemption during the period,2026-05-31,month,-224183382488,2026-07-02
+2243,Net Asset Value at the end of period,2026-05-31,month,5952030382353,2026-07-02
+2244,Average annual profit (only applicable to annual report),2026-05-31,month,0,2026-07-02
+2245,Average annual rate of return (only applicable to annual report),2026-05-31,month,0,2026-07-02
+,Real Estate Management Service fee (not applicable),2026-06-30,month,0,2026-08-03
+,Real Estate Management Service fee (not applicable),2026-06-30,ytd,0,2026-07-02
+,Real estate valuation service fees (not applicable),2026-06-30,month,0,2026-08-03
+,Real estate valuation service fees (not applicable),2026-06-30,ytd,0,2026-07-02
+2220,Income from Investment Activities,2026-06-30,month,25239479789,2026-08-03
+2220,Income from Investment Activities,2026-06-30,ytd,60294963108,2026-07-02
+2221,"Dividend income, interest income from bonds",2026-06-30,month,25053910000,2026-08-03
+2221,"Dividend income, interest income from bonds",2026-06-30,ytd,59393732500,2026-07-02
+2221.1,Dividends income,2026-06-30,month,25053910000,2026-08-03
+2221.1,Dividends income,2026-06-30,ytd,59393732500,2026-07-02
+2221.2,Interest income from bonds,2026-06-30,month,0,2026-08-03
+2221.2,Interest income from bonds,2026-06-30,ytd,0,2026-07-02
+2222,Interest income,2026-06-30,month,185569789,2026-08-03
+2222,Interest income,2026-06-30,ytd,822578005,2026-07-02
+2222.1,Interest income from bank deposits,2026-06-30,month,185569789,2026-08-03
+2222.1,Interest income from bank deposits,2026-06-30,ytd,822578005,2026-07-02
+2222.2,Interest income from Money market instruments,2026-06-30,month,0,2026-08-03
+2222.2,Interest income from Money market instruments,2026-06-30,ytd,0,2026-07-02
+2222.3,Interest income from reverse repo contracts,2026-06-30,month,0,2026-08-03
+2222.3,Interest income from reverse repo contracts,2026-06-30,ytd,0,2026-07-02
+2223,Income from rental property (not applicable),2026-06-30,month,0,2026-08-03
+2223,Income from rental property (not applicable),2026-06-30,ytd,0,2026-07-02
+2223,Other incomes,2026-06-30,month,0,2026-08-03
+2223,Other incomes,2026-06-30,ytd,78652603,2026-07-02
+2223.1,Other investment incomes,2026-06-30,month,0,2026-08-03
+2223.1,Other investment incomes,2026-06-30,ytd,0,2026-07-02
+2223.2,Other incomes,2026-06-30,month,0,2026-08-03
+2223.2,Other incomes,2026-06-30,ytd,78652603,2026-07-02
+2223.3,"Provision expense for bad debts from dividends, interest income and written off bad debts from dividends, interest income",2026-06-30,month,0,2026-08-03
+2223.3,"Provision expense for bad debts from dividends, interest income and written off bad debts from dividends, interest income",2026-06-30,ytd,0,2026-07-02
+2224,Expenses,2026-06-30,month,16675207792,2026-08-03
+2224,Expenses,2026-06-30,ytd,103017634877,2026-07-02
+2225,Management Fee paid to Fund Management Company,2026-06-30,month,9556339886,2026-08-03
+2225,Management Fee paid to Fund Management Company,2026-06-30,ytd,57691791220,2026-07-02
+2226,"Custody fee, Supervising fee paid to Supervising Bank/VSDC",2026-06-30,month,542136296,2026-08-03
+2226,"Custody fee, Supervising fee paid to Supervising Bank/VSDC",2026-06-30,ytd,3202182569,2026-07-02
+2226.1,Custodian service - Safe Custody Fee,2026-06-30,month,196027485,2026-08-03
+2226.1,Custodian service - Safe Custody Fee,2026-06-30,ytd,1183421355,2026-07-02
+2226.2,Custodian service - Transaction fee,2026-06-30,month,96200000,2026-08-03
+2226.2,Custodian service - Transaction fee,2026-06-30,ytd,515700000,2026-07-02
+2226.3,"Custodian service -  Depository fee, Position and Margin management fee paid to VSDC",2026-06-30,month,34278577,2026-08-03
+2226.3,"Custodian service -  Depository fee, Position and Margin management fee paid to VSDC",2026-06-30,ytd,201297713,2026-07-02
+2226.4,Supervisory fee,2026-06-30,month,215630234,2026-08-03
+2226.4,Supervisory fee,2026-06-30,ytd,1301763501,2026-07-02
+2227,"Fund Administration Fee, and other fees paid to relevant Fund's service providers",2026-06-30,month,147968897,2026-08-03
+2227,"Fund Administration Fee, and other fees paid to relevant Fund's service providers",2026-06-30,ytd,892802181,2026-07-02
+2227.1,Fund Administration Fee,2026-06-30,month,134768897,2026-08-03
+2227.1,Fund Administration Fee,2026-06-30,ytd,813602181,2026-07-02
+2227.2,Transfer Agency Fee,2026-06-30,month,13200000,2026-08-03
+2227.2,Transfer Agency Fee,2026-06-30,ytd,79200000,2026-07-02
+2228,Audit fee,2026-06-30,month,18533661,2026-08-03
+2228,Audit fee,2026-06-30,ytd,104922678,2026-07-02
+2229,"Legal consultancy expenses, price feed fee, other valid expenses, remuneration paid to Fund's Board of Representatives",2026-06-30,month,3854433,2026-08-03
+2229,"Legal consultancy expenses, price feed fee, other valid expenses, remuneration paid to Fund's Board of Representatives",2026-06-30,ytd,151700685,2026-07-02
+2229.1,Remuneration of Fund's Board of Representatives,2026-06-30,month,12986301,2026-08-03
+2229.1,Remuneration of Fund's Board of Representatives,2026-06-30,ytd,77950685,2026-07-02
+2229.2,Price feed fee,2026-06-30,month,-9131868,2026-08-03
+2229.2,Price feed fee,2026-06-30,ytd,73750000,2026-07-02
+2229.3,Legal consultancy expenses,2026-06-30,month,0,2026-08-03
+2229.3,Legal consultancy expenses,2026-06-30,ytd,0,2026-07-02
+2230,"Fee for drafting, printing, distribution of prospectus, summarised prospectus, financial statements, transaction confirmations, account statements and other documents to investors; information disclosure fee; fee for organising annual general meeting, board of representatives meeting",2026-06-30,month,8355591,2026-08-03
+2230,"Fee for drafting, printing, distribution of prospectus, summarised prospectus, financial statements, transaction confirmations, account statements and other documents to investors; information disclosure fee; fee for organising annual general meeting, board of representatives meeting",2026-06-30,ytd,52336708,2026-07-02
+2230.1,Meeting expenses,2026-06-30,month,8355591,2026-08-03
+2230.1,Meeting expenses,2026-06-30,ytd,52336708,2026-07-02
+2230.2,Annual report expenses,2026-06-30,month,0,2026-08-03
+2230.2,Annual report expenses,2026-06-30,ytd,0,2026-07-02
+2230.3,"Fund's Board of Representatives meeting, travelling expenses",2026-06-30,month,0,2026-08-03
+2230.3,"Fund's Board of Representatives meeting, travelling expenses",2026-06-30,ytd,0,2026-07-02
+2230.4,Expenses of information disclosure of the Fund,2026-06-30,month,0,2026-08-03
+2230.4,Expenses of information disclosure of the Fund,2026-06-30,ytd,0,2026-07-02
+2230.5,"Designing, printing, posting... expenses",2026-06-30,month,0,2026-08-03
+2230.5,"Designing, printing, posting... expenses",2026-06-30,ytd,0,2026-07-02
+2231,Expenses related to execution of Fund’s asset transactions,2026-06-30,month,6387727540,2026-08-03
+2231,Expenses related to execution of Fund’s asset transactions,2026-06-30,ytd,40857253958,2026-07-02
+2231.1,Brokerage & transfer fee,2026-06-30,month,6365945295,2026-08-03
+2231.1,Brokerage & transfer fee,2026-06-30,ytd,40746032652,2026-07-02
+2231.2,Clearing settlement fee,2026-06-30,month,21782245,2026-08-03
+2231.2,Clearing settlement fee,2026-06-30,ytd,111221306,2026-07-02
+2231.3,Other Expenses,2026-06-30,month,0,2026-08-03
+2231.3,Other Expenses,2026-06-30,ytd,0,2026-07-02
+2232,Other expenses,2026-06-30,month,10291488,2026-08-03
+2232,Other expenses,2026-06-30,ytd,64644878,2026-07-02
+2232.1,Set up Expenses,2026-06-30,month,0,2026-08-03
+2232.1,Set up Expenses,2026-06-30,ytd,0,2026-07-02
+2232.2,"Listing, registration fees",2026-06-30,month,0,2026-08-03
+2232.2,"Listing, registration fees",2026-06-30,ytd,0,2026-07-02
+2232.3,Annual management fee paid to SSC,2026-06-30,month,616438,2026-08-03
+2232.3,Annual management fee paid to SSC,2026-06-30,ytd,3719178,2026-07-02
+2232.4,Bank charges,2026-06-30,month,9675050,2026-08-03
+2232.4,Bank charges,2026-06-30,ytd,49925700,2026-07-02
+2232.5,Borrowing expense,2026-06-30,month,0,2026-08-03
+2232.5,Borrowing expense,2026-06-30,ytd,0,2026-07-02
+2232.6,Other Expenses,2026-06-30,month,0,2026-08-03
+2232.6,Other Expenses,2026-06-30,ytd,0,2026-07-02
+2232.7,Fee paid to VSDC for getting the list of investors,2026-06-30,month,0,2026-08-03
+2232.7,Fee paid to VSDC for getting the list of investors,2026-06-30,ytd,11000000,2026-07-02
+2233,Net Income from Investment Activities (= I - II),2026-06-30,month,8564271997,2026-08-03
+2233,Net Income from Investment Activities (= I - II),2026-06-30,ytd,-42722671769,2026-07-02
+2234,Gain / (Loss) from Investment Activities,2026-06-30,month,-33605136500,2026-08-03
+2234,Gain / (Loss) from Investment Activities,2026-06-30,ytd,-379062889060,2026-07-02
+2235,Realised Gain / (Loss) from disposal of investment or real estate transfer,2026-06-30,month,-73448220485,2026-08-03
+2235,Realised Gain / (Loss) from disposal of investment or real estate transfer,2026-06-30,ytd,76577164575,2026-07-02
+2236,Unrealised Gain / (Loss) due to market price,2026-06-30,month,39843083985,2026-08-03
+2236,Unrealised Gain / (Loss) due to market price,2026-06-30,ytd,-455640053635,2026-07-02
+2237,Change of Net Asset Value of the Fund due to investment activities during the period (= III + IV),2026-06-30,month,-25040864503,2026-08-03
+2237,Change of Net Asset Value of the Fund due to investment activities during the period (= III + IV),2026-06-30,ytd,-421785560829,2026-07-02
+2238,Net Asset Value at the beginning of period,2026-06-30,month,5952030382353,2026-08-03
+2238,Net Asset Value at the beginning of period,2026-06-30,ytd,5774035742450,2026-07-02
+2239,"Change of Net Asset Value of the Fund during the period, of which",2026-06-30,month,118712909304,2026-08-03
+2239,"Change of Net Asset Value of the Fund during the period, of which",2026-06-30,ytd,296707549207,2026-07-02
+2239.1,Change of Net Asset Value due to investment activities during the period,2026-06-30,month,-25040864503,2026-08-03
+2239.1,Change of Net Asset Value due to investment activities during the period,2026-06-30,ytd,-421785560829,2026-07-02
+2239.2,Change of Net Asset Value due to  dividends payment to investors during the period,2026-06-30,month,0,2026-08-03
+2239.2,Change of Net Asset Value due to  dividends payment to investors during the period,2026-06-30,ytd,0,2026-07-02
+2239.3,Change of Net Asset Value due to subscription/redemption during the period,2026-06-30,month,143753773807,2026-08-03
+2239.3,Change of Net Asset Value due to subscription/redemption during the period,2026-06-30,ytd,718493110036,2026-07-02
+2239.3.1,Change of Net Asset Value due to subscription during the period,2026-06-30,month,238466145878,2026-08-03
+2239.3.1,Change of Net Asset Value due to subscription during the period,2026-06-30,ytd,2338068824118,2026-07-02
+2239.3.2,Change of Net Asset Value due to redemption during the period,2026-06-30,month,-94712372071,2026-08-03
+2239.3.2,Change of Net Asset Value due to redemption during the period,2026-06-30,ytd,-1619575714082,2026-07-02
+2243,Net Asset Value at the end of period,2026-06-30,month,6070743291657,2026-08-03
+2243,Net Asset Value at the end of period,2026-06-30,ytd,6070743291657,2026-07-02
+2244,Average annual profit (only applicable to annual report),2026-06-30,month,0,2026-08-03
+2244,Average annual profit (only applicable to annual report),2026-06-30,ytd,0,2026-07-02
+2245,Average annual rate of return (only applicable to annual report),2026-06-30,month,0,2026-08-03
+2245,Average annual rate of return (only applicable to annual report),2026-06-30,ytd,0,2026-07-02
+,Real Estate Management Service fee (not applicable),2026-07-31,month,0,2026-08-03
+,Real Estate Management Service fee (not applicable),2026-07-31,ytd,0,2026-08-03
+,Real estate valuation service fees (not applicable),2026-07-31,month,0,2026-08-03
+,Real estate valuation service fees (not applicable),2026-07-31,ytd,0,2026-08-03
+2220,Income from Investment Activities,2026-07-31,month,18198439421,2026-08-03
+2220,Income from Investment Activities,2026-07-31,ytd,78493402529,2026-08-03
+2221,"Dividend income, interest income from bonds",2026-07-31,month,17535513908,2026-08-03
+2221,"Dividend income, interest income from bonds",2026-07-31,ytd,76929246408,2026-08-03
+2221.1,Dividends income,2026-07-31,month,16994377250,2026-08-03
+2221.1,Dividends income,2026-07-31,ytd,76388109750,2026-08-03
+2221.2,Interest income from bonds,2026-07-31,month,541136658,2026-08-03
+2221.2,Interest income from bonds,2026-07-31,ytd,541136658,2026-08-03
+2222,Interest income,2026-07-31,month,662925513,2026-08-03
+2222,Interest income,2026-07-31,ytd,1485503518,2026-08-03
+2222.1,Interest income from bank deposits,2026-07-31,month,416350170,2026-08-03
+2222.1,Interest income from bank deposits,2026-07-31,ytd,1238928175,2026-08-03
+2222.2,Interest income from Money market instruments,2026-07-31,month,246575343,2026-08-03
+2222.2,Interest income from Money market instruments,2026-07-31,ytd,246575343,2026-08-03
+2222.3,Interest income from reverse repo contracts,2026-07-31,month,0,2026-08-03
+2222.3,Interest income from reverse repo contracts,2026-07-31,ytd,0,2026-08-03
+2223,Income from rental property (not applicable),2026-07-31,month,0,2026-08-03
+2223,Income from rental property (not applicable),2026-07-31,ytd,0,2026-08-03
+2223,Other incomes,2026-07-31,month,0,2026-08-03
+2223,Other incomes,2026-07-31,ytd,78652603,2026-08-03
+2223.1,Other investment incomes,2026-07-31,month,0,2026-08-03
+2223.1,Other investment incomes,2026-07-31,ytd,0,2026-08-03
+2223.2,Other incomes,2026-07-31,month,0,2026-08-03
+2223.2,Other incomes,2026-07-31,ytd,78652603,2026-08-03
+2223.3,"Provision expense for bad debts from dividends, interest income and written off bad debts from dividends, interest income",2026-07-31,month,0,2026-08-03
+2223.3,"Provision expense for bad debts from dividends, interest income and written off bad debts from dividends, interest income",2026-07-31,ytd,0,2026-08-03
+2224,Expenses,2026-07-31,month,16457794144,2026-08-03
+2224,Expenses,2026-07-31,ytd,119475429021,2026-08-03
+2225,Management Fee paid to Fund Management Company,2026-07-31,month,9658563413,2026-08-03
+2225,Management Fee paid to Fund Management Company,2026-07-31,ytd,67350354633,2026-08-03
+2226,"Custody fee, Supervising fee paid to Supervising Bank/VSDC",2026-07-31,month,540474337,2026-08-03
+2226,"Custody fee, Supervising fee paid to Supervising Bank/VSDC",2026-07-31,ytd,3742656906,2026-08-03
+2226.1,Custodian service - Safe Custody Fee,2026-07-31,month,198124375,2026-08-03
+2226.1,Custodian service - Safe Custody Fee,2026-07-31,ytd,1381545730,2026-08-03
+2226.2,Custodian service - Transaction fee,2026-07-31,month,88600000,2026-08-03
+2226.2,Custodian service - Transaction fee,2026-07-31,ytd,604300000,2026-08-03
+2226.3,"Custodian service -  Depository fee, Position and Margin management fee paid to VSDC",2026-07-31,month,35813145,2026-08-03
+2226.3,"Custodian service -  Depository fee, Position and Margin management fee paid to VSDC",2026-07-31,ytd,237110858,2026-08-03
+2226.4,Supervisory fee,2026-07-31,month,217936817,2026-08-03
+2226.4,Supervisory fee,2026-07-31,ytd,1519700318,2026-08-03
+2227,"Fund Administration Fee, and other fees paid to relevant Fund's service providers",2026-07-31,month,149410510,2026-08-03
+2227,"Fund Administration Fee, and other fees paid to relevant Fund's service providers",2026-07-31,ytd,1042212691,2026-08-03
+2227.1,Fund Administration Fee,2026-07-31,month,136210510,2026-08-03
+2227.1,Fund Administration Fee,2026-07-31,ytd,949812691,2026-08-03
+2227.2,Transfer Agency Fee,2026-07-31,month,13200000,2026-08-03
+2227.2,Transfer Agency Fee,2026-07-31,ytd,92400000,2026-08-03
+2228,Audit fee,2026-07-31,month,19592874,2026-08-03
+2228,Audit fee,2026-07-31,ytd,124515552,2026-08-03
+2229,"Legal consultancy expenses, price feed fee, other valid expenses, remuneration paid to Fund's Board of Representatives",2026-07-31,month,13019178,2026-08-03
+2229,"Legal consultancy expenses, price feed fee, other valid expenses, remuneration paid to Fund's Board of Representatives",2026-07-31,ytd,164719863,2026-08-03
+2229.1,Remuneration of Fund's Board of Representatives,2026-07-31,month,13019178,2026-08-03
+2229.1,Remuneration of Fund's Board of Representatives,2026-07-31,ytd,90969863,2026-08-03
+2229.2,Price feed fee,2026-07-31,month,0,2026-08-03
+2229.2,Price feed fee,2026-07-31,ytd,73750000,2026-08-03
+2229.3,Legal consultancy expenses,2026-07-31,month,0,2026-08-03
+2229.3,Legal consultancy expenses,2026-07-31,ytd,0,2026-08-03
+2230,"Fee for drafting, printing, distribution of prospectus, summarised prospectus, financial statements, transaction confirmations, account statements and other documents to investors; information disclosure fee; fee for organising annual general meeting, board of representatives meeting",2026-07-31,month,8490430,2026-08-03
+2230,"Fee for drafting, printing, distribution of prospectus, summarised prospectus, financial statements, transaction confirmations, account statements and other documents to investors; information disclosure fee; fee for organising annual general meeting, board of representatives meeting",2026-07-31,ytd,60827138,2026-08-03
+2230.1,Meeting expenses,2026-07-31,month,8490430,2026-08-03
+2230.1,Meeting expenses,2026-07-31,ytd,60827138,2026-08-03
+2230.2,Annual report expenses,2026-07-31,month,0,2026-08-03
+2230.2,Annual report expenses,2026-07-31,ytd,0,2026-08-03
+2230.3,"Fund's Board of Representatives meeting, travelling expenses",2026-07-31,month,0,2026-08-03
+2230.3,"Fund's Board of Representatives meeting, travelling expenses",2026-07-31,ytd,0,2026-08-03
+2230.4,Expenses of information disclosure of the Fund,2026-07-31,month,0,2026-08-03
+2230.4,Expenses of information disclosure of the Fund,2026-07-31,ytd,0,2026-08-03
+2230.5,"Designing, printing, posting... expenses",2026-07-31,month,0,2026-08-03
+2230.5,"Designing, printing, posting... expenses",2026-07-31,ytd,0,2026-08-03
+2231,Expenses related to execution of Fund’s asset transactions,2026-07-31,month,6057930816,2026-08-03
+2231,Expenses related to execution of Fund’s asset transactions,2026-07-31,ytd,46915184774,2026-08-03
+2231.1,Brokerage & transfer fee,2026-07-31,month,6040674742,2026-08-03
+2231.1,Brokerage & transfer fee,2026-07-31,ytd,46786707394,2026-08-03
+2231.2,Clearing settlement fee,2026-07-31,month,17256074,2026-08-03
+2231.2,Clearing settlement fee,2026-07-31,ytd,128477380,2026-08-03
+2231.3,Other Expenses,2026-07-31,month,0,2026-08-03
+2231.3,Other Expenses,2026-07-31,ytd,0,2026-08-03
+2232,Other expenses,2026-07-31,month,10312586,2026-08-03
+2232,Other expenses,2026-07-31,ytd,74957464,2026-08-03
+2232.1,Set up Expenses,2026-07-31,month,0,2026-08-03
+2232.1,Set up Expenses,2026-07-31,ytd,0,2026-08-03
+2232.2,"Listing, registration fees",2026-07-31,month,0,2026-08-03
+2232.2,"Listing, registration fees",2026-07-31,ytd,0,2026-08-03
+2232.3,Annual management fee paid to SSC,2026-07-31,month,636986,2026-08-03
+2232.3,Annual management fee paid to SSC,2026-07-31,ytd,4356164,2026-08-03
+2232.4,Bank charges,2026-07-31,month,9675600,2026-08-03
+2232.4,Bank charges,2026-07-31,ytd,59601300,2026-08-03
+2232.5,Borrowing expense,2026-07-31,month,0,2026-08-03
+2232.5,Borrowing expense,2026-07-31,ytd,0,2026-08-03
+2232.6,Other Expenses,2026-07-31,month,0,2026-08-03
+2232.6,Other Expenses,2026-07-31,ytd,0,2026-08-03
+2232.7,Fee paid to VSDC for getting the list of investors,2026-07-31,month,0,2026-08-03
+2232.7,Fee paid to VSDC for getting the list of investors,2026-07-31,ytd,11000000,2026-08-03
+2233,Net Income from Investment Activities (= I - II),2026-07-31,month,1740645277,2026-08-03
+2233,Net Income from Investment Activities (= I - II),2026-07-31,ytd,-40982026492,2026-08-03
+2234,Gain / (Loss) from Investment Activities,2026-07-31,month,-468575753900,2026-08-03
+2234,Gain / (Loss) from Investment Activities,2026-07-31,ytd,-847638642960,2026-08-03
+2235,Realised Gain / (Loss) from disposal of investment or real estate transfer,2026-07-31,month,-267015523861,2026-08-03
+2235,Realised Gain / (Loss) from disposal of investment or real estate transfer,2026-07-31,ytd,-190438359286,2026-08-03
+2236,Unrealised Gain / (Loss) due to market price,2026-07-31,month,-201560230039,2026-08-03
+2236,Unrealised Gain / (Loss) due to market price,2026-07-31,ytd,-657200283674,2026-08-03
+2237,Change of Net Asset Value of the Fund due to investment activities during the period (= III + IV),2026-07-31,month,-466835108623,2026-08-03
+2237,Change of Net Asset Value of the Fund due to investment activities during the period (= III + IV),2026-07-31,ytd,-888620669452,2026-08-03
+2238,Net Asset Value at the beginning of period,2026-07-31,month,6070743291657,2026-08-03
+2238,Net Asset Value at the beginning of period,2026-07-31,ytd,5774035742450,2026-08-03
+2239,"Change of Net Asset Value of the Fund during the period, of which",2026-07-31,month,-347398383973,2026-08-03
+2239,"Change of Net Asset Value of the Fund during the period, of which",2026-07-31,ytd,-50690834766,2026-08-03
+2239.1,Change of Net Asset Value due to investment activities during the period,2026-07-31,month,-466835108623,2026-08-03
+2239.1,Change of Net Asset Value due to investment activities during the period,2026-07-31,ytd,-888620669452,2026-08-03
+2239.2,Change of Net Asset Value due to  dividends payment to investors during the period,2026-07-31,month,0,2026-08-03
+2239.2,Change of Net Asset Value due to  dividends payment to investors during the period,2026-07-31,ytd,0,2026-08-03
+2239.3,Change of Net Asset Value due to subscription/redemption during the period,2026-07-31,month,119436724650,2026-08-03
+2239.3,Change of Net Asset Value due to subscription/redemption during the period,2026-07-31,ytd,837929834686,2026-08-03
+2239.3.1,Change of Net Asset Value due to subscription during the period,2026-07-31,month,219709890392,2026-08-03
+2239.3.1,Change of Net Asset Value due to subscription during the period,2026-07-31,ytd,2557778714510,2026-08-03
+2239.3.2,Change of Net Asset Value due to redemption during the period,2026-07-31,month,-100273165742,2026-08-03
+2239.3.2,Change of Net Asset Value due to redemption during the period,2026-07-31,ytd,-1719848879824,2026-08-03
+2243,Net Asset Value at the end of period,2026-07-31,month,5723344907684,2026-08-03
+2243,Net Asset Value at the end of period,2026-07-31,ytd,5723344907684,2026-08-03
+2244,Average annual profit (only applicable to annual report),2026-07-31,month,0,2026-08-03
+2244,Average annual profit (only applicable to annual report),2026-07-31,ytd,0,2026-08-03
+2245,Average annual rate of return (only applicable to annual report),2026-07-31,month,0,2026-08-03
+2245,Average annual rate of return (only applicable to annual report),2026-07-31,ytd,0,2026-08-03
