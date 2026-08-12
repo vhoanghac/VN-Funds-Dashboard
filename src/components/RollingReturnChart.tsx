@@ -278,7 +278,6 @@ function RollingStatsTable({ series }: { series: ChartSeries[] }) {
         <span>Quỹ</span>
         <span>Thấp nhất</span>
         <span>P10</span>
-        <span>Trung bình</span>
         <span>Trung vị</span>
         <span>P90</span>
         <span>Cao nhất</span>
@@ -300,7 +299,6 @@ function RollingStatsTable({ series }: { series: ChartSeries[] }) {
             <>
               <span className="cmp-num-neg">{fmtPct(r.stats.min)}</span>
               <span>{fmtPct(r.stats.p10)}</span>
-              <span className="cmp-num-strong">{fmtPct(r.stats.mean)}</span>
               <span className="cmp-num-strong">{fmtPct(r.stats.median)}</span>
               <span>{fmtPct(r.stats.p90)}</span>
               <span>{fmtPct(r.stats.max)}</span>
