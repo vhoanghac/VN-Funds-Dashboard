@@ -139,7 +139,7 @@ function WinnerSection({ stats }: { stats: FundStats[] }) {
               tick={{ fontSize: 12 }}
               tickFormatter={v => `${v.toFixed(0)}%`}
             />
-            <YAxis type="category" dataKey="id" tick={{ fontSize: 12 }} width={80} />
+            <YAxis type="category" dataKey="id" tick={{ fontSize: 12 }} width={axisWidthFor(sorted.map(s => s.id))} />
             <Tooltip
               formatter={(v: number, _n, item) => {
                 const p = item?.payload as { final?: number } | undefined
@@ -258,7 +258,7 @@ function ConsistencySection({ stats }: { stats: FundStats[] }) {
               tick={{ fontSize: 12 }}
               tickFormatter={v => `${v.toFixed(0)}%`}
             />
-            <YAxis type="category" dataKey="id" tick={{ fontSize: 12 }} width={80} />
+            <YAxis type="category" dataKey="id" tick={{ fontSize: 12 }} width={axisWidthFor(sorted.map(s => s.id))} />
             <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, 'Rolling 12m dương']} />
             <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={d.color} />)}
@@ -438,6 +438,12 @@ function CharacterSection({ stats }: { stats: FundStats[] }) {
 }
 
 // ─── Utils ────────────────────────────────────────────────
+
+/** Chiều rộng trục Y (px) đủ chứa tên dài nhất. 12px font ≈ 6.5px/ký tự. */
+function axisWidthFor(ids: string[]): number {
+  const longest = ids.reduce((max, id) => Math.max(max, id.length), 0)
+  return Math.max(80, Math.ceil(longest * 6.8) + 14)
+}
 
 function yearsBetween(start: string, end: string): number {
   const a = new Date(start).getTime()
