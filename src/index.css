@@ -7298,6 +7298,252 @@ h1, h2, h3 {
   margin: 0 0 6px;
 }
 
+/* ── Tab Phân Tích Quỹ (fund-analysis-*) ── */
+
+/* Layout tổng tài sản: [tổng số | donut | cards phân bổ], kiểu digiinvest.
+   Cân giữa bộ ba bằng 2 cột lề bằng nhau (1fr auto 1fr); khối tổng căn PHẢI
+   để số sát donut, cards căn trái sát donut — không để hở giữa các cột. */
+.fund-analysis-summary {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  margin: 4px 0 14px;
+}
+
+.fund-analysis-total-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.fund-analysis-total-caption {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.fund-analysis-total-value {
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--color-primary);
+}
+
+.fund-analysis-delta {
+  font-size: 0.82rem;
+}
+
+.fund-analysis-delta.pos {
+  color: #047857;
+}
+
+.fund-analysis-delta.neg {
+  color: #be123c;
+}
+
+/* Donut conic-gradient (hole bằng vòng tròn nền) */
+.fund-analysis-donut-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.fund-analysis-donut {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fund-analysis-donut-hole {
+  position: absolute;
+  inset: 30px;
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+/* Cards phân bổ: dot + tên + giá trị + % + delta so kỳ trước */
+.fund-analysis-alloc-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fund-analysis-alloc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fund-analysis-alloc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fund-analysis-alloc-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.fund-analysis-alloc-name {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.fund-analysis-alloc-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.fund-analysis-alloc-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.fund-analysis-alloc-pct {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.fund-analysis-alloc-delta.pos {
+  color: #047857;
+}
+
+.fund-analysis-alloc-delta.neg {
+  color: #be123c;
+}
+
+.fund-analysis-nav {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: #9a9890;
+}
+
+.fund-analysis-chart-note {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #9a9890;
+}
+
+/* Note nhấn mạnh (vd spike cổ tức) — dòng thứ 2 dưới chart */
+.fund-analysis-note-em {
+  color: #8a5a00;
+  background: #fff7e6;
+  border-left: 3px solid #f59e0b;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+/* Hộp insight: phân biệt hiệu quả đầu tư với dòng tiền */
+.fund-analysis-insight {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 6px;
+}
+
+/* Narrative đầu mỗi nhóm: đoạn kể chuyện giải thích con số */
+.fund-analysis-narrative {
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0 0 18px;
+}
+
+/* Legend chart cơ cấu tài sản (stacked 100%) */
+.fund-analysis-stack-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+/* Bảng danh mục: giới hạn ~10 dòng, cuộn dọc khi xem thêm */
+.fund-analysis-table-scroll {
+  max-height: 610px;
+  overflow-y: auto;
+}
+
+/* Lưới 2 cột cho các chart phân tích (mỗi hàng 2 chart song song) */
+.fund-analysis-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fund-analysis-charts-grid .chart-container {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1100px) {
+  .fund-analysis-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fund-analysis-stack-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fund-analysis-stack-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Cell tên cổ phiếu trong bảng danh mục: symbol + ngành nhỏ xám bên dưới */
+.fund-analysis-symbol {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.fund-analysis-industry {
+  display: block;
+  font-size: 0.72rem;
+  color: #9a9890;
+}
+
+@media (max-width: 900px) {
+  .fund-analysis-summary {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .fund-analysis-total-left {
+    align-items: flex-start;
+  }
+
+  .fund-analysis-donut-wrap {
+    justify-content: flex-start;
+  }
+
+  .fund-analysis-alloc-cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+  }
+}
+
 @media (max-width: 720px) {
   .overlap-two-col {
     grid-template-columns: 1fr;

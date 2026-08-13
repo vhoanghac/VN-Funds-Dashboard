@@ -10,6 +10,7 @@ import { TacticalAllocationPanel } from './components/TacticalAllocationPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
 import { OverlapPanel } from './components/OverlapPanel'
+import { FundAnalysisPanel } from './components/FundAnalysisPanel'
 import { CalculatorTab } from './components/calculators/CalculatorTab'
 import { MethodologyPanel } from './components/MethodologyPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
@@ -60,6 +61,12 @@ export function App() {
           onClick={() => updateState({ tab: 'lsdca' })}
         >
           LS vs DCA
+        </button>
+        <button
+          className={`tab ${state.tab === 'fundanalysis' ? 'tab-active' : ''}`}
+          onClick={() => updateState({ tab: 'fundanalysis' })}
+        >
+          Phân Tích Quỹ
         </button>
         <button
           className={`tab ${state.tab === 'overlap' ? 'tab-active' : ''}`}
@@ -134,6 +141,11 @@ export function App() {
       {/* LS vs DCA Tab */}
       <div className={state.tab === 'lsdca' ? undefined : 'tab-panel-hidden'}>
         <LumpSumDCAPanel funds={metadata} />
+      </div>
+
+      {/* Phân Tích Quỹ Tab: giữ state khi chuyển tab bằng class ẩn */}
+      <div className={state.tab === 'fundanalysis' ? undefined : 'tab-panel-hidden'}>
+        <FundAnalysisPanel funds={metadata} />
       </div>
 
       {/* Tái Cân Bằng Tab */}
