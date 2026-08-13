@@ -242,6 +242,17 @@ khoáng...) để sector drift giữa quỹ khác nguồn nối đúng ngành.
 
 ---
 
+## Quan hệ với workflow hàng ngày
+
+Có **một** script trong pipeline này được `.github/workflows/update_daily.yml` gọi
+mỗi ngày: `update_holdings.py` (fmarket holdings cho tab Overlap). Ba bước còn lại
+(download → convert → verify) chạy **thủ công** khi có báo cáo mới — workflow không
+tự tải báo cáo vì cần xác nhận quỹ đã công bố.
+
+Chi tiết về pipeline giá/NAV hàng ngày nằm ở `scripts/README.md`.
+
+---
+
 ## Bước 5: Các nguồn holdings khác
 
 ### `update_holdings.py` — fmarket (chạy hàng ngày qua workflow)
