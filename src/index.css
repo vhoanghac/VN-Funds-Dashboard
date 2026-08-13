@@ -7484,6 +7484,7 @@ h1, h2, h3 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  margin-bottom: 16px;
 }
 
 .fund-analysis-charts-grid .chart-container {
