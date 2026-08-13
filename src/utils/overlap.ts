@@ -3,13 +3,45 @@
  *
  * Nguồn dữ liệu: `<fundId>_holdings.csv` (danh mục đầy đủ: cổ phiếu, trái phiếu,
  * tiền mặt, tài sản khác) và `<fundId>_industry.csv` (ngành theo cổ phiếu), sinh
- * bởi scripts/backfill_holdings_digiinvest.py (digiinvest) + scripts/update_holdings.py
- * (fmarket top-10 cho quỹ chưa có digiinvest).
+ * bởi scripts/fund_report/backfill_holdings_digiinvest.py (digiinvest) + scripts/fund_report/update_holdings.py
+ * (fmarket top-10 cho quỹ chưa có digiinvest) + scripts/fund_report/fund_reports_to_holdings.py
+ * (báo cáo tài chính chính thức, ngành theo vnstock).
  *
  * Lưu ý trung thực: overlap / tỷ trọng trùng chỉ đo trên CỔ PHIẾU (type === 'STOCK').
  * Trái phiếu, tiền mặt và tài sản khác được hiển thị trong danh mục nhưng không
  * tham gia tính overlap. Ngành chỉ có cho cổ phiếu.
  */
+
+/** Tên ngành chuẩn hoá: digiinvest dùng từ vựng riêng (BĐS, Vật liệu, Dầu khí...)
+ *  còn báo cáo tài chính (fund_reports_to_holdings.py) theo vnstock (Bất động sản,
+ *  Vật liệu xây dựng, Khai khoáng...). Đưa cả hai về một từ vựng để sector drift
+ *  và cột ngành nối được ngành chung giữa các quỹ khác nguồn. */
+const INDUSTRY_NORMALIZE: Record<string, string> = {
+  'BĐS': 'Bất động sản',
+  'Vật liệu': 'Vật liệu xây dựng',
+  'Dầu khí': 'Khai khoáng',
+  'Công nghệ': 'Công nghệ và thông tin',
+  'Thực phẩm': 'Thực phẩm - Đồ uống',
+  'Điện': 'Tiện ích',
+  'Viễn thông': 'Công nghệ và thông tin',
+  'Logistics': 'Vận tải - kho bãi',
+  'Vận tải': 'Vận tải - kho bãi',
+  'Vận tải - Kho bãi': 'Vận tải - kho bãi',
+  'Sản xuất Hàng gia dụng': 'SX Hàng gia dụng',
+  'Sản xuất Nhựa - Hóa chất': 'SX Nhựa - Hóa chất',
+  'Sản xuất Phụ trợ': 'SX Phụ trợ',
+  'Sản xuất Thiết bị': 'SX Thiết bị - máy móc',
+  'Dược phẩm': 'Chăm sóc sức khỏe',
+  'Du lịch': 'Dịch vụ lưu trú - ăn uống - giải trí',
+  'Đồ uống': 'Thực phẩm - Đồ uống',
+  'Chế biến thủy sản': 'Chế biến Thủy sản',
+  'Dịch vụ lưu trú': 'Dịch vụ lưu trú - ăn uống - giải trí',
+}
+
+/** Đưa tên ngành về từ vựng chung (vnstock). Tên chưa biết giữ nguyên. */
+function normalizeIndustry(ind: string): string {
+  return INDUSTRY_NORMALIZE[ind] ?? ind
+}
 
 /** Loại tài sản trong danh mục quỹ. */
 export type AssetType = 'STOCK' | 'BOND' | 'CASH' | 'OTHER'
@@ -143,7 +175,7 @@ export function parseHoldingsCSV(csvText: string, targetPeriod: string | null = 
     rows.push({
       date: cells[idxDate]!,
       stockCode: cells[idxCode]!,
-      industry: cells[idxInd]!,
+      industry: normalizeIndustry(cells[idxInd]!),
       weightPct: w,
       assetValue: idxVal >= 0 ? parseFloat(cells[idxVal] ?? '') || 0 : 0,
       type: (['STOCK', 'BOND', 'CASH', 'OTHER'] as const).includes(rawType as AssetType)
@@ -172,7 +204,7 @@ export function parseIndustryCSV(csvText: string, targetPeriod: string | null = 
     const cells = lines[i]!.split(',').map(c => c.trim())
     const w = parseFloat(cells[idxW] ?? '')
     if (Number.isNaN(w)) continue
-    rows.push({ date: cells[idxDate]!, industry: cells[idxInd]!, weightPct: w })
+    rows.push({ date: cells[idxDate]!, industry: normalizeIndustry(cells[idxInd]!), weightPct: w })
   }
   if (rows.length === 0) return []
   const period = resolvePeriod(getAvailablePeriods(csvText), targetPeriod)

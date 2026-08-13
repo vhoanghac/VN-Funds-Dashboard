@@ -3,9 +3,9 @@
 Convert monthly open-end fund reports (Thong tu 98/2020/TT-BTC, xlsx) to tidy CSVs.
 
 Usage:
-  python scripts/fund_reports_update.py                    # all funds' raw/ dirs
-  python scripts/fund_reports_update.py <file.xlsx> ...    # specific files
-  python scripts/fund_reports_update.py --check            # compare without writing
+  python scripts/fund_report/fund_reports_update.py                    # all funds' raw/ dirs
+  python scripts/fund_report/fund_reports_update.py <file.xlsx> ...    # specific files
+  python scripts/fund_report/fund_reports_update.py --check            # compare without writing
 
 File names must follow the standard <FUND>_<YYYY>_<MM>.xlsx pattern,
 e.g. DCDS_2026_07.xlsx. The fund id is taken from the file name and each
@@ -52,7 +52,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = ROOT / "public" / "data"
 
 # Standard report file name: <FUND>_<YYYY>_<MM>.xlsx

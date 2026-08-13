@@ -47,7 +47,7 @@
   {
     "id": "DCDS",
     "update_at": "2026-07-01",
-    "source": "digiinvest"
+    "source": "report"
   },
   {
     "id": "DCIP",
@@ -116,7 +116,7 @@
   },
   {
     "id": "MBVF",
-    "update_at": "2026-05-01",
+    "update_at": "2026-07-01",
     "source": "digiinvest"
   },
   {
@@ -126,7 +126,7 @@
   },
   {
     "id": "NTPPF",
-    "update_at": "2026-03-01",
+    "update_at": "2026-07-01",
     "source": "fmarket"
   },
   {
@@ -176,7 +176,7 @@
   },
   {
     "id": "TCGF",
-    "update_at": "2026-05-01",
+    "update_at": "2026-07-01",
     "source": "fmarket"
   },
   {

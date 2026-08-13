@@ -11,7 +11,7 @@
  * - Otherwise appends only rows strictly after the last existing date
  * - Never rewrites old rows
  *
- * Usage:  node scripts/update_digiinvest.mjs
+ * Usage:  node scripts/update_TCEF_TCBF_digiinvest.mjs
  */
 
 import fs from 'fs'

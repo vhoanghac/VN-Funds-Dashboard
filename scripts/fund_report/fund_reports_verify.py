@@ -3,9 +3,9 @@
 Cross-check fund report numbers with Docling (independent reader).
 
 Usage (run with the docling venv python, or let this script re-exec itself):
-  python scripts/fund_reports_verify.py                      # all funds' raw/ dirs
-  python scripts/fund_reports_verify.py <file.xlsx|pdf>...   # specific files
-  python scripts/fund_reports_verify.py <file.pdf> --fund DCDS   # PDF without standard name
+  python scripts/fund_report/fund_reports_verify.py                      # all funds' raw/ dirs
+  python scripts/fund_report/fund_reports_verify.py <file.xlsx|pdf>...   # specific files
+  python scripts/fund_report/fund_reports_verify.py <file.pdf> --fund DCDS   # PDF without standard name
 
 Converts every input file with Docling, extracts all numeric cells from the
 DoclingDocument, and compares against the matching fund's tidied CSVs
@@ -44,7 +44,7 @@ from pathlib import Path
 
 import fund_reports_update as ufr  # reuses fund_from_name / fund_dirs
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
 
@@ -86,7 +86,7 @@ def ensure_docling():
     print(f"  python -m venv {DOCLING_VENVS[0]}")
     print(f"  {DOCLING_VENVS[0] / 'Scripts' / 'python'} -m pip install docling")
     print("Then run this script with that interpreter:")
-    print(f"  {DOCLING_VENVS[0] / 'Scripts' / 'python'} scripts\\fund_reports_verify.py")
+    print(f"  {DOCLING_VENVS[0] / 'Scripts' / 'python'} scripts\\fund_report\\fund_reports_verify.py")
     sys.exit(2)
 
 

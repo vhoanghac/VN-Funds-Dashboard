@@ -45,7 +45,7 @@ const ETF_TICKERS = {
   FUEDCMID: 'FUEDCMID',
 }
 
-// Funds not listed on fmarket — handled by scripts/update_digiinvest.mjs
+// Funds not listed on fmarket — handled by scripts/update_TCEF_TCBF_digiinvest.mjs
 const DIGIINVEST_FUNDS = new Set(['TCBF', 'TCEF'])
 
 

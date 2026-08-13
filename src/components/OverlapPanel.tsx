@@ -19,7 +19,7 @@ interface Props {
 interface HoldingsIndexEntry {
   id: string
   update_at: string
-  /** Nguồn dữ liệu: 'digiinvest' nếu từ digiinvest.vn; thiếu = fmarket/vnstock. */
+  /** Nguồn dữ liệu: 'report' = báo cáo tài chính của quỹ; 'digiinvest' = digiinvest.vn; thiếu = fmarket/vnstock. */
   source?: string
 }
 
@@ -239,8 +239,9 @@ function OverlapPanelImpl({ funds }: Props) {
     return computeSectorDrift(industryA, industryB)
   }, [industryA, industryB])
 
-  // Nguồn dữ liệu của từng quỹ đang chọn: 'digiinvest' nếu index ghi digiinvest,
-  // 'fmarket' nếu quỹ có trong index nhưng không ghi nguồn, null nếu chưa có holdings.
+  // Nguồn dữ liệu của từng quỹ đang chọn: 'report' = báo cáo tài chính của quỹ,
+  // 'digiinvest' = digiinvest, 'fmarket' nếu quỹ có trong index nhưng không ghi
+  // nguồn, null nếu chưa có holdings.
   const sourceA = useMemo(
     () => {
       const e = index?.find(e => e.id === fundA)
@@ -255,6 +256,9 @@ function OverlapPanelImpl({ funds }: Props) {
     },
     [index, fundB],
   )
+
+  const sourceLabel = (s: string) =>
+    s === 'report' ? 'báo cáo tài chính của quỹ' : s === 'digiinvest' ? 'digiinvest.vn' : 'fmarket'
 
   const selectedA = options.find(o => o.value === fundA) || null
   const selectedB = options.find(o => o.value === fundB) || null
@@ -337,9 +341,9 @@ function OverlapPanelImpl({ funds }: Props) {
         </div>
         {sourceA && sourceB && (
           <p className="overlap-source-info">
-            {fundA} lấy dữ liệu từ {sourceA === 'digiinvest' ? 'digiinvest.vn' : 'fmarket'}
+            {fundA} lấy dữ liệu từ {sourceLabel(sourceA)}
             {' · '}
-            {fundB} lấy dữ liệu từ {sourceB === 'digiinvest' ? 'digiinvest.vn' : 'fmarket'}
+            {fundB} lấy dữ liệu từ {sourceLabel(sourceB)}
           </p>
         )}
         {periodA && periodB && periodA !== periodB && (
@@ -552,7 +556,7 @@ function OverlapPanelImpl({ funds }: Props) {
           </>)}
           <p className="overlap-note">
             Danh mục gồm cổ phiếu, trái phiếu, tiền mặt và tài sản khác tại kỳ báo cáo
-            {periodA ? ` ${formatPeriodLabel(periodA)}` : ' gần nhất'}, nguồn digiinvest.
+            {periodA ? ` ${formatPeriodLabel(periodA)}` : ' gần nhất'}.
             Overlap chỉ đo trên cổ phiếu; trái phiếu, tiền mặt và tài sản khác được hiển thị
             để bạn thấy cấu trúc danh mục nhưng không tham gia tính trùng.
           </p>

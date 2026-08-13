@@ -25,7 +25,7 @@ snapshot per new period and skip periods already present — this accumulates a
 monthly history of each fund's portfolio. fmarket only exposes the latest
 period when first enabled, so history starts from today (no backfill).
 
-Usage:  python -X utf8 scripts/update_holdings.py
+Usage:  python -X utf8 scripts/fund_report/update_holdings.py
 """
 
 import os
@@ -36,7 +36,7 @@ import urllib.request
 
 # ─── Config ────────────────────────────────────────────────
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'public', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'public', 'data')
 INDEX_FILE = os.path.join(DATA_DIR, 'holdings_index.json')
 BASE_URL = 'https://api.fmarket.vn/res/products'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (VN-Funds-Dashboard/1.0)'}
@@ -152,6 +152,14 @@ def main():
         fund_id = fund['id']
         holdings_path = os.path.join(DATA_DIR, f'{fund_id}_holdings.csv')
         industry_path = os.path.join(DATA_DIR, f'{fund_id}_industry.csv')
+
+        # Funds backed by official fund reports (source 'report', written by
+        # fund_reports_to_holdings.py) are NOT fmarket's to append to: the report
+        # portfolio is the authoritative source. A fmarket top-10 snapshot for a
+        # NEW period would mix two sources and show an incomplete portfolio.
+        if any(e.get('source') == 'report' for e in index if e.get('id') == fund_id):
+            print(f'⏭️  {fund_id}: source=report (official fund reports) — fmarket skipped')
+            continue
 
         fmid = id_to_fmid.get(fund_id.upper())
         if not fmid:

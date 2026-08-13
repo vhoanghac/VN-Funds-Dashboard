@@ -15,9 +15,9 @@ Every saved file is normalized to the <FUND>_<YYYY>_<MM>.xlsx convention
 fund names (VFMVF1 for DCDS) map to the current fund id.
 
 Usage:
-  python scripts/download_fund_reports.py                      # DCDS, all years
-  python scripts/download_fund_reports.py --fund DCDS --url <product-page>
-  python scripts/download_fund_reports.py --start-year 2024 --end-year 2026
+  python scripts/fund_report/download_dragoncapital_reports.py                      # DCDS, all years
+  python scripts/fund_report/download_dragoncapital_reports.py --fund DCDS --url <product-page>
+  python scripts/fund_report/download_dragoncapital_reports.py --start-year 2024 --end-year 2026
 
 Idempotent: existing <FUND>_YYYY_MM.xlsx files are skipped; old-named files
 already in raw/ are renamed to the new convention (duplicates by size are
@@ -39,7 +39,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = ROOT / "public" / "data"
 
 BLOB_HOST = "dragoncapitalprod.blob.core.windows.net"

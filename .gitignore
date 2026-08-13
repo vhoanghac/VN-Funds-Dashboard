@@ -23,5 +23,5 @@ docs/wireframe-2026-03-25.html
 docs/trung-vang-dnse-2026-07-28.md
 *.log
 scripts/backtest_sma_savings.mjs
-scripts/backfill_holdings_digiinvest.py
+scripts/fund_report/backfill_holdings_digiinvest.py
 public/data/*/raw/

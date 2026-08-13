@@ -10,52 +10,56 @@ import {
 } from './overlap'
 
 // Dữ liệu thật từ public/data/DCDS_holdings.csv — danh mục đầy đủ kỳ 2026-07-01
-// (nguồn digiinvest, backfill 11/08/2026). 44 cổ phiếu.
+// (nguồn báo cáo tài chính chính thức, fund_reports_to_holdings.py, 13/08/2026).
+// 44 cổ phiếu + 1 trái phiếu + tiền mặt + tài sản khác. Ngành theo vnstock.
 const DCDS_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
-2026-07-01,VIC,BĐS,10.08,602177660000,STOCK
+2026-07-01,VIC,Bất động sản,10.08,602177660000,STOCK
 2026-07-01,BID,Ngân hàng,7.83,467400000000,STOCK
 2026-07-01,MWG,Bán lẻ,6.17,368331060000,STOCK
-2026-07-01,VHM,BĐS,4.45,265469250000,STOCK
-2026-07-01,HPG,Vật liệu,3.91,233311412600,STOCK
+2026-07-01,VHM,Bất động sản,4.45,265469250000,STOCK
+2026-07-01,HPG,Vật liệu xây dựng,3.91,233311412600,STOCK
 2026-07-01,ACB,Ngân hàng,3.46,206584911900,STOCK
 2026-07-01,HDB,Ngân hàng,3.32,198223804800,STOCK
 2026-07-01,VPB,Ngân hàng,3.2,190926520000,STOCK
 2026-07-01,TCB,Ngân hàng,2.46,146970465000,STOCK
-2026-07-01,POW,Điện,2.02,120342320000,STOCK
-2026-07-01,STB,Ngân hàng,2.0,119422760000,STOCK
-2026-07-01,VPX,Chứng khoán,1.94,115867680000,STOCK
-2026-07-01,GMD,Hạ tầng,1.9,113365560000,STOCK
-2026-07-01,CTG,Ngân hàng,1.7,101547450000,STOCK
-2026-07-01,VNM,Thực phẩm,1.61,95854536000,STOCK
-2026-07-01,VCB,Ngân hàng,1.47,87911316000,STOCK
-2026-07-01,DMX,Vật liệu,1.46,87204550000,STOCK
-2026-07-01,VND,Chứng khoán,1.3,77735540000,STOCK
+2026-07-01,POW,Tiện ích,2.02,120342320000,STOCK
+2026-07-01,STB,Ngân hàng,2.0,119448890000,STOCK
+2026-07-01,VPX,Chứng khoán,1.94,115732560000,STOCK
+2026-07-01,GMD,Vận tải - kho bãi,1.9,113521100000,STOCK
+2026-07-01,CTG,Ngân hàng,1.7,101760274000,STOCK
+2026-07-01,VNM,Thực phẩm - Đồ uống,1.61,95893140000,STOCK
+2026-07-01,VCB,Ngân hàng,1.47,87621680000,STOCK
+2026-07-01,DMX,Bán lẻ,1.46,87200000000,STOCK
+2026-07-01,VND,Chứng khoán,1.3,77488800000,STOCK
 2026-07-01,ABB,Ngân hàng,1.23,73170984600,STOCK
-2026-07-01,MSB,Ngân hàng,1.18,70474290000,STOCK
-2026-07-01,PC1,Hạ tầng,1.15,68672520000,STOCK
-2026-07-01,MSN,Thực phẩm,1.03,61510296000,STOCK
-2026-07-01,BSR,Dầu khí,0.94,56147040000,STOCK
-2026-07-01,DPM,Vật liệu,0.82,48997620000,STOCK
-2026-07-01,CTR,Xây dựng,0.58,34645080000,STOCK
-2026-07-01,TAL,BĐS,0.56,33454080000,STOCK
-2026-07-01,GEL,Vật liệu,0.53,31666250000,STOCK
-2026-07-01,PET,Bán lẻ,0.51,30465600000,STOCK
-2026-07-01,FPT,Công nghệ,0.48,28626000000,STOCK
-2026-07-01,DHC,Vật liệu,0.44,26276800000,STOCK
-2026-07-01,PVD,Dầu khí,0.42,25087200000,STOCK
-2026-07-01,PVS,Dầu khí,0.22,13140600000,STOCK
-2026-07-01,MBB,Ngân hàng,0.21,12540000000,STOCK
-2026-07-01,TVN,Xây dựng,0.2,11942000000,STOCK
-2026-07-01,CII,Hạ tầng,0.15,8958000000,STOCK
-2026-07-01,HVN,Vận tải,0.13,7763100000,STOCK
-2026-07-01,SHB,Ngân hàng,0.13,7762300000,STOCK
-2026-07-01,TCX,Chứng khoán,0.13,7760300000,STOCK
-2026-07-01,DRI,Sản phẩm cao su,0.08,4777700000,STOCK
-2026-07-01,NVL,BĐS,0.08,4777400000,STOCK
-2026-07-01,DPG,Xây dựng,0.07,4180600000,STOCK
-2026-07-01,DXS,BĐS,0.06,3583500000,STOCK
-2026-07-01,OCB,Ngân hàng,0.04,2389000000,STOCK
-2026-07-01,HHS,Ô tô,0.03,1791600000,STOCK
+2026-07-01,MSB,Ngân hàng,1.18,70706350000,STOCK
+2026-07-01,PC1,Xây dựng,1.15,68484280000,STOCK
+2026-07-01,MSN,Thực phẩm - Đồ uống,1.03,61631640000,STOCK
+2026-07-01,BSR,SX Phụ trợ,0.94,56269395000,STOCK
+2026-07-01,DPM,SX Nhựa - Hóa chất,0.82,48918060000,STOCK
+2026-07-01,CTR,Công nghệ và thông tin,0.58,34427158000,STOCK
+2026-07-01,TAL,Bất động sản,0.56,33735895000,STOCK
+2026-07-01,GEL,Bán buôn,0.53,31673110000,STOCK
+2026-07-01,PET,Bán buôn,0.51,30578220000,STOCK
+2026-07-01,FPT,Công nghệ và thông tin,0.48,28638280000,STOCK
+2026-07-01,DHC,SX Phụ trợ,0.44,26414094000,STOCK
+2026-07-01,PVD,Khai khoáng,0.42,24904268400,STOCK
+2026-07-01,PVS,Khai khoáng,0.22,13305820000,STOCK
+2026-07-01,MBB,Ngân hàng,0.21,12584250000,STOCK
+2026-07-01,TVN,Xây dựng,0.2,11866800000,STOCK
+2026-07-01,CII,Xây dựng,0.15,8908000000,STOCK
+2026-07-01,SHB,Ngân hàng,0.13,7849279000,STOCK
+2026-07-01,HVN,Vận tải - kho bãi,0.13,7839566500,STOCK
+2026-07-01,TCX,Chứng khoán,0.13,7749000000,STOCK
+2026-07-01,NVL,Bất động sản,0.08,5051800000,STOCK
+2026-07-01,DRI,Sản phẩm cao su,0.08,4894260000,STOCK
+2026-07-01,DPG,Xây dựng,0.07,3883540000,STOCK
+2026-07-01,DXS,Bất động sản,0.06,3622500000,STOCK
+2026-07-01,OCB,Ngân hàng,0.04,2248428000,STOCK
+2026-07-01,HHS,Bán buôn,0.03,1820224000,STOCK
+2026-07-01,BOND,,0.89,53382400000,BOND
+2026-07-01,CASH,,21.63,1291539828605,CASH
+2026-07-01,OTHER,,5.81,347183861909,OTHER
 `
 
 // Dữ liệu thật từ public/data/VESAF_holdings.csv — danh mục đầy đủ kỳ 2026-07-01.
@@ -93,22 +97,23 @@ const VESAF_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
 2026-07-01,DHC,Vật liệu,0.19,7000000000,STOCK
 `
 
-// Ngành đầy đủ của DCDS kỳ 2026-07-01 (tổng theo cổ phiếu từ danh mục đầy đủ)
+// Ngành đầy đủ của DCDS kỳ 2026-07-01 (nguồn báo cáo tài chính, ngành vnstock)
 const DCDS_INDUSTRY_CSV = `date,industry,weight_pct
-2026-07-01,Ngân hàng,28.23
-2026-07-01,BĐS,15.23
-2026-07-01,Vật liệu,7.16
-2026-07-01,Bán lẻ,6.68
+2026-07-01,Ngân hàng,28.22
+2026-07-01,Bất động sản,15.24
+2026-07-01,Bán lẻ,7.63
+2026-07-01,Vật liệu xây dựng,3.91
 2026-07-01,Chứng khoán,3.37
-2026-07-01,Hạ tầng,3.2
-2026-07-01,Thực phẩm,2.64
-2026-07-01,Điện,2.02
-2026-07-01,Dầu khí,1.58
-2026-07-01,Xây dựng,0.85
-2026-07-01,Công nghệ,0.48
-2026-07-01,Vận tải,0.13
+2026-07-01,Thực phẩm - Đồ uống,2.64
+2026-07-01,Vận tải - kho bãi,2.03
+2026-07-01,Tiện ích,2.02
+2026-07-01,Xây dựng,1.56
+2026-07-01,SX Phụ trợ,1.38
+2026-07-01,Bán buôn,1.07
+2026-07-01,Công nghệ và thông tin,1.06
+2026-07-01,SX Nhựa - Hóa chất,0.82
+2026-07-01,Khai khoáng,0.64
 2026-07-01,Sản phẩm cao su,0.08
-2026-07-01,Ô tô,0.03
 `
 
 // Ngành VESAF kỳ 2026-07-01
@@ -131,10 +136,15 @@ const VESAF_INDUSTRY_CSV = `date,industry,weight_pct
 describe('parseHoldingsCSV', () => {
   it('parses real DCDS holdings, latest period only, sorted kept', () => {
     const rows = parseHoldingsCSV(DCDS_CSV)
-    expect(rows).toHaveLength(44)
+    expect(rows).toHaveLength(47)
+    // 44 cổ phiếu + 1 trái phiếu + tiền mặt + tài sản khác
+    expect(rows.filter(h => h.type === 'STOCK')).toHaveLength(44)
+    expect(rows.filter(h => h.type === 'BOND')).toHaveLength(1)
+    expect(rows.filter(h => h.type === 'CASH')).toHaveLength(1)
+    expect(rows.filter(h => h.type === 'OTHER')).toHaveLength(1)
     expect(rows[0]!.stockCode).toBe('VIC')
     expect(rows[0]!.weightPct).toBeCloseTo(10.08, 2)
-    expect(rows[0]!.industry).toBe('BĐS')
+    expect(rows[0]!.industry).toBe('Bất động sản')
     expect(rows[0]!.assetValue).toBe(602177660000)
   })
 
@@ -214,21 +224,36 @@ describe('getAvailablePeriods / resolvePeriod', () => {
 describe('parseIndustryCSV', () => {
   it('parses DCDS industries with weights', () => {
     const rows = parseIndustryCSV(DCDS_INDUSTRY_CSV)
-    expect(rows).toHaveLength(14)
+    expect(rows).toHaveLength(15)
     expect(rows[0]!.industry).toBe('Ngân hàng')
-    expect(rows[0]!.weightPct).toBeCloseTo(28.23, 2)
+    expect(rows[0]!.weightPct).toBeCloseTo(28.22, 2)
+  })
+
+  it('normalizes digiinvest industry names to the shared vnstock vocabulary', () => {
+    const csv = `date,industry,weight_pct
+2026-07-01,BĐS,15.24
+2026-07-01,Vật liệu,3.91
+2026-07-01,Dầu khí,0.64
+2026-07-01,Công nghệ,1.06`
+    const rows = parseIndustryCSV(csv)
+    const byName = new Map(rows.map(r => [r.industry, r.weightPct]))
+    expect(byName.get('Bất động sản')).toBeCloseTo(15.24, 2)
+    expect(byName.get('Vật liệu xây dựng')).toBeCloseTo(3.91, 2)
+    expect(byName.get('Khai khoáng')).toBeCloseTo(0.64, 2)
+    expect(byName.get('Công nghệ và thông tin')).toBeCloseTo(1.06, 2)
+    expect(byName.has('BĐS')).toBe(false)
   })
 
   it('returns only the latest period when multiple report periods present', () => {
     const csv = `date,industry,weight_pct
 2026-06-01,Ngân hàng,26.0
 2026-06-01,Bán lẻ,5.0
-2026-07-01,Ngân hàng,28.23
-2026-07-01,BĐS,15.23`
+2026-07-01,Ngân hàng,28.22
+2026-07-01,Bất động sản,15.24`
     const rows = parseIndustryCSV(csv)
     expect(rows).toHaveLength(2)
     expect(rows.every(r => r.date === '2026-07-01')).toBe(true)
-    expect(rows[0]!.weightPct).toBeCloseTo(28.23, 2)
+    expect(rows[0]!.weightPct).toBeCloseTo(28.22, 2)
   })
 })
 
@@ -328,20 +353,25 @@ describe('computeSectorDrift', () => {
 
   it('computes A−B drift for each industry', () => {
     const byName = new Map(rows.map(r => [r.industry, r]))
-    // Ngân hàng: A 28.23 − B 25.56 = +2.67
-    expect(byName.get('Ngân hàng')!.drift).toBeCloseTo(2.67, 2)
-    // Bán lẻ: A 6.68 − B 8.4 = −1.72
-    expect(byName.get('Bán lẻ')!.drift).toBeCloseTo(-1.72, 2)
+    // Ngân hàng: A 28.22 − B 25.56 = +2.66
+    expect(byName.get('Ngân hàng')!.drift).toBeCloseTo(2.66, 2)
+    // Bán lẻ: A 7.63 − B 8.4 = −0.77
+    expect(byName.get('Bán lẻ')!.drift).toBeCloseTo(-0.77, 2)
     // Bảo hiểm: chỉ B có → drift = −7.63
     expect(byName.get('Bảo hiểm')!.drift).toBeCloseTo(-7.63, 2)
+    // BĐS của VESAF được normalize thành "Bất động sản" nên nối được với DCDS
+    expect(byName.get('Bất động sản')!.drift).toBeCloseTo(6.74, 2)
+    expect(byName.has('BĐS')).toBe(false)
   })
 
   it('sorts by |drift| descending — Bảo hiểm (−7.63) first', () => {
-    // |−7.63| (chỉ B có) lớn nhất; BĐS +6.73 đứng sau
+    // |−7.63| (chỉ B có) lớn nhất; Hạ tầng −7.15, Bất động sản +6.74 đứng sau
     expect(rows[0]!.industry).toBe('Bảo hiểm')
     expect(rows[0]!.drift).toBeCloseTo(-7.63, 2)
-    expect(rows[1]!.industry).toBe('BĐS')
-    expect(rows[1]!.drift).toBeCloseTo(6.73, 2)
+    expect(rows[1]!.industry).toBe('Hạ tầng')
+    expect(rows[1]!.drift).toBeCloseTo(-7.15, 2)
+    expect(rows[2]!.industry).toBe('Bất động sản')
+    expect(rows[2]!.drift).toBeCloseTo(6.74, 2)
   })
 
   it('returns empty for empty inputs', () => {
