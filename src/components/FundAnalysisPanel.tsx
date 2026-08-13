@@ -71,7 +71,7 @@ const TURNOVER_COLOR = '#3b82f6'
 const INVESTOR_COLOR = '#8b5cf6'
 const TOTAL_COST_COLOR = '#0ea5e9'
 
-/** Màu chart mới: benchmark / rolling / drawdown / ngành / red flags. */
+/** Màu chart: drawdown / red flags. */
 const DRAWDOWN_COLOR = '#dc2626'
 const LIAB_COLOR = '#b45309'
 const SETTLE_COLOR = '#f97316'
@@ -806,15 +806,11 @@ function FundAnalysisPanelImpl({ funds }: Props) {
 
             <div className="fund-analysis-insight">
               Hiệu quả THẬT của quỹ (NAV/CCQ) chỉ ~1,18x kể từ đỉnh 2022. Tổng tài sản tăng 3,5x chủ
-              yếu do dòng tiền mới (số chứng chỉ ×3), không phải do đầu tư.
+              yếu do dòng tiền mới (số chứng chỉ ×3), không phải do đầu tư. Tổng tài sản của quỹ mở
+              bằng giá nhân số lượng, nên nó tăng khi nhà đầu tư nạp tiền mới. Xem chart "Thay đổi tổng
+              NAV" để biết mỗi tháng tăng trưởng đến từ đầu tư hay từ dòng tiền. Dòng tiền âm liên tục
+              là tín hiệu nhà đầu tư mất niềm tin; tiền mặt cao thì quỹ đang phòng thủ.
             </div>
-            <p className="fund-analysis-narrative">
-              Tổng tài sản của quỹ mở bằng giá nhân số lượng. Nên nó tăng khi nhà đầu tư nạp tiền mới,
-              không hẳn khi quỹ sinh lời. Từ cuối 2021, NAV/CCQ chỉ tăng khoảng 1,2 lần, còn tổng tài
-              sản gấp hơn 3 lần. Phần chênh là tiền mới đổ vào. Nhìn chart "thay đổi tổng NAV" để biết
-              mỗi tháng tăng trưởng đến từ đầu tư hay từ dòng tiền. Dòng tiền âm liên tục là tín hiệu
-              nhà đầu tư mất niềm tin; tiền mặt cao thì quỹ đang phòng thủ, chưa chắc đã tốt.
-            </p>
 
             <div className="fund-analysis-charts-grid">
               <div className="chart-container">
