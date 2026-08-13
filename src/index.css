@@ -7233,6 +7233,19 @@ h1, h2, h3 {
   margin-bottom: 18px;
 }
 
+/* grid child: 1fr in a 2-col grid defaults to minmax(auto, 1fr), so a long
+   unbreakable cell (e.g. an unlisted stock's full company name) forces the
+   column to widen and spills the table into its neighbor. min-width: 0 lets
+   the column shrink; the table then scrolls horizontally instead of blowing
+   the grid. */
+.overlap-table-card {
+  min-width: 0;
+}
+
+.overlap-table-card .dca-stats-table-scroll {
+  overflow-x: auto;
+}
+
 .overlap-table td {
   white-space: nowrap;
 }

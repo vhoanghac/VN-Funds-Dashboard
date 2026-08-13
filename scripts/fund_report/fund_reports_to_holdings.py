@@ -123,6 +123,18 @@ MANUAL_INDUSTRY = {
 MANUAL_INDUSTRY = {k: norm_industry(v) for k, v in MANUAL_INDUSTRY.items()}
 
 
+# Unlisted stocks appear in tidy_portfolio with their LONG company name as the
+# ticker (e.g. 'Dien May Xanh Investment Joint Stock Co.'), not the 3-char code
+# the rest of the pipeline uses. Map the long name -> canonical ticker so a
+# stock is stored consistently and can match the same company in other funds.
+# A plain run rewrites holdings from tidy, so WITHOUT this the long name would
+# come back on the next run and break the Overlap layout (a nowrap cell that
+# wide blows the 2-column grid). Keep updated when a new long name surfaces.
+TICKER_ALIAS = {
+    'Dien May Xanh Investment Joint Stock Co.': 'DMX',
+}
+
+
 def vnstock_industry_map():
     """symbol -> industry (Vietnamese, comma-free). vnstock live; empty if unavailable."""
     try:
@@ -257,7 +269,8 @@ def build_period_rows(rows, stocks_total):
     for r in rows:
         sec = r['section']
         if is_stock_row(sec, r['ticker']):
-            stocks.append((r['ticker'], r['weight'], r['value']))
+            ticker = TICKER_ALIAS.get(r['ticker'], r['ticker'])
+            stocks.append((ticker, r['weight'], r['value']))
         elif sec == BONDS and not r['ticker']:
             bond_w += r['weight']
             bond_v += r['value']
