@@ -7453,15 +7453,13 @@ h1, h2, h3 {
   border-radius: 6px;
 }
 
-/* Narrative đầu mỗi nhóm: đoạn kể chuyện giải thích con số */
+/* Narrative đầu mỗi nhóm: đoạn kể chuyện giải thích con số, text trần như tab DCA */
 .fund-analysis-narrative {
-  font-size: 0.88rem;
-  line-height: 1.7;
-  color: var(--color-text);
-  background: var(--color-bg);
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin: 0 0 18px;
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--color-text-muted);
+  margin: 0 0 20px;
+  max-width: 72ch;
 }
 
 /* Legend chart cơ cấu tài sản (stacked 100%) */
