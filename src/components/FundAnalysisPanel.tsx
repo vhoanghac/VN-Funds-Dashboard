@@ -12,7 +12,7 @@ import {
   parseTidyPortfolio, parseTidyAssets, parseTidyIncome, parseTidyIndicators, fundReportPeriods, resolveReportPeriod,
   type FundPeriodSummary, type FundAssetsSnapshot, type FundIncomeSummary, type FundFlowSummary,
 } from '../utils/fundReport'
-import { RedFlagSection } from './RedFlagSection'
+import { RedFlagDetectors } from './RedFlagSection'
 
 /**
  * Tab "Phân Tích Quỹ" — đọc báo cáo tài chính tháng chính thức (Thông tư
@@ -95,7 +95,6 @@ const ANALYSIS_SECTIONS = [
   { id: 'size', label: 'Quy mô & Dòng tiền' },
   { id: 'cost', label: 'Chi phí & Hiệu quả' },
   { id: 'redflags', label: 'Red Flags' },
-  { id: 'twist', label: 'Plot Twist' },
 ] as const
 type AnalysisSectionId = typeof ANALYSIS_SECTIONS[number]['id']
 
@@ -627,21 +626,17 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     [portfolio, income, chartPeriods],
   )
 
-  // ── Plot Twist: điểm dữ liệu cho 4 detector (thuần, asc theo kỳ) ──
+  // ── Red Flags: điểm dữ liệu cho detector (thuần, asc theo kỳ) ──
   const redFlagPoints = useMemo(
     () => chartPeriods.map(p => ({
       period: p,
       turnoverRate: flow?.get(p)?.turnoverRate ?? null,
       brokerageFee: income?.get(p)?.brokerageFee ?? null,
       managementFee: income?.get(p)?.managementFee ?? null,
-      relatedPartyOwnership: flow?.get(p)?.relatedPartyOwnership ?? null,
-      outstandingUnits: flow?.get(p)?.outstandingUnits ?? null,
       redemptionFlow: income?.get(p)?.redemptionFlow ?? null,
       realizedGain: income?.get(p)?.realizedGain ?? null,
-      cashValue: portfolio?.get(p)?.allocation.cashValue ?? null,
-      totalValue: portfolio?.get(p)?.allocation.totalValue ?? null,
     })),
-    [flow, income, portfolio, chartPeriods],
+    [flow, income, chartPeriods],
   )
 
   const selectPeriod = (
@@ -1680,11 +1675,8 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 kéo dài là dấu hiệu đáng ngờ.
               </p>
             </div>
-          </div>
 
-          {/* ════════════ Nhóm 6: Plot Twist (Red Flags ẩn) ════════════ */}
-          <div style={{ display: showSection('twist') }}>
-            <RedFlagSection points={redFlagPoints} />
+            <RedFlagDetectors points={redFlagPoints} />
           </div>
         </>
       )}

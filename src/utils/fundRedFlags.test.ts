@@ -10,12 +10,8 @@ function pt(over: Partial<RedFlagPoint> = {}): RedFlagPoint {
     turnoverRate: null,
     brokerageFee: null,
     managementFee: null,
-    relatedPartyOwnership: null,
-    outstandingUnits: null,
     redemptionFlow: null,
     realizedGain: null,
-    cashValue: null,
-    totalValue: null,
     ...over,
   }
 }
@@ -74,45 +70,7 @@ describe('D1 — Cỗ máy giao dịch', () => {
   })
 })
 
-describe('D2 — Bên liên quan rút', () => {
-  const series = (ownerships: number[]): RedFlagPoint[] =>
-    ownerships.map((o, i) => pt({ period: `2026-${String((i % 12) + 1).padStart(2, '0')}-01`, relatedPartyOwnership: o, outstandingUnits: 1000 }))
-
-  it('rút ~69% vị thế trong 6 tháng → DANGER (8.3% → 2.6%)', () => {
-    const r = last('relatedParty', series([0.083, 0.083, 0.083, 0.083, 0.083, 0.026]))
-    expect(r.verdict).toBe('DANGER')
-    expect(r.keyMetric).toBeCloseTo(0.687, 2)
-  })
-
-  it('rút 40% → WATCH', () => {
-    expect(last('relatedParty', series([0.1, 0.1, 0.1, 0.1, 0.1, 0.06])).verdict).toBe('WATCH')
-  })
-
-  it('vị thế ổn định → OK', () => {
-    expect(last('relatedParty', series([0.08, 0.08, 0.08, 0.08, 0.08, 0.08])).verdict).toBe('OK')
-  })
-
-  it('vị thế TĂNG → OK, không phải red flag', () => {
-    expect(last('relatedParty', series([0.05, 0.05, 0.05, 0.05, 0.05, 0.09])).verdict).toBe('OK')
-  })
-
-  it('biên ngưỡng: rút đúng 50% → DANGER; đúng 30% → WATCH', () => {
-    expect(last('relatedParty', series([0.10, 0.10, 0.10, 0.10, 0.10, 0.05])).verdict).toBe('DANGER')
-    expect(last('relatedParty', series([0.10, 0.10, 0.10, 0.10, 0.10, 0.07])).verdict).toBe('WATCH')
-  })
-
-  it('chưa đủ 6 kỳ lịch sử → N/A', () => {
-    expect(last('relatedParty', series([0.08, 0.08, 0.08, 0.08, 0.08])).verdict).toBe('N/A')
-  })
-
-  it('thiếu 2282 hoặc 2281 → N/A', () => {
-    const pts = [pt({ relatedPartyOwnership: null, outstandingUnits: 1000 })]
-    expect(last('relatedParty', pts).verdict).toBe('N/A')
-    expect(last('relatedParty', [pt({ relatedPartyOwnership: 0.08, outstandingUnits: null })]).verdict).toBe('N/A')
-  })
-})
-
-describe('D3 — Rút vốn buộc bán', () => {
+describe('D2 — Bị ép bán', () => {
   it('mua lại −100 tỷ + lãi thực hiện −267 tỷ → DANGER', () => {
     const r = last('forcedSale', [pt({ redemptionFlow: -100_273_165_742, realizedGain: -267_015_523_861 })])
     expect(r.verdict).toBe('DANGER')
@@ -136,37 +94,6 @@ describe('D3 — Rút vốn buộc bán', () => {
   it('thiếu 2239.3.2 hoặc 2235 → N/A (kỳ trước 12/2020)', () => {
     expect(last('forcedSale', [pt({ redemptionFlow: null, realizedGain: -100e9 })]).verdict).toBe('N/A')
     expect(last('forcedSale', [pt({ redemptionFlow: -50e9, realizedGain: null })]).verdict).toBe('N/A')
-  })
-})
-
-describe('D4 — Cọc tiền mặt', () => {
-  it('tiền mặt 35% → DANGER', () => {
-    expect(last('cashPile', [pt({ cashValue: 35e9, totalValue: 100e9 })]).verdict).toBe('DANGER')
-  })
-
-  it('21,6% → WATCH (DCDS thực tế, allocation.cashValue)', () => {
-    const r = last('cashPile', [pt({ cashValue: 1_291_500_000_000, totalValue: 5_971_685_141_314 })])
-    expect(r.verdict).toBe('WATCH')
-    expect(r.extra).toBe('22%')
-  })
-
-  it('10% → OK', () => {
-    expect(last('cashPile', [pt({ cashValue: 10e9, totalValue: 100e9 })]).verdict).toBe('OK')
-  })
-
-  it('3% → WATCH (quá căng)', () => {
-    expect(last('cashPile', [pt({ cashValue: 3e9, totalValue: 100e9 })]).verdict).toBe('WATCH')
-  })
-
-  it('biên ngưỡng: 0.30 → WATCH (>0.30 mới DANGER); 0.20 → WATCH; 0.05 → WATCH', () => {
-    expect(last('cashPile', [pt({ cashValue: 30e9, totalValue: 100e9 })]).verdict).toBe('WATCH')
-    expect(last('cashPile', [pt({ cashValue: 20e9, totalValue: 100e9 })]).verdict).toBe('WATCH')
-    expect(last('cashPile', [pt({ cashValue: 5e9, totalValue: 100e9 })]).verdict).toBe('WATCH')
-  })
-
-  it('totalValue = 0 hoặc thiếu cash → N/A (chia-0 guard)', () => {
-    expect(last('cashPile', [pt({ cashValue: 10e9, totalValue: 0 })]).verdict).toBe('N/A')
-    expect(last('cashPile', [pt({ cashValue: null, totalValue: 100e9 })]).verdict).toBe('N/A')
   })
 })
 

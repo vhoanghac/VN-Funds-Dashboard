@@ -28,19 +28,15 @@ const FLAGS: FlagConfig[] = [
     twist: 'Phí môi giới gần bằng phí quản lý. Quỹ giao dịch càng nhiều, phí ẩn càng phình.',
   },
   {
-    id: 'relatedParty',
-    title: 'Bên liên quan rút',
-    twist: 'Người trong cuộc rút vị thế ngay lúc thị trường tụt. Tình cờ hay tín hiệu?',
-  },
-  {
     id: 'forcedSale',
-    title: 'Rút vốn buộc bán',
-    twist: 'Nhà đầu tư rút buộc quỹ bán cổ phiếu đang lỗ, người ở lại ăn trọn khoản lỗ hiện thực.',
-  },
-  {
-    id: 'cashPile',
-    title: 'Cọc tiền mặt',
-    twist: 'Cọc tiền mặt lớn có thể là phòng thủ, cũng có thể là quỹ hết ý tưởng.',
+    title: 'Bị ép bán',
+    twist:
+      'Cột đỏ (Mua lại) là độ lớn tiền nhà đầu tư rút chứng chỉ quỹ (2239.3.2, báo cáo ghi âm nên chart vẽ dương). ' +
+      'Đường xanh (Lãi/lỗ TH) là lãi/lỗ thực hiện khi quỹ bán chứng khoán trong tháng (2235). ' +
+      'Khi nhà đầu tư đồng loạt rút tiền, quỹ cần tiền mặt trả họ nên buộc phải bán cổ phiếu, kể cả đang lỗ. ' +
+      'Khoản lỗ trên giấy thành lỗ thật, người ở lại (không rút) chịu qua NAV. ' +
+      'Verdict ĐỎ khi cùng tháng mua lại ≥ 50 tỷ và lãi thực hiện ≤ −100 tỷ. ' +
+      'DCDS 07/2026: rút −100,3 tỷ, lãi thực hiện −267 tỷ → ĐỎ, quỹ bán mạnh trong thị trường giảm để trả tiền rút.',
   },
 ]
 
@@ -74,49 +70,19 @@ function DetectorChart({ id, data, width, height }: { id: RedFlagId; data: Array
       </BarChart>
     )
   }
-  if (id === 'relatedParty') {
-    return (
-      <ComposedChart data={data} width={width} height={height} margin={CHART_MARGIN}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
-        <YAxis yAxisId="pct" tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={40} />
-        <YAxis yAxisId="pos" orientation="right" tickFormatter={(v: number) => `${Math.round(v)}tr`} tick={{ fontSize: 11 }} width={40} />
-        <RechartsTooltip
-          formatter={(value: number | string, name) => [name === 'Vị thế (tr CCQ)' ? `${Number(value).toFixed(0)}tr CCQ` : `${Number(value).toFixed(2)}%`, name]}
-          labelFormatter={(p: string) => formatPeriodLabel(p)}
-        />
-        <Line yAxisId="pct" type="monotone" dataKey="% sở hữu" stroke="#6366f1" strokeWidth={2} dot={false} isAnimationActive={false} />
-        <Line yAxisId="pos" type="monotone" dataKey="Vị thế (tr CCQ)" stroke="#64748b" strokeWidth={2} dot={false} isAnimationActive={false} />
-      </ComposedChart>
-    )
-  }
-  if (id === 'forcedSale') {
-    return (
-      <ComposedChart data={data} width={width} height={height} margin={CHART_MARGIN}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
-        <YAxis yAxisId="red" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
-        <YAxis yAxisId="rl" orientation="right" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
-        <RechartsTooltip
-          formatter={(value: number | string, name) => [formatVND(Number(value)), name]}
-          labelFormatter={(p: string) => formatPeriodLabel(p)}
-        />
-        <Bar yAxisId="red" dataKey="Mua lại" fill="#dc2626" isAnimationActive={false} />
-        <Line yAxisId="rl" type="monotone" dataKey="Lãi/lỗ TH" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
-      </ComposedChart>
-    )
-  }
   return (
-    <BarChart data={data} width={width} height={height} margin={CHART_MARGIN}>
+    <ComposedChart data={data} width={width} height={height} margin={CHART_MARGIN}>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
       <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
-      <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={40} />
+      <YAxis yAxisId="red" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
+      <YAxis yAxisId="rl" orientation="right" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
       <RechartsTooltip
-        formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Tiền mặt']}
+        formatter={(value: number | string, name) => [formatVND(Number(value)), name]}
         labelFormatter={(p: string) => formatPeriodLabel(p)}
       />
-      <Bar dataKey="Tiền mặt %" fill="#0d9488" isAnimationActive={false} />
-    </BarChart>
+      <Bar yAxisId="red" dataKey="Mua lại" fill="#dc2626" isAnimationActive={false} />
+      <Line yAxisId="rl" type="monotone" dataKey="Lãi/lỗ TH" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
+    </ComposedChart>
   )
 }
 
@@ -125,20 +91,7 @@ function buildChartData(id: RedFlagId, points: RedFlagPoint[]): Array<Record<str
     if (id === 'machine') {
       return { period: p.period, 'Phí môi giới': p.brokerageFee, 'Phí quản lý': p.managementFee }
     }
-    if (id === 'relatedParty') {
-      return {
-        period: p.period,
-        '% sở hữu': p.relatedPartyOwnership !== null ? p.relatedPartyOwnership * 100 : null,
-        'Vị thế (tr CCQ)': p.relatedPartyOwnership !== null && p.outstandingUnits !== null ? (p.relatedPartyOwnership * p.outstandingUnits) / 1e6 : null,
-      }
-    }
-    if (id === 'forcedSale') {
-      return { period: p.period, 'Mua lại': p.redemptionFlow !== null ? -p.redemptionFlow : null, 'Lãi/lỗ TH': p.realizedGain }
-    }
-    return {
-      period: p.period,
-      'Tiền mặt %': p.cashValue !== null && p.totalValue !== null && p.totalValue > 0 ? (p.cashValue / p.totalValue) * 100 : null,
-    }
+    return { period: p.period, 'Mua lại': p.redemptionFlow !== null ? -p.redemptionFlow : null, 'Lãi/lỗ TH': p.realizedGain }
   })
 }
 
@@ -153,24 +106,10 @@ function metricLine(id: RedFlagId, summary: ReturnType<typeof computeVerdictAt>,
       </>
     )
   }
-  if (id === 'relatedParty') {
-    return (
-      <span>
-        Vị thế 6 tháng: <strong>{summary.keyMetric === null ? 'không đủ dữ liệu' : summary.keyMetric > 0 ? `rút ${summary.extra}` : 'ổn định'}</strong>
-      </span>
-    )
-  }
-  if (id === 'forcedSale') {
-    return (
-      <>
-        {summary.keyMetric !== null && <span>Mua lại: <strong>{formatVND(summary.keyMetric)}</strong></span>}
-        {realized !== null && <span>Lãi thực hiện: <strong>{formatVND(realized)}</strong></span>}
-      </>
-    )
-  }
   return (
     <>
-      {summary.extra !== null && <span>Tiền mặt / tài sản: <strong>{summary.extra}</strong></span>}
+      {summary.keyMetric !== null && <span>Mua lại: <strong>{formatVND(summary.keyMetric)}</strong></span>}
+      {realized !== null && <span>Lãi thực hiện: <strong>{formatVND(realized)}</strong></span>}
     </>
   )
 }
@@ -216,27 +155,22 @@ function DetectorCard({
   )
 }
 
-export function RedFlagSection({ points }: Props) {
+export function RedFlagDetectors({ points }: Props) {
   if (points.length === 0) return null
   const idx = points.length - 1
 
   return (
-    <>
-      <div className="section-divider">
-        <span className="section-divider-label">Plot Twist (Red Flags ẩn)</span>
-      </div>
-      <div className="fund-analysis-charts-grid">
-        {FLAGS.map(flag => (
-          <DetectorCard
-            key={flag.id}
-            config={flag}
-            summary={computeVerdictAt(flag.id, points, idx)}
-            history={redFlagHistory(flag.id, points)}
-            data={buildChartData(flag.id, points)}
-            realized={flag.id === 'forcedSale' ? points[idx]?.realizedGain ?? null : null}
-          />
-        ))}
-      </div>
-    </>
+    <div className="fund-analysis-charts-grid">
+      {FLAGS.map(flag => (
+        <DetectorCard
+          key={flag.id}
+          config={flag}
+          summary={computeVerdictAt(flag.id, points, idx)}
+          history={redFlagHistory(flag.id, points)}
+          data={buildChartData(flag.id, points)}
+          realized={flag.id === 'forcedSale' ? points[idx]?.realizedGain ?? null : null}
+        />
+      ))}
+    </div>
   )
 }
