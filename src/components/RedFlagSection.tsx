@@ -1,5 +1,5 @@
 import {
-  BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts'
 import { computeVerdictAt, redFlagHistory, type RedFlagId, type RedFlagPoint, type Verdict } from '../utils/fundRedFlags'
 import { formatVND, formatVNDAxis } from '../utils/vndFormat'
@@ -32,7 +32,7 @@ const FLAGS: FlagConfig[] = [
     title: 'Bị ép bán',
     twist:
       'Cột đỏ (Mua lại) là độ lớn tiền nhà đầu tư rút chứng chỉ quỹ (2239.3.2, báo cáo ghi âm nên chart vẽ dương). ' +
-      'Đường xanh (Lãi/lỗ TH) là lãi/lỗ thực hiện khi quỹ bán chứng khoán trong tháng (2235). ' +
+      'Cột xanh (Lãi/lỗ TH) là lãi/lỗ thực hiện khi quỹ bán chứng khoán trong tháng (2235), lên khi lời, xuống dưới 0 khi lỗ. ' +
       'Khi nhà đầu tư đồng loạt rút tiền, quỹ cần tiền mặt trả họ nên buộc phải bán cổ phiếu, kể cả đang lỗ. ' +
       'Khoản lỗ trên giấy thành lỗ thật, người ở lại (không rút) chịu qua NAV. ' +
       'Verdict ĐỎ khi cùng tháng mua lại ≥ 50 tỷ và lãi thực hiện ≤ −100 tỷ. ' +
@@ -71,18 +71,21 @@ function DetectorChart({ id, data, width, height }: { id: RedFlagId; data: Array
     )
   }
   return (
-    <ComposedChart data={data} width={width} height={height} margin={CHART_MARGIN}>
+    <BarChart data={data} width={width} height={height} margin={CHART_MARGIN}>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
       <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
-      <YAxis yAxisId="red" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
-      <YAxis yAxisId="rl" orientation="right" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
+      <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
       <RechartsTooltip
         formatter={(value: number | string, name) => [formatVND(Number(value)), name]}
         labelFormatter={(p: string) => formatPeriodLabel(p)}
       />
-      <Bar yAxisId="red" dataKey="Mua lại" fill="#dc2626" isAnimationActive={false} />
-      <Line yAxisId="rl" type="monotone" dataKey="Lãi/lỗ TH" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
-    </ComposedChart>
+      <Bar dataKey="Mua lại" fill="#dc2626" isAnimationActive={false} />
+      <Bar dataKey="Lãi/lỗ TH" isAnimationActive={false}>
+        {data.map(d => (
+          <Cell key={String(d.period)} fill={(Number(d['Lãi/lỗ TH']) || 0) >= 0 ? '#16a34a' : '#3b82f6'} />
+        ))}
+      </Bar>
+    </BarChart>
   )
 }
 
