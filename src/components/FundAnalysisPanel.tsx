@@ -1669,8 +1669,23 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: FLOW_AXIS_COLOR }} />Dòng tiền (phải)</span>
               </div>
               <p className="fund-analysis-chart-note">
-                Trục trái là AUM, trục phải là dòng tiền ròng (2239.3). AUM tăng mạnh mà dòng tiền âm
-                kéo dài là dấu hiệu đáng ngờ.
+                <strong>Cách đọc:</strong> nhìn khoảng cách giữa 2 đường, đừng nhìn từng đường. AUM ở
+                trục trái, dòng tiền ròng (2239.3) ở trục phải.<br />
+                <br />
+                <strong>Mỗi tháng, AUM đổi theo 2 nguồn:</strong><br />
+                1. Tiền mới nhà đầu tư nạp vào hoặc rút ra (đường dòng tiền).<br />
+                2. Lợi nhuận đầu tư (giá tài sản lên/xuống).<br />
+                <br />
+                <strong>2 đường chạy ngược nhau là có chuyện:</strong><br />
+                1. AUM lên mà dòng tiền âm: tăng nhờ GIÁ tài sản, vốn đang chảy ra.<br />
+                2. AUM xuống mà dòng tiền dương: hút được vốn nhưng giá giảm mạnh hơn.<br />
+                3. Cả 2 cùng lên: khỏe. Cùng xuống: xấu.<br />
+                <br />
+                <strong>DCDS 2026 đang ở mục 2:</strong><br />
+                1. Hút ~838 tỷ tiền mới trong 7 tháng, chỉ 1 tháng rút nhẹ (−18 tỷ).<br />
+                2. Nhưng NAV vẫn tụt: 6.311 tỷ (02/2026) → 5.723 tỷ (07/2026).<br />
+                3. Vì lợi nhuận đầu tư âm −652 tỷ, thị trường giảm −17% từ đỉnh 2/2026.<br />
+                4. Kết luận: tiền vào đông không cứu được giá tài sản giảm.
               </p>
             </div>
 
