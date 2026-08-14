@@ -31,6 +31,30 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
   const rawData = mergeAllSeries(series)
   const data = logScale ? toGrowthFactor(rawData, series) : rawData
 
+  // Trục y không được chạm xuống dưới mức dữ liệu thực tế. Recharts với
+  // domain=['auto','auto'] tự làm tròn sang tick "đẹp", có thể kéo mốc âm dưới
+  // 0% dù chuỗi tích lũy không bao giờ âm — từng hiện trục bắt đầu ở -200%.
+  // Cận dưới cố định theo giá trị thấp nhất của toàn bộ series (và không dưới
+  // -1, vì lợi nhuận tích lũy không thể mất quá 100%). Cận trên cũng cố định
+  // bằng số, vì để 'auto' thì recharts vẫn tự nới domain theo tick "đẹp".
+  // Làm tròn 2 cận về mốc 50% để tick ra số sạch.
+  const yDomain = (() => {
+    let min = 0
+    let max = 0
+    for (const s of series) {
+      for (const p of s.data) {
+        if (p.value < min) min = p.value
+        if (p.value > max) max = p.value
+      }
+    }
+    const floor = Math.max(min, -1)
+    const step = 0.5
+    return [
+      Math.floor(floor / step) * step,
+      Math.ceil(max / step) * step,
+    ] as [number, number]
+  })()
+
   // Filter events within chart date range
   const firstTs = data[0]?.timestamp as number | undefined
   const lastTs = data[data.length - 1]?.timestamp as number | undefined
@@ -88,7 +112,7 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
           />
           <YAxis
             scale={logScale ? 'log' : 'auto'}
-            domain={logScale ? ['auto', 'auto'] : ['auto', 'auto']}
+            domain={logScale ? ['auto', 'auto'] : yDomain}
             allowDataOverflow={false}
             tickFormatter={logScale ? formatGrowthFactor : formatPercent}
             tick={{ fontSize: 12 }}
