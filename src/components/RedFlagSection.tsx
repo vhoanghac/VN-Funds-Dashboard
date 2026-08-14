@@ -79,10 +79,10 @@ function formatAxisTick(periodEnd: string): string {
 
 const CHART_MARGIN = { left: 8, right: 8, top: 8, bottom: 4 } as const
 
-function DetectorChart({ id, data }: { id: RedFlagId; data: Array<Record<string, unknown>> }) {
+function DetectorChart({ id, data, width, height }: { id: RedFlagId; data: Array<Record<string, unknown>>; width?: number; height?: number }) {
   if (id === 'machine') {
     return (
-      <BarChart data={data} margin={CHART_MARGIN}>
+      <BarChart data={data} width={width} height={height} margin={CHART_MARGIN}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
         <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
@@ -97,7 +97,7 @@ function DetectorChart({ id, data }: { id: RedFlagId; data: Array<Record<string,
   }
   if (id === 'relatedParty') {
     return (
-      <ComposedChart data={data} margin={CHART_MARGIN}>
+      <ComposedChart data={data} width={width} height={height} margin={CHART_MARGIN}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
         <YAxis yAxisId="pct" tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={40} />
@@ -113,7 +113,7 @@ function DetectorChart({ id, data }: { id: RedFlagId; data: Array<Record<string,
   }
   if (id === 'forcedSale') {
     return (
-      <ComposedChart data={data} margin={CHART_MARGIN}>
+      <ComposedChart data={data} width={width} height={height} margin={CHART_MARGIN}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
         <YAxis yAxisId="red" tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={66} />
@@ -128,7 +128,7 @@ function DetectorChart({ id, data }: { id: RedFlagId; data: Array<Record<string,
     )
   }
   return (
-    <BarChart data={data} margin={CHART_MARGIN}>
+    <BarChart data={data} width={width} height={height} margin={CHART_MARGIN}>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
       <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={24} />
       <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={40} />
@@ -177,7 +177,7 @@ function metricLine(id: RedFlagId, summary: ReturnType<typeof computeVerdictAt>,
   if (id === 'relatedParty') {
     return (
       <span>
-        Vị thế 6 tháng: <strong>{summary.keyMetric !== null && summary.keyMetric > 0 ? `rút ${summary.extra}` : 'ổn định'}</strong>
+        Vị thế 6 tháng: <strong>{summary.keyMetric === null ? 'không đủ dữ liệu' : summary.keyMetric > 0 ? `rút ${summary.extra}` : 'ổn định'}</strong>
       </span>
     )
   }
