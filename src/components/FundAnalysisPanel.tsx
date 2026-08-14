@@ -1669,12 +1669,9 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: FLOW_AXIS_COLOR }} />Dòng tiền (phải)</span>
               </div>
               <p className="fund-analysis-chart-note">
-                Đừng nhìn từng đường. Nhìn khoảng cách giữa chúng.<br />
-                <br />
-                Mỗi tháng, AUM đổi bằng đúng 2 thứ cộng lại:<br />
+                Mỗi tháng, AUM được tính bằng:<br />
                 1. Tiền mới nhà đầu tư nạp vào hay rút ra (đường dòng tiền).<br />
                 2. Lợi nhuận đầu tư, tức giá tài sản lên hay xuống.<br />
-                Khoảng cách giữa 2 đường chính là phần giá tài sản đóng góp.<br />
                 <br />
                 Hai đường chạy ngược nhau là có chuyện:<br />
                 1. AUM lên mà dòng tiền âm: tăng nhờ GIÁ tài sản, vốn đang chảy ra.<br />
@@ -1684,11 +1681,12 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 DCDS năm nay đang ở mục 2:<br />
                 1. Hút gần 838 tỷ tiền mới trong 7 tháng, chỉ một tháng rút nhẹ.<br />
                 2. Tổng tài sản vẫn tụt: 6.311 tỷ (tháng 2) → 5.723 tỷ (tháng 7).<br />
-                3. Vì lợi nhuận đầu tư âm 652 tỷ, thị trường lui 17% so với đỉnh.<br />
+                3. Vì lợi nhuận đầu tư âm 652 tỷ, thị trường giảm 17% so với đỉnh.<br />
                 4. Người mua ở đỉnh, một chứng chỉ giá 112 nghìn, giờ còn 93 nghìn.<br />
                 <br />
-                Tiền vào đông không cứu được giá tài sản giảm. Hút vốn là chuyện của phân phối, làm ra
-                tiền mới là chuyện của đầu tư. Chart này chỉ tách hai chuyện đó ra, để bạn không nhầm.
+                Tiền vào nhiều không cứu được sự sụt giảm của tài sản. Hút vốn là chuyện của phân phối,
+                làm ra tiền mới là chuyện của đầu tư. Chart này chỉ tách hai chuyện đó ra, để bạn không
+                nhầm.
               </p>
             </div>
 
