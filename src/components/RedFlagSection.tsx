@@ -1,7 +1,7 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts'
-import { computeVerdictAt, redFlagHistory, type RedFlagPoint, type Verdict } from '../utils/fundRedFlags'
+import { computeVerdictAt, type RedFlagPoint, type Verdict } from '../utils/fundRedFlags'
 import { formatVND, formatVNDAxis } from '../utils/vndFormat'
 
 interface Props {
@@ -63,7 +63,6 @@ export function RedFlagDetectors({ points }: Props) {
   const summary = computeVerdictAt('machine', points, idx)
   const meta = VERDICT_META[summary.verdict]
   const data = buildChartData(points)
-  const history = redFlagHistory('machine', points)
 
   return (
     <div className="chart-container fund-analysis-chart-wide">
@@ -85,16 +84,6 @@ export function RedFlagDetectors({ points }: Props) {
       <div className="fund-analysis-stack-legend">
         <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: '#f97316' }} />Phí môi giới (2231)</span>
         <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: '#f59e0b' }} />Phí quản lý (2225)</span>
-      </div>
-      <div className="redflag-strip">
-        {history.map(h => (
-          <span
-            key={h.period}
-            className="redflag-dot"
-            style={{ backgroundColor: VERDICT_META[h.verdict].color }}
-            title={`${formatPeriodLabel(h.period)}: ${VERDICT_META[h.verdict].label}`}
-          />
-        ))}
       </div>
       <p className="fund-analysis-chart-note">{FLAG.twist}</p>
     </div>

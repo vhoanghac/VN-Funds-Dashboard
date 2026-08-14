@@ -81,11 +81,3 @@ export function computeVerdictAt(id: RedFlagId, points: RedFlagPoint[], index: n
 export function redFlagSummary(id: RedFlagId, points: RedFlagPoint[]): RedFlagResult {
   return computeVerdictAt(id, points, points.length - 1)
 }
-
-/** Verdict từng kỳ (toàn bộ lịch sử) cho strip hiển thị. */
-export function redFlagHistory(id: RedFlagId, points: RedFlagPoint[]): { period: string; verdict: Verdict }[] {
-  return points.map((_, j) => ({
-    period: points[j]!.period,
-    verdict: computeVerdictAt(id, points, j).verdict,
-  }))
-}

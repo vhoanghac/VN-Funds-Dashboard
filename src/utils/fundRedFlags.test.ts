@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  computeVerdictAt, redFlagSummary, redFlagHistory,
+  computeVerdictAt, redFlagSummary,
   type RedFlagPoint, type RedFlagId,
 } from './fundRedFlags'
 
@@ -68,19 +68,10 @@ describe('D1 — Cỗ máy giao dịch', () => {
   })
 })
 
-describe('computeVerdictAt / redFlagHistory', () => {
+describe('computeVerdictAt', () => {
   it('computeVerdictAt trả verdict cho điểm bất kỳ trong chuỗi', () => {
     const points = [pt({ turnoverRate: 1.0 }), pt({ turnoverRate: 6.0 })]
     expect(computeVerdictAt('machine', points, 0).verdict).toBe('OK')
     expect(computeVerdictAt('machine', points, 1).verdict).toBe('DANGER')
-  })
-
-  it('redFlagHistory trả toàn bộ kỳ, đúng period + verdict từng kỳ', () => {
-    const points = Array.from({ length: 15 }, (_, i) => pt({ period: `2026-${String(i + 1).padStart(2, '0')}-01`, turnoverRate: i >= 10 ? 6 : 1 }))
-    const h = redFlagHistory('machine', points)
-    expect(h).toHaveLength(15)
-    expect(h[0]!.period).toBe('2026-01-01')
-    expect(h[h.length - 1]!.verdict).toBe('DANGER')
-    expect(h.find(x => x.period === '2026-05-01')!.verdict).toBe('OK')
   })
 })
