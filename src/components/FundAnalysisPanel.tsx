@@ -633,8 +633,6 @@ function FundAnalysisPanelImpl({ funds }: Props) {
       turnoverRate: flow?.get(p)?.turnoverRate ?? null,
       brokerageFee: income?.get(p)?.brokerageFee ?? null,
       managementFee: income?.get(p)?.managementFee ?? null,
-      redemptionFlow: income?.get(p)?.redemptionFlow ?? null,
-      realizedGain: income?.get(p)?.realizedGain ?? null,
     })),
     [flow, income, chartPeriods],
   )

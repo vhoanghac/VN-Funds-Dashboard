@@ -10,8 +10,6 @@ function pt(over: Partial<RedFlagPoint> = {}): RedFlagPoint {
     turnoverRate: null,
     brokerageFee: null,
     managementFee: null,
-    redemptionFlow: null,
-    realizedGain: null,
     ...over,
   }
 }
@@ -67,33 +65,6 @@ describe('D1 — Cỗ máy giao dịch', () => {
   it('managementFee = 0 không chia-0, phán theo turnover 1.0 → OK', () => {
     const r = last('machine', [pt({ turnoverRate: 1.0, managementFee: 0, brokerageFee: 0.5e9 })])
     expect(r.verdict).toBe('OK')
-  })
-})
-
-describe('D2 — Bị ép bán', () => {
-  it('mua lại −100 tỷ + lãi thực hiện −267 tỷ → DANGER', () => {
-    const r = last('forcedSale', [pt({ redemptionFlow: -100_273_165_742, realizedGain: -267_015_523_861 })])
-    expect(r.verdict).toBe('DANGER')
-    expect(r.keyMetric).toBeCloseTo(100_273_165_742, 0)
-  })
-
-  it('mua lại −30 tỷ + lãi −80 tỷ → WATCH', () => {
-    expect(last('forcedSale', [pt({ redemptionFlow: -30e9, realizedGain: -80e9 })]).verdict).toBe('WATCH')
-  })
-
-  it('mua lại nhỏ + lãi âm nhẹ → OK', () => {
-    expect(last('forcedSale', [pt({ redemptionFlow: -10e9, realizedGain: -20e9 })]).verdict).toBe('OK')
-  })
-
-  it('biên ngưỡng: đúng 50 tỷ/−100 tỷ → DANGER; đúng 20 tỷ/−50 tỷ → WATCH', () => {
-    expect(last('forcedSale', [pt({ redemptionFlow: -50e9, realizedGain: -100e9 })]).verdict).toBe('DANGER')
-    expect(last('forcedSale', [pt({ redemptionFlow: -20e9, realizedGain: -50e9 })]).verdict).toBe('WATCH')
-    expect(last('forcedSale', [pt({ redemptionFlow: -20e9, realizedGain: -40e9 })]).verdict).toBe('OK')
-  })
-
-  it('thiếu 2239.3.2 hoặc 2235 → N/A (kỳ trước 12/2020)', () => {
-    expect(last('forcedSale', [pt({ redemptionFlow: null, realizedGain: -100e9 })]).verdict).toBe('N/A')
-    expect(last('forcedSale', [pt({ redemptionFlow: -50e9, realizedGain: null })]).verdict).toBe('N/A')
   })
 })
 
