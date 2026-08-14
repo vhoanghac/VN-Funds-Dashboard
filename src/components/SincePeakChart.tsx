@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import type { SincePeakRow } from '../utils/lsVsDca'
-import { MIN_DRAWDOWN_EPISODES, MIN_DRAWDOWN_FOR_SINCE_PEAK } from '../utils/lsVsDca'
+import { MIN_DRAWDOWN_EPISODES, MIN_DRAWDOWN_FOR_SINCE_PEAK, dcaEndingForNarrative } from '../utils/lsVsDca'
 import { formatVND } from '../utils/vndFormat'
 
 interface Props {
@@ -77,7 +77,9 @@ function SincePeakChartImpl({ rows, totalCapital, dcaMonths }: Props) {
               className="holdcost-row"
               title={empty
                 ? 'Chưa từng có lần nào rơi vào nhóm này'
-                : `${r.label} sau đỉnh: đầu tư một lần về đích ${formatVND(r.medianLsGrowth! * totalCapital)}, DCA về đích ${formatVND(r.medianDcaGrowth! * totalCapital)}.`}
+                : r.medianLsGrowth !== null && r.medianCostOfCapital !== null
+                  ? `${r.label} sau đỉnh: đầu tư một lần về đích ${formatVND(r.medianLsGrowth * totalCapital)}, DCA về đích ${formatVND(dcaEndingForNarrative(r.medianLsGrowth, r.medianCostOfCapital) * totalCapital)}.`
+                  : undefined}
             >
               <div className="holdcost-label ddbucket-label">
                 <span className="ddbucket-band">{r.label}</span>

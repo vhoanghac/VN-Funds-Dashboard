@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import type { DrawdownBucketRow } from '../utils/lsVsDca'
-import { MIN_DRAWDOWN_EPISODES } from '../utils/lsVsDca'
+import { MIN_DRAWDOWN_EPISODES, dcaEndingForNarrative } from '../utils/lsVsDca'
 import { formatVND } from '../utils/vndFormat'
 
 /** "2015-01-14" thành "01/2015". */
@@ -132,7 +132,9 @@ function DrawdownBucketChartImpl({ views, totalCapital, dcaMonths }: Props) {
               className="holdcost-row"
               title={empty
                 ? 'Quỹ này chưa từng giảm tới mức đó'
-                : `${r.label}: đầu tư một lần về đích ${formatVND(r.medianLsGrowth! * totalCapital)}, DCA về đích ${formatVND(r.medianDcaGrowth! * totalCapital)}.`}
+                : r.medianLsGrowth !== null && r.medianCostOfCapital !== null
+                  ? `${r.label}: đầu tư một lần về đích ${formatVND(r.medianLsGrowth * totalCapital)}, DCA về đích ${formatVND(dcaEndingForNarrative(r.medianLsGrowth, r.medianCostOfCapital) * totalCapital)}.`
+                  : undefined}
             >
               <div className="holdcost-label ddbucket-label">
                 <span className="ddbucket-band">{r.label}</span>

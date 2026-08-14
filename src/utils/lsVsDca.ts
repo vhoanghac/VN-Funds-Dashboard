@@ -651,6 +651,22 @@ function median(sorted: number[]): number {
     : sorted[mid]!
 }
 
+/**
+ * Giá trị cuối kỳ của DCA dùng cho câu kể "về đích bao nhiêu".
+ *
+ * Không lấy thẳng medianDcaGrowth. Trung vị không cộng trừ được với nhau:
+ * median(LS) và median(DCA) mỗi bên một phân bố, còn medianCostOfCapital là
+ * trung vị của chênh lệch TỪNG KỊCH BẢN (DCA − LS). Nên median(DCA) − median(LS)
+ * có thể khác dấu với median(DCA − LS), gây chuyện "LS về đích 160, DCA về đích
+ * 160, mà chênh −7.4 triệu" — hai số đầu tự mâu thuẫn với số chênh bên cạnh.
+ *
+ * Cách dựng: lấy medianLsGrowth làm gốc rồi cộng đúng medianCostOfCapital, ba
+ * con số kể trong câu luôn khớp nhau bằng cách xây dựng.
+ */
+export function dcaEndingForNarrative(lsGrowth: number, costOfCapital: number): number {
+  return lsGrowth + costOfCapital
+}
+
 export interface HeatmapCell {
   holdingYears: number
   dcaMonths: number

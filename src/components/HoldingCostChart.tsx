@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import type { HoldingCostCell } from '../utils/lsVsDca'
-import { MIN_INDEPENDENT_WINDOWS } from '../utils/lsVsDca'
+import { MIN_INDEPENDENT_WINDOWS, dcaEndingForNarrative } from '../utils/lsVsDca'
 import { formatVND } from '../utils/vndFormat'
 
 interface Props {
@@ -88,15 +88,15 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
         hết tiền.
       </p>
 
-      {example.medianLsGrowth !== null && example.medianDcaGrowth !== null && (
+      {example.medianLsGrowth !== null && example.medianCostOfCapital !== null && (
         <p className="holdcost-example">
           Ví dụ dòng <strong>{example.holdingYears} năm</strong>, tức{' '}
           {breakdown(example.holdingYears)}: bên đầu tư một lần
           thường về đích <strong>{formatVND(example.medianLsGrowth * totalCapital)}</strong>,
-          bên DCA về đích <strong>{formatVND(example.medianDcaGrowth * totalCapital)}</strong>.
+          bên DCA về đích <strong>{formatVND(dcaEndingForNarrative(example.medianLsGrowth, example.medianCostOfCapital) * totalCapital)}</strong>.
           Chênh nhau{' '}
-          <strong className={example.medianCostOfCapital! < 0 ? 'cycle-neg' : 'cycle-pos'}>
-            {formatVND(Math.abs(example.medianCostOfCapital! * totalCapital))}
+          <strong className={example.medianCostOfCapital < 0 ? 'cycle-neg' : 'cycle-pos'}>
+            {formatVND(Math.abs(example.medianCostOfCapital * totalCapital))}
           </strong>.
           Cả hai đều lớn hơn vốn ban đầu, con số chênh lệch là khoảng cách lúc về đích
           chứ không phải tiền bị mất.
@@ -110,8 +110,8 @@ function HoldingCostChartImpl({ data, dcaMonths, totalCapital }: Props) {
             <div
               key={d.holdingYears}
               className="holdcost-row"
-              title={d.medianLsGrowth !== null && d.medianDcaGrowth !== null
-                ? `Tổng ${d.holdingYears} năm (${breakdown(d.holdingYears)}): đầu tư một lần về đích ${formatVND(d.medianLsGrowth * totalCapital)}, DCA về đích ${formatVND(d.medianDcaGrowth * totalCapital)}.`
+              title={d.medianLsGrowth !== null && d.medianCostOfCapital !== null
+                ? `Tổng ${d.holdingYears} năm (${breakdown(d.holdingYears)}): đầu tư một lần về đích ${formatVND(d.medianLsGrowth * totalCapital)}, DCA về đích ${formatVND(dcaEndingForNarrative(d.medianLsGrowth, d.medianCostOfCapital) * totalCapital)}.`
                 : undefined}
             >
               <div className="holdcost-label">
