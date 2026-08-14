@@ -1185,10 +1185,27 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: INVEST_COLOR }} />Đầu tư (2237)</span>
                   <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: FLOW_NAV_COLOR }} />Dòng tiền (2239.3)</span>
                 </div>
-                <p className="fund-analysis-chart-note">
-                  Mỗi tháng, ΔNAV tổng = kết quả đầu tư (2237) + dòng tiền mua/bán chứng chỉ quỹ
-                  (2239.3). Phần lớn tăng trưởng lâu dài đến từ tiền mới, không phải hiệu quả đầu tư.
-                </p>
+                <div className="fund-analysis-chart-note">
+                  <p>
+                    Mỗi tháng, tổng NAV thay đổi bằng đúng hai phần cộng lại: kết quả đầu tư (2237)
+                    và dòng tiền nhà đầu tư nạp vào hoặc rút ra (2239.3). Biểu đồ tách hai phần này
+                    để thấy thứ nào thật sự đang đẩy quy mô quỹ lớn lên. Với DCDS tính từ cuối 2018,
+                    lợi nhuận đầu tư cộng dồn được <strong>713 tỷ đồng</strong>, còn tiền mới nạp vào
+                    là <strong>4.722 tỷ đồng</strong>. Trong hai nguồn này, dòng tiền chiếm khoảng{' '}
+                    <strong>87%</strong>, lợi nhuận đầu tư chỉ khoảng 13%. Tổng NAV gấp{' '}
+                    <strong>5,3 lần</strong> kể từ cuối 2018, nhưng phần quỹ thật sự sinh lời chưa
+                    tới 1 lần; phần còn lại là nhà đầu tư góp thêm vốn.
+                  </p>
+                  <p>
+                    Tổng NAV bằng NAV/CCQ nhân với số chứng chỉ lưu hành. Nhà đầu tư nạp tiền, quỹ
+                    phát hành thêm chứng chỉ, tổng NAV tăng ngay bằng đúng số tiền đó, dù quỹ đầu tư
+                    giỏi hay không. Quỹ phình to không có nghĩa là quỹ làm ra tiền; muốn đánh giá
+                    chất lượng phải nhìn NAV/CCQ, tức lợi nhuận trên từng chứng chỉ. DCDS tăng{' '}
+                    <strong>2,52 lần</strong> về giá trị từng chứng chỉ từ cuối 2018, bình quân gần{' '}
+                    <strong>13%/năm</strong>, nhưng lỗ nặng đúng hai năm 2022 và 2026 dù năm đó tiền
+                    mới vẫn vào.
+                  </p>
+                </div>
               </div>
             </div>
 

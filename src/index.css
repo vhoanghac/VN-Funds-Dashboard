@@ -7426,10 +7426,25 @@ h1, h2, h3 {
   color: #9a9890;
 }
 
+/* Note dưới mỗi chart: card nền nhạt + gạch trái, giống dca-projection-takeaway */
 .fund-analysis-chart-note {
-  margin-top: 4px;
-  font-size: 0.78rem;
-  color: #9a9890;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #faf9f5;
+  border-left: 3px solid #5e5d59;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #5e5d59;
+}
+.fund-analysis-chart-note p {
+  margin: 0 0 6px;
+}
+.fund-analysis-chart-note p:last-child {
+  margin-bottom: 0;
+}
+.fund-analysis-chart-note strong {
+  color: #141413;
 }
 
 /* Note nhấn mạnh (vd spike cổ tức) — dòng thứ 2 dưới chart */
