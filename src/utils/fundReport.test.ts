@@ -205,7 +205,9 @@ const INCOME_2026_07 = `code,line_item,period_end,measure,value,asOf
 2235,Realised Gain/(Loss) from disposal of investment,2026-07-31,month,-267000000000,2026-08-03
 2236,Unrealised Gain/(Loss) due to market price,2026-07-31,month,-201600000000,2026-08-03
 2237,Change of NAV due to investment activities,2026-07-31,month,-466800000000,2026-08-03
-2239.3,Change of NAV due to subscription/redemption,2026-07-31,month,119400000000,2026-08-03
+2239.3,Change of NAV due to subscription/redemption,2026-07-31,month,119436724650,2026-08-03
+2239.3.1,Change of NAV due to subscription during the period,2026-07-31,month,219709890392,2026-08-03
+2239.3.2,Change of NAV due to redemption during the period,2026-07-31,month,-100273165742,2026-08-03
 `
 
 const INDICATORS_2026_07 = `code,line_item,period_end,measure,value,asOf
@@ -259,7 +261,14 @@ describe('parseTidyIncome', () => {
 
   it('đọc thay đổi NAV do dòng tiền mua/bán CCQ (2239.3)', () => {
     const s = income.get('2026-07-31')!
-    expect(s.navChangeByFlow).toBe(119400000000)
+    expect(s.navChangeByFlow).toBe(119436724650)
+  })
+
+  it('tách riêng phát hành (2239.3.1, dương) và mua lại (2239.3.2, âm)', () => {
+    const s = income.get('2026-07-31')!
+    expect(s.subscriptionFlow).toBe(219709890392)
+    expect(s.redemptionFlow).toBe(-100273165742)
+    expect(s.subscriptionFlow + s.redemptionFlow).toBe(s.navChangeByFlow)
   })
 
   it('fallback: kỳ thiếu 2237 thì tính từ netProfit + realized + unrealized', () => {

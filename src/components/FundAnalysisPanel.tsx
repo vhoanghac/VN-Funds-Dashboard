@@ -423,6 +423,20 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     [flow, assets, chartPeriods],
   )
 
+  // ── Phát hành (2239.3.1) / mua lại (2239.3.2) CCQ theo tháng ──
+  // 25 kỳ đầu (trước 12/2020) báo cáo không tách mục này → null để vẽ khoảng trống.
+  const subRedSeries = useMemo(
+    () => chartPeriods.map(p => {
+      const s = income?.get(p)
+      return {
+        period: p,
+        'Phát hành': s?.subscriptionFlow ?? null,
+        'Mua lại': s?.redemptionFlow ?? null,
+      }
+    }),
+    [income, chartPeriods],
+  )
+
   // ── Chart mới: số chứng chỉ quỹ lưu hành (2281) ──
   const unitsSeries = useMemo(
     () => chartPeriods.map(p => ({
@@ -908,6 +922,32 @@ function FundAnalysisPanelImpl({ funds }: Props) {
             <div className="fund-analysis-charts-grid">
               <div className="chart-container">
                 <div className="chart-header">
+                  <h3>Lợi nhuận quỹ theo tháng</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={profitSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [formatVND(Number(value)), 'Lợi nhuận quỹ']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Bar dataKey="value" isAnimationActive={false}>
+                      {profitSeries.map(d => (
+                        <Cell key={d.period} fill={d.value >= 0 ? PROFIT_POS : PROFIT_NEG} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Lợi nhuận của quỹ = thay đổi NAV do hoạt động đầu tư (2237) = thu nhập ròng +
+                  lãi/lỗ khi bán + lãi/lỗ theo giá thị trường (gồm cả phần cổ phiếu tăng/giảm chưa bán).
+                </p>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-header">
                   <h3>Lợi nhuận theo tháng (% NAV/CCQ)</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
@@ -929,32 +969,6 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 <p className="fund-analysis-chart-note">
                   Tỷ suất sinh lời mỗi tháng trên MỖI chứng chỉ (thay đổi % NAV/CCQ). Tính trên-đơn-vị
                   nên đã tự loại ảnh hưởng dòng tiền. Xanh = lời, đỏ = lỗ.
-                </p>
-              </div>
-
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Lợi nhuận quỹ theo tháng</h3>
-                </div>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={profitSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
-                    <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
-                    <RechartsTooltip
-                      formatter={(value: number | string) => [formatVND(Number(value)), 'Lợi nhuận quỹ']}
-                      labelFormatter={(p: string) => formatPeriodLabel(p)}
-                    />
-                    <Bar dataKey="value" isAnimationActive={false}>
-                      {profitSeries.map(d => (
-                        <Cell key={d.period} fill={d.value >= 0 ? PROFIT_POS : PROFIT_NEG} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <p className="fund-analysis-chart-note">
-                  Lợi nhuận THẬT của quỹ = thay đổi NAV do hoạt động đầu tư (2237) = thu nhập ròng +
-                  lãi/lỗ khi bán + lãi/lỗ theo giá thị trường (gồm cả phần cổ phiếu tăng/giảm chưa bán).
                 </p>
               </div>
             </div>
@@ -1069,6 +1083,52 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                     <Line type="monotone" dataKey="value" stroke={UNITS_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="fund-analysis-charts-grid">
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Thay đổi NAV do phát hành CCQ (2239.3.1)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={subRedSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [formatVND(Number(value)), 'Phát hành']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Bar dataKey="Phát hành" fill={PROFIT_POS} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Thay đổi giá trị tài sản ròng do phát hành thêm chứng chỉ quỹ (2239.3.1). Báo cáo
+                  chỉ tách riêng mục này từ 12/2020, các tháng trước để trống.
+                </p>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Thay đổi NAV do mua lại CCQ (2239.3.2)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={subRedSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [formatVND(Number(value)), 'Mua lại']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Bar dataKey="Mua lại" fill={PROFIT_NEG} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Thay đổi giá trị tài sản ròng do quỹ mua lại chứng chỉ (2239.3.2), số âm là tiền
+                  rút ra. Phát hành trừ mua lại ra dòng tiền ròng của tháng.
+                </p>
               </div>
             </div>
 

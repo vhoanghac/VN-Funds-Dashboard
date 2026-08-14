@@ -112,6 +112,10 @@ export interface FundIncomeSummary {
    * ΔNAV tổng = đầu tư + dòng tiền — phân biệt "hiệu quả" với "tiền mới".
    */
   navChangeByFlow: number
+  /** Thay đổi NAV do PHÁT HÀNH chứng chỉ quỹ trong kỳ (2239.3.1, dương). */
+  subscriptionFlow: number
+  /** Thay đổi NAV do MUA LẠI chứng chỉ quỹ trong kỳ (2239.3.2, âm). */
+  redemptionFlow: number
 }
 
 /** Một kỳ từ tidy_indicators (mua/bán + quy mô + chỉ số theo THÁNG). */
@@ -313,7 +317,7 @@ export function parseTidyIncome(csvText: string): Map<string, FundIncomeSummary>
     dividends: 0, interestIncome: 0,
     managementFee: 0, brokerageFee: 0,
     realizedGain: 0, unrealizedGain: 0,
-    investmentProfit: 0, navChangeByFlow: 0,
+    investmentProfit: 0, navChangeByFlow: 0, subscriptionFlow: 0, redemptionFlow: 0,
   })
 
   for (const raw of result.data) {
@@ -346,6 +350,8 @@ export function parseTidyIncome(csvText: string): Map<string, FundIncomeSummary>
     else if (code === '2236') snap.unrealizedGain = value
     else if (code === '2237') snap.investmentProfit = value
     else if (code === '2239.3') snap.navChangeByFlow = value
+    else if (code === '2239.3.1') snap.subscriptionFlow = value
+    else if (code === '2239.3.2') snap.redemptionFlow = value
   }
 
   for (const snap of byPeriod.values()) {
