@@ -17,6 +17,7 @@ import {
   COST_HOLDING_YEARS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
+  dcaEndingForNarrative,
 } from '../utils/lsVsDca'
 import type { PricePoint } from '../types'
 import type { DCASlot } from '../utils/dca'
@@ -674,6 +675,22 @@ describe('computeHoldingCost', () => {
       expect(c.medianCostOfCapital).not.toBeNull()
       // Cùng chiều: mất % thì cũng mất tiền.
       expect(Math.sign(c.medianCostOfCapital!)).toBe(Math.sign(c.medianCost!))
+    }
+  })
+
+  // Regression: ISSUE-002 — narrative endings must reconcile with the shown diff
+  // Found by /qa on 2026-08-14
+  // Report: .gstack/qa-reports/qa-report-localhost-5173-2026-08-14.md
+  it('DCA về đích suy từ LS + chênh lệch, khớp đúng con số chênh hiển thị', () => {
+    const cost = computeHoldingCost(
+      singleFundMap('A', rising), singleSlot('A'), 12, 'monthly', 'flat', 0, null,
+    )
+    const measured = cost.filter(c => c.medianLsGrowth !== null && c.medianCostOfCapital !== null)
+    expect(measured.length).toBeGreaterThan(0)
+    for (const c of measured) {
+      const dcaEnd = dcaEndingForNarrative(c.medianLsGrowth!, c.medianCostOfCapital!)
+      // Ba con số kể trong câu phải khớp: DCA = LS + chênh, chênh = DCA − LS.
+      expect(dcaEnd - c.medianLsGrowth!).toBeCloseTo(c.medianCostOfCapital!, 10)
     }
   })
 
