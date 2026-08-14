@@ -317,12 +317,15 @@ function FundAnalysisPanelImpl({ funds }: Props) {
   // periods xếp GIẢM dần (cho dropdown); biểu đồ cột phải chạy tăng dần theo
   // thời gian (cũ nhất trái → mới nhất phải), nên đảo ngược riêng cho chart.
   const chartPeriods = useMemo(() => [...periods].reverse(), [periods])
-  const totalSeries = useMemo(
+  // ── Chart B: quy mô quỹ = tài sản RÒNG (NAV cuối kỳ, 2217) ──
+  // Dùng NAV thay vì tổng tài sản gộp (2212): AUM chuẩn ngành là tài sản
+  // thuộc về nhà đầu tư, không pha nợ phải trả. Khớp 2243 trong báo cáo.
+  const aumSeries = useMemo(
     () => chartPeriods.map(p => ({
       period: p,
-      value: portfolio?.get(p)?.allocation.totalValue ?? 0,
+      value: assets?.get(p)?.nav ?? 0,
     })),
-    [portfolio, chartPeriods],
+    [assets, chartPeriods],
   )
 
   // ── Chart A: NAV/CCQ (giá quỹ) theo tháng — từ tidy_assets 2219 ──
@@ -411,16 +414,15 @@ function FundAnalysisPanelImpl({ funds }: Props) {
   // ── Chart E: dòng tiền ròng ước tính — (số CCQ mua − bán) × NAV/CCQ ──
   // Báo cáo chỉ công bố số chứng chỉ mua/bán (theo mệnh giá); quy ra tiền bằng
   // NAV/CCQ cuối kỳ (2219) — ước tính, ghi rõ trên chart.
+  // ── Chart E: dòng tiền ròng (2239.3) — thay đổi NAV do phát hành/mua lại ──
+  // Dùng con số chính xác từ báo cáo thay vì (số CCQ 2277−22781) × NAV/CCQ cuối kỳ
+  // vốn là ước tính (lệch ~2% vì mua/bán diễn ra ở NAV khác nhau trong tháng).
   const flowSeries = useMemo(
-    () => chartPeriods.map(p => {
-      const f = flow?.get(p)
-      const navPerUnit = assets?.get(p)?.navPerUnit ?? 0
-      return {
-        period: p,
-        value: f && navPerUnit > 0 ? f.netUnits * navPerUnit : 0,
-      }
-    }),
-    [flow, assets, chartPeriods],
+    () => chartPeriods.map(p => ({
+      period: p,
+      value: income?.get(p)?.navChangeByFlow ?? 0,
+    })),
+    [income, chartPeriods],
   )
 
   // ── Phát hành (2239.3.1) / mua lại (2239.3.2) CCQ theo tháng ──
@@ -1045,10 +1047,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
             <div className="fund-analysis-charts-grid">
               <div className="chart-container">
                 <div className="chart-header">
-                  <h3>Tổng tài sản quản lý (AUM) qua các tháng</h3>
+                  <h3>Quy mô quỹ (AUM) qua các tháng</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={totalSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                  <AreaChart data={aumSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
                     <defs>
                       <linearGradient id="aumFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={SERIES_COLOR} stopOpacity={0.35} />
@@ -1059,12 +1061,15 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                     <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
                     <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
                     <RechartsTooltip
-                      formatter={(value: number | string) => [formatVND(Number(value)), 'Tổng tài sản']}
+                      formatter={(value: number | string) => [formatVND(Number(value)), 'AUM (tài sản ròng)']}
                       labelFormatter={(p: string) => formatPeriodLabel(p)}
                     />
                     <Area type="monotone" dataKey="value" stroke={SERIES_COLOR} strokeWidth={2} fill="url(#aumFill)" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Quy mô quỹ tính theo tài sản ròng (NAV cuối kỳ, mục 2243), đã trừ nợ phải trả.
+                </p>
               </div>
 
               <div className="chart-container">
@@ -1135,7 +1140,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
             <div className="fund-analysis-charts-grid">
               <div className="chart-container">
                 <div className="chart-header">
-                  <h3>Dòng tiền ròng ước tính (mua − bán chứng chỉ quỹ)</h3>
+                  <h3>Dòng tiền ròng (phát hành − mua lại CCQ)</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={flowSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
@@ -1143,7 +1148,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                     <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
                     <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
                     <RechartsTooltip
-                      formatter={(value: number | string) => [formatVND(Number(value)), 'Dòng tiền ước tính']}
+                      formatter={(value: number | string) => [formatVND(Number(value)), 'Dòng tiền ròng']}
                       labelFormatter={(p: string) => formatPeriodLabel(p)}
                     />
                     <Bar dataKey="value" isAnimationActive={false}>
@@ -1154,8 +1159,8 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   </BarChart>
                 </ResponsiveContainer>
                 <p className="fund-analysis-chart-note">
-                  Xanh = mua nhiều hơn rút, đỏ = rút vốn nhiều hơn. Báo cáo công bố số chứng chỉ
-                  mua/bán (2277 − 22781); tiền quy theo NAV/CCQ cuối kỳ, con số ước tính.
+                  Xanh = nhà đầu tư nạp thêm tiền, đỏ = rút vốn ra. Con số chính xác từ báo cáo
+                  (2239.3), bằng hiệu của hai chart phát hành và mua lại bên trên.
                 </p>
               </div>
 
