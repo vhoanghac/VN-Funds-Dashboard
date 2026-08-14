@@ -98,6 +98,11 @@ const ASSETS_2026_07 = `code,line_item,period_end,value,asOf
 2217,Net Asset Value ( = I.10 - II.4),2026-07-31,5723344907684,2026-08-03
 2219,Net Asset Value per Fund Certificate,2026-07-31,92966.74,2026-08-03
 2208,Securities Trading Receivables,2026-07-31,334210198000,2026-08-03
+2203,Cash at Bank,2026-07-31,1191539828610,2026-08-03
+2203.1,Cash at bank for Fund's subscription,2026-07-31,160831598740,2026-08-03
+2203.2,Cash at bank for Fund's redemption,2026-07-31,31974822870,2026-08-03
+2203.3,Cash at bank for Fund's operation,2026-07-31,998762008680,2026-08-03
+2203.4,Margin account for trading derivatives,2026-07-31,0,2026-08-03
 `
 
 describe('parseTidyPortfolio', () => {
@@ -180,6 +185,11 @@ describe('parseTidyAssets', () => {
   it('đọc phải thu từ bán chứng khoán chưa về (2208)', () => {
     const s = assets.get('2026-07-31')!
     expect(s.settlementReceivables).toBe(334210198000)
+  })
+
+  it('đọc tiền gửi ngân hàng (2203), dùng dòng tổng không phải mục con', () => {
+    const s = assets.get('2026-07-31')!
+    expect(s.cashAtBank).toBe(1191539828610)
   })
 })
 

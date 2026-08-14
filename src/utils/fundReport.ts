@@ -75,6 +75,8 @@ export interface FundAssetsSnapshot {
   navPerUnit: number
   /** Phải thu từ bán chứng khoán chưa về (2208) — rủi ro kẹt dòng tiền. */
   settlementReceivables: number
+  /** Tiền gửi ngân hàng (2203) — phần lớn tiền mặt, tách khỏi tương đương tiền. */
+  cashAtBank: number
 }
 
 /** Một kỳ từ tidy_income (kết quả hoạt động theo THÁNG). */
@@ -276,7 +278,7 @@ export function parseTidyAssets(csvText: string): Map<string, FundAssetsSnapshot
 
     let snap = byPeriod.get(periodEnd)
     if (!snap) {
-      snap = { periodEnd, totalAssets: 0, liabilities: 0, nav: 0, navPerUnit: 0, settlementReceivables: 0 }
+      snap = { periodEnd, totalAssets: 0, liabilities: 0, nav: 0, navPerUnit: 0, settlementReceivables: 0, cashAtBank: 0 }
       byPeriod.set(periodEnd, snap)
     }
     if (code === '2212') snap.totalAssets = value
@@ -284,6 +286,7 @@ export function parseTidyAssets(csvText: string): Map<string, FundAssetsSnapshot
     else if (code === '2217') snap.nav = value
     else if (code === '2219') snap.navPerUnit = value
     else if (code === '2208') snap.settlementReceivables = value
+    else if (code === '2203') snap.cashAtBank = value
   }
 
   return byPeriod

@@ -51,6 +51,7 @@ const ASSET_COLORS = {
 /** Màu bar biểu đồ xu hướng + màu highlight tháng đang chọn. */
 const SERIES_COLOR = '#3b82f6'
 const CASH_SERIES_COLOR = '#16a34a'
+const BANK_DEPOSIT_COLOR = '#0d9488'
 
 /** Màu chart NAV/CCQ (giá quỹ) + xanh/đỏ cho lợi nhuận & dòng tiền. */
 const NAV_CCQ_COLOR = '#0ea5e9'
@@ -561,6 +562,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
   )
   const settlementSeries = useMemo(
     () => chartPeriods.map(p => ({ period: p, value: assets?.get(p)?.settlementReceivables ?? 0 })),
+    [assets, chartPeriods],
+  )
+  const bankDepositSeries = useMemo(
+    () => chartPeriods.map(p => ({ period: p, value: assets?.get(p)?.cashAtBank ?? 0 })),
     [assets, chartPeriods],
   )
 
@@ -1186,26 +1191,50 @@ function FundAnalysisPanelImpl({ funds }: Props) {
               </div>
             </div>
 
-            <div className="chart-container">
-              <div className="chart-header">
-                <h3>Số nhà đầu tư</h3>
+            <div className="fund-analysis-charts-grid">
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Tiền gửi ngân hàng (2203)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={bankDepositSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [formatVND(Number(value)), 'Tiền gửi ngân hàng']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Bar dataKey="value" fill={BANK_DEPOSIT_COLOR} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Tiền gửi ngân hàng (mục 2203) chiếm phần lớn trong tổng tiền mặt. Phần chênh
+                  với chart "Tiền mặt qua các tháng" là tương đương tiền và công cụ thị trường tiền tệ.
+                </p>
               </div>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={investorSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
-                  <YAxis tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 11 }} width={50} />
-                  <RechartsTooltip
-                    formatter={(value: number | string) => [`${Number(value).toLocaleString('vi-VN')} nhà đầu tư`, 'Số nhà đầu tư']}
-                    labelFormatter={(p: string) => formatPeriodLabel(p)}
-                  />
-                  <Bar dataKey="value" fill={INVESTOR_COLOR} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
-              <p className="fund-analysis-chart-note">
-                Số nhà đầu tư cuối kỳ (22841). Tăng nhanh cùng số chứng chỉ lưu hành nghĩa là quỹ
-                hút dòng tiền bán lẻ mạnh (07/2026: 74.212 nhà đầu tư).
-              </p>
+
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Số nhà đầu tư</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={investorSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 11 }} width={50} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [`${Number(value).toLocaleString('vi-VN')} nhà đầu tư`, 'Số nhà đầu tư']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Bar dataKey="value" fill={INVESTOR_COLOR} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Số nhà đầu tư cuối kỳ (22841). Tăng nhanh cùng số chứng chỉ lưu hành nghĩa là quỹ
+                  hút dòng tiền bán lẻ mạnh (07/2026: 74.212 nhà đầu tư).
+                </p>
+              </div>
             </div>
           </div>
 
