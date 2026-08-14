@@ -133,6 +133,12 @@ export interface FundFlowSummary {
   turnoverRate: number
   /** Số nhà đầu tư cuối kỳ (22841). */
   investorCount: number
+  /** Tỷ lệ sở hữu của Công ty quản lý quỹ + bên liên quan (2282, 0-1). */
+  relatedPartyOwnership: number
+  /** Tỷ lệ sở hữu của 10 nhà đầu tư lớn nhất (2283, 0-1). */
+  top10Ownership: number
+  /** Tỷ lệ sở hữu của nhà đầu tư nước ngoài (2284, 0-1). */
+  foreignOwnership: number
   /** Phí quản lý / NAV bình quân (%) — suất hằng năm (2265). */
   mgmtFeeRatio: number
   /** Tổng chi phí / NAV bình quân (%) — suất hằng năm (2269). */
@@ -383,6 +389,7 @@ export function parseTidyIndicators(csvText: string): Map<string, FundFlowSummar
     subscribedUnits: 0, redeemedUnits: 0, netUnits: 0,
     outstandingUnits: 0, turnoverRate: 0, investorCount: 0,
     mgmtFeeRatio: 0, expenseRatio: 0,
+    relatedPartyOwnership: 0, top10Ownership: 0, foreignOwnership: 0,
   })
 
   for (const raw of result.data) {
@@ -405,6 +412,9 @@ export function parseTidyIndicators(csvText: string): Map<string, FundFlowSummar
     else if (code === '22841') snap.investorCount = value
     else if (code === '2265') snap.mgmtFeeRatio = value
     else if (code === '2269') snap.expenseRatio = value
+    else if (code === '2282') snap.relatedPartyOwnership = value
+    else if (code === '2283') snap.top10Ownership = value
+    else if (code === '2284') snap.foreignOwnership = value
   }
 
   for (const snap of byPeriod.values()) {

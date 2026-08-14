@@ -71,6 +71,9 @@ const INVEST_COLOR = '#3b82f6'
 const FLOW_NAV_COLOR = '#f97316'
 const TURNOVER_COLOR = '#3b82f6'
 const INVESTOR_COLOR = '#8b5cf6'
+const OWNERSHIP_FMC_COLOR = '#6366f1'
+const TOP10_COLOR = '#e11d48'
+const FOREIGN_COLOR = '#0ea5e9'
 const TOTAL_COST_COLOR = '#0ea5e9'
 
 /** Màu chart: drawdown / red flags. */
@@ -488,6 +491,20 @@ function FundAnalysisPanelImpl({ funds }: Props) {
       period: p,
       value: flow?.get(p)?.investorCount ?? 0,
     })),
+    [flow, chartPeriods],
+  )
+
+  // ── Cơ cấu sở hữu: 2282 (công ty quản lý + bên liên quan), 2283 (top 10), 2284 (nước ngoài) ──
+  const relatedPartySeries = useMemo(
+    () => chartPeriods.map(p => ({ period: p, value: flow?.get(p)?.relatedPartyOwnership ?? null })),
+    [flow, chartPeriods],
+  )
+  const top10Series = useMemo(
+    () => chartPeriods.map(p => ({ period: p, value: flow?.get(p)?.top10Ownership ?? null })),
+    [flow, chartPeriods],
+  )
+  const foreignSeries = useMemo(
+    () => chartPeriods.map(p => ({ period: p, value: flow?.get(p)?.foreignOwnership ?? null })),
     [flow, chartPeriods],
   )
 
@@ -1315,6 +1332,75 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 <p className="fund-analysis-chart-note">
                   Số nhà đầu tư cuối kỳ (22841). Tăng nhanh cùng số chứng chỉ lưu hành nghĩa là quỹ
                   hút dòng tiền bán lẻ mạnh (07/2026: 74.212 nhà đầu tư).
+                </p>
+              </div>
+            </div>
+
+            <div className="fund-analysis-charts-grid">
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Công ty quản lý & bên liên quan sở hữu (2282)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={relatedPartySeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} tick={{ fontSize: 11 }} width={44} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [`${(Number(value) * 100).toFixed(2)}%`, 'Công ty quản lý + bên liên quan']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Line type="monotone" dataKey="value" stroke={OWNERSHIP_FMC_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Tỷ lệ chứng chỉ do công ty quản lý quỹ và bên liên quan nắm giữ (2282). Con số nhảy
+                  theo thời điểm, không phải thước đo niềm tin: họ kiếm tiền bằng phí quản lý, không
+                  cần nắm nhiều chứng chỉ.
+                </p>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Top 10 nhà đầu tư lớn nhất (2283)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={top10Series} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} tick={{ fontSize: 11 }} width={44} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [`${(Number(value) * 100).toFixed(2)}%`, 'Top 10 nhà đầu tư']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Line type="monotone" dataKey="value" stroke={TOP10_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  10 nhà đầu tư lớn nhất nắm bao nhiêu phần trăm quỹ (2283). Tập trung cao nghĩa là
+                  vài tổ chức lớn chi phối; họ rút vốn sẽ ảnh hưởng mạnh tới quỹ.
+                </p>
+              </div>
+
+              <div className="chart-container fund-analysis-chart-wide">
+                <div className="chart-header">
+                  <h3>Nhà đầu tư nước ngoài (2284)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={foreignSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} tick={{ fontSize: 11 }} width={44} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [`${(Number(value) * 100).toFixed(2)}%`, 'Nhà đầu tư nước ngoài']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Line type="monotone" dataKey="value" stroke={FOREIGN_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Tỷ lệ chứng chỉ do nhà đầu tư nước ngoài nắm (2284). Giảm thường đi cùng thị trường
+                  điều chỉnh, khi vốn ngoại rút khỏi cổ phiếu Việt Nam.
                 </p>
               </div>
             </div>

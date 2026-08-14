@@ -218,6 +218,9 @@ const INDICATORS_2026_07 = `code,line_item,period_end,measure,value,asOf
 22841,Number of investors of the Fund at the end of the period,2026-07-31,month,74212,2026-08-03
 2265,Management fee paid to the fund management company/Average NAV (%),2026-07-31,month,0.0195019586247306,2026-08-03
 2269,Expense/Average NAV (%),2026-07-31,month,0.0209987443942776,2026-08-03
+2282,Fund Management Company and related parties' ownership ratio,2026-07-31,month,0.0151,2026-08-03
+2283,Top 10 investors' ownership ratio,2026-07-31,month,0.0857,2026-08-03
+2284,Foreign investors' ownership ratio,2026-07-31,month,0.0891,2026-08-03
 `
 
 describe('parseTidyIncome', () => {
@@ -295,6 +298,13 @@ describe('parseTidyIndicators', () => {
     expect(s.investorCount).toBe(74212)
     expect(s.mgmtFeeRatio).toBeCloseTo(0.01950, 4)
     expect(s.expenseRatio).toBeCloseTo(0.02099, 4)
+  })
+
+  it('đọc tỷ lệ sở hữu: công ty quản lý + bên liên quan (2282), top 10 (2283), nước ngoài (2284)', () => {
+    const s = flow.get('2026-07-31')!
+    expect(s.relatedPartyOwnership).toBeCloseTo(0.0151, 4)
+    expect(s.top10Ownership).toBeCloseTo(0.0857, 4)
+    expect(s.foreignOwnership).toBeCloseTo(0.0891, 4)
   })
 })
 
