@@ -1047,27 +1047,6 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 </p>
               </div>
             </div>
-
-            <div className="fund-analysis-narrative">
-              <p>
-                Ở Mỹ, quỹ mở có thể khiến nhà đầu tư nhận hóa đơn thuế lãi vốn cuối năm dù họ không
-                bán gì. Quỹ chuyển lãi đã thực hiện cho cổ đông, và lãi đó đến từ hai nguồn: nhà quản
-                lý bán cổ phiếu đã tăng giá, và nhà đầu tư rút vốn buộc quỹ bán tài sản.
-              </p>
-              <p>
-                DCDS là quỹ tích lũy, lợi nhuận không chia ra (mục 2239.2 bằng 0 suốt lịch sử), nên
-                không có hóa đơn thuế cuối năm kiểu Mỹ. Nhưng cơ chế vẫn đáng theo dõi: lãi/lỗ thực
-                hiện là khoản đã chốt, lãi/lỗ chưa thực hiện là khoản đang nằm trong giá. Turnover
-                683,99% và các đợt mua lại chứng chỉ quỹ là thứ biến khoản trên giấy thành thật.
-              </p>
-              <p>
-                Hiện DCDS đang đứng dưới giá vốn: lãi chưa thực hiện âm khoảng 116 tỷ, nên rủi ro trả
-                thuế cho lời của người khác chưa xảy ra. Nhưng bài học còn nguyên: mua quỹ đang ôm
-                nhiều lãi trên giấy, nếu thị trường giảm và nhà đầu tư đồng loạt rút, khoản lãi đó
-                thành thật hoặc tan biến. Cần theo dõi chart Lãi/lỗ chưa thực hiện cùng dòng rút vốn,
-                không chỉ nhìn lịch sử lời.
-              </p>
-            </div>
           </div>
 
           {/* ════════════ Nhóm 2: Quy mô & Dòng tiền ════════════ */}
