@@ -4,6 +4,9 @@ const ENTRIES = [
     date: '14/08/2026',
     items: [
       'Thêm tab "Phân Tích Quỹ" (beta)',
+      'Sửa lỗi số liệu ở tab LS vs DCA: câu kể "về đích X triệu" giờ khớp đúng con số chênh lệch hiển thị (trước đây hai cái mâu thuẫn nhau).',
+      'Sửa lỗi trục y biểu đồ "Lợi nhuận tích lũy" ở tab So Sánh: trước hiển thị mốc −200% dù chuỗi không bao giờ âm sâu vậy, giờ tự căn theo dữ liệu thật.',
+      'Gom các hàm dùng chung cho biểu đồ (trục thời gian, định dạng ngày/%, làm mờ legend) về một nơi, sửa một chỗ là hết tất cả biểu đồ.',
     ],
   },
   {
