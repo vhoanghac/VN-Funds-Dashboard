@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v4.2',
+    date: '14/08/2026',
+    items: [
+      'Thêm tab "Phân Tích Quỹ" (beta)',
+    ],
+  },
+  {
     version: 'v4.1',
     date: '11/08/2026',
     items: [
