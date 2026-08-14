@@ -1227,27 +1227,24 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: INVEST_COLOR }} />Đầu tư (2237)</span>
                   <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: FLOW_NAV_COLOR }} />Dòng tiền (2239.3)</span>
                 </div>
-                <div className="fund-analysis-chart-note">
-                  <p>
-                    Mỗi tháng, tổng NAV thay đổi bằng đúng hai phần cộng lại: kết quả đầu tư (2237)
-                    và dòng tiền nhà đầu tư nạp vào hoặc rút ra (2239.3). Biểu đồ tách hai phần này
-                    để thấy thứ nào thật sự đang đẩy quy mô quỹ lớn lên. Với DCDS tính từ cuối 2018,
-                    lợi nhuận đầu tư cộng dồn được <strong>713 tỷ đồng</strong>, còn tiền mới nạp vào
-                    là <strong>4.722 tỷ đồng</strong>. Trong hai nguồn này, dòng tiền chiếm khoảng{' '}
-                    <strong>87%</strong>, lợi nhuận đầu tư chỉ khoảng 13%. Tổng NAV gấp{' '}
-                    <strong>5,3 lần</strong> kể từ cuối 2018, nhưng phần quỹ thật sự sinh lời chưa
-                    tới 1 lần; phần còn lại là nhà đầu tư góp thêm vốn.
-                  </p>
-                  <p>
-                    Tổng NAV bằng NAV/CCQ nhân với số chứng chỉ lưu hành. Nhà đầu tư nạp tiền, quỹ
-                    phát hành thêm chứng chỉ, tổng NAV tăng ngay bằng đúng số tiền đó, dù quỹ đầu tư
-                    giỏi hay không. Quỹ phình to không có nghĩa là quỹ làm ra tiền; muốn đánh giá
-                    chất lượng phải nhìn NAV/CCQ, tức lợi nhuận trên từng chứng chỉ. DCDS tăng{' '}
-                    <strong>2,52 lần</strong> về giá trị từng chứng chỉ từ cuối 2018, bình quân gần{' '}
-                    <strong>13%/năm</strong>, nhưng lỗ nặng đúng hai năm 2022 và 2026 dù năm đó tiền
-                    mới vẫn vào.
-                  </p>
-                </div>
+                <p className="fund-analysis-chart-note">
+                  Mỗi tháng, tổng NAV đổi bằng đúng 2 thứ cộng lại:<br />
+                  1. Lợi nhuận đầu tư (2237): quỹ làm ra bao nhiêu tiền.<br />
+                  2. Dòng tiền (2239.3): nhà đầu tư nạp thêm hay rút ra.<br />
+                  <br />
+                  Chart này tách 2 thứ ra, để thấy quỹ lớn nhờ đâu. Lớn nhờ lợi nhuận là thật. Lớn nhờ
+                  tiền mới chưa nói lên chất lượng.<br />
+                  <br />
+                  DCDS từ cuối 2018: lợi nhuận đầu tư cộng dồn 713 tỷ, dòng tiền 4.722 tỷ. Tức 87% tăng
+                  trưởng đến từ tiền mới, chỉ 13% từ quỹ làm ra. Tổng NAV gấp 5,3 lần nhưng quỹ thật sự
+                  sinh lời chưa tới 1 lần.<br />
+                  <br />
+                  Năm nay lại ngược, cũng đáng chú ý: 7 tháng đầu 2026 hút 895 tỷ tiền mới, nhưng lợi
+                  nhuận đầu tư âm 652 tỷ. Tiền mới vào nhiều vẫn không cứu được lỗ.<br />
+                  <br />
+                  Quỹ phình to không có nghĩa là quỹ làm ra tiền. Muốn biết quỹ có giỏi không, phải
+                  nhìn NAV/CCQ, tức lợi nhuận trên từng chứng chỉ.
+                </p>
               </div>
             </div>
 
@@ -1525,8 +1522,18 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: BROKERAGE_COLOR }} />Phí giao dịch (2231)</span>
                 </div>
                 <p className="fund-analysis-chart-note">
-                  Chi phí hàng tháng: phí quản lý quỹ (2225, tính theo % NAV) + phí giao dịch chứng
-                  khoán (2231). Phí quản lý lớn nhất và đều đặn mỗi tháng.
+                  Chi phí là thứ duy nhất chắc chắn mất. Hai loại phí lớn:<br />
+                  1. Phí quản lý (2225): khoảng 1,95%/năm, trừ đều vào NAV mỗi ngày. Không tránh được,
+                  dù quỹ lời hay lỗ.<br />
+                  2. Phí giao dịch (2231): mỗi lần quỹ mua bán cổ phiếu là một lần trả tiền môi giới.
+                  Tỉ lệ thuận với turnover.<br />
+                  <br />
+                  Nhìn 2 cột cạnh nhau để so: phí giao dịch tiến gần phí quản lý nghĩa là quỹ đang chạy
+                  quá nhiều vòng. Quỹ chạy nhiều, môi giới vui, bạn chưa chắc vui.<br />
+                  <br />
+                  DCDS 07/2026: phí giao dịch 6,06 tỷ, đã bằng 63% phí quản lý 9,66 tỷ. Hai năm 2022 và
+                  2026 quỹ lỗ nặng mà phí vẫn trừ đều. Đó là bản chất của phí: nó không cần biết thị
+                  trường ra sao.
                 </p>
               </div>
             </div>
@@ -1618,8 +1625,18 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   </LineChart>
                 </ResponsiveContainer>
                 <p className="fund-analysis-chart-note">
-                  Tổng nợ phải trả cuối kỳ (2216, phần lớn là tiền trả nhà đầu tư mua lại CCQ). Quỹ mở
-                  không dùng đòn bẩy; nợ tăng vọt là điểm cần soi.
+                  Quỹ mở Việt Nam theo nguyên tắc không đòn bẩy. Quỹ không vay nợ để đầu tư. Khoản "nợ
+                  phải trả" này là nợ hoạt động:<br />
+                  1. Tiền phải trả nhà đầu tư mua lại chứng chỉ.<br />
+                  2. Phí quản lý, phí lưu ký chưa thanh toán.<br />
+                  3. Chi phí khác còn treo.<br />
+                  <br />
+                  Số này nhỏ là sạch. Nó phình lên vào tháng có đợt rút vốn lớn, rồi tự xẹp khi quỹ trả
+                  tiền xong. Chỉ lo khi nó tăng vọt bất thường mà không rõ lý do.<br />
+                  <br />
+                  DCDS 07/2026 có 248 tỷ nợ, khoảng 4% tài sản. Thực ra con số này đang giảm: từ 517 tỷ
+                  hồi tháng 3 xuống 248 tỷ. Nghĩa là các đợt mua lại lớn đã được thanh toán dần. Không
+                  có gì bất thường.
                 </p>
               </div>
 
@@ -1640,8 +1657,20 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   </BarChart>
                 </ResponsiveContainer>
                 <p className="fund-analysis-chart-note">
-                  Khoản phải thu từ bán chứng khoán chưa về (2208). Cao nghĩa là tiền đang kẹt ở khâu
-                  thanh toán, rủi ro đối tác trong giao dịch lớn.
+                  Bán cổ phiếu xong, tiền không về ngay. Phải chờ thanh toán vài ngày. Khoản đang chờ
+                  đó nằm ở đây (2208).<br />
+                  <br />
+                  Số này nhỏ là bình thường. Cao nghĩa là một trong hai chuyện:<br />
+                  1. Quỹ đang bán khối lượng lớn, tiền đang trên đường về.<br />
+                  2. Thanh toán bị kẹt, tiền mắc ở khâu trung gian.<br />
+                  <br />
+                  Rủi ro thật nằm ở chuyện thứ 2: đối tác không trả tiền. Giao dịch càng to, mất càng
+                  đau.<br />
+                  <br />
+                  DCDS tháng 7/2026 có 334 tỷ đang chờ về, cả năm dao động 178 tới 365 tỷ. Con số cao,
+                  nhưng lý do chính là quỹ bán mạnh trong thị trường giảm (lãi thực hiện âm 267 tỷ cùng
+                  tháng). Tiền về trễ không phải là thảm họa, chỉ là tín hiệu quỹ đang bán nhiều. Kết
+                  hợp với chart Lãi/lỗ thực hiện mới ra câu chuyện đầy đủ.
                 </p>
               </div>
             </div>

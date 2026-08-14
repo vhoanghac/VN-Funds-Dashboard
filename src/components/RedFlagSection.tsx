@@ -18,9 +18,22 @@ const VERDICT_META: Record<Verdict, { label: string; color: string; bg: string }
 const FLAG = {
   id: 'machine' as const,
   title: 'Cỗ máy giao dịch',
-  twist:
-    'Phí môi giới gần bằng phí quản lý. Quỹ giao dịch càng nhiều, phí ẩn càng phình. ' +
-    'Verdict ĐỎ khi turnover ≥ 500% hoặc phí môi giới ≥ 80% phí quản lý.',
+  twist: (
+    <>
+      Mỗi tháng, quỹ phải trả 2 loại phí:<br />
+      1. Phí quản lý (2225): tính theo % NAV, trừ đều mỗi ngày. Chắc chắn mất.<br />
+      2. Phí giao dịch (2231): mỗi lần mua bán cổ phiếu. Tỉ lệ với turnover.<br />
+      <br />
+      Turnover là quỹ xoay danh mục bao nhiêu lần trong 12 tháng. Xoay nhiều, phí giao dịch phình.
+      Đây là loại phí bạn không thấy trên bảng giá, nhưng nó lấy từ NAV của bạn.<br />
+      <br />
+      DCDS 07/2026: phí giao dịch 6,06 tỷ, bằng 63% phí quản lý 9,66 tỷ. Turnover 684%, tức xoay
+      gần 7 lần danh mục trong một năm. Verdict ĐỎ vì turnover vượt ngưỡng 500%.<br />
+      <br />
+      Giao dịch nhiều chưa chắc là giao dịch giỏi. Quỹ xoay càng mạnh, công ty chứng khoán càng vui.
+      Bạn có vui không, phải nhìn lãi/lỗ thực hiện mới biết.
+    </>
+  ),
 }
 
 function formatPeriodLabel(periodEnd: string): string {
