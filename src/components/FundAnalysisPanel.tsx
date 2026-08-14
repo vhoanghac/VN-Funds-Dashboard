@@ -1325,23 +1325,23 @@ function FundAnalysisPanelImpl({ funds }: Props) {
             <div className="fund-analysis-charts-grid">
               <div className="chart-container">
                 <div className="chart-header">
-                  <h3>Tiền gửi ngân hàng (2203)</h3>
+                  <h3>Tỷ lệ tiền mặt theo % AUM</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={bankDepositSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                  <LineChart data={cashAumSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
-                    <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
+                    <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={48} />
                     <RechartsTooltip
-                      formatter={(value: number | string) => [formatVND(Number(value)), 'Tiền gửi ngân hàng']}
+                      formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Tiền mặt % AUM']}
                       labelFormatter={(p: string) => formatPeriodLabel(p)}
                     />
-                    <Bar dataKey="value" fill={BANK_DEPOSIT_COLOR} isAnimationActive={false} />
-                  </BarChart>
+                    <Line type="monotone" dataKey="value" stroke={BANK_DEPOSIT_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
                 </ResponsiveContainer>
                 <p className="fund-analysis-chart-note">
-                  Tiền gửi ngân hàng (mục 2203) chiếm phần lớn trong tổng tiền mặt. Phần chênh
-                  với chart "Tiền mặt qua các tháng" là tương đương tiền và công cụ thị trường tiền tệ.
+                  Tỷ lệ tiền mặt trên quy mô tài sản ròng (AUM). Cao nghĩa là quỹ giữ nhiều tiền mặt,
+                  phòng thủ hoặc chờ đợi cơ hội mua vào.
                 </p>
               </div>
 
@@ -1370,23 +1370,23 @@ function FundAnalysisPanelImpl({ funds }: Props) {
 
             <div className="chart-container fund-analysis-chart-wide">
               <div className="chart-header">
-                <h3>Tỷ lệ tiền mặt theo % AUM</h3>
+                <h3>Tiền gửi ngân hàng (2203)</h3>
               </div>
               <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={cashAumSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                <BarChart data={bankDepositSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
-                  <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={48} />
+                  <YAxis tickFormatter={(v: number) => formatVNDAxis(v)} tick={{ fontSize: 11 }} width={76} />
                   <RechartsTooltip
-                    formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Tiền mặt % AUM']}
+                    formatter={(value: number | string) => [formatVND(Number(value)), 'Tiền gửi ngân hàng']}
                     labelFormatter={(p: string) => formatPeriodLabel(p)}
                   />
-                  <Line type="monotone" dataKey="value" stroke={BANK_DEPOSIT_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
-                </LineChart>
+                  <Bar dataKey="value" fill={BANK_DEPOSIT_COLOR} isAnimationActive={false} />
+                </BarChart>
               </ResponsiveContainer>
               <p className="fund-analysis-chart-note">
-                Tỷ lệ tiền mặt trên quy mô tài sản ròng (AUM). Cao nghĩa là quỹ giữ nhiều tiền mặt,
-                phòng thủ hoặc chờ đợi cơ hội mua vào.
+                Tiền gửi ngân hàng (mục 2203) chiếm phần lớn trong tổng tiền mặt. Phần chênh
+                với chart "Tiền mặt qua các tháng" là tương đương tiền và công cụ thị trường tiền tệ.
               </p>
             </div>
 
