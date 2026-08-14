@@ -1671,25 +1671,24 @@ function FundAnalysisPanelImpl({ funds }: Props) {
               <p className="fund-analysis-chart-note">
                 Đừng nhìn từng đường. Nhìn khoảng cách giữa chúng.<br />
                 <br />
-                Mỗi tháng, AUM thay đổi bằng đúng hai phần cộng lại: tiền mới nhà đầu tư nạp vào hay rút
-                ra, và lợi nhuận đầu tư, tức giá tài sản lên hay xuống. Đường dòng tiền chỉ đo phần thứ
-                nhất. Đường AUM đo cả hai. Khoảng cách giữa hai đường chính là phần giá tài sản đóng góp.<br />
+                Mỗi tháng, AUM đổi bằng đúng 2 thứ cộng lại:<br />
+                1. Tiền mới nhà đầu tư nạp vào hay rút ra (đường dòng tiền).<br />
+                2. Lợi nhuận đầu tư, tức giá tài sản lên hay xuống.<br />
+                Khoảng cách giữa 2 đường chính là phần giá tài sản đóng góp.<br />
                 <br />
-                Hai đường chạy cùng chiều thì bình thường. Tiền vào cùng giá tăng, quỹ lớn lên đều, không
-                có gì đáng bàn. Chỉ khi chúng chạy ngược nhau, mới phải dừng lại hỏi.<br />
+                Hai đường chạy ngược nhau là có chuyện:<br />
+                1. AUM lên mà dòng tiền âm: tăng nhờ GIÁ tài sản, vốn đang chảy ra.<br />
+                2. AUM xuống mà dòng tiền dương: hút được vốn nhưng giá giảm mạnh hơn.<br />
+                3. Cả 2 cùng lên: khỏe. Cùng xuống: xấu.<br />
                 <br />
-                AUM tăng mà dòng tiền âm kéo dài, nghĩa là tiền đang chảy ra mà quỹ vẫn to. To nhờ gì? Nhờ
-                giá tài sản đang lên. Cái tăng đó đứng trên giấy, không phải trên tiền thật.<br />
+                DCDS năm nay đang ở mục 2:<br />
+                1. Hút gần 838 tỷ tiền mới trong 7 tháng, chỉ một tháng rút nhẹ.<br />
+                2. Tổng tài sản vẫn tụt: 6.311 tỷ (tháng 2) → 5.723 tỷ (tháng 7).<br />
+                3. Vì lợi nhuận đầu tư âm 652 tỷ, thị trường lui 17% so với đỉnh.<br />
+                4. Người mua ở đỉnh, một chứng chỉ giá 112 nghìn, giờ còn 93 nghìn.<br />
                 <br />
-                DCDS năm nay rơi vào chiều ngược, cũng đáng soi không kém. Quỹ hút gần 838 tỷ tiền mới
-                trong 7 tháng, chỉ một tháng rút nhẹ. Vậy mà tổng tài sản vẫn tụt, từ 6.311 tỷ tháng 2
-                xuống còn 5.723 tỷ tháng 7. Tiền vào đông không cứu được giá tài sản giảm: lợi nhuận đầu
-                tư âm 652 tỷ, thị trường lui 17% so với đỉnh 2/2026. Người mua ở đỉnh, một chứng chỉ giá
-                112 nghìn đồng, giờ còn 93 nghìn.<br />
-                <br />
-                Nói thẳng: quỹ hút được vốn không có nghĩa là quỹ đang làm ra tiền. Hút vốn là chuyện của
-                phân phối. Làm ra tiền là chuyện của đầu tư. Chart này chỉ tách hai chuyện đó ra, để bạn
-                không nhầm.
+                Tiền vào đông không cứu được giá tài sản giảm. Hút vốn là chuyện của phân phối, làm ra
+                tiền mới là chuyện của đầu tư. Chart này chỉ tách hai chuyện đó ra, để bạn không nhầm.
               </p>
             </div>
 
