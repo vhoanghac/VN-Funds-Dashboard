@@ -167,11 +167,10 @@ export function redFlagSummary(id: RedFlagId, points: RedFlagPoint[]): RedFlagRe
   return computeVerdictAt(id, points, points.length - 1)
 }
 
-/** Verdict từng kỳ (12 kỳ mới nhất) cho strip lịch sử. */
+/** Verdict từng kỳ (toàn bộ lịch sử) cho strip hiển thị. */
 export function redFlagHistory(id: RedFlagId, points: RedFlagPoint[]): { period: string; verdict: Verdict }[] {
-  const start = Math.max(0, points.length - 12)
-  return points.slice(start).map((_, j) => {
-    const i = start + j
-    return { period: points[i]!.period, verdict: computeVerdictAt(id, points, i).verdict }
-  })
+  return points.map((_, j) => ({
+    period: points[j]!.period,
+    verdict: computeVerdictAt(id, points, j).verdict,
+  }))
 }

@@ -177,12 +177,12 @@ describe('computeVerdictAt / redFlagHistory', () => {
     expect(computeVerdictAt('machine', points, 1).verdict).toBe('DANGER')
   })
 
-  it('redFlagHistory trả tối đa 12 kỳ, đúng period + verdict từng kỳ', () => {
+  it('redFlagHistory trả toàn bộ kỳ, đúng period + verdict từng kỳ', () => {
     const points = Array.from({ length: 15 }, (_, i) => pt({ period: `2026-${String(i + 1).padStart(2, '0')}-01`, turnoverRate: i >= 10 ? 6 : 1 }))
     const h = redFlagHistory('machine', points)
-    expect(h).toHaveLength(12)
-    expect(h[0]!.period).toBe('2026-04-01')
+    expect(h).toHaveLength(15)
+    expect(h[0]!.period).toBe('2026-01-01')
     expect(h[h.length - 1]!.verdict).toBe('DANGER')
-    expect(h.find(x => x.period === '2026-03-01')).toBeUndefined()
+    expect(h.find(x => x.period === '2026-05-01')!.verdict).toBe('OK')
   })
 })

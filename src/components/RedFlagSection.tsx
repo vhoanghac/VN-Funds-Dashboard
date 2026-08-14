@@ -121,7 +121,7 @@ function DetectorChart({ id, data, width, height }: { id: RedFlagId; data: Array
 }
 
 function buildChartData(id: RedFlagId, points: RedFlagPoint[]): Array<Record<string, unknown>> {
-  return points.slice(-12).map(p => {
+  return points.map(p => {
     if (id === 'machine') {
       return { period: p.period, 'Phí môi giới': p.brokerageFee, 'Phí quản lý': p.managementFee }
     }
