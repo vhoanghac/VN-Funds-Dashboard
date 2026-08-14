@@ -1228,7 +1228,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: FLOW_NAV_COLOR }} />Dòng tiền (2239.3)</span>
                 </div>
                 <p className="fund-analysis-chart-note">
-                  Mỗi tháng, tổng NAV đổi bằng đúng 2 thứ cộng lại:<br />
+                  Mỗi tháng, tổng NAV được tính bằng:<br />
                   1. Lợi nhuận đầu tư (2237): quỹ làm ra bao nhiêu tiền.<br />
                   2. Dòng tiền (2239.3): nhà đầu tư nạp thêm hay rút ra.<br />
                   <br />
