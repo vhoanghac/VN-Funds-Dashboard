@@ -85,9 +85,9 @@ const INDUSTRY_COLORS = ['#3b82f6', '#f59e0b', '#059669', '#8b5cf6', '#ef4444', 
 /** Các section kết quả (kiểu tab DCA): bấm pill để chỉ hiện section đó. */
 const ANALYSIS_SECTIONS = [
   { id: 'all', label: 'Tất cả' },
+  { id: 'allocation', label: 'Cấu trúc & Phân bổ' },
   { id: 'perf', label: 'Hiệu suất & Rủi ro' },
   { id: 'size', label: 'Quy mô & Dòng tiền' },
-  { id: 'allocation', label: 'Cấu trúc & Phân bổ' },
   { id: 'cost', label: 'Chi phí & Hiệu quả' },
   { id: 'redflags', label: 'Red Flags' },
 ] as const
@@ -641,6 +641,207 @@ function FundAnalysisPanelImpl({ funds }: Props) {
             ))}
           </div>
 
+          {/* ════════════ Nhóm 3: Cấu trúc & Phân bổ ════════════ */}
+          <div style={{ display: showSection('allocation') }}>
+            <div className="section-divider">
+              <span className="section-divider-label">Cấu trúc & Phân bổ</span>
+            </div>
+
+            {/* ── Tổng tài sản snapshot (donut 4 loại + kỳ báo cáo) ── */}
+            <div className="chart-container">
+              <div className="chart-header">
+                <h3>Tổng tài sản</h3>
+              </div>
+              <div className="dca-param-row">
+                <label className="dca-label">Kỳ báo cáo</label>
+                <div className="overlap-select">{selectPeriod(piePeriod, setPiePeriod)}</div>
+              </div>
+              {piePeriodSummary && pieData.length > 0 ? (
+                <>
+                  <div className="fund-analysis-summary">
+                    <div className="fund-analysis-total-left">
+                      <div className="fund-analysis-total-caption">Tổng tài sản</div>
+                      <div className="fund-analysis-total-value">{formatVNDLocale(pieTotal)}</div>
+                      {headerDelta && (
+                        <div className={`fund-analysis-delta ${headerDelta.positive ? 'pos' : 'neg'}`}>
+                          So với kỳ {headerDelta.label}: {headerDelta.absLabel} ({headerDelta.pctLabel})
+                        </div>
+                      )}
+                    </div>
+                    {donutGradient && (
+                      <div className="fund-analysis-donut-wrap">
+                        <div className="fund-analysis-donut" style={{ background: donutGradient }}>
+                          <div className="fund-analysis-donut-hole" />
+                        </div>
+                      </div>
+                    )}
+                    <div className="fund-analysis-alloc-cards">
+                      {pieData.map(d => {
+                        const delta = categoryDelta(d.field, d.value)
+                        return (
+                          <div key={d.name} className="fund-analysis-alloc-card">
+                            <div className="fund-analysis-alloc-head">
+                              <span className="fund-analysis-alloc-dot" style={{ backgroundColor: d.color }} />
+                              <span className="fund-analysis-alloc-name">{d.name}</span>
+                            </div>
+                            <div className="fund-analysis-alloc-value">{formatVNDLocale(d.value)}</div>
+                            <div className="fund-analysis-alloc-meta">
+                              <span className="fund-analysis-alloc-pct">
+                                {pieTotal > 0 ? ((d.value / pieTotal) * 100).toFixed(1) : 0}%
+                              </span>
+                              {delta && delta.show && (
+                                <span className={`fund-analysis-alloc-delta ${delta.positive ? 'pos' : 'neg'}`}>
+                                  {delta.positive ? '↑' : '↓'} {delta.label}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {pieAssets && pieAssets.nav > 0 && (
+                    <p className="fund-analysis-nav">
+                      NAV: <strong>{formatVND(pieAssets.nav)}</strong>
+                      {pieAssets.navPerUnit > 0 && <> · NAV/CCQ: <strong>{Math.round(pieAssets.navPerUnit).toLocaleString('vi-VN')} đ</strong></>}
+                      {' '}(kỳ {formatPeriodLabel(pieResolved!)})
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="overlap-empty">Không có dữ liệu danh mục kỳ này.</p>
+              )}
+            </div>
+
+            <div className="fund-analysis-charts-grid">
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Phân bổ theo ngành nghề</h3>
+                </div>
+                {industryPie.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie data={industryPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2} isAnimationActive={false}>
+                          {industryPie.map(d => (
+                            <Cell key={d.name} fill={d.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          formatter={(value: number | string, name: string) => [`${Number(value).toFixed(1)}%`, name]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="fund-analysis-stack-legend">
+                      {industryPie.map(d => (
+                        <span key={d.name} className="fund-analysis-stack-legend-item">
+                          <span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: d.color }} />
+                          {d.name}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="overlap-empty">Kỳ này không có dữ liệu ngành.</p>
+                )}
+                <p className="fund-analysis-chart-note">
+                  Tỷ trọng cổ phiếu theo ngành, kỳ {tableResolved ? formatPeriodLabel(tableResolved) : 'đang chọn'}.
+                  Nếu một hai ngành chiếm quá nửa, danh mục dễ bị kéo theo ngành đó.
+                </p>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Top 10 cổ phiếu nắm giữ lớn nhất</h3>
+                </div>
+                {top10Stocks.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={top10Stocks} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="ticker" width={72} interval={0} tick={{ fontSize: 11 }} tickFormatter={(t: string) => (t.length > 12 ? `${t.slice(0, 11)}…` : t)} />
+                      <RechartsTooltip
+                        formatter={(value: number | string) => [`${Number(value).toFixed(2)}%`, 'Tỷ trọng']}
+                        labelFormatter={(t: string) => `${t}${industryMap[t] ? ` · ${industryMap[t]}` : ''}`}
+                      />
+                      <Bar dataKey="weightPct" fill={ASSET_COLORS.stock} isAnimationActive={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="overlap-empty">Kỳ này không có cổ phiếu.</p>
+                )}
+                <p className="fund-analysis-chart-note">
+                  Tỷ trọng trong NAV, kỳ {tableResolved ? formatPeriodLabel(tableResolved) : 'đang chọn'}.
+                  Vài mã đứng đầu quyết định phần lớn hiệu suất cả danh mục.
+                </p>
+              </div>
+            </div>
+
+            <div className="chart-container">
+              <div className="chart-header">
+                <h3>Mức độ tập trung danh mục (top 5)</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={top5Concentration} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                    <YAxis tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={48} domain={[0, 100]} />
+                    <RechartsTooltip
+                      formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Top 5']}
+                      labelFormatter={(p: string) => formatPeriodLabel(p)}
+                    />
+                    <Line type="monotone" dataKey="value" stroke={INVESTOR_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="fund-analysis-chart-note">
+                  Tổng tỷ trọng 5 cổ phiếu lớn nhất mỗi kỳ. Đường dốc lên liên tục nghĩa là quỹ đang
+                  mất dần tính đa dạng hóa.
+                </p>
+              </div>
+
+            {/* ── Danh mục quỹ (bảng, kèm kỳ báo cáo riêng) ── */}
+            <div className="chart-container">
+              <div className="chart-header">
+                <h3>Danh mục quỹ</h3>
+              </div>
+              <div className="dca-param-row">
+                <label className="dca-label">Kỳ báo cáo</label>
+                <div className="overlap-select">{selectPeriod(tablePeriod, setTablePeriod)}</div>
+              </div>
+              {tableStocks.length > 0 ? (
+                <div className="dca-stats-table-scroll fund-analysis-table-scroll">
+                  <table className="dca-stats-table overlap-table">
+                    <thead>
+                      <tr>
+                        <th>Chứng khoán</th>
+                        <th>Khối lượng nắm giữ</th>
+                        <th>Tổng giá trị</th>
+                        <th>Tỷ trọng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableStocks.map(s => (
+                        <tr key={s.ticker}>
+                          <td>
+                            <span className="fund-analysis-symbol">{s.ticker}</span>
+                            {industryMap[s.ticker] && (
+                              <span className="fund-analysis-industry">{industryMap[s.ticker]}</span>
+                            )}
+                          </td>
+                          <td>{s.quantity > 0 ? s.quantity.toLocaleString('vi-VN') : '—'}</td>
+                          <td>{formatVND(s.value)}</td>
+                          <td>{s.weightPct.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="overlap-empty">Kỳ này không có cổ phiếu trong danh mục.</p>
+              )}
+            </div>
+          </div>
+
           {/* ════════════ Nhóm 1: Hiệu suất & Rủi ro ════════════ */}
           <div style={{ display: showSection('perf') }}>
             <div className="section-divider">
@@ -1005,207 +1206,6 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 Số nhà đầu tư cuối kỳ (22841). Tăng nhanh cùng số chứng chỉ lưu hành nghĩa là quỹ
                 hút dòng tiền bán lẻ mạnh (07/2026: 74.212 nhà đầu tư).
               </p>
-            </div>
-          </div>
-
-          {/* ════════════ Nhóm 3: Cấu trúc & Phân bổ ════════════ */}
-          <div style={{ display: showSection('allocation') }}>
-            <div className="section-divider">
-              <span className="section-divider-label">Cấu trúc & Phân bổ</span>
-            </div>
-
-            {/* ── Tổng tài sản snapshot (donut 4 loại + kỳ báo cáo) ── */}
-            <div className="chart-container">
-              <div className="chart-header">
-                <h3>Tổng tài sản</h3>
-              </div>
-              <div className="dca-param-row">
-                <label className="dca-label">Kỳ báo cáo</label>
-                <div className="overlap-select">{selectPeriod(piePeriod, setPiePeriod)}</div>
-              </div>
-              {piePeriodSummary && pieData.length > 0 ? (
-                <>
-                  <div className="fund-analysis-summary">
-                    <div className="fund-analysis-total-left">
-                      <div className="fund-analysis-total-caption">Tổng tài sản</div>
-                      <div className="fund-analysis-total-value">{formatVNDLocale(pieTotal)}</div>
-                      {headerDelta && (
-                        <div className={`fund-analysis-delta ${headerDelta.positive ? 'pos' : 'neg'}`}>
-                          So với kỳ {headerDelta.label}: {headerDelta.absLabel} ({headerDelta.pctLabel})
-                        </div>
-                      )}
-                    </div>
-                    {donutGradient && (
-                      <div className="fund-analysis-donut-wrap">
-                        <div className="fund-analysis-donut" style={{ background: donutGradient }}>
-                          <div className="fund-analysis-donut-hole" />
-                        </div>
-                      </div>
-                    )}
-                    <div className="fund-analysis-alloc-cards">
-                      {pieData.map(d => {
-                        const delta = categoryDelta(d.field, d.value)
-                        return (
-                          <div key={d.name} className="fund-analysis-alloc-card">
-                            <div className="fund-analysis-alloc-head">
-                              <span className="fund-analysis-alloc-dot" style={{ backgroundColor: d.color }} />
-                              <span className="fund-analysis-alloc-name">{d.name}</span>
-                            </div>
-                            <div className="fund-analysis-alloc-value">{formatVNDLocale(d.value)}</div>
-                            <div className="fund-analysis-alloc-meta">
-                              <span className="fund-analysis-alloc-pct">
-                                {pieTotal > 0 ? ((d.value / pieTotal) * 100).toFixed(1) : 0}%
-                              </span>
-                              {delta && delta.show && (
-                                <span className={`fund-analysis-alloc-delta ${delta.positive ? 'pos' : 'neg'}`}>
-                                  {delta.positive ? '↑' : '↓'} {delta.label}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  {pieAssets && pieAssets.nav > 0 && (
-                    <p className="fund-analysis-nav">
-                      NAV: <strong>{formatVND(pieAssets.nav)}</strong>
-                      {pieAssets.navPerUnit > 0 && <> · NAV/CCQ: <strong>{Math.round(pieAssets.navPerUnit).toLocaleString('vi-VN')} đ</strong></>}
-                      {' '}(kỳ {formatPeriodLabel(pieResolved!)})
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className="overlap-empty">Không có dữ liệu danh mục kỳ này.</p>
-              )}
-            </div>
-
-            <div className="fund-analysis-charts-grid">
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Phân bổ theo ngành nghề</h3>
-                </div>
-                {industryPie.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <PieChart>
-                        <Pie data={industryPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2} isAnimationActive={false}>
-                          {industryPie.map(d => (
-                            <Cell key={d.name} fill={d.color} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip
-                          formatter={(value: number | string, name: string) => [`${Number(value).toFixed(1)}%`, name]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="fund-analysis-stack-legend">
-                      {industryPie.map(d => (
-                        <span key={d.name} className="fund-analysis-stack-legend-item">
-                          <span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: d.color }} />
-                          {d.name}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="overlap-empty">Kỳ này không có dữ liệu ngành.</p>
-                )}
-                <p className="fund-analysis-chart-note">
-                  Tỷ trọng cổ phiếu theo ngành, kỳ {tableResolved ? formatPeriodLabel(tableResolved) : 'đang chọn'}.
-                  Nếu một hai ngành chiếm quá nửa, danh mục dễ bị kéo theo ngành đó.
-                </p>
-              </div>
-
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Top 10 cổ phiếu nắm giữ lớn nhất</h3>
-                </div>
-                {top10Stocks.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={240}>
-                    <BarChart data={top10Stocks} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 4 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="ticker" width={72} interval={0} tick={{ fontSize: 11 }} tickFormatter={(t: string) => (t.length > 12 ? `${t.slice(0, 11)}…` : t)} />
-                      <RechartsTooltip
-                        formatter={(value: number | string) => [`${Number(value).toFixed(2)}%`, 'Tỷ trọng']}
-                        labelFormatter={(t: string) => `${t}${industryMap[t] ? ` · ${industryMap[t]}` : ''}`}
-                      />
-                      <Bar dataKey="weightPct" fill={ASSET_COLORS.stock} isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="overlap-empty">Kỳ này không có cổ phiếu.</p>
-                )}
-                <p className="fund-analysis-chart-note">
-                  Tỷ trọng trong NAV, kỳ {tableResolved ? formatPeriodLabel(tableResolved) : 'đang chọn'}.
-                  Vài mã đứng đầu quyết định phần lớn hiệu suất cả danh mục.
-                </p>
-              </div>
-            </div>
-
-            <div className="chart-container">
-              <div className="chart-header">
-                <h3>Mức độ tập trung danh mục (top 5)</h3>
-                </div>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={top5Concentration} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
-                    <YAxis tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={48} domain={[0, 100]} />
-                    <RechartsTooltip
-                      formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Top 5']}
-                      labelFormatter={(p: string) => formatPeriodLabel(p)}
-                    />
-                    <Line type="monotone" dataKey="value" stroke={INVESTOR_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="fund-analysis-chart-note">
-                  Tổng tỷ trọng 5 cổ phiếu lớn nhất mỗi kỳ. Đường dốc lên liên tục nghĩa là quỹ đang
-                  mất dần tính đa dạng hóa.
-                </p>
-              </div>
-
-            {/* ── Danh mục quỹ (bảng, kèm kỳ báo cáo riêng) ── */}
-            <div className="chart-container">
-              <div className="chart-header">
-                <h3>Danh mục quỹ</h3>
-              </div>
-              <div className="dca-param-row">
-                <label className="dca-label">Kỳ báo cáo</label>
-                <div className="overlap-select">{selectPeriod(tablePeriod, setTablePeriod)}</div>
-              </div>
-              {tableStocks.length > 0 ? (
-                <div className="dca-stats-table-scroll fund-analysis-table-scroll">
-                  <table className="dca-stats-table overlap-table">
-                    <thead>
-                      <tr>
-                        <th>Chứng khoán</th>
-                        <th>Khối lượng nắm giữ</th>
-                        <th>Tổng giá trị</th>
-                        <th>Tỷ trọng</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableStocks.map(s => (
-                        <tr key={s.ticker}>
-                          <td>
-                            <span className="fund-analysis-symbol">{s.ticker}</span>
-                            {industryMap[s.ticker] && (
-                              <span className="fund-analysis-industry">{industryMap[s.ticker]}</span>
-                            )}
-                          </td>
-                          <td>{s.quantity > 0 ? s.quantity.toLocaleString('vi-VN') : '—'}</td>
-                          <td>{formatVND(s.value)}</td>
-                          <td>{s.weightPct.toFixed(2)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="overlap-empty">Kỳ này không có cổ phiếu trong danh mục.</p>
-              )}
             </div>
           </div>
 
