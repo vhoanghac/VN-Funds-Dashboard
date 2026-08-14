@@ -477,10 +477,12 @@ function FundAnalysisPanelImpl({ funds }: Props) {
   }, [assets, chartPeriods])
 
   // ── Chart mới: portfolio turnover rate (2270) ──
+  // CSV lưu tỉ lệ thô (6,8399 = 6,84 lần = 683,99%). Báo cáo công bố theo phần trăm
+  // nên ×100 trước khi vẽ để khớp con số công bố.
   const turnoverSeries = useMemo(
     () => chartPeriods.map(p => ({
       period: p,
-      value: flow?.get(p)?.turnoverRate ?? 0,
+      value: (flow?.get(p)?.turnoverRate ?? 0) * 100,
     })),
     [flow, chartPeriods],
   )
@@ -1528,9 +1530,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   </BarChart>
                 </ResponsiveContainer>
                 <p className="fund-analysis-chart-note">
-                  Portfolio turnover rate (%) — tỷ lệ danh mục được mua-bán trong kỳ (2270). Cao nghĩa
-                  là quản lý giao dịch chủ động. Xem chart "Lãi/lỗ thực hiện" để thấy đợt bán lớn
-                  tương ứng.
+                  Portfolio turnover rate — tỷ lệ danh mục được mua-bán trong kỳ (2270). 07/2026 đạt
+                  683,99%, tức quỹ giao dịch gần 7 lần giá trị danh mục trong 12 tháng gần nhất. Cao
+                  nghĩa là quản lý chủ động xoay vòng; xem chart "Lãi/lỗ thực hiện" để thấy đợt bán
+                  lớn tương ứng.
                 </p>
               </div>
             </div>
