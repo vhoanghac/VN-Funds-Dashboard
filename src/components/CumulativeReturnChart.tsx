@@ -7,7 +7,7 @@ import type { ChartSeries } from '../types'
 import type { BtcEvent } from '../utils/btcEvents'
 import {
   mergeAllSeries, getYearTicks, formatYear, formatTooltipDate,
-  formatPercent, formatPercentFull, BASELINE_COLOR, DIMMED_COLOR,
+  formatPercent, BASELINE_COLOR, DIMMED_COLOR,
 } from '../utils/chartPlumbing'
 import { useDimLegend } from '../hooks/useDimLegend'
 
@@ -105,7 +105,7 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
           <Tooltip
             formatter={(value: number, name: string) => {
               if (isDimmed(name)) return []   // hide tooltip row for dimmed lines
-              return logScale ? formatGrowthFactorFull(value) : formatPercentFull(value)
+              return logScale ? formatGrowthFactorFull(value) : formatPercent(value)
             }}
             labelFormatter={formatTooltipDate}
           />
