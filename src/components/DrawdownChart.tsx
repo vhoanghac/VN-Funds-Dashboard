@@ -1,39 +1,23 @@
-import { useState, useRef } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts'
 import type { ChartSeries } from '../types'
+import {
+  mergeAllSeries, getYearTicks, formatYear, formatTooltipDate,
+  formatPercent, formatPercentFull, BASELINE_COLOR, DIMMED_COLOR,
+} from '../utils/chartPlumbing'
+import { useDimLegend } from '../hooks/useDimLegend'
 
 interface Props {
   series: ChartSeries[]
 }
 
-const BASELINE_COLOR = '#7A7574'
-const DIMMED_COLOR = '#CBD5E1'
-
 export function DrawdownChart({ series }: Props) {
-  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
-
   const seriesKey = series.map(s => s.name).join(',')
-  const prevKeyRef = useRef(seriesKey)
-  if (prevKeyRef.current !== seriesKey) {
-    prevKeyRef.current = seriesKey
-    if (dimmed.size > 0) setDimmed(new Set())
-  }
+  const { handleLegendClick, isDimmed } = useDimLegend(seriesKey)
 
   const data = mergeAllSeries(series)
-
-  function handleLegendClick(payload: { value?: string | number }) {
-    const key = typeof payload.value === 'string' ? payload.value : undefined
-    if (!key) return
-    setDimmed(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
 
   return (
     <div className="chart-container">
@@ -49,34 +33,29 @@ export function DrawdownChart({ series }: Props) {
             type="number"
             domain={['dataMin', 'dataMax']}
             ticks={getYearTicks(data)}
-            tickFormatter={ts => new Date(ts).getFullYear().toString()}
+            tickFormatter={formatYear}
             tick={{ fontSize: 12 }}
           />
           <YAxis
-            tickFormatter={v => (v * 100).toFixed(0) + '%'}
+            tickFormatter={v => formatPercent(v, 0)}
             tick={{ fontSize: 12 }}
             width={60}
             domain={['auto', 0]}
           />
           <Tooltip
             formatter={(value: number, name: string) => {
-              if (dimmed.has(name)) return []
-              return (value * 100).toFixed(2) + '%'
+              if (isDimmed(name)) return []
+              return formatPercentFull(value)
             }}
-            labelFormatter={(ts: number) => {
-              const d = new Date(ts)
-              const dd = d.getDate().toString().padStart(2, '0')
-              const mm = (d.getMonth() + 1).toString().padStart(2, '0')
-              return `${dd}/${mm}/${d.getFullYear()}`
-            }}
+            labelFormatter={formatTooltipDate}
           />
           <Legend
             onClick={handleLegendClick}
             formatter={(value: string) => (
               <span style={{
-                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                color: isDimmed(value) ? DIMMED_COLOR : undefined,
                 cursor: 'pointer',
-                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+                textDecoration: isDimmed(value) ? 'line-through' : undefined,
               }}>
                 {value}
               </span>
@@ -89,17 +68,17 @@ export function DrawdownChart({ series }: Props) {
             strokeWidth={1.5}
           />
           {series.map(s => {
-            const isDimmed = dimmed.has(s.name)
+            const isDimmedLine = isDimmed(s.name)
             return (
               <Area
                 key={s.name}
                 type="monotone"
                 dataKey={s.name}
-                stroke={isDimmed ? DIMMED_COLOR : s.color}
-                fill={isDimmed ? DIMMED_COLOR : s.color}
-                fillOpacity={isDimmed ? 0.04 : 0.1}
-                strokeWidth={isDimmed ? 0.75 : 1.5}
-                opacity={isDimmed ? 0.4 : 1}
+                stroke={isDimmedLine ? DIMMED_COLOR : s.color}
+                fill={isDimmedLine ? DIMMED_COLOR : s.color}
+                fillOpacity={isDimmedLine ? 0.04 : 0.1}
+                strokeWidth={isDimmedLine ? 0.75 : 1.5}
+                opacity={isDimmedLine ? 0.4 : 1}
                 dot={false}
                 isAnimationActive={false}
               />
@@ -109,32 +88,4 @@ export function DrawdownChart({ series }: Props) {
       </ResponsiveContainer>
     </div>
   )
-}
-
-function mergeAllSeries(allSeries: ChartSeries[]): Record<string, unknown>[] {
-  const map = new Map<string, Record<string, unknown>>()
-  for (const s of allSeries) {
-    for (const p of s.data) {
-      const ex = map.get(p.date) || { date: p.date, timestamp: new Date(p.date).getTime() }
-      ex[s.name] = p.value
-      map.set(p.date, ex)
-    }
-  }
-  return Array.from(map.values()).sort(
-    (x, y) => (x.timestamp as number) - (y.timestamp as number),
-  )
-}
-
-function getYearTicks(data: Record<string, unknown>[]): number[] {
-  const seen = new Set<number>()
-  const ticks: number[] = []
-  for (const d of data) {
-    const ts = d.timestamp as number
-    const year = new Date(ts).getFullYear()
-    if (!seen.has(year)) {
-      seen.add(year)
-      ticks.push(ts)
-    }
-  }
-  return ticks
 }

@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import type { ChartSeries, FundMeta } from '../types'
 import { formatVND, formatVNDFull } from '../utils/vndFormat'
+import { getYearTicks, formatYear, formatTooltipDate } from '../utils/chartPlumbing'
 
 interface Props {
   series: ChartSeries[]
@@ -114,28 +115,4 @@ function unitOf(meta: FundMeta | undefined): string {
   if (meta?.type === 'gold') return 'lượng'
   if (meta?.type === 'crypto') return 'coin'
   return 'CCQ'
-}
-
-function getYearTicks(data: { timestamp: number }[]): number[] {
-  const seen = new Set<number>()
-  const ticks: number[] = []
-  for (const d of data) {
-    const year = new Date(d.timestamp).getFullYear()
-    if (!seen.has(year)) {
-      seen.add(year)
-      ticks.push(d.timestamp)
-    }
-  }
-  return ticks
-}
-
-function formatYear(ts: number): string {
-  return new Date(ts).getFullYear().toString()
-}
-
-function formatTooltipDate(ts: number): string {
-  const d = new Date(ts)
-  const dd = d.getDate().toString().padStart(2, '0')
-  const mm = (d.getMonth() + 1).toString().padStart(2, '0')
-  return `${dd}/${mm}/${d.getFullYear()}`
 }

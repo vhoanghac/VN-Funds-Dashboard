@@ -1,9 +1,14 @@
-import { useState, useRef, memo } from 'react'
+import { useState, memo } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, ComposedChart, ReferenceLine,
 } from 'recharts'
 import { WOW_EVENTS, WOW_CATEGORY_META } from '../utils/wallOfWorryEvents'
+import {
+  getYearTicks, formatYear, formatTooltipDate, DIMMED_COLOR,
+} from '../utils/chartPlumbing'
+import { formatVNDFull } from '../utils/vndFormat'
+import { useDimLegend } from '../hooks/useDimLegend'
 
 interface ValuePoint {
   date: string
@@ -21,20 +26,14 @@ interface Props {
   portfolios: PortfolioSeries[]
 }
 
-const DIMMED_COLOR = '#CBD5E1'
 const INVESTED_LINE_NAME = 'Đã đầu tư'
 
 function PortfolioValueChartImpl({ portfolios }: Props) {
-  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
   const [logScale, setLogScale] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
 
   const seriesKey = portfolios.map(p => p.name).join(',')
-  const prevKeyRef = useRef(seriesKey)
-  if (prevKeyRef.current !== seriesKey) {
-    prevKeyRef.current = seriesKey
-    if (dimmed.size > 0) setDimmed(new Set())
-  }
+  const { handleLegendClick, isDimmed } = useDimLegend(seriesKey)
 
   if (portfolios.length === 0) return null
 
@@ -55,17 +54,6 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
           color: WOW_CATEGORY_META[ev.category].color,
         }))
     : []
-
-  function handleLegendClick(payload: { value?: string | number }) {
-    const key = typeof payload.value === 'string' ? payload.value : undefined
-    if (!key) return
-    setDimmed(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
 
   return (
     <div className="chart-container">
@@ -113,7 +101,7 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
           />
           <Tooltip
             formatter={(value: number, name: string) => {
-              if (dimmed.has(name)) return []
+              if (isDimmed(name)) return []
               return [formatVNDFull(value), name]
             }}
             labelFormatter={formatTooltipDate}
@@ -122,9 +110,9 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
             onClick={handleLegendClick}
             formatter={(value: string) => (
               <span style={{
-                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                color: isDimmed(value) ? DIMMED_COLOR : undefined,
                 cursor: 'pointer',
-                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+                textDecoration: isDimmed(value) ? 'line-through' : undefined,
               }}>
                 {value}
               </span>
@@ -142,16 +130,16 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
           ))}
           {portfolios.map(p => {
             const legendName = p.name
-            const isDimmed = dimmed.has(legendName)
+            const isDimmedLine = isDimmed(legendName)
             return (
               <Line
                 key={`line-${p.name}`}
                 type="monotone"
                 dataKey={`${p.name}_value`}
                 name={legendName}
-                stroke={isDimmed ? DIMMED_COLOR : p.color}
-                strokeWidth={isDimmed ? 0.75 : 2}
-                opacity={isDimmed ? 0.4 : 1}
+                stroke={isDimmedLine ? DIMMED_COLOR : p.color}
+                strokeWidth={isDimmedLine ? 0.75 : 2}
+                opacity={isDimmedLine ? 0.4 : 1}
                 dot={false}
                 connectNulls={true}
                 isAnimationActive={false}
@@ -159,17 +147,17 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
             )
           })}
           {(() => {
-            const isDimmed = dimmed.has(INVESTED_LINE_NAME)
+            const isDimmedLine = isDimmed(INVESTED_LINE_NAME)
             return (
               <Line
                 key="invested-shared"
                 type="stepAfter"
                 dataKey={`${portfolios[0]!.name}_invested`}
                 name={INVESTED_LINE_NAME}
-                stroke={isDimmed ? DIMMED_COLOR : '#94a3b8'}
+                stroke={isDimmedLine ? DIMMED_COLOR : '#94a3b8'}
                 strokeDasharray="6 3"
-                strokeWidth={isDimmed ? 0.75 : 1.5}
-                opacity={isDimmed ? 0.3 : 0.7}
+                strokeWidth={isDimmedLine ? 0.75 : 1.5}
+                opacity={isDimmedLine ? 0.3 : 0.7}
                 dot={false}
                 connectNulls={true}
                 isAnimationActive={false}
@@ -242,37 +230,9 @@ function mergeData(portfolios: PortfolioSeries[]): Record<string, unknown>[] {
   )
 }
 
-function getYearTicks(data: Record<string, unknown>[]): number[] {
-  const seen = new Set<number>()
-  const ticks: number[] = []
-  for (const d of data) {
-    const ts = d.timestamp as number
-    const year = new Date(ts).getFullYear()
-    if (!seen.has(year)) {
-      seen.add(year)
-      ticks.push(ts)
-    }
-  }
-  return ticks
-}
-
-function formatYear(ts: number): string {
-  return new Date(ts).getFullYear().toString()
-}
-
+/** Trục Y: nén tiền thành M/K để nhãn ngắn (khác formatVND của vndFormat vốn ra "triệu/tỷ"). */
 function formatVND(value: number): string {
   if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M'
   if (value >= 1_000) return (value / 1_000).toFixed(0) + 'K'
   return value.toFixed(0)
-}
-
-function formatVNDFull(value: number): string {
-  return Math.round(value).toLocaleString('vi-VN') + ' đ'
-}
-
-function formatTooltipDate(ts: number): string {
-  const d = new Date(ts)
-  const dd = d.getDate().toString().padStart(2, '0')
-  const mm = (d.getMonth() + 1).toString().padStart(2, '0')
-  return `${dd}/${mm}/${d.getFullYear()}`
 }

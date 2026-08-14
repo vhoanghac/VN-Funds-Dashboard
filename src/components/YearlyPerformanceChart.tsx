@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
   LabelList,
 } from 'recharts'
 import type { YearlyReturn } from '../types'
+import { formatPercentFull, BASELINE_COLOR, DIMMED_COLOR } from '../utils/chartPlumbing'
+import { useDimLegend } from '../hooks/useDimLegend'
 
 interface YearlySeries {
   name: string
@@ -16,29 +17,9 @@ interface Props {
   series: YearlySeries[]
 }
 
-const BASELINE_COLOR = '#7A7574'
-const DIMMED_COLOR = '#CBD5E1'
-
 export function YearlyPerformanceChart({ series }: Props) {
-  const [dimmed, setDimmed] = useState<Set<string>>(new Set())
-
   const seriesKey = series.map(s => s.name).join(',')
-  const prevKeyRef = useRef(seriesKey)
-  if (prevKeyRef.current !== seriesKey) {
-    prevKeyRef.current = seriesKey
-    if (dimmed.size > 0) setDimmed(new Set())
-  }
-
-  function handleLegendClick(payload: { value?: string | number }) {
-    const key = typeof payload.value === 'string' ? payload.value : undefined
-    if (!key) return
-    setDimmed(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+  const { handleLegendClick, isDimmed } = useDimLegend(seriesKey)
 
   // Collect all years
   const yearSet = new Set<number>()
@@ -83,17 +64,17 @@ export function YearlyPerformanceChart({ series }: Props) {
           />
           <Tooltip
             formatter={(value: number, name: string) => {
-              if (dimmed.has(name)) return []
-              return (value * 100).toFixed(2) + '%'
+              if (isDimmed(name)) return []
+              return formatPercentFull(value)
             }}
           />
           <Legend
             onClick={handleLegendClick}
             formatter={(value: string) => (
               <span style={{
-                color: dimmed.has(value) ? DIMMED_COLOR : undefined,
+                color: isDimmed(value) ? DIMMED_COLOR : undefined,
                 cursor: 'pointer',
-                textDecoration: dimmed.has(value) ? 'line-through' : undefined,
+                textDecoration: isDimmed(value) ? 'line-through' : undefined,
               }}>
                 {value}
               </span>
@@ -106,17 +87,17 @@ export function YearlyPerformanceChart({ series }: Props) {
             strokeWidth={1.5}
           />
           {series.map(s => {
-            const isDimmed = dimmed.has(s.name)
+            const isDimmedBar = isDimmed(s.name)
             return (
               <Bar
                 key={s.name}
                 dataKey={s.name}
-                fill={isDimmed ? DIMMED_COLOR : s.color}
-                opacity={isDimmed ? 0.35 : 1}
+                fill={isDimmedBar ? DIMMED_COLOR : s.color}
+                opacity={isDimmedBar ? 0.35 : 1}
                 radius={[2, 2, 0, 0]}
                 isAnimationActive={false}
               >
-                {!isDimmed && (
+                {!isDimmedBar && (
                   <LabelList
                     dataKey={s.name}
                     position="top"
