@@ -7490,26 +7490,6 @@ h1, h2, h3 {
   flex-shrink: 0;
 }
 
-.redflag-card--danger {
-  background: #fef2f2;
-}
-
-.redflag-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.redflag-toolbar-label {
-  font-size: 0.9rem;
-  color: #5e5d59;
-}
-
-.redflag-toolbar .fund-search-select {
-  width: 180px;
-}
-
 /* Note nhấn mạnh (vd spike cổ tức) — dòng thứ 2 dưới chart */
 .fund-analysis-note-em {
   color: #8a5a00;

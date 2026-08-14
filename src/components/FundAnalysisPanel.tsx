@@ -1649,7 +1649,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
 
           {/* ════════════ Nhóm 6: Plot Twist (Red Flags ẩn) ════════════ */}
           <div style={{ display: showSection('twist') }}>
-            <RedFlagSection points={redFlagPoints} periods={periods} />
+            <RedFlagSection points={redFlagPoints} />
           </div>
         </>
       )}

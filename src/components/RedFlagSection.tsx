@@ -1,14 +1,11 @@
-import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts'
-import Select from 'react-select'
 import { computeVerdictAt, redFlagHistory, type RedFlagId, type RedFlagPoint, type Verdict } from '../utils/fundRedFlags'
 import { formatVND, formatVNDAxis } from '../utils/vndFormat'
 
 interface Props {
   points: RedFlagPoint[] // tăng dần theo kỳ
-  periods: string[] // giảm dần (cho dropdown)
 }
 
 const VERDICT_META: Record<Verdict, { label: string; color: string; bg: string }> = {
@@ -46,24 +43,6 @@ const FLAGS: FlagConfig[] = [
     twist: 'Cọc tiền mặt lớn có thể là phòng thủ, cũng có thể là quỹ hết ý tưởng.',
   },
 ]
-
-const selectStyles = {
-  control: (base: Record<string, unknown>) => ({
-    ...base,
-    minHeight: 38,
-    borderColor: '#e5e7eb',
-    boxShadow: 'none',
-    '&:hover': { borderColor: '#2563EB' },
-    fontSize: '0.95rem',
-  }),
-  menu: (base: Record<string, unknown>) => ({ ...base, zIndex: 20 }),
-  option: (base: Record<string, unknown>, state: { isFocused: boolean; isSelected: boolean }) => ({
-    ...base,
-    fontSize: '0.9rem',
-    backgroundColor: state.isSelected ? '#2563EB' : state.isFocused ? '#eff6ff' : undefined,
-    color: state.isSelected ? 'white' : '#1a1a1a',
-  }),
-}
 
 function formatPeriodLabel(periodEnd: string): string {
   const [y, m] = periodEnd.split('-')
@@ -211,7 +190,7 @@ function DetectorCard({
 }) {
   const meta = VERDICT_META[summary.verdict]
   return (
-    <div className={`chart-container${summary.verdict === 'DANGER' ? ' redflag-card--danger' : ''}`}>
+    <div className="chart-container">
       <div className="chart-header redflag-header">
         <h3>{config.title}</h3>
         <span className="redflag-badge" style={{ background: meta.bg, color: meta.color }}>
@@ -237,30 +216,14 @@ function DetectorCard({
   )
 }
 
-export function RedFlagSection({ points, periods }: Props) {
-  const [period, setPeriod] = useState<string | null>(null)
-  const options = useMemo(() => periods.map(p => ({ value: p, label: formatPeriodLabel(p) })), [periods])
-
+export function RedFlagSection({ points }: Props) {
   if (points.length === 0) return null
-  const resolved = period ?? points[points.length - 1]!.period
-  const idx = points.findIndex(p => p.period === resolved)
+  const idx = points.length - 1
 
   return (
     <>
       <div className="section-divider">
         <span className="section-divider-label">Plot Twist (Red Flags ẩn)</span>
-      </div>
-      <div className="redflag-toolbar">
-        <span className="redflag-toolbar-label">Kỳ báo cáo:</span>
-        <Select
-          className="fund-search-select"
-          classNamePrefix="fund-search"
-          options={options}
-          value={period === null ? { value: null, label: 'Mới nhất' } : { value: period, label: formatPeriodLabel(period) }}
-          onChange={opt => setPeriod(opt ? opt.value : null)}
-          isClearable={false}
-          styles={selectStyles}
-        />
       </div>
       <div className="fund-analysis-charts-grid">
         {FLAGS.map(flag => (
