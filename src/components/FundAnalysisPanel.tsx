@@ -1350,7 +1350,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <h3>Tỷ lệ tiền mặt theo % AUM</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={cashAumSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                  <BarChart data={cashAumSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
                     <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={48} />
@@ -1358,8 +1358,8 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                       formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Tiền mặt % AUM']}
                       labelFormatter={(p: string) => formatPeriodLabel(p)}
                     />
-                    <Line type="monotone" dataKey="value" stroke={BANK_DEPOSIT_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
-                  </LineChart>
+                    <Bar dataKey="value" fill={BANK_DEPOSIT_COLOR} isAnimationActive={false} />
+                  </BarChart>
                 </ResponsiveContainer>
                 <p className="fund-analysis-chart-note">
                   Tỷ lệ tiền mặt trên quy mô tài sản ròng (AUM). Cao nghĩa là quỹ giữ nhiều tiền mặt,
