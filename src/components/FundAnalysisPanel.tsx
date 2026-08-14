@@ -415,9 +415,6 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     [income, chartPeriods],
   )
 
-  // ── Chart E: dòng tiền ròng ước tính — (số CCQ mua − bán) × NAV/CCQ ──
-  // Báo cáo chỉ công bố số chứng chỉ mua/bán (theo mệnh giá); quy ra tiền bằng
-  // NAV/CCQ cuối kỳ (2219) — ước tính, ghi rõ trên chart.
   // ── Chart E: dòng tiền ròng (2239.3) — thay đổi NAV do phát hành/mua lại ──
   // Dùng con số chính xác từ báo cáo thay vì (số CCQ 2277−22781) × NAV/CCQ cuối kỳ
   // vốn là ước tính (lệch ~2% vì mua/bán diễn ra ở NAV khác nhau trong tháng).
@@ -617,13 +614,14 @@ function FundAnalysisPanelImpl({ funds }: Props) {
   )
 
   // ── Nhóm 5: độ lệch pha AUM vs dòng tiền (dual-axis) ──
+  // AUM = NAV (tài sản ròng), nhất quán với chart "Quy mô quỹ" và narrative.
   const aumFlowSeries = useMemo(
     () => chartPeriods.map(p => ({
       period: p,
-      AUM: portfolio?.get(p)?.allocation.totalValue ?? 0,
+      AUM: assets?.get(p)?.nav ?? 0,
       'Dòng tiền': income?.get(p)?.navChangeByFlow ?? 0,
     })),
-    [portfolio, income, chartPeriods],
+    [assets, income, chartPeriods],
   )
 
   // ── Red Flags: điểm dữ liệu cho detector (thuần, asc theo kỳ) ──
@@ -1251,7 +1249,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
             <div className="fund-analysis-charts-grid">
               <div className="chart-container">
                 <div className="chart-header">
-                  <h3>Tiền mặt / cổ phiếu (% NAV) qua các tháng</h3>
+                  <h3>Tiền mặt / cổ phiếu (% tổng tài sản) qua các tháng</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
                   <AreaChart data={allocationSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
@@ -1284,8 +1282,8 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   ))}
                 </div>
                 <p className="fund-analysis-chart-note">
-                  Tỷ trọng từng loại tài sản trong NAV (tổng 100%). Tiền mặt cao trong downtrend là
-                  phòng thủ tốt, nhưng cao trong uptrend là bỏ lỡ cơ hội.
+                  Tỷ trọng từng loại tài sản trong tổng tài sản (cộng lại đúng 100%). Tiền mặt cao trong
+                  downtrend là phòng thủ tốt, nhưng cao trong uptrend là bỏ lỡ cơ hội.
                 </p>
               </div>
 
