@@ -7447,6 +7447,69 @@ h1, h2, h3 {
   color: #141413;
 }
 
+/* ── Plot Twist (Red Flags ẩn): detector card ── */
+.redflag-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.redflag-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.redflag-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.85rem;
+  color: #5e5d59;
+  margin-bottom: 4px;
+}
+
+.redflag-metrics strong {
+  color: #141413;
+}
+
+.redflag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.redflag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.redflag-card--danger {
+  background: #fef2f2;
+}
+
+.redflag-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.redflag-toolbar-label {
+  font-size: 0.9rem;
+  color: #5e5d59;
+}
+
+.redflag-toolbar .fund-search-select {
+  width: 180px;
+}
+
 /* Note nhấn mạnh (vd spike cổ tức) — dòng thứ 2 dưới chart */
 .fund-analysis-note-em {
   color: #8a5a00;
