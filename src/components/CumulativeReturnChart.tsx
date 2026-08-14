@@ -98,7 +98,7 @@ function CumulativeReturnChartImpl({ series, events }: Props) {
             scale={logScale ? 'log' : 'auto'}
             domain={logScale ? ['auto', 'auto'] : yDomain}
             allowDataOverflow={false}
-            tickFormatter={logScale ? formatGrowthFactor : formatPercent}
+            tickFormatter={logScale ? formatGrowthFactor : (v: number) => formatPercent(v)}
             tick={{ fontSize: 12 }}
             width={60}
           />
