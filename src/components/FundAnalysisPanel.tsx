@@ -1669,23 +1669,27 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 <span className="fund-analysis-stack-legend-item"><span className="fund-analysis-stack-legend-dot" style={{ backgroundColor: FLOW_AXIS_COLOR }} />Dòng tiền (phải)</span>
               </div>
               <p className="fund-analysis-chart-note">
-                <strong>Cách đọc:</strong> nhìn khoảng cách giữa 2 đường, đừng nhìn từng đường. AUM ở
-                trục trái, dòng tiền ròng (2239.3) ở trục phải.<br />
+                Đừng nhìn từng đường. Nhìn khoảng cách giữa chúng.<br />
                 <br />
-                <strong>Mỗi tháng, AUM đổi theo 2 nguồn:</strong><br />
-                1. Tiền mới nhà đầu tư nạp vào hoặc rút ra (đường dòng tiền).<br />
-                2. Lợi nhuận đầu tư (giá tài sản lên/xuống).<br />
+                Mỗi tháng, AUM thay đổi bằng đúng hai phần cộng lại: tiền mới nhà đầu tư nạp vào hay rút
+                ra, và lợi nhuận đầu tư, tức giá tài sản lên hay xuống. Đường dòng tiền chỉ đo phần thứ
+                nhất. Đường AUM đo cả hai. Khoảng cách giữa hai đường chính là phần giá tài sản đóng góp.<br />
                 <br />
-                <strong>2 đường chạy ngược nhau là có chuyện:</strong><br />
-                1. AUM lên mà dòng tiền âm: tăng nhờ GIÁ tài sản, vốn đang chảy ra.<br />
-                2. AUM xuống mà dòng tiền dương: hút được vốn nhưng giá giảm mạnh hơn.<br />
-                3. Cả 2 cùng lên: khỏe. Cùng xuống: xấu.<br />
+                Hai đường chạy cùng chiều thì bình thường. Tiền vào cùng giá tăng, quỹ lớn lên đều, không
+                có gì đáng bàn. Chỉ khi chúng chạy ngược nhau, mới phải dừng lại hỏi.<br />
                 <br />
-                <strong>DCDS 2026 đang ở mục 2:</strong><br />
-                1. Hút ~838 tỷ tiền mới trong 7 tháng, chỉ 1 tháng rút nhẹ (−18 tỷ).<br />
-                2. Nhưng NAV vẫn tụt: 6.311 tỷ (02/2026) → 5.723 tỷ (07/2026).<br />
-                3. Vì lợi nhuận đầu tư âm −652 tỷ, thị trường giảm −17% từ đỉnh 2/2026.<br />
-                4. Kết luận: tiền vào đông không cứu được giá tài sản giảm.
+                AUM tăng mà dòng tiền âm kéo dài, nghĩa là tiền đang chảy ra mà quỹ vẫn to. To nhờ gì? Nhờ
+                giá tài sản đang lên. Cái tăng đó đứng trên giấy, không phải trên tiền thật.<br />
+                <br />
+                DCDS năm nay rơi vào chiều ngược, cũng đáng soi không kém. Quỹ hút gần 838 tỷ tiền mới
+                trong 7 tháng, chỉ một tháng rút nhẹ. Vậy mà tổng tài sản vẫn tụt, từ 6.311 tỷ tháng 2
+                xuống còn 5.723 tỷ tháng 7. Tiền vào đông không cứu được giá tài sản giảm: lợi nhuận đầu
+                tư âm 652 tỷ, thị trường lui 17% so với đỉnh 2/2026. Người mua ở đỉnh, một chứng chỉ giá
+                112 nghìn đồng, giờ còn 93 nghìn.<br />
+                <br />
+                Nói thẳng: quỹ hút được vốn không có nghĩa là quỹ đang làm ra tiền. Hút vốn là chuyện của
+                phân phối. Làm ra tiền là chuyện của đầu tư. Chart này chỉ tách hai chuyện đó ra, để bạn
+                không nhầm.
               </p>
             </div>
 
