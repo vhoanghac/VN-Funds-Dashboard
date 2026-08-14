@@ -605,6 +605,17 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     () => chartPeriods.map(p => ({ period: p, value: assets?.get(p)?.cashAtBank ?? 0 })),
     [assets, chartPeriods],
   )
+  const cashAumSeries = useMemo(
+    () => chartPeriods.map(p => {
+      const cash = portfolio?.get(p)?.allocation.cashValue ?? null
+      const nav = assets?.get(p)?.nav ?? null
+      return {
+        period: p,
+        value: cash !== null && nav !== null && nav > 0 ? (cash / nav) * 100 : null,
+      }
+    }),
+    [portfolio, assets, chartPeriods],
+  )
 
   // ── Nhóm 5: độ lệch pha AUM vs dòng tiền (dual-axis) ──
   const aumFlowSeries = useMemo(
@@ -1355,6 +1366,28 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   hút dòng tiền bán lẻ mạnh (07/2026: 74.212 nhà đầu tư).
                 </p>
               </div>
+            </div>
+
+            <div className="chart-container fund-analysis-chart-wide">
+              <div className="chart-header">
+                <h3>Tỷ lệ tiền mặt theo % AUM</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={cashAumSeries} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="period" tickFormatter={formatAxisTick} tick={{ fontSize: 10 }} minTickGap={32} />
+                  <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fontSize: 11 }} width={48} />
+                  <RechartsTooltip
+                    formatter={(value: number | string) => [`${Number(value).toFixed(1)}%`, 'Tiền mặt % AUM']}
+                    labelFormatter={(p: string) => formatPeriodLabel(p)}
+                  />
+                  <Line type="monotone" dataKey="value" stroke={BANK_DEPOSIT_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="fund-analysis-chart-note">
+                Tỷ lệ tiền mặt trên quy mô tài sản ròng (AUM). Cao nghĩa là quỹ giữ nhiều tiền mặt,
+                phòng thủ hoặc chờ đợi cơ hội mua vào.
+              </p>
             </div>
 
             <div className="fund-analysis-charts-grid">
