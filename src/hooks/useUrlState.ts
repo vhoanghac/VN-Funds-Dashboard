@@ -1,10 +1,11 @@
 import { useSearchParams } from 'react-router-dom'
 import { useCallback, useMemo } from 'react'
 import type { CalculatorId, DashboardState } from '../types'
+import { TAB_REGISTRY, type TabId } from '../tabRegistry'
 import { CALCULATOR_IDS, DEFAULT_FUNDS } from '../constants'
 import { loadLS, saveLS } from '../utils/localStorage'
 
-const VALID_TABS = ['compare', 'dca', 'lsdca', 'fundanalysis', 'overlap', 'rebalance', 'tactical', 'bitcoin', 'wallofworry', 'calculator', 'methodology', 'changelog'] as const
+const VALID_TABS = TAB_REGISTRY.map(t => t.id) as readonly TabId[]
 const VALID_PERIODS = [6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 const DEFAULT_CALC_ID: CalculatorId = 'compound'
 
@@ -49,7 +50,7 @@ export function useUrlState() {
 
   const state: DashboardState = {
     funds,
-    tab: VALID_TABS.includes(tabParam as typeof VALID_TABS[number])
+    tab: VALID_TABS.includes(tabParam as TabId)
       ? (tabParam as DashboardState['tab'])
       : 'compare',
     rollingPeriod: VALID_PERIODS.includes(roll) ? roll : 12,

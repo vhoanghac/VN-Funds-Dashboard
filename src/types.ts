@@ -1,4 +1,5 @@
 import type { CALCULATOR_IDS } from './constants'
+import type { TabId } from './tabRegistry'
 
 /** Price data point (date, price) — used for both raw daily CSV rows and any resampled/aligned series */
 export interface PricePoint {
@@ -63,7 +64,8 @@ export type CalculatorId = typeof CALCULATOR_IDS[number]
 /** URL state for the dashboard */
 export interface DashboardState {
   funds: string[] // selected fund IDs for comparison
-  tab: 'compare' | 'dca' | 'lsdca' | 'fundanalysis' | 'overlap' | 'rebalance' | 'tactical' | 'bitcoin' | 'wallofworry' | 'calculator' | 'methodology' | 'changelog'
+  /** Id của tab đang mở. Suy từ tabRegistry nên chỉ cần sửa registry, không sửa ở đây. */
+  tab: TabId
   rollingPeriod: number // months: 6, 12, 24, 36, 48
   dateFrom: string | null
   dateTo: string | null
