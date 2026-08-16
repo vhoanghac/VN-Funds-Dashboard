@@ -96,4 +96,18 @@ describe('buildFundQualityReport', () => {
     expect(report.gaps).toHaveLength(1)
     expect(report.gaps[0]!.weeksMissing).toBe(3)
   })
+
+  // Regression: ISSUE-003 — banner gắn "N ngày trước" của quỹ này vào "Cập nhật
+  // tới" của quỹ kia. Mỗi quỹ phải tự mang con số daysStale của chính nó.
+  // Found by /qa on 2026-08-14
+  it('daysStale luôn tính từ endDate của chính quỹ đó', () => {
+    const today = new Date('2024-02-05')
+    // Quỹ A cập nhật hôm nay, quỹ B trễ 3 ngày.
+    const a = buildFundQualityReport('A', weekly('2024-01-05', '2024-02-05'), null, null, today)!
+    const b = buildFundQualityReport('B', weekly('2024-01-05', '2024-02-02'), null, null, today)!
+    expect(a.endDate).toBe('2024-02-05')
+    expect(a.daysStale).toBe(0)
+    expect(b.endDate).toBe('2024-02-02')
+    expect(b.daysStale).toBe(3)
+  })
 })

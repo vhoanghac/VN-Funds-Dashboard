@@ -60,10 +60,17 @@ export function DataQualityBlock({
 
   if (reports.length === 0) return null
 
-  const lastUpdated = reports.reduce(
-    (max, r) => (r.endDate > max ? r.endDate : max),
-    reports[0]!.endDate,
+  // Quỹ có endDate muộn nhất — con số "Cập nhật tới" và "(N ngày trước)" phải
+  // lấy từ CÙNG một quỹ. Trước đây lastUpdated lấy max endDate, còn stalestDays
+  // lấy max daysStale của mọi quỹ — hai quỹ lệch ngày thì ra "Cập nhật tới
+  // 14/08 (1 ngày trước)" dù 14/08 là hôm nay, "1 ngày trước" là của quỹ kia.
+  const freshest = reports.reduce(
+    (max, r) => (r.endDate > max.endDate ? r : max),
+    reports[0]!,
   )
+  const lastUpdated = freshest.endDate
+  // Max daysStale vẫn dùng để BẬT cảnh báo (có quỹ nào ngừng cập nhật lâu không),
+  // nhưng không dùng để gắn vào con số "ngày trước".
   const stalestDays = Math.max(...reports.map(r => r.daysStale))
   const anyGaps = reports.some(r => r.gaps.length > 0)
   const anyCoverageIssue = reports.some(
@@ -95,7 +102,7 @@ export function DataQualityBlock({
               <strong>Chất lượng dữ liệu: có cảnh báo</strong>
               <span className="dq-header-sub">
                 Cập nhật tới {formatDate(lastUpdated)}
-                {stalestDays > 0 ? ` (${stalestDays} ngày trước)` : ''}
+                {freshest.daysStale > 0 ? ` (${freshest.daysStale} ngày trước)` : ''}
                 {anyGaps ? '. Phát hiện khoảng thiếu giá.' : ''}
                 {anyCoverageIssue ? ' Có quỹ không phủ hết khoảng bạn chọn.' : ''}
               </span>
@@ -105,7 +112,7 @@ export function DataQualityBlock({
               <strong>Dữ liệu đầy đủ</strong>
               <span className="dq-header-sub">
                 Cập nhật tới {formatDate(lastUpdated)}
-                {stalestDays > 0 ? ` (${stalestDays} ngày trước)` : ''}.
+                {freshest.daysStale > 0 ? ` (${freshest.daysStale} ngày trước)` : ''}.
                 Không phát hiện lỗ hổng trong kỳ đang so sánh.
               </span>
             </>
