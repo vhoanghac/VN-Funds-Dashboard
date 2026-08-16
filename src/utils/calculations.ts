@@ -1,4 +1,5 @@
 import type { ReturnPoint, YearlyReturn, MonthlyReturn } from '../types'
+import { daysBetween } from './dateMath'
 import { rollingWindowStarts } from './dateWindow'
 
 /**
@@ -451,17 +452,13 @@ export function yearlyReturns(returns: ReturnPoint[]): YearlyReturn[] {
     const firstDate = group[0]!.date
     const lastDate = group[group.length - 1]!.date
     const isPartial =
-      (year === firstYear && daysBetweenDates(`${year}-01-01`, firstDate) > 20) ||
-      (year === lastYear && daysBetweenDates(lastDate, `${year}-12-31`) > 20)
+      (year === firstYear && daysBetween(`${year}-01-01`, firstDate) > 20) ||
+      (year === lastYear && daysBetween(lastDate, `${year}-12-31`) > 20)
 
     result.push({ year, value: growth - 1, isPartial })
   }
 
   return result
-}
-
-function daysBetweenDates(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
 }
 
 // ─── Monthly returns ─────────────────────────────────────────

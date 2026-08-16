@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import type { ChartSeries, ReturnPoint } from '../types'
 import { rollingReturnDistribution } from '../utils/calculations'
+import { percentileSorted } from '../utils/stats'
 import {
   mergeAllSeries, getYearTicks, formatYear, formatTooltipDate,
   formatPercent, formatPercentFull, BASELINE_COLOR, DIMMED_COLOR,
@@ -65,18 +66,6 @@ function computeRollingStats(data: ReturnPoint[]): RollingStats {
     min: sorted[0]!,
     max: sorted[sorted.length - 1]!,
   }
-}
-
-/** Lấy phần tử ở percentile p (0-1) từ mảng đã sắp tăng dần (nội suy tuyến tính). */
-function percentileSorted(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0
-  if (sorted.length === 1) return sorted[0]!
-  const idx = (sorted.length - 1) * p
-  const lo = Math.floor(idx)
-  const hi = Math.ceil(idx)
-  if (lo === hi) return sorted[lo]!
-  const frac = idx - lo
-  return sorted[lo]! * (1 - frac) + sorted[hi]! * frac
 }
 
 function fmtPct(v: number): string {

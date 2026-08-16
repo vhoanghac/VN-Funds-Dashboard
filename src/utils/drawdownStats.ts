@@ -10,11 +10,10 @@
  * trả về — đã loại noise cashflow nên phản ánh đúng "bão thị trường".
  */
 import type { ReturnPoint } from '../types'
+import { daysBetween } from './dateMath'
 
 /** Ngưỡng coi như "đang ở đỉnh" (tránh sai số floating point quanh 0) */
 const AT_PEAK = -1e-9
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export interface DrawdownEpisode {
   /** Ngày cuối cùng còn ở đỉnh trước khi bắt đầu rơi */
@@ -135,8 +134,4 @@ export function annualizedStdevFromCumulative(cumulative: ReturnPoint[]): number
   const periodsPerYear = returns.length / years
 
   return Math.sqrt(variance) * Math.sqrt(periodsPerYear)
-}
-
-function daysBetween(from: string, to: string): number {
-  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY)
 }

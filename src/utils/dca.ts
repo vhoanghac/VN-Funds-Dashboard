@@ -1,7 +1,9 @@
 import type { PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
 import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
+import { daysBetween } from './dateMath'
 import { rollingWindowStarts } from './dateWindow'
 import { assetDisplayName } from './savingsAsset'
+import { percentileSorted } from './stats'
 
 /**
  * Resample multiple ReturnPoint[] series to a common weekly date grid.
@@ -529,12 +531,14 @@ export function dcaMWRR(cashflows: { date: string; amount: number }[]): number |
 }
 
 /**
- * Compute CAGR from TWRR cumulative series using actual calendar time.
+ * CAGR của chuỗi TWRR tích lũy, quy năm theo ngày thực (365,25 ngày).
  *
- * Unlike the generic cagr() in calculations.ts (which assumes 52 points/year),
- * this uses the actual start/end dates to compute years precisely.
+ * Cách quy năm giống cagr() trong calculations.ts: lấy ngày đầu và ngày cuối
+ * của chuỗi, không giả định 52 điểm/năm. Khác nhau ở đầu vào: cagr() nhận lợi
+ * nhuận từng kỳ rồi nhân gộp, hàm này nhận chuỗi cumulative TWRR nên chỉ cần
+ * giá trị điểm cuối (1 + growth) là tính được.
  *
- * Formula: (twrrGrowth)^(1/years) - 1
+ * Công thức: (twrrGrowth)^(1/years) - 1
  */
 export function dcaCagr(cumulative: ReturnPoint[]): number | null {
   if (cumulative.length < 2) return null
@@ -629,8 +633,8 @@ export function dcaYearlyReturns(cumulative: ReturnPoint[]): YearlyReturn[] {
     // 01/01 hoặc 31/12 — chỉ tính "năm chưa trọn" khi lệch nhiều (>20 ngày),
     // và chỉ xét năm ĐẦU/CUỐI của toàn kỳ (không phụ thuộc mật độ dữ liệu).
     const isPartial =
-      (year === firstYear && daysBetweenDates(`${year}-01-01`, yearFirstDate.get(year)!) > 20) ||
-      (year === lastYear && daysBetweenDates(yearLastDate.get(year)!, `${year}-12-31`) > 20)
+      (year === firstYear && daysBetween(`${year}-01-01`, yearFirstDate.get(year)!) > 20) ||
+      (year === lastYear && daysBetween(yearLastDate.get(year)!, `${year}-12-31`) > 20)
 
     result.push({ year, value: yearReturn, isPartial })
   }
@@ -699,15 +703,15 @@ export function dcaYearlyMWRR(
     const EV = yearPoints[yearPoints.length - 1]!.value
     const periodEndDate = yearPoints[yearPoints.length - 1]!.date
 
-    const totalDays = Math.max(1, daysBetweenDates(periodStartDate, periodEndDate))
+    const totalDays = Math.max(1, daysBetween(periodStartDate, periodEndDate))
 
     // Dữ liệu resample theo tuần nên hiếm khi có điểm đúng ngày 01/01 hoặc
     // 31/12 (lệch vài ngày vì cuối tuần/lễ) — chỉ tính là "năm chưa trọn"
     // khi lệch nhiều (>20 ngày), và chỉ xét năm ĐẦU/CUỐI của toàn kỳ so sánh,
     // tránh báo nhầm hàng loạt năm giữa kỳ.
     const isPartial =
-      (year === firstYear && daysBetweenDates(yearStartStr, periodStartDate) > 20) ||
-      (year === lastYear && daysBetweenDates(periodEndDate, yearEndStr) > 20)
+      (year === firstYear && daysBetween(yearStartStr, periodStartDate) > 20) ||
+      (year === lastYear && daysBetween(periodEndDate, yearEndStr) > 20)
 
     const yearContribs = contributions
       .filter(cf => cf.date >= periodStartDate && cf.date <= periodEndDate)
@@ -715,7 +719,7 @@ export function dcaYearlyMWRR(
 
     const netContrib = yearContribs.reduce((s, c) => s + c.amount, 0)
     const weightedContrib = yearContribs.reduce((s, c) => {
-      const t = daysBetweenDates(periodStartDate, c.date)
+      const t = daysBetween(periodStartDate, c.date)
       return s + c.amount * (1 - t / totalDays)
     }, 0)
 
@@ -726,10 +730,6 @@ export function dcaYearlyMWRR(
   }
 
   return results
-}
-
-function daysBetweenDates(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
 }
 
 export function computeDCARolling(
@@ -1087,18 +1087,6 @@ export function dcaMonthlyReturns(cumulative: ReturnPoint[]): ReturnPoint[] {
     result.push({ date: ym, value: growthEnd / growthPrev - 1 })
   }
   return result
-}
-
-/** Lấy phần tử ở percentile p (0-1) từ mảng đã sắp tăng dần (nội suy tuyến tính). */
-function percentileSorted(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0
-  if (sorted.length === 1) return sorted[0]!
-  const idx = (sorted.length - 1) * p
-  const lo = Math.floor(idx)
-  const hi = Math.ceil(idx)
-  if (lo === hi) return sorted[lo]!
-  const frac = idx - lo
-  return sorted[lo]! * (1 - frac) + sorted[hi]! * frac
 }
 
 export interface MonteCarloPathPoint {

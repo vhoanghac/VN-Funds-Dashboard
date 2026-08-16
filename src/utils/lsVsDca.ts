@@ -1,5 +1,6 @@
 import type { PricePoint } from '../types'
 import type { DCASlot } from './dca'
+import { daysBetween } from './dateMath'
 import { monthsAheadIndex } from './dateWindow'
 
 export type CashMode = 'flat' | 'savings' | 'fund'
@@ -93,10 +94,6 @@ function priceAtOrBefore(prices: PricePoint[], date: string): number | undefined
     }
   }
   return result
-}
-
-function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
 }
 
 /**

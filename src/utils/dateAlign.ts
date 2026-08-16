@@ -1,4 +1,5 @@
 import type { PricePoint } from '../types'
+import { daysBetween } from './dateMath'
 
 // Tương đương "2 tuần" ban đầu, nhưng tính theo NGÀY THỰC thay vì số bước
 // lặp — nên đúng bất kể chuỗi giá là daily hay weekly.
@@ -9,10 +10,6 @@ import type { PricePoint } from '../types'
 // cùng lưới ngày (công bằng khi so sánh). Ở đây (tab So Sánh/Mô Phỏng), ưu
 // tiên ngược lại: thà loại bỏ điểm dữ liệu cũ (stale) còn hơn so sánh nhầm.
 const MAX_GAP_DAYS = 14
-
-function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
-}
 
 export interface AlignedPair {
   dates: string[]

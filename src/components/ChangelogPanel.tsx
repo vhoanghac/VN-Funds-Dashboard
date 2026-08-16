@@ -8,6 +8,7 @@ const ENTRIES = [
       'Sửa lỗi trục y biểu đồ "Lợi nhuận tích lũy" ở tab So Sánh: trước hiển thị mốc −200% dù chuỗi không bao giờ âm sâu vậy, giờ tự căn theo dữ liệu thật.',
       'Gom các hàm dùng chung cho biểu đồ (trục thời gian, định dạng ngày/%, làm mờ legend) về một nơi, sửa một chỗ là hết tất cả biểu đồ.',
       'Gom danh sách 12 tab về một nơi trong code. Thêm tab mới chỉ cần khai báo một chỗ, không phải sửa rải rác App.tsx nữa.',
+      'Dọn lại code nội bộ: gom những đoạn tính toán bị viết lặp ở nhiều chỗ về một nơi duy nhất, để sửa lỗi sau này chỉ cần đụng một chỗ.',
     ],
   },
   {
