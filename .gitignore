@@ -25,3 +25,4 @@ docs/trung-vang-dnse-2026-07-28.md
 scripts/backtest_sma_savings.mjs
 scripts/fund_report/backfill_holdings_digiinvest.py
 public/data/*/raw/
+src/utils/vietVoice.test.ts
