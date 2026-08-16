@@ -7,7 +7,7 @@ const ENTRIES = [
       'Sửa lỗi số liệu ở tab LS vs DCA: câu kể "về đích X triệu" giờ khớp đúng con số chênh lệch hiển thị (trước đây hai cái mâu thuẫn nhau).',
       'Sửa lỗi trục y biểu đồ "Lợi nhuận tích lũy" ở tab So Sánh: trước hiển thị mốc −200% dù chuỗi không bao giờ âm sâu vậy, giờ tự căn theo dữ liệu thật.',
       'Gom các hàm dùng chung cho biểu đồ (trục thời gian, định dạng ngày/%, làm mờ legend) về một nơi, sửa một chỗ là hết tất cả biểu đồ.',
-      'Tổ chức lại nội bộ: danh sách tab giờ nằm ở một nơi duy nhất. Thêm tab mới sau này nhanh hơn, ít chỗ phải sửa, ít rủi ro làm lệch.',
+      'Gom danh sách 12 tab về một nơi trong code. Thêm tab mới chỉ cần khai báo một chỗ, không phải sửa rải rác App.tsx nữa.',
     ],
   },
   {
