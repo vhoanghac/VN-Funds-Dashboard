@@ -88,14 +88,23 @@ function RollingForPortfolio({
   }, [portfolio.cumulative, windowYears])
 
   if (rolls.length < 3) {
+    // Lý do thật thường không phải quỹ thiếu lịch sử, mà là khoảng thời gian
+    // user chọn (mặc định "5 năm qua") ngắn hơn chu kỳ đang xét. Hiển thị ngày
+    // thực tế của chuỗi để người đọc thấy ngay vấn đề ở đâu.
+    const start = portfolio.cumulative[0]?.date
+    const end = portfolio.cumulative[portfolio.cumulative.length - 1]?.date
+    const span =
+      start && end
+        ? `Khoảng thời gian đang chọn chỉ từ ${formatDate(start)} tới ${formatDate(end)}`
+        : 'Khoảng thời gian đang chọn quá ngắn'
     return (
       <div className="dca-rolling-card">
         <div className="dca-rolling-card-header">
           <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
         </div>
         <div className="dca-rolling-insufficient">
-          Không đủ lịch sử để tính chu kỳ {windowYears} năm (cần ít nhất {windowYears + 1} năm dữ liệu).
-          Thử chu kỳ ngắn hơn.
+          {span}, chưa đủ để tính chu kỳ {windowYears} năm (cần ít nhất {windowYears + 1} năm).
+          Không phải quỹ thiếu dữ liệu, mà là khoảng xem ngắn. Kéo rộng khoảng thời gian ở phần Thông số rồi thử lại.
         </div>
       </div>
     )
@@ -233,4 +242,10 @@ function percentileOf(values: number[], x: number): number {
 
 function fmtPct(v: number): string {
   return `${(v * 100).toFixed(1)}%`
+}
+
+function formatDate(dateStr: string): string {
+  const parts = dateStr.split('-')
+  if (parts.length !== 3) return dateStr
+  return `${parts[2]}/${parts[1]}/${parts[0]}`
 }
