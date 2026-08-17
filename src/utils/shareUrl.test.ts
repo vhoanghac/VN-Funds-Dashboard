@@ -10,6 +10,7 @@ import {
   type DcaShareState,
   type LsDcaShareState,
 } from './shareUrl'
+import { parseSavingsRate, savingsAssetId } from './savingsAsset'
 
 /** Point window.location at a URL so the parsers read it, as a real visit would. */
 function visit(url: string): void {
@@ -140,6 +141,32 @@ describe('DCA share link', () => {
       ...dcaState,
       portfolios: [{
         slots: [{ fundId: 'SAVINGS:6', weight: 33.3 }, { fundId: 'DCDS', weight: 66.7 }],
+        rebalFreq: 'quarterly' as const,
+      }],
+    }
+    visit(buildDcaUrl(state))
+    expect(parseDcaParams()!.portfolios).toEqual(state.portfolios)
+  })
+
+  it('keeps a decimal savings rate intact through the share link', () => {
+    const state = {
+      ...dcaState,
+      portfolios: [{
+        slots: [{ fundId: savingsAssetId(6.5), weight: 100 }],
+        rebalFreq: 'quarterly' as const,
+      }],
+    }
+    visit(buildDcaUrl(state))
+    const parsed = parseDcaParams()!.portfolios![0]!
+    expect(parsed.slots).toEqual([{ fundId: 'SAVINGS:6.5', weight: 100 }])
+    expect(parseSavingsRate(parsed.slots[0]!.fundId)).toBe(6.5)
+  })
+
+  it('keeps a 100% savings weight in the share link', () => {
+    const state = {
+      ...dcaState,
+      portfolios: [{
+        slots: [{ fundId: 'SAVINGS:6.5', weight: 100 }],
         rebalFreq: 'quarterly' as const,
       }],
     }
