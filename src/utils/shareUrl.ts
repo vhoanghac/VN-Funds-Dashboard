@@ -1,32 +1,50 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { RebalanceFrequency } from '../types'
-import type { DCAFrequency } from './dca'
-import type { CashMode, LSvsDCAFreq } from './lsVsDca'
+import type { Portfolio, PortfolioSlot, RebalanceFrequency } from '../types'
+import { isDCAFrequency, type DCAFrequency } from './dca'
+import { isCashMode, isLSvsDCAFreq, type CashMode, type LSvsDCAFreq } from './lsVsDca'
+import { parsePortfolio } from './portfolio'
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
-interface Slot { fundId: string; weight: number }
-/** name chỉ có khi người dùng tự đặt tên (isNameCustom) — tên tự sinh từ mã quỹ không cần lưu vào URL/localStorage */
-interface Portfolio { slots: Slot[]; rebalFreq: RebalanceFrequency; name?: string }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
-function encodeSlots(slots: Slot[]): string {
+function encodeSlots(slots: PortfolioSlot[]): string {
   return slots
     .filter(s => s.fundId && s.weight > 0)
     .map(s => `${s.fundId}:${s.weight}`)
     .join(',')
 }
 
-function decodeSlots(str: string): Slot[] {
+function decodeSlots(str: string): PortfolioSlot[] {
   return str.split(',').flatMap(part => {
-    const [fundId, weightStr] = part.split(':')
-    const weight = parseInt(weightStr ?? '', 10)
-    if (!fundId || isNaN(weight) || weight <= 0) return []
+    const separator = part.lastIndexOf(':')
+    if (separator <= 0) return []
+    const fundId = part.slice(0, separator)
+    const weight = Number(part.slice(separator + 1))
+    if (!fundId || !Number.isFinite(weight) || weight <= 0) return []
     return [{ fundId, weight }]
   })
 }
 
 function origin(): string {
   return `${window.location.origin}${window.location.pathname}`
+}
+
+const DCA_LEGACY_KEYS = ['init', 'cashflow', 'freq', 'datemode', 'years', 'p1', 'p1r', 'p2', 'p2r', 'p3', 'p3r', 'p4', 'p4r']
+const LS_DCA_LEGACY_KEYS = ['capital', 'horizon', 'freq', 'cash', 'rate', 'cfund', 'cmp', 'lsfunds', 'rebal']
+
+export function hasDcaSharePayload(): boolean {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('tab') === 'dca' &&
+    (params.has('s') || DCA_LEGACY_KEYS.some(key => params.has(key)))
+}
+
+export function hasLsDcaSharePayload(): boolean {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('tab') === 'lsdca' &&
+    (params.has('s') || LS_DCA_LEGACY_KEYS.some(key => params.has(key)))
 }
 
 // ─── DCA ──────────────────────────────────────────────────────────────────
@@ -85,25 +103,32 @@ function parseCompactDca(compressed: string): Partial<DcaShareState> | null {
   try {
     const json = decompressFromEncodedURIComponent(compressed)
     if (!json) return null
-    const c = JSON.parse(json) as CompactDca
+    const c = JSON.parse(json) as unknown
+    if (!isRecord(c)) return null
     const result: Partial<DcaShareState> = {}
 
     if (typeof c.i === 'number' && c.i >= 0) result.initialAmount = c.i
     if (typeof c.c === 'number' && c.c >= 0) result.cashflowAmount = c.c
-    if (c.f) result.cashflowFreq = c.f
+    if ('f' in c) result.cashflowFreq = isDCAFrequency(c.f) ? c.f : 'monthly'
     if (c.dm === 'all' || c.dm === 'years') result.dateMode = c.dm
     if (typeof c.y === 'number' && c.y > 0) result.yearsBack = c.y
-    result.dateFrom = c.from ?? ''
-    result.dateTo = c.to ?? ''
+    result.dateFrom = typeof c.from === 'string' ? c.from : ''
+    result.dateTo = typeof c.to === 'string' ? c.to : ''
 
     if (Array.isArray(c.p)) {
       const portfolios: Portfolio[] = []
-      for (const portfolio of c.p) {
-        const slots = decodeSlots(portfolio.s ?? '')
+      for (const rawPortfolio of c.p) {
+        if (!isRecord(rawPortfolio) || typeof rawPortfolio.s !== 'string') continue
+        const slots = decodeSlots(rawPortfolio.s)
         if (slots.length === 0) continue
-        portfolios.push({ slots, rebalFreq: portfolio.r ?? 'quarterly', name: portfolio.n || undefined })
+        const portfolio = parsePortfolio({
+          slots,
+          rebalFreq: rawPortfolio.r,
+          name: rawPortfolio.n,
+        })
+        if (portfolio) portfolios.push(portfolio)
       }
-      if (portfolios.length > 0) result.portfolios = portfolios
+      result.portfolios = portfolios
     }
 
     return result
@@ -122,7 +147,7 @@ function parseLegacyDcaParams(p: URLSearchParams): Partial<DcaShareState> {
   if (!isNaN(cashflow) && cashflow >= 0) result.cashflowAmount = cashflow
 
   const freq = p.get('freq') as DCAFrequency | null
-  if (freq) result.cashflowFreq = freq
+  if (freq !== null) result.cashflowFreq = isDCAFrequency(freq) ? freq : 'monthly'
 
   const datemode = p.get('datemode')
   if (datemode === 'all' || datemode === 'years') result.dateMode = datemode
@@ -140,8 +165,8 @@ function parseLegacyDcaParams(p: URLSearchParams): Partial<DcaShareState> {
     if (!slotsStr) break
     const slots = decodeSlots(slotsStr)
     if (slots.length === 0) break
-    const rebalFreq = (p.get(`p${i}r`) ?? 'quarterly') as RebalanceFrequency
-    portfolios.push({ slots, rebalFreq })
+    const portfolio = parsePortfolio({ slots, rebalFreq: p.get(`p${i}r`) })
+    if (portfolio) portfolios.push(portfolio)
   }
   if (portfolios.length > 0) result.portfolios = portfolios
 
@@ -200,21 +225,27 @@ function parseCompactLsDca(compressed: string): Partial<LsDcaShareState> | null 
   try {
     const json = decompressFromEncodedURIComponent(compressed)
     if (!json) return null
-    const c = JSON.parse(json) as CompactLsDca
+    const c = JSON.parse(json) as unknown
+    if (!isRecord(c)) return null
     const result: Partial<LsDcaShareState> = {}
 
     if (typeof c.cap === 'number' && c.cap > 0) result.totalCapital = c.cap
     if (typeof c.h === 'number' && c.h > 0) result.horizonMonths = c.h
-    if (c.f === 'weekly' || c.f === 'monthly') result.freq = c.f
-    if (c.cash === 'flat' || c.cash === 'savings' || c.cash === 'fund') result.cashMode = c.cash
+    if ('f' in c) result.freq = isLSvsDCAFreq(c.f) ? c.f : 'monthly'
+    if ('cash' in c) result.cashMode = isCashMode(c.cash) ? c.cash : 'flat'
     if (typeof c.rate === 'number' && !isNaN(c.rate)) result.savingsRate = c.rate
-    result.cashFundId = c.cfund ?? ''
-    result.compareFundId = c.cmp ?? ''
+    result.cashFundId = typeof c.cfund === 'string' ? c.cfund : ''
+    result.compareFundId = typeof c.cmp === 'string' ? c.cmp : ''
 
-    if (c.pf) {
-      const slots = decodeSlots(c.pf.s ?? '')
+    if (isRecord(c.pf) && typeof c.pf.s === 'string') {
+      const slots = decodeSlots(c.pf.s)
       if (slots.length > 0) {
-        result.portfolio = { slots, rebalFreq: c.pf.r ?? 'quarterly', name: c.pf.n || undefined }
+        const portfolio = parsePortfolio({
+          slots,
+          rebalFreq: c.pf.r,
+          name: c.pf.n,
+        })
+        if (portfolio) result.portfolio = portfolio
       }
     }
 
@@ -234,10 +265,10 @@ function parseLegacyLsDcaParams(p: URLSearchParams): Partial<LsDcaShareState> {
   if (!isNaN(horizon) && horizon > 0) result.horizonMonths = horizon
 
   const freq = p.get('freq') as LSvsDCAFreq | null
-  if (freq === 'weekly' || freq === 'monthly') result.freq = freq
+  if (freq !== null) result.freq = isLSvsDCAFreq(freq) ? freq : 'monthly'
 
   const cash = p.get('cash') as CashMode | null
-  if (cash === 'flat' || cash === 'savings' || cash === 'fund') result.cashMode = cash
+  if (cash !== null) result.cashMode = isCashMode(cash) ? cash : 'flat'
 
   const rate = parseFloat(p.get('rate') ?? '')
   if (!isNaN(rate)) result.savingsRate = rate
@@ -249,8 +280,8 @@ function parseLegacyLsDcaParams(p: URLSearchParams): Partial<LsDcaShareState> {
   if (fundsStr) {
     const slots = decodeSlots(fundsStr)
     if (slots.length > 0) {
-      const rebalFreq = (p.get('rebal') ?? 'quarterly') as RebalanceFrequency
-      result.portfolio = { slots, rebalFreq }
+      const portfolio = parsePortfolio({ slots, rebalFreq: p.get('rebal') })
+      if (portfolio) result.portfolio = portfolio
     }
   }
 

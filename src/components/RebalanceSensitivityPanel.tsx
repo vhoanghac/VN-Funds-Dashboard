@@ -13,7 +13,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
-import type { FundMeta, PricePoint } from '../types'
+import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import type { DCASlot } from '../utils/dca'
 import { parseCSV } from '../utils/csvParser'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
@@ -22,7 +22,7 @@ import {
   runRebalanceSensitivity, summarize, GROUP_LABELS, SCHEDULES,
   type VariantResult, type VariantGroup, type ScheduleId, type BandSweep,
 } from '../utils/rebalanceSensitivity'
-import { PortfolioCard, portfolioSelectStyles, type PortfolioCardState } from './PortfolioCard'
+import { PortfolioCard, portfolioSelectStyles } from './PortfolioCard'
 import {
   isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
   SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,

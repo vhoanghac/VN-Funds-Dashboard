@@ -1,4 +1,65 @@
-import type { ReturnPoint, RebalanceFrequency } from '../types'
+import type {
+  Portfolio,
+  PortfolioSlot,
+  RebalanceFrequency,
+  ReturnPoint,
+  StoredPortfolio,
+} from '../types'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function isRebalanceFrequency(value: unknown): value is RebalanceFrequency {
+  return value === 'monthly' || value === 'quarterly' || value === 'yearly'
+}
+
+function parseSlots(value: unknown): PortfolioSlot[] | null {
+  if (!Array.isArray(value)) return null
+
+  return value.flatMap((slot): PortfolioSlot[] => {
+    if (!isRecord(slot) || typeof slot.fundId !== 'string' ||
+      typeof slot.weight !== 'number' || !Number.isFinite(slot.weight) || slot.weight < 0) {
+      return []
+    }
+    return [{ fundId: slot.fundId, weight: slot.weight }]
+  })
+}
+
+function parseStoredPortfolioShape(value: unknown): StoredPortfolio | null {
+  if (!isRecord(value)) return null
+  const slots = parseSlots(value.slots)
+  if (!slots) return null
+
+  return {
+    slots,
+    rebalFreq: typeof value.rebalFreq === 'string' ? value.rebalFreq : '',
+    name: typeof value.name === 'string' && value.name.length > 0
+      ? value.name
+      : undefined,
+  }
+}
+
+export function parsePortfolio(value: unknown): Portfolio | null {
+  const stored = parseStoredPortfolioShape(value)
+  if (!stored) return null
+
+  return {
+    slots: stored.slots,
+    rebalFreq: isRebalanceFrequency(stored.rebalFreq)
+      ? stored.rebalFreq
+      : 'quarterly',
+    name: stored.name,
+  }
+}
+
+export function parsePortfolios(value: unknown): Portfolio[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item): Portfolio[] => {
+    const portfolio = parsePortfolio(item)
+    return portfolio ? [portfolio] : []
+  })
+}
 
 /**
  * PORTFOLIO SIMULATION

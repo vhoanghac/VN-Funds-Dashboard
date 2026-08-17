@@ -6,6 +6,14 @@ import { monthsAheadIndex } from './dateWindow'
 export type CashMode = 'flat' | 'savings' | 'fund'
 export type LSvsDCAFreq = 'weekly' | 'monthly'
 
+export function isCashMode(value: unknown): value is CashMode {
+  return value === 'flat' || value === 'savings' || value === 'fund'
+}
+
+export function isLSvsDCAFreq(value: unknown): value is LSvsDCAFreq {
+  return value === 'weekly' || value === 'monthly'
+}
+
 export interface LSvsDCAScenario {
   startDate: string
   lsGrowth: number    // lsFinal / totalCapital (e.g., 1.15 = +15%)

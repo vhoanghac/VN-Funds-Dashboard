@@ -1,4 +1,4 @@
-import type { PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
+import type { PortfolioSlot, PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
 import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
 import { daysBetween } from './dateMath'
 import { rollingWindowStarts } from './dateWindow'
@@ -79,6 +79,12 @@ export function resampleToWeeklyGrid(
 
 export type DCAFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'yearly'
 
+export function isDCAFrequency(value: unknown): value is DCAFrequency {
+  return value === 'daily' || value === 'weekly' || value === 'biweekly' ||
+    value === 'monthly' || value === 'quarterly' || value === 'semiannual' ||
+    value === 'yearly'
+}
+
 const MONTHLY_FACTOR: Record<DCAFrequency, number> = {
   daily: 365.25 / 12,
   weekly: 365.25 / 7 / 12,
@@ -102,10 +108,7 @@ export function monthlyEquivalentContribution(cashflowAmount: number, freq: DCAF
   return cashflowAmount * MONTHLY_FACTOR[freq]
 }
 
-export interface DCASlot {
-  fundId: string
-  weight: number // 0-100
-}
+export type DCASlot = PortfolioSlot
 
 /**
  * Tên mặc định cho danh mục: nếu chỉ có 1 quỹ, hiển thị tên quỹ đó (vd "DCDS").
@@ -123,13 +126,6 @@ export interface DCASlot {
 export function derivePortfolioName(slots: DCASlot[], fallback: string): string {
   if (slots.length === 1 && slots[0]!.fundId) return assetDisplayName(slots[0]!.fundId)
   return fallback
-}
-
-export interface DCAPortfolio {
-  id: string
-  name: string
-  slots: DCASlot[]
-  rebalFreq: RebalanceFrequency
 }
 
 export interface DCAParams {

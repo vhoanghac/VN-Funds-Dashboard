@@ -9,6 +9,9 @@ const ENTRIES = [
       'Gom các hàm dùng chung cho biểu đồ (trục thời gian, định dạng ngày/%, làm mờ legend) về một nơi, sửa một chỗ là hết tất cả biểu đồ.',
       'Gom danh sách 12 tab về một nơi trong code. Thêm tab mới chỉ cần khai báo một chỗ, không phải sửa rải rác App.tsx nữa.',
       'Dọn lại code nội bộ: gom những đoạn tính toán bị viết lặp ở nhiều chỗ về một nơi duy nhất, để sửa lỗi sau này chỉ cần đụng một chỗ.',
+      'Gom định nghĩa "danh mục" trong code về một nơi, để sửa một chỗ là hết tất cả các tab.',
+      'Sửa lỗi link chia sẻ: danh mục có tiết kiệm ngân hàng (mã "SAVINGS:6") mở ra bị hiểu thành quỹ "SAVINGS", mất luôn khoản tiền đang hưởng lãi. Trọng số có phần thập phân như 33,3% cũng bị cắt mất phần lẻ.',
+      'Sửa lỗi link chia sẻ ghi đè dữ liệu của người nhận: giờ mở link thấy đúng danh mục của người gửi, dữ liệu đã lưu của mình vẫn nguyên vẹn. Danh mục lưu từ phiên bản cũ có tần suất tái cân bằng không hợp lệ giờ tự chuyển về "Hàng quý" thay vì âm thầm chạy sai.',
     ],
   },
   {

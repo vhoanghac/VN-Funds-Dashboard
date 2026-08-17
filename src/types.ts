@@ -55,6 +55,29 @@ export interface MonthlyReturn {
 /** Rebalancing frequency options */
 export type RebalanceFrequency = 'monthly' | 'quarterly' | 'yearly'
 
+export interface PortfolioSlot {
+  fundId: string
+  weight: number // 0-100
+}
+
+export interface Portfolio {
+  slots: PortfolioSlot[]
+  rebalFreq: RebalanceFrequency
+  name?: string
+}
+
+export type StoredPortfolio =
+  Omit<Portfolio, 'rebalFreq'> & { rebalFreq: string }
+
+export type PortfolioCardState = Omit<Portfolio, 'name'> & {
+  id: string
+  /** Số cố định gắn với danh mục lúc tạo, dùng làm fallback tên. */
+  num: number
+  name: string
+  /** true khi người dùng tự đặt tên, không tự đổi theo quỹ. */
+  isNameCustom: boolean
+}
+
 /**
  * Máy tính trong tab "Máy tính".
  * Suy ra từ CALCULATOR_IDS nên chỉ cần sửa danh sách đó, không sửa hai chỗ.

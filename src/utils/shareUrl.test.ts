@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import { compressToEncodedURIComponent } from 'lz-string'
 import {
   buildDcaUrl,
+  hasDcaSharePayload,
+  hasLsDcaSharePayload,
   parseDcaParams,
   buildLsDcaUrl,
   parseLsDcaParams,
@@ -12,6 +15,10 @@ import {
 function visit(url: string): void {
   const parsed = new URL(url, window.location.href)
   window.history.replaceState({}, '', parsed.pathname + parsed.search)
+}
+
+function visitCompact(tab: string, payload: unknown): void {
+  visit(`/?tab=${tab}&s=${compressToEncodedURIComponent(JSON.stringify(payload))}`)
 }
 
 afterEach(() => {
@@ -117,6 +124,47 @@ describe('DCA share link', () => {
     visit('/?tab=dca&p1=DCDS:100')
     expect(parseDcaParams()!.portfolios![0]!.rebalFreq).toBe('quarterly')
   })
+
+  it('detects a corrupted compact payload as an explicit share payload', () => {
+    visit('/?tab=dca&s=not-actually-compressed')
+    expect(hasDcaSharePayload()).toBe(true)
+  })
+
+  it('does not treat shared date filters alone as a DCA payload', () => {
+    visit('/?tab=dca&from=2020-01-01&to=2024-01-01')
+    expect(hasDcaSharePayload()).toBe(false)
+  })
+
+  it('preserves savings asset IDs and decimal weights in a share link', () => {
+    const state = {
+      ...dcaState,
+      portfolios: [{
+        slots: [{ fundId: 'SAVINGS:6', weight: 33.3 }, { fundId: 'DCDS', weight: 66.7 }],
+        rebalFreq: 'quarterly' as const,
+      }],
+    }
+    visit(buildDcaUrl(state))
+    expect(parseDcaParams()!.portfolios).toEqual(state.portfolios)
+  })
+
+  it('defaults an invalid frequency in a compact link', () => {
+    visitCompact('dca', { p: [{ s: 'DCDS:100', r: 'never', n: 'Danh mục cũ' }] })
+    expect(parseDcaParams()!.portfolios).toEqual([{
+      slots: [{ fundId: 'DCDS', weight: 100 }],
+      rebalFreq: 'quarterly',
+      name: 'Danh mục cũ',
+    }])
+  })
+
+  it('keeps an explicit empty portfolio list from falling back to local state', () => {
+    visitCompact('dca', { p: [] })
+    expect(parseDcaParams()!.portfolios).toEqual([])
+  })
+
+  it('defaults an invalid frequency in a legacy link', () => {
+    visit('/?tab=dca&p1=DCDS:100&p1r=never')
+    expect(parseDcaParams()!.portfolios![0]!.rebalFreq).toBe('quarterly')
+  })
 })
 
 describe('LS vs DCA share link', () => {
@@ -173,5 +221,22 @@ describe('LS vs DCA share link', () => {
     expect(parsed.portfolio).toEqual({
       slots: [{ fundId: 'DCDS', weight: 100 }], rebalFreq: 'yearly',
     })
+  })
+
+  it('detects a valid LS-DCA URL without a portfolio as an explicit share payload', () => {
+    visit(buildLsDcaUrl({ ...base, portfolio: null }))
+    expect(hasLsDcaSharePayload()).toBe(true)
+  })
+
+  it('defaults an invalid frequency in compact and legacy LS-DCA links', () => {
+    visitCompact('lsdca', { pf: { s: 'DCDS:100', r: 'never', n: 'Danh mục cũ' } })
+    expect(parseLsDcaParams()!.portfolio).toEqual({
+      slots: [{ fundId: 'DCDS', weight: 100 }],
+      rebalFreq: 'quarterly',
+      name: 'Danh mục cũ',
+    })
+
+    visit('/?tab=lsdca&lsfunds=DCDS:100&rebal=never')
+    expect(parseLsDcaParams()!.portfolio!.rebalFreq).toBe('quarterly')
   })
 })

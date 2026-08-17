@@ -1,14 +1,15 @@
 import React, { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
-import { buildLsDcaUrl, parseLsDcaParams } from '../utils/shareUrl'
+import { buildLsDcaUrl, hasLsDcaSharePayload, parseLsDcaParams } from '../utils/shareUrl'
 import { loadLS, saveLS } from '../utils/localStorage'
 import Select from 'react-select'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
 } from 'recharts'
-import type { FundMeta, PricePoint } from '../types'
+import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { derivePortfolioName, type DCASlot } from '../utils/dca'
+import { parsePortfolio } from '../utils/portfolio'
 import { parseCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
@@ -35,13 +36,13 @@ import {
   type HoldingCostCell,
   type LSvsDCAScenario,
 } from '../utils/lsVsDca'
+import { isCashMode, isLSvsDCAFreq } from '../utils/lsVsDca'
 import { ScenarioPathChart } from './ScenarioPathChart'
 import { DrawdownBucketChart, type DrawdownBucketView } from './DrawdownBucketChart'
 import { SincePeakChart } from './SincePeakChart'
 import {
   PortfolioCard,
   portfolioSelectStyles,
-  type PortfolioCardState,
 } from './PortfolioCard'
 
 interface Props {
@@ -55,37 +56,50 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
   const hasRunOnceRef = useRef(false)
 
   // Read URL params once on mount (shared link restore)
-  const urlParams = parseLsDcaParams()
+  const [urlParams] = useState(() => parseLsDcaParams())
+  const [hasUrlPayload] = useState(() => hasLsDcaSharePayload())
+  const [skipUrlPersist, setSkipUrlPersist] = useState(hasUrlPayload)
+  const readLocal = <T,>(key: string, fallback: T): T =>
+    hasUrlPayload ? fallback : loadLS(key, fallback)
+
+  useEffect(() => {
+    if (hasUrlPayload) setSkipUrlPersist(false)
+  }, [hasUrlPayload])
 
   // ── Parameters ──
   const [totalCapital, setTotalCapital] = useState(
-    urlParams?.totalCapital ?? loadLS('lsdca_totalCapital', 100_000_000)
+    urlParams?.totalCapital ?? readLocal('lsdca_totalCapital', 100_000_000)
   )
   const [horizonMonths, setHorizonMonths] = useState(
-    urlParams?.horizonMonths ?? loadLS('lsdca_horizonMonths', 12)
+    urlParams?.horizonMonths ?? readLocal('lsdca_horizonMonths', 12)
   )
-  const [freq, setFreq] = useState<LSvsDCAFreq>(
-    urlParams?.freq ?? loadLS('lsdca_freq', 'monthly' as LSvsDCAFreq)
-  )
-  const [cashMode, setCashMode] = useState<CashMode>(
-    urlParams?.cashMode ?? loadLS('lsdca_cashMode', 'flat' as CashMode)
-  )
+  const [freq, setFreq] = useState<LSvsDCAFreq>(() => {
+    if (urlParams?.freq) return urlParams.freq
+    const saved = readLocal<unknown>('lsdca_freq', 'monthly')
+    return isLSvsDCAFreq(saved) ? saved : 'monthly'
+  })
+  const [cashMode, setCashMode] = useState<CashMode>(() => {
+    if (urlParams?.cashMode) return urlParams.cashMode
+    const saved = readLocal<unknown>('lsdca_cashMode', 'flat')
+    return isCashMode(saved) ? saved : 'flat'
+  })
   const [savingsRate, setSavingsRate] = useState(
-    urlParams?.savingsRate ?? loadLS('lsdca_savingsRate', 4)
+    urlParams?.savingsRate ?? readLocal('lsdca_savingsRate', 4)
   )
   const [cashFundId, setCashFundId] = useState<string>(
-    urlParams?.cashFundId ?? loadLS('lsdca_cashFundId', '')
+    urlParams?.cashFundId ?? readLocal('lsdca_cashFundId', '')
   )
   const [compareFundId, setCompareFundId] = useState<string>(
-    urlParams?.compareFundId ?? loadLS('lsdca_compareFundId', '')
+    urlParams?.compareFundId ?? readLocal('lsdca_compareFundId', '')
   )
   const [showCagr, setShowCagr] = useState(false)
   const [showExplainer, setShowExplainer] = useState(false)
 
   // ── Portfolio (single) ──
-  type SavedPortfolio = { slots: { fundId: string; weight: number }[]; rebalFreq: string; name?: string } | null
   const [portfolio, setPortfolio] = useState<PortfolioCardState | null>(() => {
-    const src = urlParams?.portfolio ?? loadLS<SavedPortfolio>('lsdca_portfolio', null)
+    const src = hasUrlPayload
+      ? urlParams?.portfolio ?? null
+      : parsePortfolio(readLocal<unknown>('lsdca_portfolio', null))
     if (!src) return null
     const num = nextIdRef.current++
     return {
@@ -94,7 +108,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       name: src.name || derivePortfolioName(src.slots, `Portfolio ${num}`),
       isNameCustom: !!src.name,
       slots: src.slots,
-      rebalFreq: src.rebalFreq as import('../types').RebalanceFrequency,
+      rebalFreq: src.rebalFreq,
     }
   })
 
@@ -126,15 +140,15 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
   const [pendingRun, setPendingRun] = useState(false)
 
   // ── Persist to localStorage ──
-  useEffect(() => { saveLS('lsdca_totalCapital', totalCapital) }, [totalCapital])
-  useEffect(() => { saveLS('lsdca_horizonMonths', horizonMonths) }, [horizonMonths])
-  useEffect(() => { saveLS('lsdca_freq', freq) }, [freq])
-  useEffect(() => { saveLS('lsdca_cashMode', cashMode) }, [cashMode])
-  useEffect(() => { saveLS('lsdca_savingsRate', savingsRate) }, [savingsRate])
-  useEffect(() => { saveLS('lsdca_cashFundId', cashFundId) }, [cashFundId])
-  useEffect(() => { saveLS('lsdca_compareFundId', compareFundId) }, [compareFundId])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_totalCapital', totalCapital) }, [totalCapital])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_horizonMonths', horizonMonths) }, [horizonMonths])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_freq', freq) }, [freq])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_cashMode', cashMode) }, [cashMode])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_savingsRate', savingsRate) }, [savingsRate])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_cashFundId', cashFundId) }, [cashFundId])
+  useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_compareFundId', compareFundId) }, [compareFundId])
   useEffect(() => {
-    saveLS('lsdca_portfolio', portfolio ? {
+    if (!skipUrlPersist) saveLS('lsdca_portfolio', portfolio ? {
       slots: portfolio.slots, rebalFreq: portfolio.rebalFreq,
       name: portfolio.isNameCustom ? portfolio.name : undefined,
     } : null)

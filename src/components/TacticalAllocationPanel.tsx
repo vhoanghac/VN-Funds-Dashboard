@@ -17,12 +17,12 @@ import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ComposedChart, ReferenceArea, ReferenceLine, Legend,
 } from 'recharts'
-import type { FundMeta, PricePoint } from '../types'
+import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { dcaCagr, dcaMaxDrawdown, derivePortfolioName } from '../utils/dca'
 import { runTacticalBacktest, decomposeAdvantage, type TacticalBacktestResult, type AllocationId, type IndicatorType, type SignalFrequency } from '../utils/tactical'
-import { PortfolioCard, portfolioSelectStyles, PORTFOLIO_COLORS, type PortfolioCardState } from './PortfolioCard'
+import { PortfolioCard, portfolioSelectStyles, PORTFOLIO_COLORS } from './PortfolioCard'
 import {
   isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
   SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,

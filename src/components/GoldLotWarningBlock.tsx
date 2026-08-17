@@ -23,8 +23,7 @@
  * (return null) với danh mục toàn quỹ mở/ETF.
  */
 import { useMemo, useState } from 'react'
-import type { FundMeta, PricePoint } from '../types'
-import type { PortfolioCardState } from './PortfolioCard'
+import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { formatVND } from '../utils/vndFormat'
 
 /** Đơn vị bán lẻ nhỏ nhất SJC thực tế cho cả vàng miếng và vàng nhẫn. */

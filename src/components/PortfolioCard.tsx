@@ -1,5 +1,5 @@
 import Select from 'react-select'
-import type { FundMeta, RebalanceFrequency } from '../types'
+import type { FundMeta, PortfolioCardState, RebalanceFrequency } from '../types'
 import type { DCASlot } from '../utils/dca'
 import { isSavingsAssetId, savingsAssetId, SAVINGS_OPTION_LABEL } from '../utils/savingsAsset'
 import { SavingsRateInput } from './SavingsRateInput'
@@ -13,17 +13,6 @@ export const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'quarterly', label: 'Hàng quý' },
   { value: 'yearly', label: 'Hàng năm' },
 ]
-
-export interface PortfolioCardState {
-  id: string
-  /** Số cố định gắn với danh mục lúc tạo — dùng làm fallback tên "Portfolio {num}" */
-  num: number
-  name: string
-  /** true nếu người dùng đã tự gõ tên — khi đó không tự động đổi tên theo quỹ nữa */
-  isNameCustom: boolean
-  slots: DCASlot[]
-  rebalFreq: RebalanceFrequency
-}
 
 interface Props {
   portfolio: PortfolioCardState
