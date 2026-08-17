@@ -12,6 +12,9 @@ const ENTRIES = [
       'Gom định nghĩa "danh mục" trong code về một nơi, để sửa một chỗ là hết tất cả các tab.',
       'Sửa lỗi link chia sẻ: danh mục có tiết kiệm ngân hàng (mã "SAVINGS:6") mở ra bị hiểu thành quỹ "SAVINGS", mất luôn khoản tiền đang hưởng lãi. Trọng số có phần thập phân như 33,3% cũng bị cắt mất phần lẻ.',
       'Sửa lỗi link chia sẻ ghi đè dữ liệu của người nhận: giờ mở link thấy đúng danh mục của người gửi, dữ liệu đã lưu của mình vẫn nguyên vẹn. Danh mục lưu từ phiên bản cũ có tần suất tái cân bằng không hợp lệ giờ tự chuyển về "Hàng quý" thay vì âm thầm chạy sai.',
+      'Sửa lỗi bộ lọc thời gian: đang ở tab DCA mà không có link chia sẻ, chuyển sang tab khác thì khoảng ngày đang chọn ở tab So Sánh bị mất. Giờ chỉ xoá bộ lọc khi URL thật sự chứa link chia sẻ.',
+      'Link chia sẻ ở tab DCA và LS vs DCA giờ áp dụng: dán link mới vào thanh địa chỉ là trang tự cập nhật, không cần tải lại.',
+      'Gom code xử lý link chia sẻ của hai tab DCA và LS vs DCA về một chỗ.',
     ],
   },
   {

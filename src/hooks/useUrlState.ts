@@ -4,10 +4,27 @@ import type { CalculatorId, DashboardState } from '../types'
 import { TAB_REGISTRY, type TabId } from '../tabRegistry'
 import { CALCULATOR_IDS, DEFAULT_FUNDS } from '../constants'
 import { loadLS, saveLS } from '../utils/localStorage'
+import {
+  clearSharePayload,
+  getDcaShareKey,
+  getLsDcaShareKey,
+  hasDcaSharePayload,
+  hasLsDcaSharePayload,
+  parseDcaParams,
+  parseLsDcaParams,
+  type DcaShareState,
+  type LsDcaShareState,
+  type ShareTab,
+  type ShareUrlState,
+} from '../utils/shareUrl'
 
 const VALID_TABS = TAB_REGISTRY.map(t => t.id) as readonly TabId[]
 const VALID_PERIODS = [6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 const DEFAULT_CALC_ID: CalculatorId = 'compound'
+
+function isShareTab(tab: string | null): tab is ShareTab {
+  return tab === 'dca' || tab === 'lsdca'
+}
 
 /**
  * Manages dashboard state via URL search params.
@@ -63,6 +80,26 @@ export function useUrlState() {
       : DEFAULT_CALC_ID,
   }
 
+  const dcaShareKey = getDcaShareKey(searchParams)
+  const dcaUrlParams = useMemo<ShareUrlState<Partial<DcaShareState>>>(() => {
+    const hasExplicitPayload = hasDcaSharePayload(searchParams)
+    return {
+      key: dcaShareKey,
+      hasExplicitPayload,
+      parsedPayload: hasExplicitPayload ? parseDcaParams(searchParams) : null,
+    }
+  }, [dcaShareKey])
+
+  const lsDcaShareKey = getLsDcaShareKey(searchParams)
+  const lsDcaUrlParams = useMemo<ShareUrlState<Partial<LsDcaShareState>>>(() => {
+    const hasExplicitPayload = hasLsDcaSharePayload(searchParams)
+    return {
+      key: lsDcaShareKey,
+      hasExplicitPayload,
+      parsedPayload: hasExplicitPayload ? parseLsDcaParams(searchParams) : null,
+    }
+  }, [lsDcaShareKey])
+
   const updateState = useCallback(
     (updates: Partial<DashboardState>) => {
       setSearchParams(prev => {
@@ -75,6 +112,10 @@ export function useUrlState() {
           saveLS('compare_funds', updates.funds)
         }
         if (updates.tab !== undefined) {
+          const previousTab = next.get('tab')
+          if (updates.tab !== previousTab && (isShareTab(previousTab) || isShareTab(updates.tab))) {
+            clearSharePayload(next, isShareTab(previousTab) ? previousTab : null)
+          }
           next.set('tab', updates.tab)
           // Rời tab Máy tính thì bỏ luôn calcId, đừng để nó bám lại trong URL
           // rồi lẫn vào link người ta copy đi chia sẻ.
@@ -96,5 +137,5 @@ export function useUrlState() {
     [setSearchParams],
   )
 
-  return { state, updateState }
+  return { state, updateState, dcaUrlParams, lsDcaUrlParams }
 }

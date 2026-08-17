@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import type { CalculatorId, DashboardState, FundMeta } from './types'
+import type { DcaShareState, LsDcaShareState, ShareUrlState } from './utils/shareUrl'
 import { CompareTab } from './components/CompareTab'
 import { DCAPanel } from './components/DCAPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
@@ -51,6 +52,8 @@ export interface TabContext {
   metadata: FundMeta[]
   state: DashboardState
   updateState: (updates: Partial<DashboardState>) => void
+  dcaUrlParams: ShareUrlState<Partial<DcaShareState>>
+  lsDcaUrlParams: ShareUrlState<Partial<LsDcaShareState>>
   onChangeFunds: (funds: string[]) => void
   onChangeDateFrom: (v: string | null) => void
   onChangeDateTo: (v: string | null) => void
@@ -82,13 +85,13 @@ export const TAB_REGISTRY: TabManifest[] = [
     id: 'dca',
     label: 'DCA',
     keepMounted: true,
-    render: ({ metadata }: TabContext): ReactElement => <DCAPanel funds={metadata} />,
+    render: ({ metadata, state, dcaUrlParams }: TabContext): ReactElement => <DCAPanel funds={metadata} active={state.tab === 'dca'} shareUrl={dcaUrlParams} />,
   },
   {
     id: 'lsdca',
     label: 'LS vs DCA',
     keepMounted: true,
-    render: ({ metadata }: TabContext): ReactElement => <LumpSumDCAPanel funds={metadata} />,
+    render: ({ metadata, state, lsDcaUrlParams }: TabContext): ReactElement => <LumpSumDCAPanel funds={metadata} active={state.tab === 'lsdca'} shareUrl={lsDcaUrlParams} />,
   },
   {
     id: 'fundanalysis',

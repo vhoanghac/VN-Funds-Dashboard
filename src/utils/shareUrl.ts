@@ -35,14 +35,62 @@ function origin(): string {
 const DCA_LEGACY_KEYS = ['init', 'cashflow', 'freq', 'datemode', 'years', 'p1', 'p1r', 'p2', 'p2r', 'p3', 'p3r', 'p4', 'p4r']
 const LS_DCA_LEGACY_KEYS = ['capital', 'horizon', 'freq', 'cash', 'rate', 'cfund', 'cmp', 'lsfunds', 'rebal']
 
-export function hasDcaSharePayload(): boolean {
-  const params = new URLSearchParams(window.location.search)
+export type ShareTab = 'dca' | 'lsdca'
+
+export interface ShareUrlState<T> {
+  key: string
+  hasExplicitPayload: boolean
+  parsedPayload: T | null
+}
+
+function paramsFromWindow(): URLSearchParams {
+  return new URLSearchParams(window.location.search)
+}
+
+function shareKey(
+  params: URLSearchParams,
+  tab: ShareTab,
+  legacyKeys: string[],
+  sharedKeys: string[] = [],
+): string {
+  if (params.get('tab') !== tab || !(params.has('s') || legacyKeys.some(key => params.has(key)))) {
+    return `${tab}:none`
+  }
+  return [
+    's',
+    ...legacyKeys,
+    ...sharedKeys,
+  ].map(key => `${key}=${params.getAll(key).join(',')}`).join('&')
+}
+
+/** Remove a tab's share payload before handing the URL to another tab. */
+export function clearSharePayload(params: URLSearchParams, ownerTab: ShareTab | null): void {
+  const hadDcaPayload = ownerTab === 'dca' && (
+    params.has('s') || DCA_LEGACY_KEYS.some(key => params.has(key))
+  )
+  params.delete('s')
+  for (const key of new Set([...DCA_LEGACY_KEYS, ...LS_DCA_LEGACY_KEYS])) params.delete(key)
+  // DCA's pre-compression format shared these names with the dashboard filters.
+  if (hadDcaPayload) {
+    params.delete('from')
+    params.delete('to')
+  }
+}
+
+export function getDcaShareKey(params: URLSearchParams): string {
+  return shareKey(params, 'dca', DCA_LEGACY_KEYS, ['from', 'to'])
+}
+
+export function getLsDcaShareKey(params: URLSearchParams): string {
+  return shareKey(params, 'lsdca', LS_DCA_LEGACY_KEYS)
+}
+
+export function hasDcaSharePayload(params: URLSearchParams = paramsFromWindow()): boolean {
   return params.get('tab') === 'dca' &&
     (params.has('s') || DCA_LEGACY_KEYS.some(key => params.has(key)))
 }
 
-export function hasLsDcaSharePayload(): boolean {
-  const params = new URLSearchParams(window.location.search)
+export function hasLsDcaSharePayload(params: URLSearchParams = paramsFromWindow()): boolean {
   return params.get('tab') === 'lsdca' &&
     (params.has('s') || LS_DCA_LEGACY_KEYS.some(key => params.has(key)))
 }
@@ -88,8 +136,8 @@ export function buildDcaUrl(s: DcaShareState): string {
   return `${origin()}?tab=dca&s=${encoded}`
 }
 
-export function parseDcaParams(): Partial<DcaShareState> | null {
-  const p = new URLSearchParams(window.location.search)
+export function parseDcaParams(params: URLSearchParams = paramsFromWindow()): Partial<DcaShareState> | null {
+  const p = params
   if (p.get('tab') !== 'dca') return null
 
   const compressed = p.get('s')
@@ -210,8 +258,8 @@ export function buildLsDcaUrl(s: LsDcaShareState): string {
   return `${origin()}?tab=lsdca&s=${encoded}`
 }
 
-export function parseLsDcaParams(): Partial<LsDcaShareState> | null {
-  const p = new URLSearchParams(window.location.search)
+export function parseLsDcaParams(params: URLSearchParams = paramsFromWindow()): Partial<LsDcaShareState> | null {
+  const p = params
   if (p.get('tab') !== 'lsdca') return null
 
   const compressed = p.get('s')

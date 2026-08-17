@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
-import { buildDcaUrl, hasDcaSharePayload, parseDcaParams } from '../utils/shareUrl'
-import { loadLS, saveLS } from '../utils/localStorage'
-import type { PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
+import { buildDcaUrl } from '../utils/shareUrl'
+import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
+import { saveLS } from '../utils/localStorage'
+import { useSharePersistence } from '../hooks/useSharePersistence'
+import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { parseCSV, parseGoldCSV } from '../utils/csvParser'
@@ -45,9 +47,28 @@ import {
 
 interface Props {
   funds: FundMeta[]
+  shareUrl: ShareUrlState<Partial<DcaShareState>>
+  active: boolean
 }
 
 type DCAPortfolioState = PortfolioCardState
+
+function hydrateDcaPortfolios(
+  source: Portfolio[],
+  nextIdRef: { current: number },
+): DCAPortfolioState[] {
+  return source.map(p => {
+    const num = nextIdRef.current++
+    return {
+      id: `dca${num}`,
+      num,
+      name: p.name || derivePortfolioName(p.slots, `Portfolio ${num}`),
+      isNameCustom: !!p.name,
+      slots: p.slots,
+      rebalFreq: p.rebalFreq,
+    }
+  })
+}
 
 type DateRangeMode = 'all' | 'years'
 
@@ -111,19 +132,16 @@ const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'yearly', label: '1 năm' },
 ]
 
-function DCAPanelImpl({ funds }: Props) {
+function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const nextIdRef = useRef(1)
 
-  // Read URL params once on mount (shared link restore)
-  const [urlParams] = useState(() => parseDcaParams())
-  const [hasUrlPayload] = useState(() => hasDcaSharePayload())
-  const [skipUrlPersist, setSkipUrlPersist] = useState(hasUrlPayload)
-  const readLocal = <T,>(key: string, fallback: T): T =>
-    hasUrlPayload ? fallback : loadLS(key, fallback)
-
-  useEffect(() => {
-    if (hasUrlPayload) setSkipUrlPersist(false)
-  }, [hasUrlPayload])
+  // URL payload comes from App; this hook keeps localStorage precedence and the persist gate.
+  const {
+    parsedPayload: urlParams,
+    hasExplicitPayload: hasUrlPayload,
+    skipUrlPersist,
+    readLocal,
+  } = useSharePersistence({ source: shareUrl })
 
   // ── DCA Parameters ──
   const [dateMode, setDateMode] = useState<DateRangeMode>(
@@ -155,18 +173,7 @@ function DCAPanelImpl({ funds }: Props) {
     const source = urlParams?.portfolios !== undefined
       ? urlParams.portfolios
       : hasUrlPayload ? [] : parsePortfolios(readLocal<unknown>('dca_portfolios', null))
-    if (source.length === 0) return []
-    return source.map(p => {
-      const num = nextIdRef.current++
-      return {
-        id: `dca${num}`,
-        num,
-        name: p.name || derivePortfolioName(p.slots, `Portfolio ${num}`),
-        isNameCustom: !!p.name,
-        slots: p.slots,
-        rebalFreq: p.rebalFreq,
-      }
-    })
+    return hydrateDcaPortfolios(source, nextIdRef)
   })
   const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
   // Raw (chưa adjust) weekly prices — chỉ dùng cho shadow simulation tính
@@ -201,6 +208,28 @@ function DCAPanelImpl({ funds }: Props) {
     dateFrom: string
     dateTo: string
   } | null>(null)
+
+  const lastShareKeyRef = useRef(shareUrl.key)
+  useEffect(() => {
+    if (shareUrl.key === lastShareKeyRef.current) return
+    lastShareKeyRef.current = shareUrl.key
+
+    if (!hasUrlPayload && !active) return
+
+    setDateMode(urlParams?.dateMode ?? (hasUrlPayload ? 'all' : readLocal('dca_dateMode', 'all' as DateRangeMode)))
+    setYearsBack(urlParams?.yearsBack ?? (hasUrlPayload ? 5 : readLocal('dca_yearsBack', 5)))
+    setDateFrom(urlParams?.dateFrom ?? '')
+    setDateTo(urlParams?.dateTo ?? '')
+    setInitialAmount(urlParams?.initialAmount ?? (hasUrlPayload ? 5_000_000 : readLocal('dca_initialAmount', 5_000_000)))
+    setCashflowAmount(urlParams?.cashflowAmount ?? (hasUrlPayload ? 0 : readLocal('dca_cashflowAmount', 0)))
+    const savedFreq = readLocal<unknown>('dca_cashflowFreq', 'monthly')
+    setCashflowFreq(urlParams?.cashflowFreq ?? (hasUrlPayload ? 'monthly' : isDCAFrequency(savedFreq) ? savedFreq : 'monthly'))
+    nextIdRef.current = 1
+    const localPortfolios = parsePortfolios(readLocal<unknown>('dca_portfolios', null))
+    setPortfolios(hydrateDcaPortfolios(urlParams?.portfolios ?? (hasUrlPayload ? [] : localPortfolios), nextIdRef))
+    setCommitted(null)
+    setActiveSection('all')
+  }, [shareUrl.key, active]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Persist to localStorage ──
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_initialAmount', initialAmount) }, [initialAmount])

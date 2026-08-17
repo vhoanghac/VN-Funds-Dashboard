@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { MoneyInput } from './MoneyInput'
 import { ShareButton } from './ShareButton'
-import { buildLsDcaUrl, hasLsDcaSharePayload, parseLsDcaParams } from '../utils/shareUrl'
-import { loadLS, saveLS } from '../utils/localStorage'
+import { buildLsDcaUrl } from '../utils/shareUrl'
+import type { LsDcaShareState, ShareUrlState } from '../utils/shareUrl'
+import { saveLS } from '../utils/localStorage'
+import { useSharePersistence } from '../hooks/useSharePersistence'
 import Select from 'react-select'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
@@ -47,24 +49,38 @@ import {
 
 interface Props {
   funds: FundMeta[]
+  shareUrl: ShareUrlState<Partial<LsDcaShareState>>
+  active: boolean
 }
 
 const HORIZON_OPTIONS = [3, 6, 12, 18, 24, 36]
 
-function LumpSumDCAPanelImpl({ funds }: Props) {
+function hydrateLsDcaPortfolio(
+  source: NonNullable<LsDcaShareState['portfolio']>,
+  nextIdRef: { current: number },
+): PortfolioCardState {
+  const num = nextIdRef.current++
+  return {
+    id: `lsdca${num}`,
+    num,
+    name: source.name || derivePortfolioName(source.slots, `Portfolio ${num}`),
+    isNameCustom: !!source.name,
+    slots: source.slots,
+    rebalFreq: source.rebalFreq,
+  }
+}
+
+function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
   const nextIdRef = useRef(1)
   const hasRunOnceRef = useRef(false)
 
-  // Read URL params once on mount (shared link restore)
-  const [urlParams] = useState(() => parseLsDcaParams())
-  const [hasUrlPayload] = useState(() => hasLsDcaSharePayload())
-  const [skipUrlPersist, setSkipUrlPersist] = useState(hasUrlPayload)
-  const readLocal = <T,>(key: string, fallback: T): T =>
-    hasUrlPayload ? fallback : loadLS(key, fallback)
-
-  useEffect(() => {
-    if (hasUrlPayload) setSkipUrlPersist(false)
-  }, [hasUrlPayload])
+  // URL payload comes from App; this hook keeps localStorage precedence and the persist gate.
+  const {
+    parsedPayload: urlParams,
+    hasExplicitPayload: hasUrlPayload,
+    skipUrlPersist,
+    readLocal,
+  } = useSharePersistence({ source: shareUrl })
 
   // ── Parameters ──
   const [totalCapital, setTotalCapital] = useState(
@@ -101,15 +117,7 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
       ? urlParams?.portfolio ?? null
       : parsePortfolio(readLocal<unknown>('lsdca_portfolio', null))
     if (!src) return null
-    const num = nextIdRef.current++
-    return {
-      id: `lsdca${num}`,
-      num,
-      name: src.name || derivePortfolioName(src.slots, `Portfolio ${num}`),
-      isNameCustom: !!src.name,
-      slots: src.slots,
-      rebalFreq: src.rebalFreq,
-    }
+    return hydrateLsDcaPortfolio(src, nextIdRef)
   })
 
   // ── Data ──
@@ -138,6 +146,31 @@ function LumpSumDCAPanelImpl({ funds }: Props) {
 
   /** Đã bấm nút nhưng dữ liệu chưa tải xong, chờ đủ rồi mới chụp. */
   const [pendingRun, setPendingRun] = useState(false)
+
+  const lastShareKeyRef = useRef(shareUrl.key)
+  useEffect(() => {
+    if (shareUrl.key === lastShareKeyRef.current) return
+    lastShareKeyRef.current = shareUrl.key
+
+    if (!hasUrlPayload && !active) return
+
+    setTotalCapital(urlParams?.totalCapital ?? (hasUrlPayload ? 100_000_000 : readLocal('lsdca_totalCapital', 100_000_000)))
+    setHorizonMonths(urlParams?.horizonMonths ?? (hasUrlPayload ? 12 : readLocal('lsdca_horizonMonths', 12)))
+    const savedFreq = readLocal<unknown>('lsdca_freq', 'monthly')
+    setFreq(urlParams?.freq ?? (hasUrlPayload ? 'monthly' : isLSvsDCAFreq(savedFreq) ? savedFreq : 'monthly'))
+    const savedCashMode = readLocal<unknown>('lsdca_cashMode', 'flat')
+    setCashMode(urlParams?.cashMode ?? (hasUrlPayload ? 'flat' : isCashMode(savedCashMode) ? savedCashMode : 'flat'))
+    setSavingsRate(urlParams?.savingsRate ?? (hasUrlPayload ? 4 : readLocal('lsdca_savingsRate', 4)))
+    setCashFundId(urlParams?.cashFundId ?? (hasUrlPayload ? '' : readLocal('lsdca_cashFundId', '')))
+    setCompareFundId(urlParams?.compareFundId ?? (hasUrlPayload ? '' : readLocal('lsdca_compareFundId', '')))
+    nextIdRef.current = 1
+    const localPortfolio = parsePortfolio(readLocal<unknown>('lsdca_portfolio', null))
+    setPortfolio(urlParams?.portfolio
+      ? hydrateLsDcaPortfolio(urlParams.portfolio, nextIdRef)
+      : hasUrlPayload ? null : localPortfolio ? hydrateLsDcaPortfolio(localPortfolio, nextIdRef) : null)
+    setCommitted(null)
+    setPendingRun(false)
+  }, [shareUrl.key, active]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Persist to localStorage ──
   useEffect(() => { if (!skipUrlPersist) saveLS('lsdca_totalCapital', totalCapital) }, [totalCapital])

@@ -6,7 +6,7 @@ import { TAB_REGISTRY, type TabContext } from './tabRegistry'
 
 export function App() {
   const { metadata, metadataError, loading: metaLoading } = useFundMetadata()
-  const { state, updateState } = useUrlState()
+  const { state, updateState, dcaUrlParams, lsDcaUrlParams } = useUrlState()
 
   // Stable callback references (qua useCallback, dep chỉ là `updateState` vốn
   // đã ổn định) để CompareTab (React.memo) không bị coi là "props đổi" mỗi
@@ -25,13 +25,15 @@ export function App() {
       metadata: metadata ?? [],
       state,
       updateState,
+      dcaUrlParams,
+      lsDcaUrlParams,
       onChangeFunds,
       onChangeDateFrom,
       onChangeDateTo,
       onChangeRollingPeriod,
       onSelectCalculator,
     }),
-    [metadata, state, updateState, onChangeFunds, onChangeDateFrom, onChangeDateTo, onChangeRollingPeriod, onSelectCalculator],
+    [metadata, state, updateState, dcaUrlParams, lsDcaUrlParams, onChangeFunds, onChangeDateFrom, onChangeDateTo, onChangeRollingPeriod, onSelectCalculator],
   )
 
   if (metaLoading) {
