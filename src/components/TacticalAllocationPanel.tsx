@@ -18,13 +18,12 @@ import {
   ComposedChart, ReferenceArea, ReferenceLine, Legend,
 } from 'recharts'
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
-import { parseCSV, parseGoldCSV } from '../utils/csvParser'
-import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { useFundSeriesMap } from '../hooks/useFundData'
 import { dcaCagr, dcaMaxDrawdown, derivePortfolioName } from '../utils/dca'
 import { runTacticalBacktest, decomposeAdvantage, type TacticalBacktestResult, type AllocationId, type IndicatorType, type SignalFrequency } from '../utils/tactical'
 import { PortfolioCard, portfolioSelectStyles, PORTFOLIO_COLORS } from './PortfolioCard'
 import {
-  isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
+  isSavingsAssetId, savingsAssetId,
   SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
 } from '../utils/savingsAsset'
 import { MoneyInput } from './MoneyInput'
@@ -128,9 +127,6 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
   const [allocationA, setAllocationA] = useState<PortfolioCardState>(() => makeEmptyAllocation('tacticalA', 'Danh mục A'))
   const [allocationB, setAllocationB] = useState<PortfolioCardState>(() => makeEmptyAllocation('tacticalB', 'Danh mục B'))
 
-  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
-  const [loading, setLoading] = useState(false)
-
   // Thông số VÀ nhãn chốt chung một chỗ. Tên danh mục đổi ngay khi người dùng chọn
   // quỹ khác, nên nếu truyền tên đang sống vào khối kết quả thì lớp memo vỡ, 3 biểu
   // đồ vẽ lại theo từng phím gõ. Gói chung còn bảo đảm nhãn luôn khớp với chính kết
@@ -179,45 +175,19 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     if (signalFundId) ids.add(signalFundId)
     for (const s of allocationA.slots) if (s.fundId) ids.add(s.fundId)
     for (const s of allocationB.slots) if (s.fundId) ids.add(s.fundId)
+    if (committed) {
+      for (const id of collectCommittedIds(committed.params)) ids.add(id)
+    }
     return ids
-  }, [signalFundId, allocationA.slots, allocationB.slots])
+  }, [signalFundId, allocationA.slots, allocationB.slots, committed])
 
-  useEffect(() => {
-    let cancelled = false
-    const toFetch = Array.from(neededIds).filter(id => !fundData.has(id))
-    if (toFetch.length === 0) return
-
-    setLoading(true)
-    Promise.all(
-      toFetch.map(async id => {
-        // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
-        if (isSavingsAssetId(id)) return { id, adjusted: savingsSeriesForId(id) }
-
-        const resp = await fetch(`/data/${id}.csv`)
-        if (!resp.ok) return null
-        const text = await resp.text()
-        if (dualPriceFundIds.has(id)) {
-          const { buy } = parseGoldCSV(text)
-          return { id, adjusted: buy }
-        }
-        const rawDaily = parseCSV(text)
-        const adjustedDaily = await loadAdjustedPrices(id, rawDaily)
-        return { id, adjusted: adjustedDaily }
-      }),
-    ).then(results => {
-      if (cancelled) return
-      setFundData(prev => {
-        const next = new Map(prev)
-        for (const r of results) if (r) next.set(r.id, r.adjusted)
-        // Dọn chuỗi tiết kiệm của lãi suất cũ (xem pruneUnusedSavings).
-        pruneUnusedSavings(next, neededIds)
-        return next
-      })
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [neededIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
+  const {
+    data: fundData,
+    loading,
+    errors,
+  } = useFundSeriesMap(neededIdList, { dualPriceFundIds })
+  const dataError = Array.from(errors.values())[0] ?? null
 
   function getEffectiveDates(): { from: string; to: string } {
     if (dateMode === 'years') {
@@ -255,6 +225,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
   function runBacktest() {
     if (!canRun) return
+    setComputation(null)
     setCommitted({
       params: buildSnapshot(),
       labels: { nameA, nameB, signalFundName },
@@ -601,11 +572,13 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
-      {committed && !loading && computedCurrent && !result && (
+      {committed && !loading && ((computedCurrent && !result) || (!computedCurrent && dataError)) && (
         <div className="error-banner">
-          Không đủ dữ liệu để mô phỏng. Kiểm tra lại quỹ đã chọn, hoặc cần nhiều lịch sử hơn để
-          tính đủ {indicatorLabel(committed.params.indicatorType, committed.params.period)} (~{Math.round(committed.params.period / 21)} tháng
-          dữ liệu trước ngày bắt đầu).
+          {dataError ?? (
+            <>Không đủ dữ liệu để mô phỏng. Kiểm tra lại quỹ đã chọn, hoặc cần nhiều lịch sử hơn để
+            tính đủ {indicatorLabel(committed.params.indicatorType, committed.params.period)} (~{Math.round(committed.params.period / 21)} tháng
+            dữ liệu trước ngày bắt đầu).</>
+          )}
         </div>
       )}
 

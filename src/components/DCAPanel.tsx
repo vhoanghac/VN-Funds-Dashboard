@@ -8,9 +8,9 @@ import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
-import { parseCSV, parseGoldCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
-import { loadAdjustedPrices, loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
+import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
+import { useFundSeriesMap } from '../hooks/useFundData'
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DcaRatioChart } from './DcaRatioChart'
 import { DcaReturnPainChart } from './DcaReturnPainChart'
@@ -31,10 +31,7 @@ import { DataQualityBlock } from './DataQualityBlock'
 import { parsePortfolios } from '../utils/portfolio'
 import { FUND_COLORS } from '../constants'
 import {
-  isSavingsAssetId,
-  savingsSeriesForId,
   savingsAssetId,
-  pruneUnusedSavings,
   SAVINGS_OPTION_LABEL,
   DEFAULT_SAVINGS_RATE,
 } from '../utils/savingsAsset'
@@ -175,23 +172,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       : hasUrlPayload ? [] : parsePortfolios(readLocal<unknown>('dca_portfolios', null))
     return hydrateDcaPortfolios(source, nextIdRef)
   })
-  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
-  // Raw (chưa adjust) weekly prices — chỉ dùng cho shadow simulation tính
-  // "số tiền cổ tức thật" và "số ccq mua thêm thật" trong DividendBlock.
-  // Simulation chính dùng fundData (adjusted) để hiệu suất TWRR/MWRR phản ánh
-  // đầy đủ cả cổ tức tái đầu tư.
-  const [rawFundData, setRawFundData] = useState<Map<string, PricePoint[]>>(new Map())
-  // Giá "bán ra" (sell) — CHỈ có entry cho các quỹ 2-giá như vàng miếng SJC
-  // (type: 'gold'). Dùng làm giá mua khi quy đổi tiền → đơn vị lúc DCA/mua
-  // ban đầu; `fundData` (giá "mua vào"/buy) vẫn là giá định giá xuyên suốt.
-  // Xem simulateDCA's `purchasePrices` option (utils/dca.ts).
-  const [purchasePriceData, setPurchasePriceData] = useState<Map<string, PricePoint[]>>(new Map())
   // Dividend events per fund (loaded once từ public/data/dividends.json).
   // Ở VN hiện tại chỉ DCDE chi trả cổ tức; nếu thêm quỹ khác chỉ cần bổ sung vào JSON.
   // Dùng cho narrative (DividendBlock). Adjustment đã áp dụng sẵn ở CSV
   // loader cho simulation chính, nên simulation không cần biết về cổ tức nữa.
   const [dividendsByFund, setDividendsByFund] = useState<Map<string, DividendEvent[]>>(new Map())
-  const [loading, setLoading] = useState(false)
 
   // Load dividends.json một lần lúc mount (cho narrative DividendBlock)
   useEffect(() => {
@@ -270,90 +255,15 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     return ids
   }, [portfolios, committed])
 
-  // Fetch CSV data, giữ nguyên daily cho simulation (không resample tuần nữa)
-  // để lịch nạp tiền hàng tháng bám sát ngày thực tế hơn, và MWRR/EOY từng
-  // năm tính trọng số dòng tiền chính xác hơn.
-  useEffect(() => {
-    let cancelled = false
-    const toFetch = Array.from(neededIds).filter(id => !fundData.has(id))
-    if (toFetch.length === 0) {
-      setFundData(prev => {
-        const next = new Map(prev)
-        pruneUnusedSavings(next, neededIds)
-        return next
-      })
-      setRawFundData(prev => {
-        const next = new Map(prev)
-        pruneUnusedSavings(next, neededIds)
-        return next
-      })
-      return
-    }
-
-    setLoading(true)
-    Promise.all(
-      toFetch.map(async id => {
-        // Tiết kiệm ngân hàng lãi suất cố định: không phải quỹ thật, không
-        // qua CSV/fetch, chuỗi giá sinh thẳng trong trình duyệt.
-        if (isSavingsAssetId(id)) {
-          const series = savingsSeriesForId(id)
-          return { id, raw: series, adjusted: series, purchase: null }
-        }
-
-        const resp = await fetch(`/data/${id}.csv`)
-        if (!resp.ok) return null
-        const text = await resp.text()
-
-        // Vàng miếng SJC (và tài sản 2-giá tương tự): CSV có cột buy/sell
-        // riêng, không qua dividend adjustment (không có cổ tức). "buy" (giá
-        // tiệm vàng mua vào) đóng vai trò giá định giá xuyên suốt — giống mọi
-        // quỹ khác dùng 1 giá NAV; "sell" (giá bán ra) chỉ dùng làm giá mua
-        // lúc DCA/mua ban đầu, xem purchasePriceData.
-        if (dualPriceFundIds.has(id)) {
-          const { buy, sell } = parseGoldCSV(text)
-          return { id, raw: buy, adjusted: buy, purchase: sell }
-        }
-
-        const rawDaily = parseCSV(text)
-        // Adjusted daily: dùng cho simulation chính. Dividend adjustment
-        // (DCDE...) áp dụng trước. Tất cả các tab dùng chung nguồn giá đã
-        // adjusted để hiệu suất nhất quán toàn dashboard.
-        const adjustedDaily = await loadAdjustedPrices(id, rawDaily)
-        return { id, raw: rawDaily, adjusted: adjustedDaily, purchase: null }
-      }),
-    ).then(results => {
-      if (cancelled) return
-      // Dọn chuỗi tiết kiệm của lãi suất cũ khỏi cả 2 map (xem pruneUnusedSavings).
-      // purchasePriceData không cần dọn: tài sản tiết kiệm không có giá mua riêng
-      // nên chưa bao giờ được ghi vào đó.
-      setFundData(prev => {
-        const next = new Map(prev)
-        for (const r of results) {
-          if (r) next.set(r.id, r.adjusted)
-        }
-        pruneUnusedSavings(next, neededIds)
-        return next
-      })
-      setRawFundData(prev => {
-        const next = new Map(prev)
-        for (const r of results) {
-          if (r) next.set(r.id, r.raw)
-        }
-        pruneUnusedSavings(next, neededIds)
-        return next
-      })
-      setPurchasePriceData(prev => {
-        const next = new Map(prev)
-        for (const r of results) {
-          if (r && r.purchase) next.set(r.id, r.purchase)
-        }
-        return next
-      })
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [neededIds, dualPriceFundIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Hook dùng chung giữ daily adjusted, raw và giá sell của vàng. `neededIds`
+  // đã bao gồm cả portfolio đang chỉnh và portfolio trong snapshot committed.
+  const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
+  const {
+    data: fundData,
+    raw: rawFundData,
+    purchase: purchasePriceData,
+    loading,
+  } = useFundSeriesMap(neededIdList, { dualPriceFundIds })
 
   // ── Portfolio CRUD ──
 

@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useDeferredValue, memo } from 'react'
 import Select from 'react-select'
 import type { FundMeta, PricePoint, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
-import { parseCSV } from '../utils/csvParser'
-import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { useFundSeriesMap } from '../hooks/useFundData'
 import { DividendNotice } from './DividendNotice'
 import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn, ZERO_VOLATILITY_EPSILON } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
@@ -20,8 +19,8 @@ import { MoneyInput } from './MoneyInput'
 import { MoneyMachineBlock } from './MoneyMachineBlock'
 import { SavingsRateInput } from './SavingsRateInput'
 import {
-  isSavingsAssetId, savingsSeriesForId, savingsAssetId, assetDisplayName,
-  pruneUnusedSavings, SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
+  isSavingsAssetId, savingsAssetId, assetDisplayName,
+  SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
 } from '../utils/savingsAsset'
 import { SleepTestBlock } from './SleepTestBlock'
 import { WinRateBlock } from './WinRateBlock'
@@ -66,10 +65,6 @@ function BitcoinPanelImpl({ funds }: Props) {
   )
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   // Simulation only runs when user clicks "Chạy mô phỏng".
   // `applied` snapshots the inputs used for the current on-screen results.
   interface AppliedConfig {
@@ -80,6 +75,19 @@ function BitcoinPanelImpl({ funds }: Props) {
     dateTo: string | null
   }
   const [applied, setApplied] = useState<AppliedConfig | null>(null)
+
+  const neededFundIds = useMemo(() => {
+    const ids = new Set([BTC_ID, selectedFundId])
+    if (applied?.fundId) ids.add(applied.fundId)
+    return Array.from(ids)
+  }, [selectedFundId, applied?.fundId])
+
+  const {
+    data: fundData,
+    loading,
+    errors,
+  } = useFundSeriesMap(neededFundIds)
+  const error = Array.from(errors.values())[0] ?? null
 
   // Persist selections
   useEffect(() => { saveLS('btc_fund', selectedFundId) }, [selectedFundId])
@@ -119,49 +127,6 @@ function BitcoinPanelImpl({ funds }: Props) {
   const selectedFundOption = isSavingsAssetId(selectedFundId)
     ? { value: selectedFundId, label: SAVINGS_OPTION_LABEL }
     : fundOptions.find(o => o.value === selectedFundId) || null
-
-  // Load BTC + selected fund CSV
-  useEffect(() => {
-    const needed = [BTC_ID, selectedFundId].filter(id => !fundData.has(id))
-    if (needed.length === 0) return
-
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    Promise.all(
-      needed.map(async id => {
-        // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
-        if (isSavingsAssetId(id)) return { id, weekly: savingsSeriesForId(id) }
-
-        const resp = await fetch(`/data/${id}.csv`)
-        if (!resp.ok) throw new Error(`Không tải được ${id} (${resp.status})`)
-        const text = await resp.text()
-        const rawDaily = parseCSV(text)
-        const daily = await loadAdjustedPrices(id, rawDaily)
-        return { id, weekly: daily }
-      }),
-    )
-      .then(results => {
-        if (cancelled) return
-        setFundData(prev => {
-          const next = new Map(prev)
-          for (const r of results) next.set(r.id, r.weekly)
-          // Dọn chuỗi tiết kiệm của lãi suất cũ (xem pruneUnusedSavings). Tab này
-          // mỗi lúc chỉ giữ đúng 2 tài sản: BTC và quỹ nền tảng đang chọn.
-          pruneUnusedSavings(next, [BTC_ID, selectedFundId])
-          return next
-        })
-        setLoading(false)
-      })
-      .catch(err => {
-        if (cancelled) return
-        setError(err.message)
-        setLoading(false)
-      })
-
-    return () => { cancelled = true }
-  }, [selectedFundId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // BTC weight 0–10% used by the scatter chart, computed once here and passed
   // down so BtcWeightChart doesn't re-simulate the same 11 portfolios itself.

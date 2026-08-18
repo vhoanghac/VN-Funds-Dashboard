@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import type { PricePoint, FundMeta } from '../types'
-import { parseCSV, parseFundMetadata } from '../utils/csvParser'
+import { parseCSV, parseFundMetadata, parseGoldCSV } from '../utils/csvParser'
 import { loadAdjustedPrices } from '../utils/dividendAdjust'
 import { isSavingsAssetId, savingsSeriesForId, pruneUnusedSavings } from '../utils/savingsAsset'
 
@@ -50,9 +50,185 @@ export function useFundMetadata(): FundDataState {
   return state
 }
 
+export type FundSeriesMode = 'normal' | 'dual'
+
+export interface FundSeriesMapState {
+  data: Map<string, PricePoint[]>
+  raw: Map<string, PricePoint[]>
+  purchase: Map<string, PricePoint[]>
+  loading: boolean
+  errors: Map<string, string>
+}
+
+interface FundSeriesMapOptions {
+  dualPriceFundIds?: ReadonlySet<string>
+}
+
+interface LoadResult {
+  id: string
+  mode: FundSeriesMode
+  data: PricePoint[] | null
+  raw: PricePoint[] | null
+  purchase: PricePoint[] | null
+  error: string | null
+}
+
+function stableIdKey(ids: Iterable<string>): string {
+  return Array.from(new Set(ids)).sort().join('\u0000')
+}
+
+function pruneSeriesMap<T>(cache: Map<string, T>, inUse: ReadonlySet<string>): Map<string, T> {
+  const next = new Map(cache)
+  const before = next.size
+  pruneUnusedSavings(next, inUse)
+  return next.size === before ? cache : next
+}
+
+function filterErrors(errors: Map<string, string>, inUse: ReadonlySet<string>): Map<string, string> {
+  const next = new Map<string, string>()
+  for (const [id, message] of errors) {
+    if (inUse.has(id)) next.set(id, message)
+  }
+  return next
+}
+
 /**
- * Fetch and parse a single fund's CSV (daily prices).
+ * Fetch, parse, adjust and cache every kind of price series used by the app.
+ * The cache belongs to this hook instance. It is not a cross-tab request cache.
  */
+export function useFundSeriesMap(
+  fundIds: string[],
+  options: FundSeriesMapOptions = {},
+): FundSeriesMapState {
+  const idsKey = stableIdKey(fundIds)
+  const ids = idsKey ? idsKey.split('\u0000') : []
+  const dualPriceFundIds = options.dualPriceFundIds
+  const dualKey = stableIdKey(ids.filter(id => dualPriceFundIds?.has(id)))
+  const requestKey = `${idsKey}\u0001${dualKey}`
+  const requestedIds = new Set(ids)
+  const requestedDualIds = new Set(dualKey ? dualKey.split('\u0000') : [])
+
+  const [data, setData] = useState<Map<string, PricePoint[]>>(new Map())
+  const [raw, setRaw] = useState<Map<string, PricePoint[]>>(new Map())
+  const [purchase, setPurchase] = useState<Map<string, PricePoint[]>>(new Map())
+  const [errors, setErrors] = useState<Map<string, string>>(new Map())
+  const [cacheModes, setCacheModes] = useState<Map<string, FundSeriesMode>>(new Map())
+  const [settledKey, setSettledKey] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    const modeFor = (id: string): FundSeriesMode => requestedDualIds.has(id) ? 'dual' : 'normal'
+    const toLoad = ids.filter(id => !data.has(id) || cacheModes.get(id) !== modeFor(id))
+
+    setErrors(prev => filterErrors(prev, requestedIds))
+
+    if (toLoad.length === 0) {
+      setData(prev => pruneSeriesMap(prev, requestedIds))
+      setRaw(prev => pruneSeriesMap(prev, requestedIds))
+      setSettledKey(requestKey)
+      return () => { cancelled = true }
+    }
+
+    Promise.all(toLoad.map(async (id): Promise<LoadResult> => {
+      const mode = modeFor(id)
+      try {
+        if (isSavingsAssetId(id)) {
+          const series = savingsSeriesForId(id)
+          return { id, mode, data: series, raw: series, purchase: null, error: null }
+        }
+
+        const resp = await fetch(`/data/${id}.csv`)
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const text = await resp.text()
+
+        if (mode === 'dual') {
+          const { buy, sell } = parseGoldCSV(text)
+          if (buy.length === 0) throw new Error('Chưa có dữ liệu')
+          return {
+            id,
+            mode,
+            data: buy,
+            raw: buy,
+            purchase: sell.length > 0 ? sell : null,
+            error: null,
+          }
+        }
+
+        const rawDaily = parseCSV(text)
+        if (rawDaily.length === 0) throw new Error('Chưa có dữ liệu')
+        const adjusted = await loadAdjustedPrices(id, rawDaily)
+        return { id, mode, data: adjusted, raw: rawDaily, purchase: null, error: null }
+      } catch (err) {
+        return {
+          id,
+          mode,
+          data: null,
+          raw: null,
+          purchase: null,
+          error: err instanceof Error ? err.message : 'Không tải được dữ liệu quỹ',
+        }
+      }
+    })).then(results => {
+      if (cancelled) return
+
+      setData(prev => {
+        const next = new Map(prev)
+        for (const result of results) {
+          if (result.data) next.set(result.id, result.data)
+          else next.delete(result.id)
+        }
+        return pruneSeriesMap(next, requestedIds)
+      })
+      setRaw(prev => {
+        const next = new Map(prev)
+        for (const result of results) {
+          if (result.raw) next.set(result.id, result.raw)
+          else next.delete(result.id)
+        }
+        return pruneSeriesMap(next, requestedIds)
+      })
+      setPurchase(prev => {
+        const next = new Map(prev)
+        for (const result of results) {
+          if (result.purchase) next.set(result.id, result.purchase)
+          else next.delete(result.id)
+        }
+        return next
+      })
+      setCacheModes(prev => {
+        const next = new Map(prev)
+        for (const result of results) {
+          if (result.error) next.delete(result.id)
+          else next.set(result.id, result.mode)
+        }
+        return next
+      })
+      setErrors(prev => {
+        const next = filterErrors(prev, requestedIds)
+        for (const result of results) {
+          if (result.error) next.set(result.id, result.error)
+          else next.delete(result.id)
+        }
+        return next
+      })
+      setSettledKey(requestKey)
+    })
+
+    return () => { cancelled = true }
+    // State maps are intentionally read from the render that started this request.
+    // The request key controls when this effect starts again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestKey])
+
+  return {
+    data,
+    raw,
+    purchase,
+    loading: ids.length > 0 && settledKey !== requestKey,
+    errors,
+  }
+}
+
 interface FundSeriesState {
   prices: PricePoint[] | null
   loading: boolean
@@ -60,57 +236,15 @@ interface FundSeriesState {
 }
 
 export function useFundSeries(fundId: string | null): FundSeriesState {
-  const [state, setState] = useState<FundSeriesState>({
-    prices: null,
-    loading: false,
-    error: null,
-  })
-
-  useEffect(() => {
-    if (!fundId) {
-      setState({ prices: null, loading: false, error: null })
-      return
-    }
-
-    let cancelled = false
-    setState({ prices: null, loading: true, error: null })
-    const id = fundId // narrow for closure
-
-    async function load() {
-      try {
-        const resp = await fetch(`/data/${id}.csv`)
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-        const text = await resp.text()
-        const rawDaily = parseCSV(text)
-
-        if (rawDaily.length === 0) {
-          throw new Error('Chưa có dữ liệu')
-        }
-
-        // Áp dụng dividend adjustment (DCDE...), giữ nguyên daily cho tính toán
-        const daily = await loadAdjustedPrices(id, rawDaily)
-        if (!cancelled) {
-          setState({ prices: daily, loading: false, error: null })
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const message = err instanceof Error ? err.message : 'Không tải được dữ liệu quỹ'
-          setState({ prices: null, loading: false, error: message })
-        }
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [fundId])
-
-  return state
+  const state = useFundSeriesMap(fundId ? [fundId] : [])
+  if (!fundId) return { prices: null, loading: false, error: null }
+  return {
+    prices: state.data.get(fundId) ?? null,
+    loading: state.loading,
+    error: state.errors.get(fundId) ?? null,
+  }
 }
 
-/**
- * Fetch and parse multiple funds' CSVs (daily prices).
- * Caches previously fetched funds so only new funds are fetched.
- */
 interface MultiFundState {
   data: Map<string, PricePoint[]>
   loading: boolean
@@ -118,66 +252,6 @@ interface MultiFundState {
 }
 
 export function useMultiFundSeries(fundIds: string[]): MultiFundState {
-  const [data, setData] = useState<Map<string, PricePoint[]>>(new Map())
-  const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState<Map<string, string>>(new Map())
-
-  const neededIds = useMemo(
-    () => fundIds.filter(id => !data.has(id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fundIds.join(','), data],
-  )
-
-  useEffect(() => {
-    if (neededIds.length === 0) return
-
-    let cancelled = false
-    setLoading(true)
-
-    Promise.all(
-      neededIds.map(async id => {
-        try {
-          // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
-          if (isSavingsAssetId(id)) {
-            return { id, prices: savingsSeriesForId(id), error: null as string | null }
-          }
-
-          const resp = await fetch(`/data/${id}.csv`)
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-          const text = await resp.text()
-          const rawDaily = parseCSV(text)
-          if (rawDaily.length === 0) throw new Error('Chưa có dữ liệu')
-          const daily = await loadAdjustedPrices(id, rawDaily)
-          return { id, prices: daily, error: null as string | null }
-        } catch (err) {
-          return { id, prices: null as PricePoint[] | null, error: err instanceof Error ? err.message : 'Lỗi' }
-        }
-      }),
-    ).then(results => {
-      if (cancelled) return
-      setData(prev => {
-        const next = new Map(prev)
-        for (const r of results) {
-          if (r.prices) next.set(r.id, r.prices)
-        }
-        // Dọn chuỗi tiết kiệm của lãi suất cũ. Đổi lãi suất là đổi id, mà lần
-        // đổi nào cũng kéo theo một lượt nạp, nên chỗ này bắt được đúng cái
-        // vòng phình cache. Đối chiếu với `fundIds` (toàn bộ id đang chọn),
-        // KHÔNG phải `neededIds` (chỉ những id còn thiếu).
-        pruneUnusedSavings(next, fundIds)
-        return next
-      })
-      setErrors(new Map(
-        results.filter(r => r.error !== null).map(r => [r.id, r.error!]),
-      ))
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [neededIds.join(',')])
-
-  const allLoaded = fundIds.length > 0 && fundIds.every(id => data.has(id))
-
-  return { data, loading: loading || (fundIds.length > 0 && !allLoaded), errors }
+  const state = useFundSeriesMap(fundIds)
+  return { data: state.data, loading: state.loading, errors: state.errors }
 }

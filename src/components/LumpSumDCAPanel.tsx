@@ -12,9 +12,8 @@ import {
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { derivePortfolioName, type DCASlot } from '../utils/dca'
 import { parsePortfolio } from '../utils/portfolio'
-import { parseCSV } from '../utils/csvParser'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
-import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { useFundSeriesMap } from '../hooks/useFundData'
 import { DividendNotice } from './DividendNotice'
 import { HoldingCostChart } from './HoldingCostChart'
 import {
@@ -121,9 +120,6 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
   })
 
   // ── Data ──
-  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
-  const [loading, setLoading] = useState(false)
-
   /**
    * Bản chụp tại lúc bấm "Chạy Phân Tích".
    *
@@ -213,36 +209,13 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
     return ids
   }, [portfolio, cashMode, cashFundId, compareFundId])
 
-  // Fetch and resample CSV data
-  useEffect(() => {
-    let cancelled = false
-    const toFetch = Array.from(neededIds).filter(id => !fundData.has(id))
-    if (toFetch.length === 0) return
-
-    setLoading(true)
-    Promise.all(
-      toFetch.map(async id => {
-        const resp = await fetch(`/data/${id}.csv`)
-        if (!resp.ok) return null
-        const text = await resp.text()
-        const rawDaily = parseCSV(text)
-        const daily = await loadAdjustedPrices(id, rawDaily)
-        return { id, data: daily }
-      }),
-    ).then(results => {
-      if (cancelled) return
-      setFundData(prev => {
-        const next = new Map(prev)
-        for (const r of results) {
-          if (r) next.set(r.id, r.data)
-        }
-        return next
-      })
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [neededIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
+  const {
+    data: fundData,
+    loading,
+    errors,
+  } = useFundSeriesMap(neededIdList)
+  const dataError = Array.from(errors.values())[0] ?? null
 
   // ── Portfolio management ──
   function addPortfolio() {
@@ -332,6 +305,7 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
     hasRunOnceRef.current = true
     // Bấm khi dữ liệu chưa về thì ghi nhận ý định, effect bên dưới chụp sau.
     if (!dataReady) {
+      setCommitted(null)
       setPendingRun(true)
       return
     }
@@ -776,6 +750,7 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
       )}
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
+      {dataError && !loading && <div className="error-banner">{dataError}</div>}
 
       {/* Pre-run hint */}
       {!committed && !loading && portfolio && (

@@ -7,7 +7,7 @@
  * và baseline không tái cân bằng) để trả lời câu hỏi: chọn lịch rebalance
  * nào có thực sự thay đổi kết quả không?
  */
-import { useState, useMemo, useEffect, memo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import Select from 'react-select'
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
@@ -15,8 +15,7 @@ import {
 } from 'recharts'
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import type { DCASlot } from '../utils/dca'
-import { parseCSV } from '../utils/csvParser'
-import { loadAdjustedPrices } from '../utils/dividendAdjust'
+import { useFundSeriesMap } from '../hooks/useFundData'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import {
   runRebalanceSensitivity, summarize, GROUP_LABELS, SCHEDULES,
@@ -24,7 +23,7 @@ import {
 } from '../utils/rebalanceSensitivity'
 import { PortfolioCard, portfolioSelectStyles } from './PortfolioCard'
 import {
-  isSavingsAssetId, savingsSeriesForId, savingsAssetId, pruneUnusedSavings,
+  savingsAssetId,
   SAVINGS_OPTION_LABEL, DEFAULT_SAVINGS_RATE,
 } from '../utils/savingsAsset'
 
@@ -79,9 +78,6 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     rebalFreq: 'quarterly',
   }))
 
-  const [fundData, setFundData] = useState<Map<string, PricePoint[]>>(new Map())
-  const [loading, setLoading] = useState(false)
-
   const [committed, setCommitted] = useState<{
     slots: DCASlot[]
     dateFrom: string
@@ -103,43 +99,16 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     for (const s of portfolio.slots) {
       if (s.fundId) ids.add(s.fundId)
     }
+    if (committed) {
+      for (const s of committed.slots) {
+        if (s.fundId) ids.add(s.fundId)
+      }
+    }
     return ids
-  }, [portfolio.slots])
+  }, [portfolio.slots, committed])
 
-  useEffect(() => {
-    let cancelled = false
-    const toFetch = Array.from(neededIds).filter(id => !fundData.has(id))
-    if (toFetch.length === 0) return
-
-    setLoading(true)
-    Promise.all(
-      toFetch.map(async id => {
-        // Tiết kiệm ngân hàng: tài sản giả lập, sinh chuỗi giá tại chỗ thay vì fetch CSV.
-        if (isSavingsAssetId(id)) return { id, adjusted: savingsSeriesForId(id) }
-
-        const resp = await fetch(`/data/${id}.csv`)
-        if (!resp.ok) return null
-        const text = await resp.text()
-        const rawDaily = parseCSV(text)
-        const adjustedDaily = await loadAdjustedPrices(id, rawDaily)
-        return { id, adjusted: adjustedDaily }
-      }),
-    ).then(results => {
-      if (cancelled) return
-      setFundData(prev => {
-        const next = new Map(prev)
-        for (const r of results) {
-          if (r) next.set(r.id, r.adjusted)
-        }
-        // Dọn chuỗi tiết kiệm của lãi suất cũ (xem pruneUnusedSavings).
-        pruneUnusedSavings(next, neededIds)
-        return next
-      })
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [neededIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
+  const { data: fundData, loading } = useFundSeriesMap(neededIdList)
 
   // ── Validation ──
   const nonZeroSlots = portfolio.slots.filter(s => s.fundId && s.weight > 0)
