@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useDeferredValue, memo } from 'react'
 import Select from 'react-select'
 import type { FundMeta, PricePoint, ChartSeries, RebalanceFrequency, ReturnPoint } from '../types'
 import { useFundSeriesMap } from '../hooks/useFundData'
+import { useCommittedRun } from '../hooks/useCommittedRun'
 import { DividendNotice } from './DividendNotice'
 import { weeklyReturns, cumulativeReturns, cagr, annualizedStdev, maxDrawdown, riskContribution, worstWeeklyReturn, worstMonthlyReturn, ZERO_VOLATILITY_EPSILON } from '../utils/calculations'
 import { simulateMultiFundPortfolio } from '../utils/portfolio'
@@ -38,6 +39,20 @@ const PORTFOLIO_COLORS = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
 
 type DateRangeMode = 'all' | 'years'
 
+interface BitcoinParams {
+  fundId: string
+  rebalFreq: RebalanceFrequency
+  btcPercents: [number, number, number]
+  investAmount: number
+  dateFrom: string | null
+  dateTo: string | null
+}
+
+interface BitcoinSnapshot {
+  params: BitcoinParams
+  data: Map<string, PricePoint[]>
+}
+
 const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'monthly', label: 'Hàng tháng' },
   { value: 'quarterly', label: 'Hàng quý' },
@@ -65,22 +80,9 @@ function BitcoinPanelImpl({ funds }: Props) {
   )
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  // Simulation only runs when user clicks "Chạy mô phỏng".
-  // `applied` snapshots the inputs used for the current on-screen results.
-  interface AppliedConfig {
-    fundId: string
-    rebalFreq: RebalanceFrequency
-    btcPercents: [number, number, number]
-    dateFrom: string | null
-    dateTo: string | null
-  }
-  const [applied, setApplied] = useState<AppliedConfig | null>(null)
-
   const neededFundIds = useMemo(() => {
-    const ids = new Set([BTC_ID, selectedFundId])
-    if (applied?.fundId) ids.add(applied.fundId)
-    return Array.from(ids)
-  }, [selectedFundId, applied?.fundId])
+    return Array.from(new Set([BTC_ID, selectedFundId]))
+  }, [selectedFundId])
 
   const {
     data: fundData,
@@ -132,22 +134,52 @@ function BitcoinPanelImpl({ funds }: Props) {
   // down so BtcWeightChart doesn't re-simulate the same 11 portfolios itself.
   const SCATTER_WEIGHTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-  // Build 4 portfolio cumulative return series + performance stats + risk contribution
-  // + pre-simulate all 11 scatter-chart weights in one pass.
-  const { portfolioSeries, portfolioStats, riskContribData, portfolioReturns, allSimReturns } = useMemo<{
-    portfolioSeries: ChartSeries[]
-    portfolioStats: PortfolioStats[]
-    riskContribData: RiskContribItem[]
-    portfolioReturns: ReturnPoint[][]
-    allSimReturns: ReturnPoint[][]   // index i → simulated returns for SCATTER_WEIGHTS[i]
-  }>(() => {
-    const empty = { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], allSimReturns: [] }
-    if (!applied) return empty
-    const btcWeekly = fundData.get(BTC_ID)
-    const fundWeekly = fundData.get(applied.fundId)
-    if (!btcWeekly || !fundWeekly) return empty
+  const canRun = !!selectedFundId
+  const dataReady = neededFundIds.every(id => fundData.has(id)) && !loading && errors.size === 0
+  const effectiveDates = getEffectiveDates()
 
-    try {
+  function buildSnapshot(): BitcoinSnapshot {
+    return {
+      params: {
+        fundId: selectedFundId,
+        rebalFreq,
+        btcPercents: [...btcPercents] as [number, number, number],
+        investAmount,
+        dateFrom: effectiveDates.from,
+        dateTo: effectiveDates.to,
+      },
+      data: new Map(fundData),
+    }
+  }
+
+  // Chỉ mô phỏng sau khi hook đã chốt params và Map dữ liệu.
+  const committedRun = useCommittedRun({
+    ready: dataReady,
+    valid: canRun,
+    liveParams: {
+      fundId: selectedFundId,
+      rebalFreq,
+      btcPercents,
+      investAmount,
+      dateFrom: effectiveDates.from,
+      dateTo: effectiveDates.to,
+    },
+    captureSnapshot: buildSnapshot,
+    compute: snapshot => {
+      const applied = snapshot.params
+      const committedData = snapshot.data
+      const empty = {
+        portfolioSeries: [] as ChartSeries[],
+        portfolioStats: [] as PortfolioStats[],
+        riskContribData: [] as RiskContribItem[],
+        portfolioReturns: [] as ReturnPoint[][],
+        allSimReturns: [] as ReturnPoint[][],
+      }
+      const btcWeekly = committedData.get(BTC_ID)
+      const fundWeekly = committedData.get(applied.fundId)
+      if (!btcWeekly || !fundWeekly) return empty
+
+      try {
       // Apply date filter before alignment
       const filteredBtc = filterDateRange(btcWeekly, applied.dateFrom, applied.dateTo)
       const filteredFund = filterDateRange(fundWeekly, applied.dateFrom, applied.dateTo)
@@ -239,17 +271,28 @@ function BitcoinPanelImpl({ funds }: Props) {
         }
       }
 
-      return {
+        return {
         portfolioSeries: series,
         portfolioStats: stats,
         riskContribData: riskData,
         portfolioReturns: portReturns,
         allSimReturns: scatterSims,
+        }
+      } catch {
+        return empty
       }
-    } catch {
-      return { portfolioSeries: [], portfolioStats: [], riskContribData: [], portfolioReturns: [], allSimReturns: [] }
-    }
-  }, [fundData, applied])
+    },
+  })
+
+  const {
+    committed,
+    result: computed,
+    dirty: isDirty,
+    run: runCommitted,
+  } = committedRun
+  const portfolioSeries = computed?.portfolioSeries ?? []
+  const portfolioStats = computed?.portfolioStats ?? []
+  const riskContribData = computed?.riskContribData ?? []
 
   // Phần "phân tích chi tiết" bên dưới (WinRateBlock + BtcContributionChart +
   // BtcWeightChart) nặng hơn vì hai lý do: rollingCumulativeReturns chạy trên
@@ -259,24 +302,19 @@ function BitcoinPanelImpl({ funds }: Props) {
   // tức, không phải chờ phần nặng tính xong mới thấy gì cả. React tự lùi phần
   // nặng xuống 1 update có độ ưu tiên thấp hơn, chạy sau khi phần nhanh đã
   // paint xong.
-  const deferredPortfolioReturns = useDeferredValue(portfolioReturns)
-  const deferredAllSimReturns = useDeferredValue(allSimReturns)
-  const isHeavySectionStale = deferredAllSimReturns !== allSimReturns
+  const runView = useMemo(
+    () => committed ? { committed, computed } : null,
+    [committed, computed],
+  )
+  const deferredRun = useDeferredValue(runView)
+  const deferredPortfolioReturns = deferredRun?.computed?.portfolioReturns ?? []
+  const deferredAllSimReturns = deferredRun?.computed?.allSimReturns ?? []
+  const deferredPortfolioStats = deferredRun?.computed?.portfolioStats ?? portfolioStats
+  const heavyParams = deferredRun?.committed?.params ?? committed?.params
+  const isHeavySectionStale = deferredRun !== runView
 
   const startDate = portfolioSeries[0]?.data[0]?.date
   const endDate = portfolioSeries[0]?.data[portfolioSeries[0].data.length - 1]?.date
-
-  const effectiveDates = getEffectiveDates()
-
-  const isDirty = !!applied && (
-    applied.fundId !== selectedFundId
-    || applied.rebalFreq !== rebalFreq
-    || applied.dateFrom !== effectiveDates.from
-    || applied.dateTo !== effectiveDates.to
-    || applied.btcPercents[0] !== btcPercents[0]
-    || applied.btcPercents[1] !== btcPercents[1]
-    || applied.btcPercents[2] !== btcPercents[2]
-  )
 
   return (
     <div className="simulation-panel">
@@ -402,18 +440,12 @@ function BitcoinPanelImpl({ funds }: Props) {
       <div className="btc-run-row">
         <button
           className="btc-run-btn"
-          onClick={() => setApplied({
-            fundId: selectedFundId,
-            rebalFreq,
-            btcPercents: [...btcPercents] as [number, number, number],
-            dateFrom: effectiveDates.from,
-            dateTo: effectiveDates.to,
-          })}
-          disabled={loading || !fundData.has(BTC_ID) || !fundData.has(selectedFundId)}
+          onClick={() => { if (selectedFundId) runCommitted() }}
+          disabled={!canRun}
         >
-          {applied ? 'Chạy lại mô phỏng' : 'Chạy mô phỏng'}
+          {committed ? 'Chạy lại mô phỏng' : 'Chạy mô phỏng'}
         </button>
-        {applied && isDirty && (
+        {committed && isDirty && (
           <span className="btc-run-hint">
             Thông số đã thay đổi, bấm "Chạy lại mô phỏng" để cập nhật biểu đồ.
           </span>
@@ -423,31 +455,31 @@ function BitcoinPanelImpl({ funds }: Props) {
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
       {error && <div className="error-banner">{error}</div>}
 
-      {!applied && !loading && !error && (
+      {!committed && !loading && !error && (
         <div className="btc-run-placeholder">
           Bấm "Chạy mô phỏng" để tính toán và hiển thị biểu đồ.
         </div>
       )}
 
-      {applied && !loading && !error && portfolioSeries.length === 0 && fundData.has(BTC_ID) && (
+      {committed && !loading && !error && portfolioSeries.length === 0 && committed.data.has(BTC_ID) && (
         <div className="error-banner">
           Khoảng thời gian được chọn không đủ dữ liệu. Hãy chọn khoảng thời gian dài hơn hoặc nhấn "Tất cả".
         </div>
       )}
 
-      {applied && portfolioSeries.length > 0 && !loading && (
+      {committed && portfolioSeries.length > 0 && !loading && (
         <>
           {startDate && endDate && (
             <div className="comparison-period" style={{ marginBottom: 16 }}>
               Mô phỏng từ {formatDate(startDate)} đến {formatDate(endDate)}
             </div>
           )}
-          <DividendNotice fundIds={[applied.fundId]} />
+           <DividendNotice fundIds={[committed.params.fundId]} />
 
           <MoneyMachineBlock
-            investAmount={investAmount}
+             investAmount={committed.params.investAmount}
             stats={portfolioStats}
-            fundId={assetDisplayName(applied.fundId)}
+             fundId={assetDisplayName(committed.params.fundId)}
             startDate={startDate}
             endDate={endDate}
           />
@@ -455,11 +487,11 @@ function BitcoinPanelImpl({ funds }: Props) {
           <PerformanceTable stats={portfolioStats} />
 
           <BitcoinCycleTable
-            btc={fundData.get(BTC_ID) ?? []}
-            base={fundData.get(applied.fundId) ?? []}
-            baseName={assetDisplayName(applied.fundId)}
+             btc={committed.data.get(BTC_ID) ?? []}
+             base={committed.data.get(committed.params.fundId) ?? []}
+             baseName={assetDisplayName(committed.params.fundId)}
           />
-          <SleepTestBlock investAmount={investAmount} stats={portfolioStats} />
+           <SleepTestBlock investAmount={committed.params.investAmount} stats={portfolioStats} />
 
           <div className="section-divider">
             <span className="section-divider-label">
@@ -467,20 +499,20 @@ function BitcoinPanelImpl({ funds }: Props) {
             </span>
           </div>
 
-          <RiskContributionChart data={riskContribData} fundId={assetDisplayName(applied.fundId)} />
+           <RiskContributionChart data={riskContribData} fundId={assetDisplayName(committed.params.fundId)} />
 
           {/* Phần bên dưới tính nặng hơn — deferred để không chặn phần trên hiện ngay
               (xem useDeferredValue ở trên). Mờ nhẹ trong lúc React tính phần mới. */}
           <div style={{ opacity: isHeavySectionStale ? 0.6 : 1, transition: 'opacity 0.15s' }}>
             <BtcContributionChart
               portfolioReturns={deferredPortfolioReturns}
-              btcPercents={applied.btcPercents}
-              fundId={assetDisplayName(applied.fundId)}
+                btcPercents={heavyParams!.btcPercents}
+                fundId={assetDisplayName(heavyParams!.fundId)}
             />
             <WinRateBlock
               portfolioReturns={deferredPortfolioReturns}
-              btcPercents={applied.btcPercents}
-              stats={portfolioStats}
+                btcPercents={heavyParams!.btcPercents}
+               stats={deferredPortfolioStats}
             />
 
             <div className="section-divider">
@@ -490,9 +522,9 @@ function BitcoinPanelImpl({ funds }: Props) {
             </div>
 
             <BtcWeightChart
-              allSimReturns={deferredAllSimReturns}
-              fundId={applied.fundId}
-              rebalFreq={applied.rebalFreq}
+               allSimReturns={deferredAllSimReturns}
+               fundId={heavyParams!.fundId}
+               rebalFreq={heavyParams!.rebalFreq}
             />
           </div>
         </>

@@ -1,5 +1,15 @@
 const ENTRIES = [
   {
+    version: 'v4.3',
+    date: '18/08/2026',
+    items: [
+      'Sửa lỗi các tab mô phỏng tự tính lại khi đang chỉnh thông số. Kết quả chỉ cập nhật sau khi bấm nút chạy.',
+      'Sửa lỗi cho phép tính khi dữ liệu còn đang tải hoặc đang có lỗi; dashboard giờ chờ dữ liệu đầy đủ trước khi chạy.',
+      'Sửa lỗi tab Bitcoin ghép kết quả mới với thông số cũ trong lúc phần phân tích chi tiết đang tính.',
+      'Thêm cảnh báo khi thông số đã thay đổi nhưng kết quả đang hiển thị vẫn là lần chạy trước.',
+    ],
+  },
+  {
     version: 'v4.2',
     date: '14/08/2026',
     items: [

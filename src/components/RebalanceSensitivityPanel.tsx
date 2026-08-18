@@ -16,6 +16,7 @@ import {
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import type { DCASlot } from '../utils/dca'
 import { useFundSeriesMap } from '../hooks/useFundData'
+import { useCommittedRun } from '../hooks/useCommittedRun'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import {
   runRebalanceSensitivity, summarize, GROUP_LABELS, SCHEDULES,
@@ -49,6 +50,21 @@ const SCHEDULE_OPTIONS = SCHEDULES.map(s => ({ value: s.id, label: s.label }))
 
 type DateRangeMode = 'all' | 'years'
 
+interface RebalanceParams {
+  slots: DCASlot[]
+  dateFrom: string
+  dateTo: string
+  schedules: ScheduleId[]
+  absBand: BandSweep | null
+  relBand: BandSweep | null
+  feePct: number
+}
+
+interface RebalanceSnapshot {
+  params: RebalanceParams
+  data: Map<string, PricePoint[]>
+}
+
 function RebalanceSensitivityPanelImpl({ funds }: Props) {
   // ── Thông số ──
   const [dateMode, setDateMode] = useState<DateRangeMode>('all')
@@ -78,16 +94,6 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     rebalFreq: 'quarterly',
   }))
 
-  const [committed, setCommitted] = useState<{
-    slots: DCASlot[]
-    dateFrom: string
-    dateTo: string
-    schedules: ScheduleId[]
-    absBand: BandSweep | null
-    relBand: BandSweep | null
-    feePct: number
-  } | null>(null)
-
   const fundOptions = useMemo(() => [
     ...funds.map(f => ({ value: f.id, label: f.name_vi })),
     { value: savingsAssetId(DEFAULT_SAVINGS_RATE), label: SAVINGS_OPTION_LABEL },
@@ -97,18 +103,13 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
   const neededIds = useMemo(() => {
     const ids = new Set<string>()
     for (const s of portfolio.slots) {
-      if (s.fundId) ids.add(s.fundId)
-    }
-    if (committed) {
-      for (const s of committed.slots) {
-        if (s.fundId) ids.add(s.fundId)
-      }
+      if (s.fundId && s.weight > 0) ids.add(s.fundId)
     }
     return ids
-  }, [portfolio.slots, committed])
+  }, [portfolio.slots])
 
   const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
-  const { data: fundData, loading } = useFundSeriesMap(neededIdList)
+  const { data: fundData, loading, errors } = useFundSeriesMap(neededIdList)
 
   // ── Validation ──
   const nonZeroSlots = portfolio.slots.filter(s => s.fundId && s.weight > 0)
@@ -128,7 +129,7 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
     return { from: dateFrom, to: dateTo }
   }
 
-  function buildSnapshot() {
+  function buildParams(): RebalanceParams {
     const { from, to } = getEffectiveDates()
     return {
       slots: portfolio.slots.map(s => ({ ...s })),
@@ -143,16 +144,26 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
 
   function runAnalysis() {
     if (!canRun) return
-    setCommitted(buildSnapshot())
+    runCommitted()
   }
 
-  const isDirty = !!committed
-    && JSON.stringify(committed) !== JSON.stringify(buildSnapshot())
-
   // ── Chạy mô phỏng ──
-  const result = useMemo(() => {
-    if (!committed) return null
-    const slots = committed.slots.filter(s => s.fundId && s.weight > 0)
+  const liveParams = buildParams()
+  const dataReady = Array.from(neededIds).every(id => fundData.has(id))
+    && !loading
+    && errors.size === 0
+  const committedRun = useCommittedRun({
+    ready: dataReady,
+    valid: canRun,
+    liveParams,
+    captureSnapshot: (): RebalanceSnapshot => ({
+      params: buildParams(),
+      data: new Map(fundData),
+    }),
+    compute: snapshot => {
+      const committed = snapshot.params
+      const fundData = snapshot.data
+      const slots = committed.slots.filter(s => s.fundId && s.weight > 0)
     if (slots.length < 2) return null
 
     // Cửa sổ chung: bắt đầu muộn nhất, kết thúc sớm nhất giữa các quỹ,
@@ -185,7 +196,16 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
       relBand: committed.relBand,
       feePct: committed.feePct,
     })
-  }, [committed, fundData])
+    },
+  })
+
+  const {
+    committed,
+    result,
+    dirty: isDirty,
+    run: runCommitted,
+  } = committedRun
+  const dataError = Array.from(errors.values())[0] ?? null
 
   return (
     <div className="simulation-panel">
@@ -411,7 +431,11 @@ function RebalanceSensitivityPanelImpl({ funds }: Props) {
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
-      {committed && !loading && !result && (
+      {!loading && dataError && (
+        <div className="error-banner">{dataError}</div>
+      )}
+
+      {committed && !loading && !result && !dataError && (
         <div className="error-banner">
           Không đủ dữ liệu để phân tích. Kiểm tra lại quỹ đã chọn hoặc khoảng thời gian.
         </div>

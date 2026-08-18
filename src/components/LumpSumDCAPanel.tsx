@@ -5,6 +5,7 @@ import { buildLsDcaUrl } from '../utils/shareUrl'
 import type { LsDcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
+import { useCommittedRun } from '../hooks/useCommittedRun'
 import Select from 'react-select'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
@@ -25,21 +26,16 @@ import {
   computeScenarioPath,
   computeDrawdownBuckets,
   computeSincePeakBuckets,
-  type SincePeakRow,
   MIN_INDEPENDENT_WINDOWS,
   HEATMAP_HOLDING_YEARS,
   HEATMAP_DCA_MONTHS,
   type CashMode,
   type LSvsDCAFreq,
-  type LSvsDCASummary,
-  type HistogramBucket,
   type HeatmapCell,
-  type HoldingCostCell,
-  type LSvsDCAScenario,
 } from '../utils/lsVsDca'
 import { isCashMode, isLSvsDCAFreq } from '../utils/lsVsDca'
 import { ScenarioPathChart } from './ScenarioPathChart'
-import { DrawdownBucketChart, type DrawdownBucketView } from './DrawdownBucketChart'
+import { DrawdownBucketChart } from './DrawdownBucketChart'
 import { SincePeakChart } from './SincePeakChart'
 import {
   PortfolioCard,
@@ -53,6 +49,23 @@ interface Props {
 }
 
 const HORIZON_OPTIONS = [3, 6, 12, 18, 24, 36]
+
+interface LsDcaCommittedParams {
+  portfolio: PortfolioCardState | null
+  totalCapital: number
+  horizonMonths: number
+  freq: LSvsDCAFreq
+  cashMode: CashMode
+  cashSavingsRate: number
+  cashFundId: string
+  compareFundId: string
+}
+
+interface LsDcaSnapshot {
+  params: LsDcaCommittedParams
+  data: Map<string, PricePoint[]>
+  compareFundName: string | null
+}
 
 function hydrateLsDcaPortfolio(
   source: NonNullable<LsDcaShareState['portfolio']>,
@@ -71,7 +84,6 @@ function hydrateLsDcaPortfolio(
 
 function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
   const nextIdRef = useRef(1)
-  const hasRunOnceRef = useRef(false)
 
   // URL payload comes from App; this hook keeps localStorage precedence and the persist gate.
   const {
@@ -119,30 +131,6 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
     return hydrateLsDcaPortfolio(src, nextIdRef)
   })
 
-  // ── Data ──
-  /**
-   * Bản chụp tại lúc bấm "Chạy Phân Tích".
-   *
-   * `data` là bản chụp giá, cố ý KHÔNG đọc thẳng `fundData` lúc tính. Nếu đọc
-   * thẳng thì mỗi lần người dùng đổi tên quỹ, dữ liệu quỹ mới tải về sẽ đổi
-   * identity của Map và kéo theo tính lại toàn bộ, dù người dùng chưa bấm gì.
-   * Đó là chỗ gây khựng máy, và tệ hơn là nó tính bằng cấu hình cũ.
-   */
-  const [committed, setCommitted] = useState<{
-    portfolio: PortfolioCardState
-    totalCapital: number
-    horizonMonths: number
-    freq: LSvsDCAFreq
-    cashMode: CashMode
-    cashSavingsRate: number
-    cashFundId: string
-    compareFundId: string
-    data: Map<string, PricePoint[]>
-  } | null>(null)
-
-  /** Đã bấm nút nhưng dữ liệu chưa tải xong, chờ đủ rồi mới chụp. */
-  const [pendingRun, setPendingRun] = useState(false)
-
   const lastShareKeyRef = useRef(shareUrl.key)
   useEffect(() => {
     if (shareUrl.key === lastShareKeyRef.current) return
@@ -164,8 +152,7 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
     setPortfolio(urlParams?.portfolio
       ? hydrateLsDcaPortfolio(urlParams.portfolio, nextIdRef)
       : hasUrlPayload ? null : localPortfolio ? hydrateLsDcaPortfolio(localPortfolio, nextIdRef) : null)
-    setCommitted(null)
-    setPendingRun(false)
+    resetCommitted()
   }, [shareUrl.key, active]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Persist to localStorage ──
@@ -277,7 +264,7 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
     && totalCapital > 0
     && (cashMode !== 'fund' || cashFundId !== '')
 
-  function buildCommitted() {
+  function buildSnapshot(): LsDcaSnapshot {
     // Chỉ chụp đúng những quỹ đang cần, để dữ liệu quỹ khác tải về sau không
     // đụng tới kết quả đang hiển thị.
     const snapshot = new Map<string, PricePoint[]>()
@@ -286,7 +273,38 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
       if (prices) snapshot.set(id, prices)
     }
     return {
-      portfolio: { ...portfolio!, slots: [...portfolio!.slots] },
+      params: {
+        portfolio: { ...portfolio!, slots: [...portfolio!.slots] },
+        totalCapital,
+        horizonMonths,
+        freq,
+        cashMode,
+        cashSavingsRate: savingsRate / 100,
+        cashFundId,
+        compareFundId,
+      },
+      data: snapshot,
+      compareFundName: compareFundId
+        ? funds.find(f => f.id === compareFundId)?.name_vi ?? compareFundId
+        : null,
+    }
+  }
+
+  const dataReady = Array.from(neededIds).every(id => fundData.has(id))
+    && !loading
+    && errors.size === 0
+
+  function runAnalysis() {
+    if (!canRun || !portfolio) return
+    runCommitted()
+  }
+
+  // ── Compute results ──
+  const committedRun = useCommittedRun({
+    ready: dataReady,
+    valid: canRun,
+    liveParams: {
+      portfolio,
       totalCapital,
       horizonMonths,
       freq,
@@ -294,172 +312,143 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
       cashSavingsRate: savingsRate / 100,
       cashFundId,
       compareFundId,
-      data: snapshot,
-    }
-  }
+    },
+    captureSnapshot: buildSnapshot,
+    compute: snapshot => {
+      const committed = {
+        ...snapshot.params,
+        data: snapshot.data,
+        compareFundName: snapshot.compareFundName,
+      }
+      const p = committed.portfolio
+      if (!p) return null
 
-  const dataReady = Array.from(neededIds).every(id => fundData.has(id))
+      const {
+        cashMode: cm, cashFundId: cfId, compareFundId: cfId2,
+        data: committedData,
+      } = committed
 
-  function runAnalysis() {
-    if (!canRun || !portfolio) return
-    hasRunOnceRef.current = true
-    // Bấm khi dữ liệu chưa về thì ghi nhận ý định, effect bên dưới chụp sau.
-    if (!dataReady) {
-      setCommitted(null)
-      setPendingRun(true)
-      return
-    }
-    setCommitted(buildCommitted())
-  }
+      const validSlots = p.slots.filter(s => s.fundId && s.weight > 0)
+      if (validSlots.length === 0) return null
 
-  // Chốt lại lần chạy đang chờ, ngay khi dữ liệu về đủ.
-  useEffect(() => {
-    if (!pendingRun || !dataReady || !canRun || !portfolio) return
-    setCommitted(buildCommitted())
-    setPendingRun(false)
-  }, [pendingRun, dataReady, canRun, portfolio]) // eslint-disable-line react-hooks/exhaustive-deps
+      // Collect all fund prices
+      const allFundIds = new Set(validSlots.map(s => s.fundId))
+      const allPricesRaw = new Map<string, PricePoint[]>()
+      for (const id of allFundIds) {
+        const data = committedData.get(id)
+        if (!data || data.length === 0) return null
+        allPricesRaw.set(id, data)
+      }
 
-  // ── Compute results ──
-  const results = useMemo<{
-    summary: LSvsDCASummary
-    histogram: HistogramBucket[]
-    heatmap: HeatmapCell[][]
-    heatmap2: HeatmapCell[][] | null
-    compareFundName: string | null
-    effectiveWindow: string
-    holdingCost: HoldingCostCell[]
-    drawdownViews: DrawdownBucketView[]
-    sincePeak: SincePeakRow[]
-    dcaMonths: number
-    totalCapital: number
-    scenarios: LSvsDCAScenario[]
-    /** Đầu vào để vẽ lại đường đi của một kịch bản, giữ nguyên bản chụp. */
-    pathInputs: {
-      aligned: Map<string, PricePoint[]>
-      validSlots: DCASlot[]
-      cashFundPrices: PricePoint[] | null
-    }
-  } | null>(() => {
-    if (!committed) return null
-    const {
-      portfolio: p, cashMode: cm, cashFundId: cfId, compareFundId: cfId2,
-      data: committedData,
-    } = committed
+      // Align main portfolio funds
+      const aligned = alignFundsToCommonGridDaily(allPricesRaw)
 
-    const validSlots = p.slots.filter(s => s.fundId && s.weight > 0)
-    if (validSlots.length === 0) return null
+      // Cash fund prices (if needed)
+      const cashFundPrices = (cm === 'fund' && cfId) ? committedData.get(cfId) ?? null : null
+      if (cm === 'fund' && cfId && !cashFundPrices) return null
 
-    // Collect all fund prices
-    const allFundIds = new Set(validSlots.map(s => s.fundId))
-    const allPricesRaw = new Map<string, PricePoint[]>()
-    for (const id of allFundIds) {
-      const data = committedData.get(id)
-      if (!data || data.length === 0) return null
-      allPricesRaw.set(id, data)
-    }
-
-    // Align main portfolio funds
-    const aligned = alignFundsToCommonGridDaily(allPricesRaw)
-
-    // Cash fund prices (if needed)
-    const cashFundPrices = (cm === 'fund' && cfId) ? committedData.get(cfId) ?? null : null
-    if (cm === 'fund' && cfId && !cashFundPrices) return null
-
-    const scenarios = computeRollingScenarios(
-      aligned,
-      validSlots,
-      committed.totalCapital,
-      committed!.horizonMonths,
-      committed.freq,
-      cm,
-      committed.cashSavingsRate,
-      cashFundPrices,
-    )
-
-    const summary = summarizeScenarios(scenarios)
-    if (!summary) return null
-
-    const histogram = buildHistogram(scenarios)
-
-    const heatmap = computeHeatmap(
-      aligned, validSlots, committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
-    )
-
-    const holdingCost = computeHoldingCost(
-      aligned, validSlots, committed.horizonMonths,
-      committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
-    )
-
-    /**
-     * Bảng chia theo mức giảm từ đỉnh, cho một kỳ nắm giữ cụ thể.
-     *
-     * Mốc so sánh phải tính lại theo đúng kỳ nắm giữ đó, không mượn con số của
-     * kỳ khác, nếu không dòng mốc nói một đằng còn các dải nói một nẻo.
-     */
-    function bucketView(holdingMonths: number, reuse?: typeof scenarios) {
-      const scen = reuse ?? computeRollingScenarios(
-        aligned, validSlots, committed!.totalCapital, committed!.horizonMonths,
-        committed!.freq, cm, committed!.cashSavingsRate, cashFundPrices, holdingMonths,
+      const scenarios = computeRollingScenarios(
+        aligned,
+        validSlots,
+        committed.totalCapital,
+        committed.horizonMonths,
+        committed.freq,
+        cm,
+        committed.cashSavingsRate,
+        cashFundPrices,
       )
-      const sum = summarizeScenarios(scen)
-      return {
-        rows: computeDrawdownBuckets(aligned, validSlots, scen, holdingMonths),
-        baselineWinRate: sum?.lsWinRate ?? 0,
-        baselineCostOfCapital: sum ? -sum.medianDiff : 0,
-        totalScenarios: scen.length,
-        extraMonths: holdingMonths - committed!.horizonMonths,
-      }
-    }
 
-    // Kỳ "bán ngay" trùng đúng bộ kịch bản của khối tóm tắt, dùng lại cho khỏi tính hai lần.
-    const drawdownViews = [
-      bucketView(committed.horizonMonths, scenarios),
-      bucketView(committed.horizonMonths + 12),
-      bucketView(committed.horizonMonths + 24),
-    ]
+      const summary = summarizeScenarios(scenarios)
+      if (!summary) return null
 
-    // Heatmap for comparison fund (if selected)
-    let heatmap2: HeatmapCell[][] | null = null
-    let compareFundName: string | null = null
-    if (cfId2) {
-      const comparePrices = committedData.get(cfId2)
-      if (comparePrices && comparePrices.length > 0) {
-        const compareMap = new Map([[cfId2, comparePrices]])
-        const aligned2 = alignFundsToCommonGridDaily(compareMap)
-        heatmap2 = computeHeatmap(
-          aligned2, [{ fundId: cfId2, weight: 100 }],
-          committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
+      const histogram = buildHistogram(scenarios)
+
+      const heatmap = computeHeatmap(
+        aligned, validSlots, committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
+      )
+
+      const holdingCost = computeHoldingCost(
+        aligned, validSlots, committed.horizonMonths,
+        committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
+      )
+
+      /**
+       * Bảng chia theo mức giảm từ đỉnh, cho một kỳ nắm giữ cụ thể.
+       *
+       * Mốc so sánh phải tính lại theo đúng kỳ nắm giữ đó, không mượn con số của
+       * kỳ khác, nếu không dòng mốc nói một đằng còn các dải nói một nẻo.
+       */
+      function bucketView(holdingMonths: number, reuse?: typeof scenarios) {
+        const scen = reuse ?? computeRollingScenarios(
+          aligned, validSlots, committed.totalCapital, committed.horizonMonths,
+          committed.freq, cm, committed.cashSavingsRate, cashFundPrices, holdingMonths,
         )
-        compareFundName = funds.find(f => f.id === cfId2)?.name_vi ?? cfId2
+        const sum = summarizeScenarios(scen)
+        return {
+          rows: computeDrawdownBuckets(aligned, validSlots, scen, holdingMonths),
+          baselineWinRate: sum?.lsWinRate ?? 0,
+          baselineCostOfCapital: sum ? -sum.medianDiff : 0,
+          totalScenarios: scen.length,
+          extraMonths: holdingMonths - committed.horizonMonths,
+        }
       }
-    }
 
-    // Khoảng thời gian THẬT SỰ đã phân tích: lấy từ chính mảng kịch bản, không
-    // lấy dải của quỹ đứng đầu. Danh mục DCDS (2004) cộng E1VFVN30 (2014) chỉ
-    // chạy được từ 2014, ghi "từ 2004" là nói quá phạm vi đã kiểm chứng.
-    // Ngày cuối cộng thêm kỳ nắm giữ, vì kịch bản cuối còn chạy tới lúc bán.
-    const fromDate = scenarios[0]?.startDate ?? ''
-    const lastStart = scenarios[scenarios.length - 1]?.startDate ?? ''
-    const alignedFirst = aligned.get(validSlots[0]!.fundId)
-    const lastAvailable = alignedFirst?.[alignedFirst.length - 1]?.date ?? lastStart
-    const effectiveWindow = `${formatDate(fromDate)} → ${formatDate(lastAvailable)}`
+      // Kỳ "bán ngay" trùng đúng bộ kịch bản của khối tóm tắt, dùng lại cho khỏi tính hai lần.
+      const drawdownViews = [
+        bucketView(committed.horizonMonths, scenarios),
+        bucketView(committed.horizonMonths + 12),
+        bucketView(committed.horizonMonths + 24),
+      ]
 
-    return {
-      summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
-      drawdownViews,
-      // Dùng chung bộ kịch bản "bán ngay khi rải xong" với khối tóm tắt, để
-      // hai bảng chia nhóm khác nhau vẫn nói về cùng một tập dữ liệu.
-      sincePeak: computeSincePeakBuckets(
-        aligned, validSlots, scenarios, committed.horizonMonths,
-      ),
-      holdingCost, dcaMonths: committed.horizonMonths,
-      totalCapital: committed.totalCapital,
-      scenarios,
-      pathInputs: { aligned, validSlots, cashFundPrices },
-    }
-    // Cố ý CHỈ phụ thuộc `committed`. Bản chụp dữ liệu nằm sẵn trong đó, nên đổi
-    // quỹ hay tải quỹ mới về đều không kéo theo tính lại.
-  }, [committed]) // eslint-disable-line react-hooks/exhaustive-deps
+      // Heatmap for comparison fund (if selected)
+      let heatmap2: HeatmapCell[][] | null = null
+      let compareFundName: string | null = null
+      if (cfId2) {
+        const comparePrices = committedData.get(cfId2)
+        if (comparePrices && comparePrices.length > 0) {
+          const compareMap = new Map([[cfId2, comparePrices]])
+          const aligned2 = alignFundsToCommonGridDaily(compareMap)
+          heatmap2 = computeHeatmap(
+            aligned2, [{ fundId: cfId2, weight: 100 }],
+            committed.freq, cm, committed.cashSavingsRate, cashFundPrices,
+          )
+          compareFundName = committed.compareFundName
+        }
+      }
+
+      // Khoảng thời gian THẬT SỰ đã phân tích: lấy từ chính mảng kịch bản, không
+      // lấy dải của quỹ đứng đầu. Danh mục DCDS (2004) cộng E1VFVN30 (2014) chỉ
+      // chạy được từ 2014, ghi "từ 2004" là nói quá phạm vi đã kiểm chứng.
+      // Ngày cuối cộng thêm kỳ nắm giữ, vì kịch bản cuối còn chạy tới lúc bán.
+      const fromDate = scenarios[0]?.startDate ?? ''
+      const lastStart = scenarios[scenarios.length - 1]?.startDate ?? ''
+      const alignedFirst = aligned.get(validSlots[0]!.fundId)
+      const lastAvailable = alignedFirst?.[alignedFirst.length - 1]?.date ?? lastStart
+      const effectiveWindow = `${formatDate(fromDate)} → ${formatDate(lastAvailable)}`
+
+      return {
+        summary, histogram, heatmap, heatmap2, compareFundName, effectiveWindow,
+        drawdownViews,
+        // Dùng chung bộ kịch bản "bán ngay khi rải xong" với khối tóm tắt, để
+        // hai bảng chia nhóm khác nhau vẫn nói về cùng một tập dữ liệu.
+        sincePeak: computeSincePeakBuckets(
+          aligned, validSlots, scenarios, committed.horizonMonths,
+        ),
+        holdingCost, dcaMonths: committed.horizonMonths,
+        totalCapital: committed.totalCapital,
+        scenarios,
+        pathInputs: { aligned, validSlots, cashFundPrices },
+      }
+    },
+  })
+
+  const {
+    committed,
+    result: results,
+    dirty: isDirty,
+    run: runCommitted,
+    reset: resetCommitted,
+  } = committedRun
 
   // ── Một kịch bản cụ thể ──
   /** null nghĩa là chưa chọn tay, lấy tháng nằm giữa làm mặc định. */
@@ -484,11 +473,11 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
     const path = computeScenarioPath(
       pathInputs.aligned,
       pathInputs.validSlots,
-      committed!.totalCapital,
-      committed!.horizonMonths,
-      committed!.freq,
-      committed!.cashMode,
-      committed!.cashSavingsRate,
+      committed!.params.totalCapital,
+      committed!.params.horizonMonths,
+      committed!.params.freq,
+      committed!.params.cashMode,
+      committed!.params.cashSavingsRate,
       pathInputs.cashFundPrices,
       start,
     )
@@ -522,8 +511,8 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
   }
 
   function fmtGrowthOrCagr(growthRatio: number): string {
-    if (showCagr && committed && committed!.horizonMonths > 0) {
-      const annualized = Math.pow(growthRatio, 12 / committed!.horizonMonths) - 1
+    if (showCagr && committed && committed.params.horizonMonths > 0) {
+      const annualized = Math.pow(growthRatio, 12 / committed.params.horizonMonths) - 1
       return fmtPct(annualized) + '/năm'
     }
     return fmtGrowth(growthRatio)
@@ -740,13 +729,20 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
       )}
 
       {portfolio && (
-        <button
-          className="sim-run-btn"
-          onClick={runAnalysis}
-          disabled={!canRun}
-        >
-          Chạy Phân Tích
-        </button>
+        <div className="btc-run-row">
+          <button
+            className="sim-run-btn"
+            onClick={runAnalysis}
+            disabled={!canRun}
+          >
+            Chạy Phân Tích
+          </button>
+          {isDirty && (
+            <span className="btc-run-hint">
+              Thông số đã thay đổi, bấm "Chạy Phân Tích" để cập nhật kết quả.
+            </span>
+          )}
+        </div>
       )}
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
@@ -769,9 +765,9 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
       {results && (
         <div className="lsdca-results">
           <DividendNotice fundIds={Array.from(new Set([
-            ...committed!.portfolio.slots.map(s => s.fundId),
-            committed!.cashFundId,
-            committed!.compareFundId,
+            ...committed!.params.portfolio!.slots.map(s => s.fundId),
+            committed!.params.cashFundId,
+            committed!.params.compareFundId,
           ].filter(Boolean)))} />
 
           <div className="lsdca-window-info">
@@ -794,14 +790,14 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
                 onClick={() => setShowCagr(v => !v)}
                 title={showCagr
                   ? 'Đang xem lời/năm (quy đổi). Nhấn để xem tổng lời/lỗ cả kỳ đầu tư'
-                  : `Nhấn để xem lời/năm: nếu mức lãi sau ${committed!.horizonMonths}th này mà đều mỗi năm, thì được bao nhiêu %/năm?`}
+                  : `Nhấn để xem lời/năm: nếu mức lãi sau ${committed!.params.horizonMonths}th này mà đều mỗi năm, thì được bao nhiêu %/năm?`}
               >
                 {showCagr ? '✓ Lời/năm' : 'Xem lời/năm'}
               </button>
             </div>
 
             <div className="lsdca-stats-context">
-              Trung bình sau <strong>{committed!.horizonMonths} tháng</strong> đầu tư,
+              Trung bình sau <strong>{committed!.params.horizonMonths} tháng</strong> đầu tư,
               tính qua <strong>{results.summary.totalScenarios} kịch bản</strong> lịch sử
             </div>
 
@@ -809,11 +805,11 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
               <div className="lsdca-stat-col">
                 <div className="lsdca-stat-header lsdca-ls-color">Lump Sum</div>
                 <div className="lsdca-stat-row">
-                  <span>{showCagr ? 'Lời TB (mỗi năm)' : `Lời TB (${committed!.horizonMonths}th)`}</span>
+                  <span>{showCagr ? 'Lời TB (mỗi năm)' : `Lời TB (${committed!.params.horizonMonths}th)`}</span>
                   <span>{fmtGrowthOrCagr(results.summary.meanLSGrowth)}</span>
                 </div>
                 <div className="lsdca-stat-row lsdca-stat-row-secondary">
-                  <span>{showCagr ? 'Trung vị (mỗi năm)' : `Trung vị (${committed!.horizonMonths}th)`}</span>
+                  <span>{showCagr ? 'Trung vị (mỗi năm)' : `Trung vị (${committed!.params.horizonMonths}th)`}</span>
                   <span>{fmtGrowthOrCagr(results.summary.medianLSGrowth)}</span>
                 </div>
               </div>
@@ -823,11 +819,11 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
               <div className="lsdca-stat-col">
                 <div className="lsdca-stat-header lsdca-dca-color">DCA</div>
                 <div className="lsdca-stat-row">
-                  <span>{showCagr ? 'Lời TB (mỗi năm)' : `Lời TB (${committed!.horizonMonths}th)`}</span>
+                  <span>{showCagr ? 'Lời TB (mỗi năm)' : `Lời TB (${committed!.params.horizonMonths}th)`}</span>
                   <span>{fmtGrowthOrCagr(results.summary.meanDCAGrowth)}</span>
                 </div>
                 <div className="lsdca-stat-row lsdca-stat-row-secondary">
-                  <span>{showCagr ? 'Trung vị (mỗi năm)' : `Trung vị (${committed!.horizonMonths}th)`}</span>
+                  <span>{showCagr ? 'Trung vị (mỗi năm)' : `Trung vị (${committed!.params.horizonMonths}th)`}</span>
                   <span>{fmtGrowthOrCagr(results.summary.medianDCAGrowth)}</span>
                 </div>
               </div>

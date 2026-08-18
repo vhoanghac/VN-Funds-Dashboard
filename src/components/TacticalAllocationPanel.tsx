@@ -11,7 +11,7 @@
  * kiểu tín hiệu, đúng 2 trạng thái, độ trễ thực thi CỐ ĐỊNH T+1 (không cho
  * chỉnh). Xem utils/tactical.ts để biết lý do.
  */
-import { useState, useMemo, useEffect, memo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import Select from 'react-select'
 import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -19,6 +19,7 @@ import {
 } from 'recharts'
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { useFundSeriesMap } from '../hooks/useFundData'
+import { useCommittedRun } from '../hooks/useCommittedRun'
 import { dcaCagr, dcaMaxDrawdown, derivePortfolioName } from '../utils/dca'
 import { runTacticalBacktest, decomposeAdvantage, type TacticalBacktestResult, type AllocationId, type IndicatorType, type SignalFrequency } from '../utils/tactical'
 import { PortfolioCard, portfolioSelectStyles, PORTFOLIO_COLORS } from './PortfolioCard'
@@ -79,6 +80,7 @@ interface CommittedParams {
 interface CommittedSnapshot {
   params: CommittedParams
   labels: { nameA: string; nameB: string; signalFundName: string }
+  data: Map<string, PricePoint[]>
 }
 
 /** Gom mọi quỹ mà một snapshot cần tới, kể cả quỹ làm tín hiệu. */
@@ -127,19 +129,6 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
   const [allocationA, setAllocationA] = useState<PortfolioCardState>(() => makeEmptyAllocation('tacticalA', 'Danh mục A'))
   const [allocationB, setAllocationB] = useState<PortfolioCardState>(() => makeEmptyAllocation('tacticalB', 'Danh mục B'))
 
-  // Thông số VÀ nhãn chốt chung một chỗ. Tên danh mục đổi ngay khi người dùng chọn
-  // quỹ khác, nên nếu truyền tên đang sống vào khối kết quả thì lớp memo vỡ, 3 biểu
-  // đồ vẽ lại theo từng phím gõ. Gói chung còn bảo đảm nhãn luôn khớp với chính kết
-  // quả đang hiện, không phải nhãn của lần chỉnh dở dang.
-  const [committed, setCommitted] = useState<CommittedSnapshot | null>(null)
-
-  // Kết quả backtest kèm đúng snapshot đã sinh ra nó. Giữ cả hai trong một state để
-  // biết chắc kết quả đang xem thuộc về lần bấm nút nào.
-  const [computation, setComputation] = useState<{
-    for: CommittedSnapshot
-    result: TacticalBacktestResult | null
-  } | null>(null)
-
   // Danh sách quỹ thật, không có tiết kiệm ngân hàng.
   const realFundOptions = useMemo(
     () => funds.map(f => ({ value: f.id, label: f.name_vi })),
@@ -175,11 +164,8 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     if (signalFundId) ids.add(signalFundId)
     for (const s of allocationA.slots) if (s.fundId) ids.add(s.fundId)
     for (const s of allocationB.slots) if (s.fundId) ids.add(s.fundId)
-    if (committed) {
-      for (const id of collectCommittedIds(committed.params)) ids.add(id)
-    }
     return ids
-  }, [signalFundId, allocationA.slots, allocationB.slots, committed])
+  }, [signalFundId, allocationA.slots, allocationB.slots])
 
   const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
   const {
@@ -206,7 +192,7 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
     && validA.length > 0 && Math.abs(totalA - 100) < 0.01
     && validB.length > 0 && Math.abs(totalB - 100) < 0.01
 
-  function buildSnapshot() {
+  function buildParams(): CommittedParams {
     const { from, to } = getEffectiveDates()
     return {
       signalFundId, indicatorType, period, toleranceBandPct, signalFrequency, rsiOverbought, rsiOversold,
@@ -225,50 +211,32 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
   function runBacktest() {
     if (!canRun) return
-    setComputation(null)
-    setCommitted({
-      params: buildSnapshot(),
-      labels: { nameA, nameB, signalFundName },
-    })
+    runCommitted()
   }
 
   // Chỉ so `params`, không so `labels`: đổi tên danh mục không phải là đổi thông số.
-  const isDirty = !!committed && JSON.stringify(committed.params) !== JSON.stringify(buildSnapshot())
+  const liveParams = buildParams()
 
-  /**
-   * Backtest CHỈ chạy khi bấm "Chạy", không chạy lại lúc người dùng đang chọn quỹ
-   * hay gõ thông số. Trước đây chỗ này là `useMemo([committed, fundData])`, mà chọn
-   * một quỹ bất kỳ là `fundData` đổi, nên cả backtest chạy lại rồi kéo theo 3 biểu đồ
-   * Recharts vẽ lại, trang đứng hình.
-   *
-   * `computation.for` giữ đúng object snapshot đã sinh ra kết quả. Mỗi lần bấm nút
-   * `buildSnapshot()` trả về object mới, nên so sánh tham chiếu là đủ để biết snapshot
-   * này đã tính hay chưa. `fundData` vẫn nằm trong deps vì lúc mới bấm nút dữ liệu có
-   * thể chưa tải xong, phải đợi nó về rồi mới tính được.
-   */
-  useEffect(() => {
-    if (!committed) {
-      setComputation(null)
-      return
-    }
-    if (computation && computation.for === committed) return
-
-    const p = committed.params
-
-    // Chỉ lấy đúng những quỹ snapshot này cần. Truyền cả cache vào như trước thì quỹ
-    // người dùng vừa chọn thử (chưa bấm Chạy) cũng chen vào lưới ngày chung của
-    // backtest, vừa chậm vừa làm kết quả phụ thuộc thứ không liên quan.
-    const scoped = new Map<string, PricePoint[]>()
-    for (const id of collectCommittedIds(p)) {
-      const series = fundData.get(id)
-      if (!series) return // chưa tải xong, chờ lần fundData kế tiếp
-      scoped.set(id, series)
-    }
-
-    setComputation({
-      for: committed,
-      result: runTacticalBacktest({
-        rawPrices: scoped,
+  const dataReady = Array.from(collectCommittedIds(liveParams)).every(id => fundData.has(id))
+    && !loading
+    && errors.size === 0
+  const committedRun = useCommittedRun({
+    ready: dataReady,
+    valid: canRun,
+    liveParams,
+    captureSnapshot: (): CommittedSnapshot => {
+      const params = buildParams()
+      const data = new Map<string, PricePoint[]>()
+      for (const id of collectCommittedIds(params)) {
+        const series = fundData.get(id)
+        if (series) data.set(id, series)
+      }
+      return { params, labels: { nameA, nameB, signalFundName }, data }
+    },
+    compute: snapshot => {
+      const p = snapshot.params
+      return runTacticalBacktest({
+        rawPrices: snapshot.data,
         signalFundId: p.signalFundId,
         indicatorType: p.indicatorType,
         period: p.period,
@@ -284,14 +252,19 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
         switchCostPct: p.switchCostPct,
         dateFrom: p.dateFrom || undefined,
         dateTo: p.dateTo || undefined,
-      }),
-    })
-  }, [committed, fundData, computation])
+      })
+    },
+  })
 
-  const result = computation?.result ?? null
-  // Đã thật sự chạy cho snapshot hiện tại mà không ra kết quả thì mới báo lỗi. Lúc
-  // còn đang chờ dữ liệu thì để loading nói chuyện, không hiện băng đỏ.
-  const computedCurrent = !!committed && computation?.for === committed
+  const {
+    committed,
+    result,
+    dirty: isDirty,
+    run: runCommitted,
+  } = committedRun
+
+  // `useCommittedRun` keeps both the snapshot and the result stable while live
+  // controls or unrelated fund data change.
 
   return (
     <div className="simulation-panel">
@@ -572,26 +545,28 @@ function TacticalAllocationPanelImpl({ funds }: Props) {
 
       {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
-      {committed && !loading && ((computedCurrent && !result) || (!computedCurrent && dataError)) && (
+      {!loading && dataError && (
+        <div className="error-banner">{dataError}</div>
+      )}
+
+      {committed && !loading && !result && !dataError && (
         <div className="error-banner">
-          {dataError ?? (
-            <>Không đủ dữ liệu để mô phỏng. Kiểm tra lại quỹ đã chọn, hoặc cần nhiều lịch sử hơn để
-            tính đủ {indicatorLabel(committed.params.indicatorType, committed.params.period)} (~{Math.round(committed.params.period / 21)} tháng
-            dữ liệu trước ngày bắt đầu).</>
-          )}
+          Không đủ dữ liệu để mô phỏng. Kiểm tra lại quỹ đã chọn, hoặc cần nhiều lịch sử hơn để
+          tính đủ {indicatorLabel(committed.params.indicatorType, committed.params.period)} (~{Math.round(committed.params.period / 21)} tháng
+          dữ liệu trước ngày bắt đầu).
         </div>
       )}
 
-      {result && computation && (
+      {result && committed && (
         <TacticalResults
           result={result}
-          nameA={computation.for.labels.nameA}
-          nameB={computation.for.labels.nameB}
-          signalFundName={computation.for.labels.signalFundName}
-          indicatorType={computation.for.params.indicatorType}
-          period={computation.for.params.period}
-          rsiOverbought={computation.for.params.rsiOverbought}
-          rsiOversold={computation.for.params.rsiOversold}
+          nameA={committed.labels.nameA}
+          nameB={committed.labels.nameB}
+          signalFundName={committed.labels.signalFundName}
+          indicatorType={committed.params.indicatorType}
+          period={committed.params.period}
+          rsiOverbought={committed.params.rsiOverbought}
+          rsiOversold={committed.params.rsiOversold}
         />
       )}
     </div>
@@ -606,12 +581,12 @@ export const TacticalAllocationPanel = memo(TacticalAllocationPanelImpl)
  * Khối kết quả BẮT BUỘC bọc memo ở cuối file. Đừng gỡ.
  *
  * Mọi ô nhập trong panel cha (Vùng đệm, Số ngày, Số tiền đầu tư, Phí chuyển đổi)
- * đều giữ state ở cha, nên mỗi phím gõ là một lần cha render lại. Khối này vẽ 2
+ * đều giữ state ở cha, nên mỗi phím gõ là một lần cha render lại. Khối này vẽ 3
  * biểu đồ Recharts trên toàn bộ chuỗi ngày, đo được 116ms mỗi lần. Gõ vài phím
  * liên tiếp là trang đứng hình.
  *
  * Props ở đây đều ổn định giữa các lần gõ, và phải giữ nguyên như vậy. `result` cùng
- * mọi thông số đều lấy từ `computation.for`, tức snapshot chốt lúc bấm "Chạy", nên chỉ
+ * mọi thông số đều lấy từ `committed`, tức snapshot chốt lúc bấm "Chạy", nên chỉ
  * đổi khi bấm nút. Kể cả tên danh mục (`nameA`, `nameB`) cũng lấy từ snapshot chứ không
  * lấy tên đang sống, vì tên đổi ngay khi người dùng chọn quỹ khác.
  *

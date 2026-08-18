@@ -11,6 +11,7 @@ import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from 
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
 import { useFundSeriesMap } from '../hooks/useFundData'
+import { useCommittedRun } from '../hooks/useCommittedRun'
 import { PortfolioValueChart } from './PortfolioValueChart'
 import { DcaRatioChart } from './DcaRatioChart'
 import { DcaReturnPainChart } from './DcaReturnPainChart'
@@ -103,6 +104,25 @@ interface DCAPortfolioResult {
   dividendNarrative: DividendNarrativeStats[]
 }
 
+interface DcaParams {
+  portfolios: DCAPortfolioState[]
+  initialAmount: number
+  cashflowAmount: number
+  cashflowFreq: DCAFrequency
+  dateFrom: string
+  dateTo: string
+}
+
+interface DcaSnapshot {
+  params: DcaParams
+  data: {
+    fundData: Map<string, PricePoint[]>
+    rawFundData: Map<string, PricePoint[]>
+    purchasePriceData: Map<string, PricePoint[]>
+    dividendsByFund: Map<string, DividendEvent[]>
+  }
+}
+
 /**
  * Các section kết quả, kiểu hl.eco: bấm pill để chỉ hiện section đó.
  * "Tất cả" (mặc định) giữ nguyên mạch kể chuyện đọc từ trên xuống.
@@ -177,22 +197,21 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // Dùng cho narrative (DividendBlock). Adjustment đã áp dụng sẵn ở CSV
   // loader cho simulation chính, nên simulation không cần biết về cổ tức nữa.
   const [dividendsByFund, setDividendsByFund] = useState<Map<string, DividendEvent[]>>(new Map())
+  const [dividendsReady, setDividendsReady] = useState(false)
 
   // Load dividends.json một lần lúc mount (cho narrative DividendBlock)
   useEffect(() => {
     let cancelled = false
     loadDividends()
-      .then(map => { if (!cancelled) setDividendsByFund(map) })
-      .catch(() => { /* ignore */ })
+      .then(map => {
+        if (!cancelled) {
+          setDividendsByFund(map)
+          setDividendsReady(true)
+        }
+      })
+      .catch(() => { if (!cancelled) setDividendsReady(true) })
     return () => { cancelled = true }
   }, [])
-  // Snapshot at run time
-  const [committed, setCommitted] = useState<{
-    portfolios: DCAPortfolioState[]
-    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
-    dateFrom: string
-    dateTo: string
-  } | null>(null)
 
   const lastShareKeyRef = useRef(shareUrl.key)
   useEffect(() => {
@@ -212,7 +231,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     nextIdRef.current = 1
     const localPortfolios = parsePortfolios(readLocal<unknown>('dca_portfolios', null))
     setPortfolios(hydrateDcaPortfolios(urlParams?.portfolios ?? (hasUrlPayload ? [] : localPortfolios), nextIdRef))
-    setCommitted(null)
+    resetCommitted()
     setActiveSection('all')
   }, [shareUrl.key, active]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -244,25 +263,23 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // Collect all needed fund IDs
   const neededIds = useMemo(() => {
     const ids = new Set<string>()
-    const allPortfolios = committed
-      ? [...portfolios, ...committed.portfolios]
-      : portfolios
-    for (const p of allPortfolios) {
+    for (const p of portfolios) {
       for (const s of p.slots) {
         if (s.fundId) ids.add(s.fundId)
       }
     }
     return ids
-  }, [portfolios, committed])
+  }, [portfolios])
 
-  // Hook dùng chung giữ daily adjusted, raw và giá sell của vàng. `neededIds`
-  // đã bao gồm cả portfolio đang chỉnh và portfolio trong snapshot committed.
+  // Hook dùng chung giữ daily adjusted, raw và giá sell của vàng. Snapshot đã
+  // clone các Map nên cache live chỉ cần giữ portfolio đang chỉnh.
   const neededIdList = useMemo(() => Array.from(neededIds), [neededIds])
   const {
     data: fundData,
     raw: rawFundData,
     purchase: purchasePriceData,
     loading,
+    errors,
   } = useFundSeriesMap(neededIdList, { dualPriceFundIds })
 
   // ── Portfolio CRUD ──
@@ -353,15 +370,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       return Math.abs(total - 100) < 0.01
     })
     if (!allValid) return
-
-    const { from, to } = getEffectiveDates()
-
-    setCommitted({
-      portfolios: portfolios.map(p => ({ ...p, slots: [...p.slots] })),
-      params: { initialAmount, cashflowAmount, cashflowFreq },
-      dateFrom: from,
-      dateTo: to,
-    })
+    runCommitted()
   }
 
   const canRun = portfolios.length > 0 && portfolios.every(p => {
@@ -369,23 +378,52 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     return Math.abs(total - 100) < 0.01 && p.slots.every(s => s.fundId)
   }) && (initialAmount > 0 || cashflowAmount > 0)
 
-  const isDirty = !!committed && (() => {
-    const { from, to } = getEffectiveDates()
-    const portKey = (ps: DCAPortfolioState[]) =>
-      JSON.stringify(ps.map(p => ({ name: p.name, slots: p.slots, rebalFreq: p.rebalFreq })))
-    return (
-      portKey(portfolios) !== portKey(committed.portfolios) ||
-      initialAmount    !== committed.params.initialAmount   ||
-      cashflowAmount   !== committed.params.cashflowAmount  ||
-      cashflowFreq     !== committed.params.cashflowFreq    ||
-      from             !== committed.dateFrom               ||
-      to               !== committed.dateTo
-    )
-  })()
+  const liveDates = getEffectiveDates()
+  const liveParams: DcaParams = {
+    portfolios,
+    initialAmount,
+    cashflowAmount,
+    cashflowFreq,
+    dateFrom: liveDates.from,
+    dateTo: liveDates.to,
+  }
+  const dataReady = Array.from(neededIds).every(id => fundData.has(id))
+    && !loading
+    && errors.size === 0
+    && dividendsReady
 
   // ── Compute results ──
-  const results = useMemo<DCAPortfolioResult[] | null>(() => {
-    if (!committed || committed.portfolios.length === 0) return null
+  const committedRun = useCommittedRun({
+    ready: dataReady,
+    valid: canRun,
+    liveParams,
+    captureSnapshot: (): DcaSnapshot => ({
+      params: {
+        portfolios: portfolios.map(p => ({ ...p, slots: [...p.slots] })),
+        initialAmount,
+        cashflowAmount,
+        cashflowFreq,
+        dateFrom: getEffectiveDates().from,
+        dateTo: getEffectiveDates().to,
+      },
+      data: {
+        fundData: new Map(fundData),
+        rawFundData: new Map(rawFundData),
+        purchasePriceData: new Map(purchasePriceData),
+        dividendsByFund: new Map(dividendsByFund),
+      },
+    }),
+    compute: snapshot => {
+      const committed = {
+        ...snapshot.params,
+        ...snapshot.data,
+        params: snapshot.params,
+      }
+      const fundData = snapshot.data.fundData
+      const rawFundData = snapshot.data.rawFundData
+      const purchasePriceData = snapshot.data.purchasePriceData
+      const dividendsByFund = snapshot.data.dividendsByFund
+      if (committed.portfolios.length === 0) return null
 
     // ── Step 1: Find the GLOBAL common start/end date across ALL portfolios ──
     // This ensures fair comparison, all portfolios start DCA on the same date
@@ -533,7 +571,18 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     }
 
     return portfolioResults
-  }, [committed, fundData, rawFundData, purchasePriceData, dividendsByFund])
+    },
+  })
+
+  const {
+    committed,
+    result: results,
+    dirty: isDirty,
+    run: runCommitted,
+    reset: resetCommitted,
+  } = committedRun
+  const dataError = Array.from(errors.values())[0] ?? null
+  const isLoading = loading || !dividendsReady
 
   // Memo hóa để giữ reference ổn định — nếu không, các block hiển thị kết quả
   // bên dưới (đã bọc React.memo) sẽ vẫn re-render + tính toán lại mỗi khi gõ
@@ -603,7 +652,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   })), [validResults])
 
   const dividendFundIds = useMemo(() => Array.from(new Set(
-    committed?.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
+    committed?.params.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
   )), [committed])
 
   // Fund IDs cho DataQualityBlock: lấy từ portfolios ĐANG NHẬP (live state), không
@@ -933,10 +982,14 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         </div>
       )}
 
-      {loading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
+      {isLoading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
+
+      {!isLoading && dataError && (
+        <div className="error-banner">{dataError}</div>
+      )}
 
       {/* Error when no results */}
-      {committed && committed.portfolios.length > 0 && validResults.length === 0 && !loading && (
+      {committed && committed.params.portfolios.length > 0 && validResults.length === 0 && !isLoading && !dataError && (
         <div className="error-banner">
           Không đủ dữ liệu để tính toán. Hãy chọn khoảng thời gian dài hơn hoặc chọn "Tất cả".
         </div>
@@ -1006,7 +1059,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             {startDate && endDate && (
               <DividendBlock
                 fundIds={dividendFundIds}
-                dividendsByFund={dividendsByFund}
+                dividendsByFund={committed!.data.dividendsByFund}
                 startDate={startDate}
                 endDate={endDate}
                 narrativeByPortfolio={dividendNarrativeData}
@@ -1042,8 +1095,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
             <DcaEntryPointBlock
               portfolios={entryPointPortfolios}
-              fundData={fundData}
-              purchasePriceData={purchasePriceData}
+              fundData={committed!.data.fundData}
+              purchasePriceData={committed!.data.purchasePriceData}
             />
 
             <RollingReturnBlock

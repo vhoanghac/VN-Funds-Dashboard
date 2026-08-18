@@ -6,7 +6,7 @@ import { join } from 'node:path'
  * Canh chặn lỗi đã sửa ngày 05/08/2026: gõ vào ô "Vùng đệm" làm trang đứng hình.
  *
  * Nguyên nhân: mọi ô nhập của tab Chiến Thuật Phân Bổ giữ state ở panel cha, nên
- * mỗi phím gõ là một lần cha render lại. Khối kết quả vẽ 2 biểu đồ Recharts trên
+ * mỗi phím gõ là một lần cha render lại. Khối kết quả vẽ 3 biểu đồ Recharts trên
  * toàn bộ chuỗi ngày, đo được 116ms mỗi phím. Bọc `memo` xong đo lại còn 0.
  *
  * Test quét thẳng mã nguồn thay vì render component, cùng cách với
@@ -66,11 +66,11 @@ describe('backtest chỉ chạy khi bấm nút, props khối kết quả lấy t
     }
   })
 
-  it('mọi prop đều đi qua computation.for hoặc chính result đã chốt', () => {
+  it('mọi prop đều đi qua committed hoặc chính result đã chốt', () => {
     const propLines = jsxProps.split('\n').map(l => l.trim()).filter(l => l.includes('='))
     expect(propLines.length).toBeGreaterThanOrEqual(8)
     for (const line of propLines) {
-      expect(line).toMatch(/=\{(result|computation\.for\.)/)
+      expect(line).toMatch(/=\{(result|committed\.)/)
     }
   })
 
@@ -78,15 +78,15 @@ describe('backtest chỉ chạy khi bấm nút, props khối kết quả lấy t
     expect(SOURCE).not.toMatch(/runTacticalBacktest[\s\S]{0,2000}?\}, \[committed, fundData\]\)/)
   })
 
-  it('backtest nằm trong effect có chốt chặn so sánh snapshot đã tính', () => {
-    expect(SOURCE).toMatch(/computation\.for === committed\) return/)
-    expect(SOURCE).toMatch(/setComputation\(\{[\s\S]*?for: committed,[\s\S]*?result: runTacticalBacktest\(/)
+  it('backtest nằm trong compute của hook và chỉ nhận snapshot', () => {
+    expect(SOURCE).toMatch(/useCommittedRun\(\{[\s\S]*?compute: snapshot =>[\s\S]*?runTacticalBacktest\(/)
+    expect(SOURCE).not.toMatch(/runTacticalBacktest\([\s\S]*?fundData/)
   })
 
   it('chỉ truyền vào engine đúng những quỹ snapshot cần, không truyền cả cache', () => {
     // Truyền cả `fundData` vào thì quỹ người dùng mới chọn thử cũng chen vào lưới
     // ngày chung, vừa chậm vừa làm kết quả phụ thuộc thứ không liên quan.
-    expect(SOURCE).toMatch(/rawPrices: scoped/)
+    expect(SOURCE).toMatch(/rawPrices: snapshot\.data/)
     expect(SOURCE).not.toMatch(/rawPrices: fundData/)
   })
 })
