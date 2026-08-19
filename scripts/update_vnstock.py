@@ -76,7 +76,7 @@ def update_etf(symbol):
 
     if start > end:
         print(f'  ✅ {symbol}: already up to date (last: {last_date})')
-        return
+        return True
 
     try:
         quote = Quote(symbol=symbol, source='VCI')
@@ -84,7 +84,7 @@ def update_etf(symbol):
 
         if df is None or df.empty:
             print(f'  ✅ {symbol}: no new data available (last: {last_date})')
-            return
+            return True
 
         # vnstock Quote returns: time, open, high, low, close, volume
         df_filtered = df[['time', 'close']].copy()
@@ -103,8 +103,11 @@ def update_etf(symbol):
         else:
             print(f'  ✅ {symbol}: already up to date (last: {last_date})')
 
+        return True
+
     except Exception as e:
         print(f'  ❌ {symbol}: {e}')
+        return False
 
 
 
@@ -208,8 +211,10 @@ def main():
 
     # ── 1. ETFs ──
     print('📊 Updating ETFs via vnstock Quote (VCI)...')
+    etf_failures = []
     for symbol in ETF_FUNDS:
-        update_etf(symbol)
+        if not update_etf(symbol):
+            etf_failures.append(symbol)
     print()
 
     # ── 2. BTC/VND ──
@@ -217,8 +222,12 @@ def main():
     btc_ok = update_btc_vnd()
     print()
 
-    if not btc_ok:
-        print('❌ BTC update failed. Exiting with error so GitHub Actions alerts.\n')
+    if etf_failures or not btc_ok:
+        if etf_failures:
+            print(f'❌ ETF update failed for: {", ".join(etf_failures)}')
+        if not btc_ok:
+            print('❌ BTC update failed.')
+        print('Exiting with error so GitHub Actions alerts.\n')
         sys.exit(1)
 
     print('✅ Done!\n')

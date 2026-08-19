@@ -28,7 +28,8 @@ jobs:
           python-version: '3.12'
 
       - name: Install vnstock
-        run: pip install vnstock
+        # vnstock 4.0.6 has an UnboundLocalError in the VCI execution path.
+        run: pip install vnstock==4.0.5
 
       - name: Register vnstock API key
         run: python -X utf8 -c "from vnstock import register_user; register_user(api_key='${{ secrets.VNSTOCK_API_KEY }}')"
