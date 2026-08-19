@@ -7,6 +7,9 @@ const ENTRIES = [
       'Sửa lỗi cho phép tính khi dữ liệu còn đang tải hoặc đang có lỗi; dashboard giờ chờ dữ liệu đầy đủ trước khi chạy.',
       'Sửa lỗi tab Bitcoin ghép kết quả mới với thông số cũ trong lúc phần phân tích chi tiết đang tính.',
       'Thêm cảnh báo khi thông số đã thay đổi nhưng kết quả đang hiển thị vẫn là lần chạy trước.',
+      'Sửa phần cổ tức trong tab DCA, để giá quỹ, tiền cổ tức và số chứng chỉ được tính đúng.',
+      'Bổ sung kiểm tra với dữ liệu thật của DCDE và TCBF, từ ngày trước khi chia đến ngày nhận tiền.',
+      'Dọn lại phần tính DCA để các mô phỏng xử lý ngày và tái cân bằng thống nhất hơn, không làm đổi kết quả cũ.',
     ],
   },
   {

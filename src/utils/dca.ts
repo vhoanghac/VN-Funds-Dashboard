@@ -202,6 +202,76 @@ function shouldInvest(
   }
 }
 
+function allocateUnits(
+  units: number[],
+  amount: number,
+  weights: number[],
+  priceLookups: Map<string, number>[],
+  date: string,
+): void {
+  for (let j = 0; j < units.length; j++) {
+    const price = priceLookups[j]!.get(date)!
+    units[j] = units[j]! + (amount * weights[j]!) / price
+  }
+}
+
+interface CommonPriceGrid {
+  dates: string[]
+  priceLookups: Map<string, number>[]
+}
+
+function buildCommonPriceGrid(priceArrays: PricePoint[][]): CommonPriceGrid | null {
+  if (priceArrays.some(arr => arr.length === 0)) return null
+
+  const startDates = priceArrays.map(arr => arr[0]!.date)
+  const endDates = priceArrays.map(arr => arr[arr.length - 1]!.date)
+  const commonStart = startDates.reduce((a, b) => a > b ? a : b)
+  const commonEnd = endDates.reduce((a, b) => a < b ? a : b)
+
+  if (commonStart >= commonEnd) return null
+
+  const priceLookups = priceArrays.map(arr => {
+    const map = new Map<string, number>()
+    for (const p of arr) map.set(p.date, p.price)
+    return map
+  })
+
+  const dates: string[] = []
+  for (const p of priceArrays[0]!) {
+    if (p.date < commonStart || p.date > commonEnd) continue
+    if (priceArrays.every((_, i) => priceLookups[i]!.has(p.date))) {
+      dates.push(p.date)
+    }
+  }
+
+  return dates.length >= 2 ? { dates, priceLookups } : null
+}
+
+function valueUnits(
+  units: number[],
+  priceLookups: Map<string, number>[],
+  date: string,
+): number {
+  let total = 0
+  for (let j = 0; j < units.length; j++) {
+    total += units[j]! * priceLookups[j]!.get(date)!
+  }
+  return total
+}
+
+function rebalanceUnits(
+  units: number[],
+  weights: number[],
+  priceLookups: Map<string, number>[],
+  date: string,
+): void {
+  const totalValue = valueUnits(units, priceLookups, date)
+  for (let j = 0; j < units.length; j++) {
+    const price = priceLookups[j]!.get(date)!
+    units[j] = (totalValue * weights[j]!) / price
+  }
+}
+
 /**
  * Optional knobs for behavioral variants of DCA (e.g. panic-stop during bear markets).
  *
@@ -265,22 +335,11 @@ export function simulateDCA(
   // Get all weekly price arrays
   const priceArrays = fundIds.map(id => dailyPrices.get(id) || [])
 
-  // Find common date range
-  const startDates = priceArrays.map(arr => arr[0]?.date || '9999')
-  const endDates = priceArrays.map(arr => arr[arr.length - 1]?.date || '0000')
-  const commonStart = startDates.reduce((a, b) => a > b ? a : b)
-  const commonEnd = endDates.reduce((a, b) => a < b ? a : b)
-
-  if (commonStart >= commonEnd) {
+  const commonGrid = buildCommonPriceGrid(priceArrays)
+  if (!commonGrid) {
     return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
   }
-
-  // Build date → price lookup for each fund
-  const priceLookups = priceArrays.map(arr => {
-    const map = new Map<string, number>()
-    for (const p of arr) map.set(p.date, p.price)
-    return map
-  })
+  const { dates: allDates, priceLookups } = commonGrid
 
   // Purchase-time price lookups: falls back to priceLookups (dailyPrices) for
   // any fundId not present in options.purchasePrices — so funds/ETFs without
@@ -292,20 +351,6 @@ export function simulateDCA(
     for (const p of override) map.set(p.date, p.price)
     return map
   })
-
-  // Collect all common dates (dates where ALL funds have prices)
-  const allDates: string[] = []
-  const firstPrices = priceArrays[0]!
-  for (const p of firstPrices) {
-    if (p.date < commonStart || p.date > commonEnd) continue
-    if (fundIds.every((_, i) => priceLookups[i]!.has(p.date))) {
-      allDates.push(p.date)
-    }
-  }
-
-  if (allDates.length < 2) {
-    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
-  }
 
   // ── Run DCA simulation ──
   // Note: giá dailyPrices vào đây ĐÃ được dividend-adjusted ở layer CSV loader
@@ -330,32 +375,9 @@ export function simulateDCA(
   // tức priceLookups cho quỹ thường, purchaseLookups/giá "bán ra" cho vàng)
   function buyFunds(amount: number, dateIdx: number) {
     const date = allDates[dateIdx]!
-    for (let j = 0; j < fundIds.length; j++) {
-      const price = purchaseLookups[j]!.get(date)!
-      const allocation = amount * weights[j]!
-      units[j] += allocation / price
-    }
+    allocateUnits(units, amount, weights, purchaseLookups, date)
     totalInvested += amount
     lastInvestDate = date
-  }
-
-  // Helper: get total portfolio value at a date
-  function getPortfolioValue(date: string): number {
-    let total = 0
-    for (let j = 0; j < fundIds.length; j++) {
-      const price = priceLookups[j]!.get(date)!
-      total += units[j]! * price
-    }
-    return total
-  }
-
-  // Helper: rebalance, bán hết rồi mua lại theo target weights
-  function rebalance(date: string) {
-    const totalValue = getPortfolioValue(date)
-    for (let j = 0; j < fundIds.length; j++) {
-      const price = priceLookups[j]!.get(date)!
-      units[j] = (totalValue * weights[j]!) / price
-    }
   }
 
   // Initial investment on first date
@@ -369,7 +391,7 @@ export function simulateDCA(
   let twrrGrowth = 1.0  // chain-linked TWRR growth factor
   let twrrPeak = 1.0    // for TWRR-based drawdown
   // prevEndValue: portfolio value at end of previous day (AFTER any cashflow on that day)
-  let prevEndValue = totalInvested > 0 ? getPortfolioValue(allDates[0]!) : 0
+  let prevEndValue = totalInvested > 0 ? valueUnits(units, priceLookups, allDates[0]!) : 0
 
   // Record day 0
   values.push({ date: allDates[0]!, value: prevEndValue })
@@ -382,7 +404,7 @@ export function simulateDCA(
 
     // ── TWRR Step 1: compute value BEFORE any cashflow today ──
     // This reflects pure market movement since yesterday's close
-    const valueBeforeCashflow = getPortfolioValue(date)
+    const valueBeforeCashflow = valueUnits(units, priceLookups, date)
 
     // Daily TWRR return = market movement only (before adding new money)
     let dailyReturn = 0
@@ -421,13 +443,13 @@ export function simulateDCA(
     // ── Step 3: Rebalance check ──
     if (totalInvested > 0) {
       if (shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
-        rebalance(date)
+        rebalanceUnits(units, weights, priceLookups, date)
       }
     }
     prevDateForRebal = date
 
     // ── Record MWRR portfolio value (AFTER cashflow) ──
-    const portfolioValue = totalInvested > 0 ? getPortfolioValue(date) : 0
+    const portfolioValue = totalInvested > 0 ? valueUnits(units, priceLookups, date) : 0
     values.push({ date, value: portfolioValue })
     invested.push({ date, value: totalInvested })
 
@@ -1200,7 +1222,7 @@ export function probabilityAtLeast(sortedFinalValues: number[], target: number):
  * Shadow simulation chỉ để kể chuyện cổ tức.
  *
  * Chạy song song với simulateDCA chính (vốn dùng adjusted NAV để tính TWRR/MWRR).
- * Hàm này dùng RAW NAV từ fmarket nên số ccq, tiền cổ tức, số ccq mua thêm
+ * Hàm này dùng RAW NAV từ nguồn dữ liệu nên số ccq, tiền cổ tức, số ccq mua thêm
  * khớp với sao kê tài khoản thực tế của nhà đầu tư.
  *
  * Mô hình:
@@ -1231,26 +1253,9 @@ export function trackDividendNarrative(
   const priceArrays = fundIds.map(id => rawWeeklyPrices.get(id) || [])
   if (priceArrays.some(a => a.length === 0)) return []
 
-  const startDates = priceArrays.map(arr => arr[0]?.date || '9999')
-  const endDates = priceArrays.map(arr => arr[arr.length - 1]?.date || '0000')
-  const commonStart = startDates.reduce((a, b) => a > b ? a : b)
-  const commonEnd = endDates.reduce((a, b) => a < b ? a : b)
-  if (commonStart >= commonEnd) return []
-
-  const priceLookups = priceArrays.map(arr => {
-    const m = new Map<string, number>()
-    for (const p of arr) m.set(p.date, p.price)
-    return m
-  })
-
-  const allDates: string[] = []
-  for (const p of priceArrays[0]!) {
-    if (p.date < commonStart || p.date > commonEnd) continue
-    if (fundIds.every((_, i) => priceLookups[i]!.has(p.date))) {
-      allDates.push(p.date)
-    }
-  }
-  if (allDates.length < 2) return []
+  const commonGrid = buildCommonPriceGrid(priceArrays)
+  if (!commonGrid) return []
+  const { dates: allDates, priceLookups } = commonGrid
 
   // Schedule dividend events trên weekly grid
   interface ScheduleEntry {
@@ -1295,24 +1300,10 @@ export function trackDividendNarrative(
 
   function buy(amount: number, dateIdx: number) {
     const date = allDates[dateIdx]!
-    for (let j = 0; j < fundIds.length; j++) {
-      const price = priceLookups[j]!.get(date)!
-      units[j] += (amount * weights[j]!) / price
-    }
+    allocateUnits(units, amount, weights, priceLookups, date)
     totalInvested += amount
     lastInvestDate = date
   }
-  function rebal(date: string) {
-    let unitsValue = 0
-    for (let j = 0; j < fundIds.length; j++) {
-      unitsValue += units[j]! * priceLookups[j]!.get(date)!
-    }
-    for (let j = 0; j < fundIds.length; j++) {
-      const price = priceLookups[j]!.get(date)!
-      units[j] = (unitsValue * weights[j]!) / price
-    }
-  }
-
   if (params.initialAmount > 0) buy(params.initialAmount, 0)
   let prevDateForRebal = allDates[0]!
 
@@ -1368,7 +1359,7 @@ export function trackDividendNarrative(
 
     // Rebalance
     if (totalInvested > 0 && shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
-      rebal(date)
+      rebalanceUnits(units, weights, priceLookups, date)
     }
     prevDateForRebal = date
   }

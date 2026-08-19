@@ -5,7 +5,7 @@ import { isSavingsAssetId, savingsAssetId, SAVINGS_OPTION_LABEL } from '../utils
 import { SavingsRateInput } from './SavingsRateInput'
 
 export const PORTFOLIO_COLORS = ['#059669', '#2563EB', '#DC2626', '#F59E0B', '#8B5CF6']
-export const MAX_PORTFOLIOS = 5
+export const MAX_PORTFOLIOS = 10
 export const MAX_FUNDS_PER_PORTFOLIO = 10
 
 export const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [

@@ -1,7 +1,7 @@
 /**
  * Dividend adjustment for raw NAV price series.
  *
- * VN market: fmarket trả về raw NAV. Vào ex-date, NAV rớt đúng bằng số cổ tức.
+ * Nguồn dữ liệu trả về raw NAV. Vào ex-date, NAV rớt theo khoản cổ tức chi trả.
  * Nếu không adjust, biểu đồ hiệu suất sẽ thiếu phần lợi nhuận từ cổ tức.
  *
  * Xác nhận chính thức từ DCDE (13/07/2026): từ 14/07/2026, giá NAV công bố
@@ -12,8 +12,8 @@
  *   factor = (closePreEx − dividend × (1 − tax)) / closePreEx
  *   Nhân tất cả giá TỪ ex-date TRỞ VỀ TRƯỚC với factor.
  *
- * Tax-adjusted (sau thuế TNCN 5% VN) để con số cuối cùng phản ánh đúng
- * những gì nhà đầu tư thực sự nhận được sau khi trừ thuế tại nguồn.
+ * Tax-adjusted theo taxRate của từng DividendEvent để con số cuối cùng phản ánh
+ * đúng những gì nhà đầu tư thực sự nhận được sau khi trừ thuế tại nguồn.
  *
  * Nếu có nhiều đợt cổ tức, áp dụng theo thứ tự thời gian — mỗi factor
  * đã được tính dựa trên closePreEx HIỆN TẠI (sau khi các factor trước
@@ -158,7 +158,7 @@ export interface DividendNarrativeStats {
   events: DividendEventStats[]
   /** Tổng cổ tức gross (trước thuế) VND */
   totalGross: number
-  /** Tổng thuế TNCN 5% đã trừ tại nguồn VND */
+  /** Tổng thuế theo taxRate của từng DividendEvent đã trừ tại nguồn VND */
   totalTax: number
   /** Tổng tiền ròng nhà đầu tư nhận được VND */
   totalNet: number

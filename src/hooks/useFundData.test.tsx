@@ -17,6 +17,7 @@ const CSV: Record<string, string> = {
   DCDS: 'date,price\n2024-01-01,100\n2024-01-02,110',
   DCBF: 'date,price\n2024-01-01,200\n2024-01-02,220',
   DCDE: 'date,price\n2024-01-02,100\n2024-01-03,90',
+  TCBF: 'date,price\n2025-07-28,20756\n2025-07-29,19776\n2025-08-20,19842',
   GOLD_SJC: 'date,price,buy,sell\n2024-01-01,900,1000,1100\n2024-01-02,950,1050,1150',
   EMPTY: 'date,price\n',
 }
@@ -42,6 +43,7 @@ function summary(map: Map<string, Array<{ date: string; price: number }>>): stri
   return JSON.stringify(Array.from(map.entries()).map(([id, points]) => ({
     id,
     length: points.length,
+    points,
     first: points[0] ?? null,
     last: points[points.length - 1] ?? null,
   })))
@@ -98,6 +100,12 @@ beforeEach(() => {
           amountPerCert: 10,
           taxRate: 0,
         }],
+        TCBF: [{
+          exDate: '2025-07-29',
+          payDate: '2025-08-20',
+          amountPerCert: 1000,
+          taxRate: 0.05,
+        }],
       }))
     }
     const id = url.match(/^\/data\/(.+)\.csv$/)?.[1]
@@ -151,6 +159,20 @@ describe('useFundSeriesMap', () => {
 
     expect(screen.getByTestId('raw')).toHaveTextContent('"price":100')
     expect(screen.getByTestId('data')).toHaveTextContent('"price":90')
+  })
+
+  it('adjusts TCBF in data while preserving raw NAV for the dividend narrative', async () => {
+    render(<MapProbe ids={['TCBF']} />)
+
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+
+    // 20,756 - 1,000 × (1 - 5%) = 19,806 before the ex-date.
+    expect(screen.getByTestId('raw')).toHaveTextContent('"first":{"date":"2025-07-28","price":20756}')
+    expect(screen.getByTestId('data')).toHaveTextContent('"first":{"date":"2025-07-28","price":19806}')
+    expect(screen.getByTestId('raw')).toHaveTextContent('"date":"2025-07-29","price":19776')
+    expect(screen.getByTestId('data')).toHaveTextContent('"date":"2025-07-29","price":19776')
+    expect(screen.getByTestId('raw')).toHaveTextContent('"last":{"date":"2025-08-20","price":19842}')
+    expect(screen.getByTestId('data')).toHaveTextContent('"last":{"date":"2025-08-20","price":19842}')
   })
 
   it('fetches only the newly requested fund when the list grows', async () => {

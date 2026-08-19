@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
-  dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
+  trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
   trailingWindowCagr,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
@@ -319,6 +319,86 @@ describe('simulateDCA + applyDividendAdjustment (integration)', () => {
     const expectedUnitsPerContribution = 1000 / 90
     expect(result.finalValue).toBeCloseTo(expectedUnitsPerContribution * 2 * 99, 4)
     expect(result.finalValue).toBeCloseTo(2200, 1)
+  })
+})
+
+describe('common price grid characterization', () => {
+  const pricesA: PricePoint[] = [
+    { date: '2024-01-01', price: 100 },
+    { date: '2024-01-03', price: 110 },
+    { date: '2024-01-05', price: 120 },
+  ]
+  const pricesB: PricePoint[] = [
+    { date: '2024-01-01', price: 200 },
+    { date: '2024-01-02', price: 210 },
+    { date: '2024-01-03', price: 220 },
+    { date: '2024-01-05', price: 240 },
+  ]
+
+  it('keeps only common dates and does not depend on slot order', () => {
+    const params = { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' as const }
+    const result = simulateDCA(
+      new Map([['A', pricesA], ['B', pricesB]]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      params,
+      'quarterly',
+    )
+    const reversed = simulateDCA(
+      new Map([['B', pricesB], ['A', pricesA]]),
+      [{ fundId: 'B', weight: 50 }, { fundId: 'A', weight: 50 }],
+      params,
+      'quarterly',
+    )
+
+    expect(result.values.map(point => point.date)).toEqual(['2024-01-01', '2024-01-03', '2024-01-05'])
+    expect(result.values.map(point => point.value)).toEqual([1000, 1100, 1200])
+    expect(reversed.values).toEqual(result.values)
+    expect(reversed.cumulative).toEqual(result.cumulative)
+  })
+
+  it('returns an empty simulation when fewer than two common dates remain', () => {
+    const result = simulateDCA(
+      new Map([
+        ['A', [{ date: '2024-01-01', price: 100 }, { date: '2024-01-03', price: 110 }]],
+        ['B', [{ date: '2024-01-02', price: 200 }, { date: '2024-01-04', price: 220 }]],
+      ]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+    )
+
+    expect(result.values).toEqual([])
+    expect(result.finalValue).toBe(0)
+  })
+
+  it('maps ex-date and pay-date to the next available common grid date', () => {
+    const narrative = trackDividendNarrative(
+      new Map([['FUND', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-01-03', price: 110 },
+        { date: '2024-01-05', price: 125 },
+      ]]]),
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+      new Map([['FUND', [{
+        exDate: '2024-01-02',
+        payDate: '2024-01-04',
+        amountPerCert: 10,
+        taxRate: 0.05,
+      }]]]),
+    )
+
+    expect(narrative).toHaveLength(1)
+    expect(narrative[0]!.events[0]).toMatchObject({
+      exDate: '2024-01-02',
+      payDate: '2024-01-04',
+      unitsAtEx: 10,
+      gross: 100,
+      tax: 5,
+      net: 95,
+    })
+    expect(narrative[0]!.events[0]!.sharesAdded).toBeCloseTo(0.76, 12)
   })
 })
 
