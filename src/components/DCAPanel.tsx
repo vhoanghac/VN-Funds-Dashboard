@@ -13,6 +13,7 @@ import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '
 import { useFundSeriesMap } from '../hooks/useFundData'
 import { useCommittedRun } from '../hooks/useCommittedRun'
 import { PortfolioValueChart } from './PortfolioValueChart'
+import { DcaHistoricalPercentileBlock } from './DcaHistoricalPercentileBlock'
 import { DcaRatioChart } from './DcaRatioChart'
 import { DcaReturnPainChart } from './DcaReturnPainChart'
 import { DcaEntryPointBlock } from './DcaEntryPointBlock'
@@ -610,6 +611,13 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     invested: r.investedSeries,
   })), [validResults])
 
+  const historicalPercentileData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    cumulative: r.cumulative,
+  })), [validResults])
+
   const ratioChartData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -1083,6 +1091,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
             {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
             <DcaReturnPainChart portfolios={returnPainData} />
+
+            <DcaHistoricalPercentileBlock portfolios={historicalPercentileData} />
 
             <DcaStormBlock
               portfolios={dcaStormData}

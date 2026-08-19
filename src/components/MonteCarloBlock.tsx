@@ -436,10 +436,10 @@ function RepresentativePathChart({
 }) {
   const chartData = path.values.map((value, month) => ({ year: month / 12, value }))
   const labels: Record<number, string> = {
-    0.1: 'Bất lợi',
-    0.25: 'Thấp',
+    0.1: 'Xấu',
+    0.25: 'Hơi xấu',
     0.5: 'Trung vị',
-    0.75: 'Thuận lợi',
+    0.75: 'Hơi tốt',
   }
 
   return (

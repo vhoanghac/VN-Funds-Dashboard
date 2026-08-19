@@ -6563,6 +6563,82 @@ h1, h2, h3 {
   font: inherit;
 }
 
+.dca-historical-percentile {
+  margin-top: 16px;
+}
+
+.dca-historical-percentile .chart-header {
+  align-items: flex-start;
+}
+
+.dca-historical-percentile .chart-header > div {
+  width: 100%;
+}
+
+.dca-historical-percentile-sub {
+  max-width: none;
+  margin: 4px 0 0;
+  color: #5e5d59;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: justify;
+}
+
+.dca-historical-percentile-sub > p {
+  margin: 0 0 10px;
+}
+
+.dca-historical-percentile-sub > p:last-child {
+  margin-bottom: 0;
+}
+
+.dca-historical-percentile-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  color: #5e5d59;
+  font-size: 0.85rem;
+}
+
+.dca-historical-percentile-controls .dca-mc-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.dca-historical-percentile-table td {
+  min-width: 102px;
+}
+
+.dca-historical-window-count,
+.dca-historical-window-date {
+  display: block;
+  margin-top: 2px;
+  color: #87867f;
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+.dca-historical-percentile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.dca-historical-percentile-card {
+  padding: 12px;
+  border: 1px solid #e8e6dc;
+  border-radius: 7px;
+  background: #faf9f5;
+}
+
+.dca-historical-percentile-card > strong {
+  color: #141413;
+  font-size: 0.85rem;
+}
+
 .dca-mc-card {
   margin-bottom: 14px;
   padding: 14px;
@@ -6768,7 +6844,8 @@ h1, h2, h3 {
     padding-left: 0;
   }
   .dca-mc-path-grid,
-  .dca-mc-distribution-grid {
+  .dca-mc-distribution-grid,
+  .dca-historical-percentile-grid {
     grid-template-columns: 1fr;
   }
   .dca-mc-distribution-card--wide {

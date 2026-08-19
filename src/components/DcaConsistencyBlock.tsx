@@ -282,7 +282,6 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange }
         skipped15={scenarios.panic15.skippedCount}
         skipped25={scenarios.panic25.skippedCount}
         skippedCash15={scenarios.panic15.skippedCash}
-        skippedCash25={scenarios.panic25.skippedCash}
       />
 
       <h4 className="dca-consist-subtitle">Ngược lại, nếu bạn tăng tiền khi thấy đỏ?</h4>
@@ -422,7 +421,7 @@ function LegendItem({ color, dash, label }: { color: string; dash: string; label
 }
 
 function ConsistencyTakeaway({
-  baseFinal, gap15, gap25, skipped15, skipped25, skippedCash15, skippedCash25,
+  baseFinal, gap15, gap25, skipped15, skipped25, skippedCash15,
 }: {
   baseFinal: number
   gap15: number
@@ -430,7 +429,6 @@ function ConsistencyTakeaway({
   skipped15: number
   skipped25: number
   skippedCash15: number
-  skippedCash25: number
 }) {
   // Case 1: Panic không skip lần nào, có thể do thị trường êm ả, hoặc do quỹ vẫn giảm sâu
   // nhưng gọn trong khoảng ngắn giữa 2 lần nạp, không lần kiểm tra hàng tháng nào rơi đúng
@@ -470,29 +468,16 @@ function ConsistencyTakeaway({
   }
 
   // Case 3: Panic thua baseline (trường hợp phổ biến nhất)
-  const worstGap = Math.max(gap15, gap25)
-  const worstLabel = gap15 >= gap25 ? '-15%' : '-25%'
-  const worstSkipped = gap15 >= gap25 ? skipped15 : skipped25
-  const worstSkippedCash = gap15 >= gap25 ? skippedCash15 : skippedCash25
-  const gapPct = baseFinal > 0 ? (worstGap / baseFinal) * 100 : 0
-
   return (
     <div className="dca-consist-takeaway">
       <p>
-        Đầu tư đều đặn qua bão là kịch bản tốt nhất. Nếu bạn dừng đầu tư khi quỹ giảm{' '}
-        <strong>{worstLabel}</strong> từ đỉnh, bạn đã bỏ lỡ{' '}
-        <strong>{worstSkipped}</strong> lần đầu tư (giữ lại{' '}
-        <strong>{formatVND(worstSkippedCash)}</strong> tiền mặt, không mất). Nhưng dù đã cộng lại
-        đúng số tiền mặt đó, danh mục vẫn kém hơn kịch bản đầu tư đều đặn{' '}
-        <strong>{formatVND(Math.round(worstGap))}</strong> (tức khoảng{' '}
-        <strong>{gapPct.toFixed(1)}%</strong> giá trị cuối), đây mới là phần thiệt hại thực,
-        không tính phần vốn ít hơn.
+        Một trong những sai lầm tâm lý lớn nhất của nhà đầu tư là muốn đứng ngoài quan sát khi thị trường giông bão. Nhiều người nghĩ rằng tạm ngừng rót vốn lúc tài sản đang lao dốc là cách để bảo vệ bản thân. Nhưng thực tế chứng minh: kiên định đầu tư xuyên qua khủng hoảng mới là lựa chọn mang lại kết quả tốt nhất.
       </p>
       <p>
-        Lý do đơn giản: những lần đầu tư trong giai đoạn giảm sâu là những lần mua được giá rẻ
-        nhất, và khi hồi phục chính các đơn vị đó đẻ nhiều lãi nhất. Dừng đầu tư lúc thị trường
-        giảm tương đương với việc bỏ lỡ đáy, đó là cái giá của việc để cảm xúc ảnh hưởng đến việc
-        đầu tư.
+        Hãy nhìn vào các con số để thấy rõ cái giá của sự hoảng loạn. Nếu bạn sợ hãi và ngừng rót vốn khi danh mục sụt giảm <strong>-15%</strong>, đúng là bạn sẽ giữ lại được một khoản tiền mặt an toàn (cụ thể là <strong>{formatVND(skippedCash15)} đồng</strong> cất trong két thay vì đem đi mua tài sản). Nhưng khi chu kỳ thị trường bình phục, tổng tài sản của bạn lại thấp hơn đến <strong>{formatVND(Math.round(gap15))} đồng</strong> so với người kiên trì rót vốn đều đặn, ngay cả khi đã cộng gộp số tiền mặt bạn cố tình cất giữ. Kể cả khi bạn chịu đựng giỏi hơn một chút và chỉ bỏ chạy khi thị trường giảm <strong>-25%</strong>, bạn vẫn thiệt hại <strong>{formatVND(Math.round(gap25))} đồng tiền lãi</strong>. Sự hoảng sợ càng đến sớm, cơ hội bạn bỏ lỡ càng lớn.
+      </p>
+      <p>
+        Tại sao sự chênh lệch này lại lớn đến vậy? Nguyên lý rất đơn giản: những lúc thị trường bi quan và giảm sâu nhất chính là lúc tài sản được bán với giá rẻ mạt nhất. Những khoản đầu tư bạn dũng cảm thực hiện ngay giữa tâm bão sẽ là cỗ máy tạo ra nhiều lợi nhuận nhất khi mọi thứ phục hồi. Việc rời bỏ cuộc chơi vì sợ hãi đồng nghĩa với việc bạn tự tước đi cơ hội mua tài sản giá hời. Đó là cái giá rất đắt cho việc để cảm xúc dẫn dắt các quyết định tài chính.
       </p>
       {gap25 > 0 && gap15 > 0 && Math.abs(gap15 - gap25) > 0 && (
         <p>
