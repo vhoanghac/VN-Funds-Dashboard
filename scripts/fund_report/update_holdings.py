@@ -3,8 +3,8 @@
 Update fund holdings data (Overlap tab) from fmarket API.
 
 For each equity/balanced open fund in fund_metadata.json, fetch:
-  1. top holdings (stocks only, type_asset == 'STOCK')  -> <ID>_holdings.csv
-  2. industry allocation (full)                          -> <ID>_industry.csv
+  1. top holdings (stocks only, type_asset == 'STOCK')  -> holdings/<ID>_holdings.csv
+  2. industry allocation (full)                          -> holdings/<ID>_industry.csv
 and write holdings_index.json listing which funds have stock holdings and
 their last update date.
 
@@ -14,7 +14,7 @@ make 2 HTTP calls per fund. The fmarket endpoint /res/products/<id> returns
 both lists in ONE response, no rate limiting on the public API. This is the
 same source update_nav.mjs already uses (fmarket product API).
 
-Output files (public/data/):
+Output files (public/data/holdings/):
   <ID>_holdings.csv  -> date,stock_code,industry,weight_pct,type_asset
   <ID>_industry.csv  -> date,industry,weight_pct
   holdings_index.json -> [{id, update_at}]
@@ -37,6 +37,7 @@ import urllib.request
 # ─── Config ────────────────────────────────────────────────
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'public', 'data')
+HOLDINGS_DIR = os.path.join(DATA_DIR, 'holdings')
 INDEX_FILE = os.path.join(DATA_DIR, 'holdings_index.json')
 BASE_URL = 'https://api.fmarket.vn/res/products'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (VN-Funds-Dashboard/1.0)'}
@@ -111,6 +112,8 @@ def parse_date_ms(ts):
 # ─── Main ─────────────────────────────────────────────────
 
 def main():
+    os.makedirs(HOLDINGS_DIR, exist_ok=True)
+
     # Register vnstock API key if present (same pattern as update_vnstock.py).
     api_key = os.environ.get('VNSTOCK_API_KEY')
     if api_key:
@@ -150,8 +153,8 @@ def main():
 
     for fund in funds:
         fund_id = fund['id']
-        holdings_path = os.path.join(DATA_DIR, f'{fund_id}_holdings.csv')
-        industry_path = os.path.join(DATA_DIR, f'{fund_id}_industry.csv')
+        holdings_path = os.path.join(HOLDINGS_DIR, f'{fund_id}_holdings.csv')
+        industry_path = os.path.join(HOLDINGS_DIR, f'{fund_id}_industry.csv')
 
         # Funds backed by official fund reports (source 'report', written by
         # fund_reports_to_holdings.py) are NOT fmarket's to append to: the report

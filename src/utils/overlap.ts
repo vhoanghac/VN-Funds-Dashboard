@@ -1,8 +1,8 @@
 /**
  * Overlap analysis between two funds' stock holdings (tab "Overlap").
  *
- * Nguồn dữ liệu: `<fundId>_holdings.csv` (danh mục đầy đủ: cổ phiếu, trái phiếu,
- * tiền mặt, tài sản khác) và `<fundId>_industry.csv` (ngành theo cổ phiếu), sinh
+ * Nguồn dữ liệu: `holdings/<fundId>_holdings.csv` (danh mục đầy đủ: cổ phiếu, trái phiếu,
+ * tiền mặt, tài sản khác) và `holdings/<fundId>_industry.csv` (ngành theo cổ phiếu), sinh
  * bởi scripts/fund_report/backfill_holdings_digiinvest.py (digiinvest) + scripts/fund_report/update_holdings.py
  * (fmarket top-10 cho quỹ chưa có digiinvest) + scripts/fund_report/fund_reports_to_holdings.py
  * (báo cáo tài chính chính thức, ngành theo vnstock).
@@ -46,7 +46,7 @@ function normalizeIndustry(ind: string): string {
 /** Loại tài sản trong danh mục quỹ. */
 export type AssetType = 'STOCK' | 'BOND' | 'CASH' | 'OTHER'
 
-/** Một hàng trong <fundId>_holdings.csv */
+/** Một hàng trong holdings/<fundId>_holdings.csv */
 export interface Holding {
   date: string // YYYY-MM-DD ngày báo cáo
   stockCode: string
@@ -58,7 +58,7 @@ export interface Holding {
   type: AssetType
 }
 
-/** Một hàng trong <fundId>_industry.csv */
+/** Một hàng trong holdings/<fundId>_industry.csv */
 export interface IndustryHolding {
   date: string
   industry: string
@@ -150,7 +150,7 @@ export function resolvePeriod(periods: string[], targetPeriod: string | null): s
 }
 
 /**
- * Parse nội dung `<fundId>_holdings.csv` (cột: date,stock_code,industry,weight_pct,asset_value,type_asset).
+ * Parse nội dung `holdings/<fundId>_holdings.csv` (cột: date,stock_code,industry,weight_pct,asset_value,type_asset).
  * Lấy kỳ theo `targetPeriod` (xem resolvePeriod); targetPeriod null = kỳ mới nhất.
  * Cột type_asset: STOCK / BOND / CASH / OTHER. File cũ không có cột này → coi là 'STOCK'.
  */
@@ -189,7 +189,7 @@ export function parseHoldingsCSV(csvText: string, targetPeriod: string | null = 
   return rows.filter(r => r.date === period)
 }
 
-/** Parse `<fundId>_industry.csv` (date,industry,weight_pct) theo targetPeriod. */
+/** Parse `holdings/<fundId>_industry.csv` (date,industry,weight_pct) theo targetPeriod. */
 export function parseIndustryCSV(csvText: string, targetPeriod: string | null = null): IndustryHolding[] {
   const lines = csvText.trim().split('\n')
   if (lines.length <= 1) return []

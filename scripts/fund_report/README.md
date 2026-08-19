@@ -22,8 +22,9 @@ làm gì, hoạt động ra sao, tại sao làm vậy, và kết quả của bư
                                                                                 │
                                                                                 ▼
                                                           ┌───────────────────────────────┐
-                                                          │ public/data/<FUND>_holdings.  │
-                                                          │ csv + _industry.csv            │
+                                                           │ public/data/holdings/          │
+                                                           │ <FUND>_holdings.csv            │
+                                                           │ <FUND>_industry.csv            │
                                                           │ + holdings_index.json          │
                                                           │ + industry_map.json            │
                                                           └───────────────────────────────┘
@@ -53,8 +54,9 @@ public/data/
       tidy_metadata.json       ← thông tin từng file nguồn
       tidied_index.json        ← bản kê (audit manifest)
 
-  <FUND>_holdings.csv          ← danh mục đầy đủ cho tab Overlap (STOCK/BOND/CASH/OTHER)
-  <FUND>_industry.csv          ← tổng tỷ trọng theo ngành (chỉ cổ phiếu)
+  holdings/                     ← dữ liệu danh mục cho tab Overlap
+    <FUND>_holdings.csv         ← danh mục đầy đủ (STOCK/BOND/CASH/OTHER)
+    <FUND>_industry.csv         ← tổng tỷ trọng theo ngành (chỉ cổ phiếu)
   holdings_index.json          ← quỹ nào có holdings, kỳ mới nhất, nguồn dữ liệu
   industry_map.json            ← map ticker → ngành (vnstock), tĩnh, COMMIT
 ```
@@ -67,7 +69,7 @@ từ chối (ValueError) — không bao giờ đoán, không bao giờ ghi nhầ
 
 ## Ba nguồn dữ liệu danh mục (quan trọng cho tab Overlap)
 
-Tab Overlap đọc `<FUND>_holdings.csv`. Dữ liệu đó đến từ **3 nguồn**, phân biệt qua
+Tab Overlap đọc `holdings/<FUND>_holdings.csv`. Dữ liệu đó đến từ **3 nguồn**, phân biệt qua
 field `source` trong `holdings_index.json`:
 
 | source | Nguồn | Ghi chú |
@@ -195,7 +197,7 @@ python -X utf8 scripts/fund_report/fund_reports_verify.py <file.pdf> --fund DCDS
 ## Bước 4: Sinh holdings Overlap — `fund_reports_to_holdings.py`
 
 **Làm gì:** đọc `tidied/tidy_portfolio.csv` (bảng danh mục đầu tư) → sinh
-`<FUND>_holdings.csv` + `<FUND>_industry.csv`, cập nhật `holdings_index.json`
+`holdings/<FUND>_holdings.csv` + `holdings/<FUND>_industry.csv`, cập nhật `holdings_index.json`
 (`source: 'report'`). Đây là bước biến "báo cáo" thành "dữ liệu tab Overlap".
 
 **Hoạt động ra sao — chuyển đổi portfolio** (đã kiểm chứng 3 era):
@@ -298,7 +300,7 @@ tên chuẩn" là khác nhau theo nguồn công bố.
 ## Bảo trì
 
 - `public/data/<FUND>/raw/` **gitignored** (xlsx gốc nặng, không lên repo). Chỉ commit
-  `tidied/` + `<FUND>_holdings.csv` + `<FUND>_industry.csv` + index + map.
+  `tidied/` + `holdings/<FUND>_holdings.csv` + `holdings/<FUND>_industry.csv` + index + map.
 - Quỹ đổi mẫu báo cáo → script **dừng to và báo**, không âm thầm đổi cách hiểu.
 - Muốn thay đổi cách chuyển đổi → sửa logic + chạy `--check` của convert và toàn bộ
   verify để không lệch con số nào.

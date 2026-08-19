@@ -17,7 +17,7 @@ làm gì, hoạt động ra sao, tại sao làm vậy, và workflow đi đâu.
 | Cập nhật | Giá NAV, vàng, BTC | Danh mục đầu tư (holdings), báo cáo tài chính |
 | Khi nào chạy | **Hàng ngày tự động** (workflow) | **Thủ công** khi có báo cáo mới |
 | Đầu vào | API công khai (fmarket, vnstock, CoinGecko, SJC, Google Sheet...) | File xlsx do quỹ công bố |
-| Đầu ra | `<FUND>.csv`, `GOLD_*.csv`, `BTC.csv`, ETF csv | `<FUND>_holdings.csv`, `<FUND>_industry.csv`, `tidied/` |
+| Đầu ra | `<FUND>.csv`, `GOLD_*.csv`, `BTC.csv`, ETF csv | `holdings/<FUND>_holdings.csv`, `holdings/<FUND>_industry.csv`, `tidied/` |
 | Workflow chi tiết | README này | `scripts/fund_report/README.md` |
 
 Hai pipeline **độc lập**: cập nhật giá hàng ngày không đụng holdings, và ngược lại.

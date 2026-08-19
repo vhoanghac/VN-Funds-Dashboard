@@ -166,8 +166,8 @@ function OverlapPanelImpl({ funds }: Props) {
 
     const loadPair = async (id: string) => {
       const [hResp, iResp] = await Promise.all([
-        fetch(`/data/${id}_holdings.csv`),
-        fetch(`/data/${id}_industry.csv`),
+        fetch(`/data/holdings/${id}_holdings.csv`),
+        fetch(`/data/holdings/${id}_industry.csv`),
       ])
       const holdings = hResp.ok ? await hResp.text() : ''
       const industry = iResp.ok ? await iResp.text() : ''

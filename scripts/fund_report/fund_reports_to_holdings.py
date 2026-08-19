@@ -9,8 +9,8 @@ publishes (92 periods for DCDS, 2018-12 .. 2026-07), richer than the
 digiinvest/fmarket sources currently backing the Overlap tab.
 
 Output (same schema as update_holdings.py / backfill_holdings_digiinvest.py):
-  public/data/<FUND>_holdings.csv  -> date,stock_code,industry,weight_pct,asset_value,type_asset
-  public/data/<FUND>_industry.csv  -> date,industry,weight_pct
+  public/data/holdings/<FUND>_holdings.csv  -> date,stock_code,industry,weight_pct,asset_value,type_asset
+  public/data/holdings/<FUND>_industry.csv  -> date,industry,weight_pct
   holdings_index.json              -> {id, update_at, source: 'report'} upsert
 
 Mapping rules (verified across the 3 template eras):
@@ -55,6 +55,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'public', 'data')
+HOLDINGS_DIR = os.path.join(DATA_DIR, 'holdings')
 INDEX_FILE = os.path.join(DATA_DIR, 'holdings_index.json')
 INDUSTRY_MAP_FILE = os.path.join(DATA_DIR, 'industry_map.json')
 
@@ -309,6 +310,8 @@ def build_period_rows(rows, stocks_total):
 
 
 def main():
+    os.makedirs(HOLDINGS_DIR, exist_ok=True)
+
     refresh = '--refresh' in sys.argv
     args = [a for a in sys.argv[1:] if a != '--refresh']
     funds = args or sorted(
@@ -329,8 +332,8 @@ def main():
 
     for fund in funds:
         tidy_path = os.path.join(DATA_DIR, fund, 'tidied', 'tidy_portfolio.csv')
-        holdings_path = os.path.join(DATA_DIR, f'{fund}_holdings.csv')
-        industry_path = os.path.join(DATA_DIR, f'{fund}_industry.csv')
+        holdings_path = os.path.join(HOLDINGS_DIR, f'{fund}_holdings.csv')
+        industry_path = os.path.join(HOLDINGS_DIR, f'{fund}_industry.csv')
 
         periods = parse_portfolio(tidy_path)
         if not periods:

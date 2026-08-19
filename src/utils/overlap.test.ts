@@ -9,7 +9,7 @@ import {
   type Holding,
 } from './overlap'
 
-// Dữ liệu thật từ public/data/DCDS_holdings.csv — danh mục đầy đủ kỳ 2026-07-01
+// Dữ liệu thật từ public/data/holdings/DCDS_holdings.csv — danh mục đầy đủ kỳ 2026-07-01
 // (nguồn báo cáo tài chính chính thức, fund_reports_to_holdings.py, 13/08/2026).
 // 44 cổ phiếu + 1 trái phiếu + tiền mặt + tài sản khác. Ngành theo vnstock.
 const DCDS_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
@@ -62,7 +62,7 @@ const DCDS_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
 2026-07-01,OTHER,,5.81,347183861909,OTHER
 `
 
-// Dữ liệu thật từ public/data/VESAF_holdings.csv — danh mục đầy đủ kỳ 2026-07-01.
+// Dữ liệu thật từ public/data/holdings/VESAF_holdings.csv — danh mục đầy đủ kỳ 2026-07-01.
 // 30 cổ phiếu.
 const VESAF_CSV = `date,stock_code,industry,weight_pct,asset_value,type_asset
 2026-07-01,BVH,Bảo hiểm,7.21,40000000000,STOCK
