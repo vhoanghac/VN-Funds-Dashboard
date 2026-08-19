@@ -739,6 +739,53 @@ describe('monteCarloProjection', () => {
     expect(result).not.toBeNull()
     expect(result!.finalValues[0]!).toBeCloseTo(300, 6)
   })
+
+  it('keeps path-level CAGR and drawdown separate from monthly contributions', () => {
+    let call = 0
+    const result = monteCarloProjection({
+      monthlyReturnPool: [0.10, -0.20],
+      startValue: 1_000,
+      monthlyContribution: 500,
+      horizonMonths: 2,
+      iterations: 1,
+      blockSize: 1,
+      rng: () => [0, 0.5][call++ % 2]!,
+    })
+
+    expect(result).not.toBeNull()
+    // Giá trị tài khoản có tiền nạp: 1000 × 1,1 + 500 = 1600, rồi × 0,8 + 500 = 1780.
+    expect(result!.finalValues).toEqual([1_780])
+    // CAGR và drawdown chỉ đo chuỗi lợi nhuận +10%, -20%; không đo đường số dư 1000 → 1600 → 1780.
+    expect(result!.cagrs[0]).toBeCloseTo(Math.pow(0.88, 6) - 1, 12)
+    expect(result!.maxDrawdowns[0]).toBeCloseTo(-0.2, 12)
+    expect(result!.representativePaths).toHaveLength(4)
+    for (const path of result!.representativePaths) {
+      expect(path.values).toEqual([1_000, 1_600, 1_780])
+      expect(path.cagr).toBeCloseTo(Math.pow(0.88, 6) - 1, 10)
+      expect(path.maxDrawdown).toBeCloseTo(-0.2, 12)
+    }
+  })
+
+  it('selects representative paths from actual final values, never a month-by-month percentile composite', () => {
+    let call = 0
+    const result = monteCarloProjection({
+      monthlyReturnPool: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+      startValue: 1_000,
+      monthlyContribution: 0,
+      horizonMonths: 1,
+      iterations: 9,
+      blockSize: 1,
+      rng: () => call++ / 9 + 0.001,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.finalValues).toEqual([1_000, 1_100, 1_200, 1_300, 1_400, 1_500, 1_600, 1_700, 1_800])
+    expect(result!.representativePaths.map(path => path.finalValue)).toEqual([1_100, 1_200, 1_400, 1_600])
+    for (const path of result!.representativePaths) {
+      expect(result!.finalValues).toContain(path.finalValue)
+      expect(path.values).toHaveLength(2)
+    }
+  })
 })
 
 describe('probabilityAtLeast', () => {

@@ -1116,11 +1116,29 @@ export interface MonteCarloPathPoint {
   p90: number
 }
 
+export interface MonteCarloRepresentativePath {
+  /** Percentile của giá trị tài khoản cuối kỳ dùng để chọn path này. */
+  percentile: number
+  /** Giá trị tài khoản theo từng tháng, bao gồm tháng 0 là giá trị hiện tại. */
+  values: number[]
+  finalValue: number
+  /** CAGR của path lợi nhuận, tách khỏi các khoản góp tiền hằng tháng. */
+  cagr: number
+  /** Drawdown lớn nhất của path lợi nhuận, tách khỏi các khoản góp tiền hằng tháng. */
+  maxDrawdown: number
+}
+
 export interface MonteCarloResult {
   /** Dải phân phối theo từng tháng (month 0 = hiện tại), dùng vẽ fan chart. */
   path: MonteCarloPathPoint[]
   /** Giá trị cuối kỳ của mọi kịch bản, đã sắp tăng dần — dùng tính percentile/xác suất. */
   finalValues: number[]
+  /** CAGR của mọi path lợi nhuận, đã sắp tăng dần — dùng vẽ phân phối CAGR. */
+  cagrs: number[]
+  /** Maximum drawdown của mọi path lợi nhuận, đã sắp tăng dần — dùng vẽ phân phối drawdown. */
+  maxDrawdowns: number[]
+  /** Bốn path thật, chọn theo percentile của giá trị tài khoản cuối kỳ. */
+  representativePaths: MonteCarloRepresentativePath[]
 }
 
 const DEFAULT_BLOCK_SIZE = 12
@@ -1167,25 +1185,43 @@ export function monteCarloProjection(opts: {
     return null
   }
 
+  const effectiveBlockSize = Math.max(1, Math.floor(blockSize))
+
   // matrix[month][iteration] — cột theo tháng để tính percentile cho fan chart.
   const matrix: number[][] = Array.from({ length: horizonMonths + 1 }, () => new Array(iterations))
+  const scenarios: MonteCarloRepresentativePath[] = []
   for (let it = 0; it < iterations; it++) {
     matrix[0]![it] = startValue
   }
 
   for (let it = 0; it < iterations; it++) {
     let v = startValue
+    let growth = 1
+    let peakGrowth = 1
+    let maxDrawdown = 0
     let built = 0
+    const values = [startValue]
     while (built < horizonMonths) {
       const start = Math.floor(rng() * poolLen)
-      const take = Math.min(blockSize, horizonMonths - built)
+      const take = Math.min(effectiveBlockSize, horizonMonths - built)
       for (let k = 0; k < take; k++) {
         const r = pool[(start + k) % poolLen]!
+        growth *= 1 + r
+        if (growth > peakGrowth) peakGrowth = growth
+        maxDrawdown = Math.min(maxDrawdown, growth / peakGrowth - 1)
         v = v * (1 + r) + monthlyContribution
         built++
         matrix[built]![it] = v
+        values.push(v)
       }
     }
+    scenarios.push({
+      percentile: 0,
+      values,
+      finalValue: v,
+      cagr: Math.pow(growth, 12 / horizonMonths) - 1,
+      maxDrawdown,
+    })
   }
 
   const path: MonteCarloPathPoint[] = matrix.map((monthValues, month) => {
@@ -1201,8 +1237,18 @@ export function monteCarloProjection(opts: {
   })
 
   const finalValues = [...matrix[horizonMonths]!].sort((a, b) => a - b)
+  const cagrs = scenarios.map(s => s.cagr).sort((a, b) => a - b)
+  const maxDrawdowns = scenarios.map(s => s.maxDrawdown).sort((a, b) => a - b)
+  const scenariosByFinalValue = [...scenarios].sort((a, b) => a.finalValue - b.finalValue)
+  const representativePaths = [0.10, 0.25, 0.50, 0.75].map(percentile => {
+    const target = percentileSorted(finalValues, percentile)
+    const closest = scenariosByFinalValue.reduce((best, scenario) => (
+      Math.abs(scenario.finalValue - target) < Math.abs(best.finalValue - target) ? scenario : best
+    ))
+    return { ...closest, percentile }
+  })
 
-  return { path, finalValues }
+  return { path, finalValues, cagrs, maxDrawdowns, representativePaths }
 }
 
 /** Tỷ lệ kịch bản đạt >= target, trong mảng finalValues đã sắp tăng dần. */

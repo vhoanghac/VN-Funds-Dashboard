@@ -10,6 +10,7 @@ const ENTRIES = [
       'Sửa phần cổ tức trong tab DCA, để giá quỹ, tiền cổ tức và số chứng chỉ được tính đúng.',
       'Bổ sung kiểm tra với dữ liệu thật của DCDE và TCBF, từ ngày trước khi chia đến ngày nhận tiền.',
       'Dọn lại phần tính DCA để các mô phỏng xử lý ngày và tái cân bằng thống nhất hơn, không làm đổi kết quả cũ.',
+      'Mở rộng Monte Carlo trong tab DCA.',
     ],
   },
   {
