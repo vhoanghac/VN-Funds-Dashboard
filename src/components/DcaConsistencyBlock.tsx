@@ -56,8 +56,14 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
         và <strong>-25%</strong> từ đỉnh.
       </p>
 
-      {valid.map(p => (
-        <ConsistencyForPortfolio key={p.id} portfolio={p} extraAmount={extraAmount} onExtraAmountChange={setExtraAmount} />
+      {valid.map((p, index) => (
+        <ConsistencyForPortfolio
+          key={p.id}
+          portfolio={p}
+          extraAmount={extraAmount}
+          onExtraAmountChange={setExtraAmount}
+          showTakeaways={index === 0}
+        />
       ))}
     </div>
   )
@@ -65,10 +71,11 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
 
 export const DcaConsistencyBlock = memo(DcaConsistencyBlockImpl)
 
-function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange }: {
+function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, showTakeaways }: {
   portfolio: ConsistencyPortfolio
   extraAmount: number
   onExtraAmountChange: (v: number) => void
+  showTakeaways: boolean
 }) {
   const scenarios = useMemo(() => {
     const inputs = portfolio.simulationInputs!
@@ -275,14 +282,16 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange }
         được nạp vào.
       </p>
 
-      <ConsistencyTakeaway
-        baseFinal={scenarios.baseline.finalValue}
-        gap15={gap15}
-        gap25={gap25}
-        skipped15={scenarios.panic15.skippedCount}
-        skipped25={scenarios.panic25.skippedCount}
-        skippedCash15={scenarios.panic15.skippedCash}
-      />
+      {showTakeaways && (
+        <ConsistencyTakeaway
+          baseFinal={scenarios.baseline.finalValue}
+          gap15={gap15}
+          gap25={gap25}
+          skipped15={scenarios.panic15.skippedCount}
+          skipped25={scenarios.panic25.skippedCount}
+          skippedCash15={scenarios.panic15.skippedCash}
+        />
+      )}
 
       <h4 className="dca-consist-subtitle">Ngược lại, nếu bạn tăng tiền khi thấy đỏ?</h4>
 
@@ -395,16 +404,18 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange }
         năm mỗi đồng đã có để sinh lời.
       </p>
 
-      <BoostTakeaway
-        baseMWRR={baseMWRR}
-        boost15MWRR={boost15MWRR}
-        boost25MWRR={boost25MWRR}
-        boost15Extra={boostScenarios.boost15.extraInvested}
-        boost25Extra={boostScenarios.boost25.extraInvested}
-        boosted15={boostScenarios.boost15.boostedCount}
-        boosted25={boostScenarios.boost25.boostedCount}
-        extraAmount={extraAmount}
-      />
+      {showTakeaways && (
+        <BoostTakeaway
+          baseMWRR={baseMWRR}
+          boost15MWRR={boost15MWRR}
+          boost25MWRR={boost25MWRR}
+          boost15Extra={boostScenarios.boost15.extraInvested}
+          boost25Extra={boostScenarios.boost25.extraInvested}
+          boosted15={boostScenarios.boost15.boostedCount}
+          boosted25={boostScenarios.boost25.boostedCount}
+          extraAmount={extraAmount}
+        />
+      )}
     </div>
   )
 }
