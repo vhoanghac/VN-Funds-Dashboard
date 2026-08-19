@@ -69,3 +69,9 @@ export function monthsAheadIndex(dates: number[], monthsAhead: number): number[]
   }
   return result
 }
+
+/** Đếm số cửa sổ không dùng chung ngày dữ liệu nào. */
+export function countIndependentWindows(spanMonths: number, windowMonths: number): number {
+  if (windowMonths <= 0 || spanMonths <= 0) return 0
+  return Math.floor(spanMonths / windowMonths)
+}

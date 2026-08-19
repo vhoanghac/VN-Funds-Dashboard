@@ -1,7 +1,10 @@
 import type { PricePoint } from '../types'
 import type { DCASlot } from './dca'
 import { daysBetween } from './dateMath'
-import { monthsAheadIndex } from './dateWindow'
+import { monthsAheadIndex, countIndependentWindows } from './dateWindow'
+
+// Giữ export cũ cho các caller của LS vs DCA. Helper dùng chung nằm ở dateWindow.
+export { countIndependentWindows } from './dateWindow'
 
 export type CashMode = 'flat' | 'savings' | 'fund'
 export type LSvsDCAFreq = 'weekly' | 'monthly'
@@ -46,11 +49,6 @@ export interface LSvsDCASummary {
  * thực chất chỉ có 2 lần thử tách rời. Con số 93 trông chắc chắn hơn nhiều so
  * với mức đáng tin thật, và đó chính là chỗ dashboard dễ làm người dùng tin quá.
  */
-export function countIndependentWindows(spanMonths: number, windowMonths: number): number {
-  if (windowMonths <= 0 || spanMonths <= 0) return 0
-  return Math.floor(spanMonths / windowMonths)
-}
-
 /**
  * Độ dài quãng dữ liệu THẬT SỰ dùng được, tính bằng tháng.
  *

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { addMonthsClamped, rollingWindowStarts, monthsAheadIndex } from './dateWindow'
+import {
+  addMonthsClamped,
+  rollingWindowStarts,
+  monthsAheadIndex,
+  countIndependentWindows,
+} from './dateWindow'
 
 function toTime(dateStr: string): number {
   return new Date(dateStr).getTime()
@@ -80,5 +85,20 @@ describe('monthsAheadIndex', () => {
     for (let i = 1; i < result.length; i++) {
       expect(result[i]).toBeGreaterThanOrEqual(result[i - 1]!)
     }
+  })
+})
+
+describe('countIndependentWindows', () => {
+  it('counts only non-overlapping windows', () => {
+    expect(countIndependentWindows(141, 36)).toBe(3)
+    expect(countIndependentWindows(141, 60)).toBe(2)
+    expect(countIndependentWindows(141, 120)).toBe(1)
+  })
+
+  it('returns zero for invalid or shorter spans', () => {
+    expect(countIndependentWindows(240, 0)).toBe(0)
+    expect(countIndependentWindows(0, 36)).toBe(0)
+    expect(countIndependentWindows(-5, 36)).toBe(0)
+    expect(countIndependentWindows(24, 36)).toBe(0)
   })
 })

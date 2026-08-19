@@ -5,6 +5,8 @@ import {
   positiveRollingRate,
   rollingReturns,
 } from '../utils/calculations'
+import { countIndependentWindows } from '../utils/dateWindow'
+import { assetDisplayName } from '../utils/savingsAsset'
 
 interface Props {
   funds: FundComparisonData[]
@@ -22,6 +24,8 @@ interface BriefStats {
   recoveryWeeks: number | null
   underwaterWeeks: number | null
   positiveRollingRate: number | null
+  rollingCount: number
+  independentRollingWindows: number
 }
 
 interface Highlight {
@@ -38,7 +42,7 @@ export function CompareBrief({ funds, colors, startDate, endDate }: Props) {
     const rolling12 = rollingReturns(fund.returns, 12)
 
     return {
-      id: fund.id,
+      id: assetDisplayName(fund.id),
       color: colors[index % colors.length] ?? '#2563EB',
       cagr: fund.kpi.cagr,
       totalReturn: lastValue(fund.cumulative),
@@ -46,6 +50,8 @@ export function CompareBrief({ funds, colors, startDate, endDate }: Props) {
       recoveryWeeks: drawdown.recoveryWeeks,
       underwaterWeeks: drawdown.underwaterWeeks,
       positiveRollingRate: positiveRollingRate(rolling12),
+      rollingCount: rolling12.length,
+      independentRollingWindows: countIndependentWindows(spanMonths(fund.returns), 12),
     }
   }), [colors, funds])
 
@@ -66,7 +72,7 @@ export function CompareBrief({ funds, colors, startDate, endDate }: Props) {
       tone: 'return',
     },
     {
-      label: 'Đáy sâu nhất',
+      label: 'Mức sụt giảm thấp nhất',
       winner: drawdownWinner,
       value: formatPercent(drawdownWinner.maxDrawdown),
       detail: 'ít sụt giảm nhất trong các quỹ',
@@ -76,7 +82,9 @@ export function CompareBrief({ funds, colors, startDate, endDate }: Props) {
       label: 'Rolling 12 tháng',
       winner: consistencyWinner ?? stats[0]!,
       value: consistencyWinner ? formatPercent(consistencyWinner.positiveRollingRate!) : 'Chưa đủ dữ liệu',
-      detail: consistencyWinner ? 'cửa sổ có lợi nhuận dương' : 'chưa có cửa sổ 12 tháng',
+      detail: consistencyWinner
+        ? `${consistencyWinner.rollingCount} cửa sổ, ${consistencyWinner.independentRollingWindows} cửa sổ độc lập`
+        : 'chưa có cửa sổ 12 tháng',
       tone: 'consistency',
     },
   ]
@@ -165,4 +173,11 @@ function formatWeeks(weeks: number): string {
   const months = weeks / 4.345
   if (months < 12) return `${months.toFixed(months < 3 ? 1 : 0)} tháng`
   return `${(months / 12).toFixed(1)} năm`
+}
+
+function spanMonths(points: Array<{ date: string }>): number {
+  if (points.length < 2) return 0
+  const first = points[0]!.date.split('-').map(Number)
+  const last = points[points.length - 1]!.date.split('-').map(Number)
+  return (last[0]! - first[0]!) * 12 + (last[1]! - first[1]!)
 }

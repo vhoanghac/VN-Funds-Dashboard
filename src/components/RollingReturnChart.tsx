@@ -10,6 +10,7 @@ import {
   mergeAllSeries, getYearTicks, formatYear, formatTooltipDate,
   formatPercent, formatPercentFull, BASELINE_COLOR, DIMMED_COLOR,
 } from '../utils/chartPlumbing'
+import { countIndependentWindows } from '../utils/dateWindow'
 import { useDimLegend } from '../hooks/useDimLegend'
 
 interface Props {
@@ -17,6 +18,13 @@ interface Props {
   period: number
   availablePeriods?: number[]
   onPeriodChange: (period: number) => void
+}
+
+function spanMonths(points: ReturnPoint[]): number {
+  if (points.length < 2) return 0
+  const first = points[0]!.date.split('-').map(Number)
+  const last = points[points.length - 1]!.date.split('-').map(Number)
+  return (last[0]! - first[0]!) * 12 + (last[1]! - first[1]!)
 }
 
 /** Chu kỳ rolling, đơn vị tháng kèm nhãn hiển thị. */
@@ -40,6 +48,7 @@ function periodLabel(months: number): string {
 
 interface RollingStats {
   count: number
+  independentWindows: number
   mean: number
   median: number
   p10: number
@@ -49,16 +58,17 @@ interface RollingStats {
 }
 
 /** Thống kê của một chuỗi rolling return (đơn vị thập phân, 0.05 = 5%). */
-function computeRollingStats(data: ReturnPoint[]): RollingStats {
+function computeRollingStats(data: ReturnPoint[], period: number): RollingStats {
   const values = data.map(p => p.value)
   const sorted = [...values].sort((a, b) => a - b)
   const count = sorted.length
   if (count === 0) {
-    return { count: 0, mean: 0, median: 0, p10: 0, p90: 0, min: 0, max: 0 }
+    return { count: 0, independentWindows: 0, mean: 0, median: 0, p10: 0, p90: 0, min: 0, max: 0 }
   }
   const sum = values.reduce((acc, v) => acc + v, 0)
   return {
     count,
+    independentWindows: countIndependentWindows(spanMonths(data) + period, period),
     mean: sum / count,
     median: percentileSorted(sorted, 0.5),
     p10: percentileSorted(sorted, 0.1),
@@ -169,7 +179,7 @@ export function RollingReturnChart({ series, period, availablePeriods, onPeriodC
       )}
       {data.length > 0 && (
         <>
-          <RollingStatsTable series={series} />
+          <RollingStatsTable series={series} period={period} />
           <RollingReturnsNote />
         </>
       )}
@@ -213,9 +223,9 @@ function RollingReturnsNote() {
   )
 }
 
-function RollingStatsTable({ series }: { series: ChartSeries[] }) {
+function RollingStatsTable({ series, period }: { series: ChartSeries[]; period: number }) {
   const rows = series.map(s => {
-    const stats = computeRollingStats(s.data)
+    const stats = computeRollingStats(s.data, period)
     const distribution = rollingReturnDistribution(s.data.map(p => p.value))
     return { name: s.name, color: s.color, stats, distribution }
   })
@@ -260,7 +270,12 @@ function RollingStatsTable({ series }: { series: ChartSeries[] }) {
         <div key={r.name} className="cmp-table-row cmp-table-row--rolling">
           <span className="cmp-fund-cell">
             <span className="cmp-swatch" style={{ background: r.color }} />
-            <strong>{r.name}</strong>
+            <span>
+              <strong>{r.name}</strong>
+              <small className="rolling-sample-count">
+                {r.stats.count} cửa sổ · {r.stats.independentWindows} cửa sổ độc lập
+              </small>
+            </span>
           </span>
           {r.stats.count === 0 ? (
             <span className="cmp-underwater">Chưa đủ dữ liệu</span>
@@ -279,7 +294,7 @@ function RollingStatsTable({ series }: { series: ChartSeries[] }) {
               <span>{fmtPct(r.distribution[3]!)}</span>
               <span>{fmtPct(r.distribution[4]!)}</span>
             </>
-          )}
+  )}
         </div>
       ))}
     </div>
