@@ -247,11 +247,20 @@ export function useFundSeries(fundId: string | null): FundSeriesState {
 
 interface MultiFundState {
   data: Map<string, PricePoint[]>
+  purchase: Map<string, PricePoint[]>
   loading: boolean
   errors: Map<string, string>
 }
 
-export function useMultiFundSeries(fundIds: string[]): MultiFundState {
-  const state = useFundSeriesMap(fundIds)
-  return { data: state.data, loading: state.loading, errors: state.errors }
+export function useMultiFundSeries(
+  fundIds: string[],
+  options: FundSeriesMapOptions = {},
+): MultiFundState {
+  const state = useFundSeriesMap(fundIds, options)
+  return {
+    data: state.data,
+    purchase: state.purchase,
+    loading: state.loading,
+    errors: state.errors,
+  }
 }

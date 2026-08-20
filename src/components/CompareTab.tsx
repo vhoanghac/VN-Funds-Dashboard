@@ -3,7 +3,7 @@ import { useMultiFundSeries } from '../hooks/useFundData'
 import { useMultiComparison } from '../hooks/useCalculations'
 import { FundSelector } from './FundSelector'
 import { KPICards } from './KPICards'
-import { AssetPriceChart } from './AssetPriceChart'
+import { AssetPriceChart, type AssetPriceSeries } from './AssetPriceChart'
 import { CumulativeReturnChart } from './CumulativeReturnChart'
 import { DrawdownChart } from './DrawdownChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
@@ -41,7 +41,16 @@ function CompareTabImpl({
   metadata, funds, dateFrom, dateTo, rollingPeriod,
   onChangeFunds, onChangeDateFrom, onChangeDateTo, onChangeRollingPeriod,
 }: Props) {
-  const { data: fundData, loading: fundsLoading, errors: fundErrors } = useMultiFundSeries(funds)
+  const dualPriceFundIds = useMemo(
+    () => new Set(metadata.filter(m => m.type === 'gold').map(m => m.id)),
+    [metadata],
+  )
+  const {
+    data: fundData,
+    purchase: purchasePriceData,
+    loading: fundsLoading,
+    errors: fundErrors,
+  } = useMultiFundSeries(funds, { dualPriceFundIds })
 
   const comparison = useMultiComparison(funds, fundData, rollingPeriod, dateFrom, dateTo)
 
@@ -58,15 +67,25 @@ function CompareTabImpl({
   // đơn vị tài sản nào ngoài đời. Vẽ nó cạnh giá CCQ hay giá một lượng vàng sẽ
   // ngầm nói rằng "tiết kiệm cũng có giá đơn vị", tức dạy sai người dùng.
   // Giữ nguyên màu theo vị trí gốc để khớp màu với các biểu đồ còn lại.
-  const priceSeries: ChartSeries[] = comparison.status === 'ready'
+  const priceSeries: AssetPriceSeries[] = comparison.status === 'ready'
     ? comparison.data.funds
       .map((f, i) => ({ fund: f, color: FUND_COLORS[i % FUND_COLORS.length]! }))
       .filter(({ fund }) => !isSavingsAssetId(fund.id))
-      .map(({ fund, color }) => ({
-        name: assetDisplayName(fund.id),
-        color,
-        data: fund.prices,
-      }))
+      .map(({ fund, color }) => {
+        const sellByDate = new Map(purchasePriceData.get(fund.id)?.map(p => [p.date, p.price]))
+        const secondaryData = fund.prices.flatMap(p => {
+          const sell = sellByDate.get(p.date)
+          return sell === undefined ? [] : [{ date: p.date, value: sell }]
+        })
+
+        return {
+          assetId: fund.id,
+          name: assetDisplayName(fund.id),
+          color,
+          data: fund.prices,
+          secondaryData: secondaryData.length > 0 ? secondaryData : undefined,
+        }
+      })
     : []
 
   const drawdownSeries: ChartSeries[] = comparison.status === 'ready'

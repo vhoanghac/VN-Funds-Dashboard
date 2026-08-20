@@ -79,11 +79,15 @@ function SingleProbe({ fundId }: { fundId: string | null }) {
   )
 }
 
-function MultiProbe({ ids }: { ids: string[] }) {
-  const state = useMultiFundSeries(ids)
+function MultiProbe({ ids, dualPriceFundIds = new Set<string>() }: {
+  ids: string[]
+  dualPriceFundIds?: ReadonlySet<string>
+}) {
+  const state = useMultiFundSeries(ids, { dualPriceFundIds })
   return (
     <>
       <output data-testid="multi-data">{String(state.data instanceof Map)}</output>
+      <output data-testid="multi-purchase">{summary(state.purchase)}</output>
       <output data-testid="multi-loading">{String(state.loading)}</output>
       <output data-testid="multi-errors">{String(state.errors instanceof Map)}</output>
     </>
@@ -272,6 +276,16 @@ describe('useFundSeriesMap', () => {
     await waitFor(() => expect(screen.getByTestId('purchase')).toHaveTextContent('"price":1100'))
 
     expect(csvCalls().filter(url => url.endsWith('/GOLD_SJC.csv'))).toHaveLength(2)
+  })
+})
+
+describe('useMultiFundSeries', () => {
+  it('exposes sell prices when a selected asset uses dual-price mode', async () => {
+    render(<MultiProbe ids={['GOLD_SJC']} dualPriceFundIds={new Set(['GOLD_SJC'])} />)
+
+    await waitFor(() => expect(screen.getByTestId('multi-loading')).toHaveTextContent('false'))
+
+    expect(screen.getByTestId('multi-purchase')).toHaveTextContent('"price":1100')
   })
 })
 
