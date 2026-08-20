@@ -158,6 +158,32 @@ function signedPct(value: number): string {
   return `${sign}${(Math.abs(value) * 100).toFixed(1)}%`
 }
 
+export function top10StocksForPeriod(
+  portfolio: Map<string, FundPeriodSummary> | null,
+  period: string | null,
+) {
+  return (period ? portfolio?.get(period)?.stocks : null)?.slice(0, 10) ?? []
+}
+
+export function industryAllocationForPeriod(
+  portfolio: Map<string, FundPeriodSummary> | null,
+  period: string | null,
+  industryMap: Record<string, string>,
+) {
+  const stocks = period ? portfolio?.get(period)?.stocks : null
+  if (!stocks) return []
+
+  const byIndustry = new Map<string, number>()
+  for (const stock of stocks) {
+    const industry = industryMap[stock.ticker] ?? 'Khác'
+    byIndustry.set(industry, (byIndustry.get(industry) ?? 0) + stock.weightPct)
+  }
+
+  return [...byIndustry.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+}
+
 function FundAnalysisPanelImpl({ funds }: Props) {
   const [fundId, setFundId] = useState<string>(() => {
     const saved = loadLS<string>('fund_analysis_fund', REPORT_FUNDS[0]!)
@@ -546,17 +572,8 @@ function FundAnalysisPanelImpl({ funds }: Props) {
 
   // ── Nhóm 3: phân bổ ngành theo kỳ đang chọn (donut) ──
   const industryAlloc = useMemo(() => {
-    const stocks = tableResolved ? portfolio?.get(tableResolved)?.stocks : null
-    if (!stocks) return []
-    const byInd = new Map<string, number>()
-    for (const s of stocks) {
-      const ind = industryMap[s.ticker] ?? 'Khác'
-      byInd.set(ind, (byInd.get(ind) ?? 0) + s.weightPct)
-    }
-    return [...byInd.entries()]
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-  }, [portfolio, tableResolved, industryMap])
+    return industryAllocationForPeriod(portfolio, pieResolved, industryMap)
+  }, [portfolio, pieResolved, industryMap])
 
   // Top 6 ngành + "Còn lại", kèm màu cho donut.
   const industryPie = useMemo(() => {
@@ -566,16 +583,16 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     return top.map((d, i) => ({ ...d, color: INDUSTRY_COLORS[i % INDUSTRY_COLORS.length]! }))
   }, [industryAlloc])
 
-  // ── Nhóm 3: danh mục kỳ đang chọn (bảng + top 10) ──
+  // ── Nhóm 3: danh mục kỳ đang chọn (bảng) ──
   const tableStocks = useMemo(
     () => (tableResolved ? portfolio?.get(tableResolved)?.stocks : null) ?? [],
     [portfolio, tableResolved],
   )
 
-  // ── Nhóm 3: top 10 cổ phiếu (horizontal bar) ──
+  // Top 10 nằm cùng snapshot với Tổng tài sản, không dùng kỳ của bảng.
   const top10Stocks = useMemo(
-    () => tableStocks.slice(0, 10),
-    [tableStocks],
+    () => top10StocksForPeriod(portfolio, pieResolved),
+    [portfolio, pieResolved],
   )
 
   // ── Nhóm 3: mức độ tập trung top-5 qua các kỳ ──
@@ -806,7 +823,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <p className="overlap-empty">Kỳ này không có dữ liệu ngành.</p>
                 )}
                 <p className="fund-analysis-chart-note">
-                  Tỷ trọng cổ phiếu theo ngành, kỳ {tableResolved ? formatPeriodLabel(tableResolved) : 'đang chọn'}.
+                  Tỷ trọng cổ phiếu theo ngành, kỳ {pieResolved ? formatPeriodLabel(pieResolved) : 'đang chọn'}.
                   Nếu một hai ngành chiếm quá nửa, danh mục dễ bị kéo theo ngành đó.
                 </p>
               </div>
@@ -832,7 +849,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                   <p className="overlap-empty">Kỳ này không có cổ phiếu.</p>
                 )}
                 <p className="fund-analysis-chart-note">
-                  Tỷ trọng trong NAV, kỳ {tableResolved ? formatPeriodLabel(tableResolved) : 'đang chọn'}.
+                  Tỷ trọng trong NAV, kỳ {pieResolved ? formatPeriodLabel(pieResolved) : 'đang chọn'}.
                   Vài mã đứng đầu quyết định phần lớn hiệu suất cả danh mục.
                 </p>
               </div>
