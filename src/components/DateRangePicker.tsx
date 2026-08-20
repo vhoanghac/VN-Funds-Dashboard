@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 interface Props {
   dateFrom: string | null
   dateTo: string | null
@@ -56,11 +58,20 @@ function getActivePreset(dateFrom: string | null, dateTo: string | null): Preset
 }
 
 export function DateRangePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo }: Props) {
+  const [draftFrom, setDraftFrom] = useState(dateFrom ?? '')
+  const [draftTo, setDraftTo] = useState(dateTo ?? '')
+
+  useEffect(() => setDraftFrom(dateFrom ?? ''), [dateFrom])
+  useEffect(() => setDraftTo(dateTo ?? ''), [dateTo])
+
   const activePreset = getActivePreset(dateFrom, dateTo)
 
   function handlePreset(preset: Preset) {
+    const nextFrom = getPresetFrom(preset)
+    setDraftTo('')
+    setDraftFrom(nextFrom ?? '')
     onChangeTo(null)
-    onChangeFrom(getPresetFrom(preset))
+    onChangeFrom(nextFrom)
   }
 
   return (
@@ -80,15 +91,17 @@ export function DateRangePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo }: 
         <input
           type="date"
           aria-label="Từ ngày"
-          value={dateFrom ?? ''}
-          onChange={e => onChangeFrom(e.target.value || null)}
+          value={draftFrom}
+          onChange={e => setDraftFrom(e.target.value)}
+          onBlur={() => onChangeFrom(draftFrom || null)}
         />
         <span className="date-separator">→</span>
         <input
           type="date"
           aria-label="Đến ngày"
-          value={dateTo ?? ''}
-          onChange={e => onChangeTo(e.target.value || null)}
+          value={draftTo}
+          onChange={e => setDraftTo(e.target.value)}
+          onBlur={() => onChangeTo(draftTo || null)}
         />
       </div>
     </div>

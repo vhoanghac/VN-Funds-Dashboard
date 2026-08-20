@@ -78,6 +78,16 @@ export function useMultiComparison(
     try {
       const aligned = alignMultiSeries(allSeries)
 
+      if (aligned.dates.length < 2) {
+        return {
+          status: 'error' as const,
+          error: {
+            type: 'insufficient_data' as const,
+            message: 'Khoảng thời gian đã chọn chỉ có một điểm dữ liệu chung. Cần ít nhất hai điểm để tính lợi nhuận.',
+          },
+        }
+      }
+
       // Compute returns for each fund
       const allReturns = aligned.prices.map(prices =>
         weeklyReturns(aligned.dates, prices),
