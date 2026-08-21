@@ -159,7 +159,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
   const boost25Return = boostScenarios.boost25.totalInvested > 0
     ? boostScenarios.boost25.finalValue / boostScenarios.boost25.totalInvested - 1 : null
 
-  // MWRR (IRR có trọng số thời gian) — khác % Lợi nhuận ở chỗ tính đúng số năm
+  // MWRR (IRR theo dòng tiền) — khác % Lợi nhuận ở chỗ tính đúng số năm
   // mỗi đồng đã có để sinh lời, không để "tiền vào sớm hay muộn" làm lệch kết
   // quả khi các kịch bản có tổng vốn và lịch nạp khác nhau.
   const baseMWRR = scenarios.baseline.mwrr
@@ -572,7 +572,7 @@ function BoostTakeaway({
 }
 
 /**
- * MWRR (Money-Weighted Rate of Return, IRR có trọng số thời gian) cho MỘT kịch
+ * MWRR (Money-Weighted Rate of Return, IRR theo dòng tiền) cho MỘT kịch
  * bản. simulateDCA() đã tự nối sẵn dòng tiền dương ở ngày cuối cùng bằng đúng
  * giá trị danh mục vào result.cashflows (xem allCashflows trong dca.ts), nên
  * ở đây chỉ cần đưa thẳng cashflows đó vào dcaMWRR(), không nối thêm lần nữa.
