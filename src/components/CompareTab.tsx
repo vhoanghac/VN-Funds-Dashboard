@@ -14,7 +14,6 @@ import { DataQualityBlock } from './DataQualityBlock'
 import { DividendNotice } from './DividendNotice'
 import { DateRangePicker } from './DateRangePicker'
 import { ShareButton } from './ShareButton'
-import { CompareBrief } from './CompareBrief'
 import { FUND_COLORS } from '../constants'
 import { assetDisplayName, isSavingsAssetId } from '../utils/savingsAsset'
 import type { ChartSeries, FundMeta } from '../types'
@@ -189,13 +188,6 @@ function CompareTabImpl({
             dateTo={dateTo}
             alignedStart={comparison.data.startDate}
             alignedEnd={comparison.data.endDate}
-          />
-
-          <CompareBrief
-            funds={comparison.data.funds}
-            colors={FUND_COLORS}
-            startDate={comparison.data.startDate}
-            endDate={comparison.data.endDate}
           />
 
           <KPICards funds={kpiFunds} />

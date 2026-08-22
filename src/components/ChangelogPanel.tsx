@@ -1,5 +1,17 @@
 const ENTRIES = [
   {
+    version: 'v4.4',
+    date: '22/08/2026',
+    items: [
+      'Sửa cách tính giá quỹ có cổ tức, để lợi nhuận và số tiền nhận lại sát với thực tế hơn.',
+      'Sửa lỗi dữ liệu lặp ngày: dashboard vẫn hiển thị được quỹ và báo rõ chỗ cần kiểm tra, thay vì làm mất cả quỹ.',
+      'Vàng giờ có cả giá mua vào và bán ra. DCA và tái cân bằng đều tính đến chênh lệch giữa hai mức giá này.',
+      'Tab So Sánh gọn hơn: bỏ phần "Đọc nhanh trước khi nhìn biểu đồ". Xem cảnh báo dữ liệu xong là tới ngay KPI và biểu đồ.',
+      'Chọn một khoảng thời gian ngắn giờ dễ hơn. Ngày đang nhập không bị thay đổi giữa chừng, biểu đồ bám đúng khoảng đã chọn.',
+      'Tab Phân Tích Quỹ không còn hiện nhầm biểu đồ của kỳ báo cáo cũ khi bạn đổi sang kỳ mới.',
+    ],
+  },
+  {
     version: 'v4.3',
     date: '18/08/2026',
     items: [
