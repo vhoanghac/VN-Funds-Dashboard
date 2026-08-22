@@ -12,7 +12,7 @@
  */
 import { useMemo, memo } from 'react'
 import type { PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, type DCASlot } from '../utils/dca'
+import { simulateDCA, slicePricesWithPredecessor, type DCASlot } from '../utils/dca'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 
 /** Số tiền cố định cho mỗi lần vào, chọn tròn 100 triệu cho dễ nhẩm. */
@@ -90,7 +90,10 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
           // alignFundsToCommonGridDaily merge ra 2 lưới ngày khác nhau, làm
           // vàng thiếu giá đúng ngày cần mua → NaN.
           const purchase = purchasePriceData.get(s.fundId)
-          filteredPurchase.set(s.fundId, purchase ? purchase.filter(pt => pt.date >= entryDate) : prices)
+          filteredPurchase.set(
+            s.fundId,
+            purchase ? slicePricesWithPredecessor(purchase, entryDate, '9999-12-31') : prices,
+          )
         }
         const aligned = alignFundsToCommonGridDaily(filtered)
         const alignedPurchase = alignFundsToCommonGridDaily(filteredPurchase)

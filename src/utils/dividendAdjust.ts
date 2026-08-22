@@ -35,6 +35,11 @@ export interface DividendEvent {
   taxRate: number
 }
 
+export interface DividendAdjustmentResult {
+  points: PricePoint[]
+  appliedEvents: DividendEvent[]
+}
+
 /**
  * Áp dụng dividend adjustment cho một chuỗi giá raw NAV.
  *
@@ -47,13 +52,23 @@ export function applyDividendAdjustment(
   daily: PricePoint[],
   events: DividendEvent[],
 ): PricePoint[] {
-  if (events.length === 0 || daily.length === 0) return daily
+  return applyDividendAdjustments(daily, events).points
+}
+
+export function applyDividendAdjustments(
+  daily: PricePoint[],
+  events: DividendEvent[],
+): DividendAdjustmentResult {
+  if (events.length === 0 || daily.length === 0) {
+    return { points: daily, appliedEvents: [] }
+  }
 
   // Sắp xếp events theo ex-date (thứ tự xử lý: cũ → mới)
   const sorted = [...events].sort((a, b) => a.exDate.localeCompare(b.exDate))
 
   // Clone để không mutate input
   const out: PricePoint[] = daily.map(p => ({ date: p.date, price: p.price }))
+  const appliedEvents: DividendEvent[] = []
 
   for (const ev of sorted) {
     // Tìm giá đóng cửa ngay TRƯỚC ex-date (closePreEx)
@@ -76,9 +91,10 @@ export function applyDividendAdjustment(
     for (let i = 0; i <= closePreExIdx; i++) {
       out[i]!.price = out[i]!.price * factor
     }
+    appliedEvents.push(ev)
   }
 
-  return out
+  return { points: out, appliedEvents }
 }
 
 /**
@@ -116,18 +132,13 @@ export async function loadDividends(): Promise<Map<string, DividendEvent[]>> {
   return _dividendsPromise
 }
 
-/**
- * Tiện ích: load CSV + adjust trong một bước.
- * Trả về daily PricePoint[] đã adjusted, sẵn sàng cho resampleToWeekly.
- */
-export async function loadAdjustedPrices(
+/** Load dividend metadata and return both adjusted points and applied events. */
+export async function loadAdjustedPriceData(
   fundId: string,
   rawDaily: PricePoint[],
-): Promise<PricePoint[]> {
+): Promise<DividendAdjustmentResult> {
   const dividends = await loadDividends()
-  const events = dividends.get(fundId)
-  if (!events) return rawDaily
-  return applyDividendAdjustment(rawDaily, events)
+  return applyDividendAdjustments(rawDaily, dividends.get(fundId) ?? [])
 }
 
 /**

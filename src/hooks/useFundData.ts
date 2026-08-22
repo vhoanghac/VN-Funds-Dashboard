@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react'
 import type { PricePoint, FundMeta } from '../types'
-import { parseCSV, parseFundMetadata, parseGoldCSV } from '../utils/csvParser'
-import { loadAdjustedPrices } from '../utils/dividendAdjust'
-import { isSavingsAssetId, savingsSeriesForId, pruneUnusedSavings } from '../utils/savingsAsset'
+import {
+  formatCsvPriceWarning,
+  parseCSV,
+  parseFundMetadata,
+  parseGoldCSV,
+} from '../utils/csvParser'
+import { loadAdjustedPriceData } from '../utils/dividendAdjust'
+import { isSavingsAssetId, savingsPriceSeriesForId, pruneUnusedSavings } from '../utils/savingsAsset'
+import {
+  createPriceSeries,
+  PriceSeriesValidationError,
+  toPricePoints,
+  toPriceSeriesPoints,
+} from '../utils/priceSeries'
 
 interface FundDataState {
   metadata: FundMeta[] | null
@@ -58,6 +69,7 @@ export interface FundSeriesMapState {
   purchase: Map<string, PricePoint[]>
   loading: boolean
   errors: Map<string, string>
+  warnings: Map<string, string[]>
 }
 
 interface FundSeriesMapOptions {
@@ -71,6 +83,7 @@ interface LoadResult {
   raw: PricePoint[] | null
   purchase: PricePoint[] | null
   error: string | null
+  warnings: string[]
 }
 
 function stableIdKey(ids: Iterable<string>): string {
@@ -84,12 +97,21 @@ function pruneSeriesMap<T>(cache: Map<string, T>, inUse: ReadonlySet<string>): M
   return next.size === before ? cache : next
 }
 
-function filterErrors(errors: Map<string, string>, inUse: ReadonlySet<string>): Map<string, string> {
-  const next = new Map<string, string>()
-  for (const [id, message] of errors) {
-    if (inUse.has(id)) next.set(id, message)
+function filterByInUse<T>(values: Map<string, T>, inUse: ReadonlySet<string>): Map<string, T> {
+  const next = new Map<string, T>()
+  for (const [id, value] of values) {
+    if (inUse.has(id)) next.set(id, value)
   }
   return next
+}
+
+function staticCsvSource(id: string): string {
+  return `static-csv:/data/${id}.csv`
+}
+
+function loadErrorMessage(error: unknown): string {
+  if (error instanceof PriceSeriesValidationError) return 'Dữ liệu không hợp lệ'
+  return error instanceof Error ? error.message : 'Không tải được dữ liệu quỹ'
 }
 
 /**
@@ -112,6 +134,7 @@ export function useFundSeriesMap(
   const [raw, setRaw] = useState<Map<string, PricePoint[]>>(new Map())
   const [purchase, setPurchase] = useState<Map<string, PricePoint[]>>(new Map())
   const [errors, setErrors] = useState<Map<string, string>>(new Map())
+  const [warningCache, setWarningCache] = useState<Map<string, string[]>>(new Map())
   const [cacheModes, setCacheModes] = useState<Map<string, FundSeriesMode>>(new Map())
   const [settledKey, setSettledKey] = useState('')
 
@@ -120,7 +143,7 @@ export function useFundSeriesMap(
     const modeFor = (id: string): FundSeriesMode => requestedDualIds.has(id) ? 'dual' : 'normal'
     const toLoad = ids.filter(id => !data.has(id) || cacheModes.get(id) !== modeFor(id))
 
-    setErrors(prev => filterErrors(prev, requestedIds))
+    setErrors(prev => filterByInUse(prev, requestedIds))
 
     if (toLoad.length === 0) {
       setData(prev => pruneSeriesMap(prev, requestedIds))
@@ -131,10 +154,20 @@ export function useFundSeriesMap(
 
     Promise.all(toLoad.map(async (id): Promise<LoadResult> => {
       const mode = modeFor(id)
+      let warnings: string[] = []
       try {
         if (isSavingsAssetId(id)) {
-          const series = savingsSeriesForId(id)
-          return { id, mode, data: series, raw: series, purchase: null, error: null }
+          const series = savingsPriceSeriesForId(id)
+          const points = toPricePoints(series.points)
+          return {
+            id,
+            mode,
+            data: points,
+            raw: points,
+            purchase: null,
+            error: null,
+            warnings,
+          }
         }
 
         const resp = await fetch(`/data/${id}.csv`)
@@ -142,22 +175,54 @@ export function useFundSeriesMap(
         const text = await resp.text()
 
         if (mode === 'dual') {
-          const { buy, sell } = parseGoldCSV(text)
+          const { buy, sell, warnings: parserWarnings } = parseGoldCSV(text)
+          warnings = parserWarnings.map(formatCsvPriceWarning)
           if (buy.length === 0) throw new Error('Chưa có dữ liệu')
+          const series = createPriceSeries({
+            assetId: id,
+            currency: 'VND',
+            points: toPriceSeriesPoints(buy),
+            purchasePoints: sell.length > 0 ? toPriceSeriesPoints(sell) : undefined,
+            adjustments: [],
+            source: staticCsvSource(id),
+          })
+          const data = toPricePoints(series.points)
           return {
             id,
             mode,
-            data: buy,
-            raw: buy,
-            purchase: sell.length > 0 ? sell : null,
+            data,
+            raw: data,
+            purchase: series.purchasePoints ? toPricePoints(series.purchasePoints) : [],
             error: null,
+            warnings,
           }
         }
 
-        const rawDaily = parseCSV(text)
+        const parsed = parseCSV(text)
+        warnings = parsed.warnings.map(formatCsvPriceWarning)
+        const rawDaily = parsed.points
         if (rawDaily.length === 0) throw new Error('Chưa có dữ liệu')
-        const adjusted = await loadAdjustedPrices(id, rawDaily)
-        return { id, mode, data: adjusted, raw: rawDaily, purchase: null, error: null }
+        const adjusted = await loadAdjustedPriceData(id, rawDaily)
+        const series = createPriceSeries({
+          assetId: id,
+          currency: 'VND',
+          points: toPriceSeriesPoints(adjusted.points),
+          rawPoints: adjusted.appliedEvents.length > 0
+            ? toPriceSeriesPoints(rawDaily)
+            : undefined,
+          adjustments: adjusted.appliedEvents.map(event => ({ kind: 'dividend', ...event })),
+          source: staticCsvSource(id),
+        })
+        const data = toPricePoints(series.points)
+        return {
+          id,
+          mode,
+          data,
+          raw: series.rawPoints ? toPricePoints(series.rawPoints) : data,
+          purchase: null,
+          error: null,
+          warnings,
+        }
       } catch (err) {
         return {
           id,
@@ -165,7 +230,8 @@ export function useFundSeriesMap(
           data: null,
           raw: null,
           purchase: null,
-          error: err instanceof Error ? err.message : 'Không tải được dữ liệu quỹ',
+          error: loadErrorMessage(err),
+          warnings,
         }
       }
     })).then(results => {
@@ -204,12 +270,20 @@ export function useFundSeriesMap(
         return next
       })
       setErrors(prev => {
-        const next = filterErrors(prev, requestedIds)
+        const next = filterByInUse(prev, requestedIds)
         for (const result of results) {
           if (result.error) next.set(result.id, result.error)
           else next.delete(result.id)
         }
         return next
+      })
+      setWarningCache(prev => {
+        const next = new Map(prev)
+        for (const result of results) {
+          if (result.warnings.length > 0) next.set(result.id, result.warnings)
+          else next.delete(result.id)
+        }
+        return pruneSeriesMap(next, requestedIds)
       })
       setSettledKey(requestKey)
     })
@@ -226,6 +300,7 @@ export function useFundSeriesMap(
     purchase,
     loading: ids.length > 0 && settledKey !== requestKey,
     errors,
+    warnings: filterByInUse(warningCache, requestedIds),
   }
 }
 
@@ -233,15 +308,17 @@ interface FundSeriesState {
   prices: PricePoint[] | null
   loading: boolean
   error: string | null
+  warnings: string[]
 }
 
 export function useFundSeries(fundId: string | null): FundSeriesState {
   const state = useFundSeriesMap(fundId ? [fundId] : [])
-  if (!fundId) return { prices: null, loading: false, error: null }
+  if (!fundId) return { prices: null, loading: false, error: null, warnings: [] }
   return {
     prices: state.data.get(fundId) ?? null,
     loading: state.loading,
     error: state.errors.get(fundId) ?? null,
+    warnings: state.warnings.get(fundId) ?? [],
   }
 }
 
@@ -250,6 +327,7 @@ interface MultiFundState {
   purchase: Map<string, PricePoint[]>
   loading: boolean
   errors: Map<string, string>
+  warnings: Map<string, string[]>
 }
 
 export function useMultiFundSeries(
@@ -262,5 +340,6 @@ export function useMultiFundSeries(
     purchase: state.purchase,
     loading: state.loading,
     errors: state.errors,
+    warnings: state.warnings,
   }
 }

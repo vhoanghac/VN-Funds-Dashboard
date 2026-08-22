@@ -1,4 +1,5 @@
-import type { PricePoint } from '../types'
+import type { PricePoint, PriceSeries } from '../types'
+import { createPriceSeries, toPriceSeriesPoints } from './priceSeries'
 
 /**
  * Tài sản giả lập "tiết kiệm ngân hàng, lãi suất cố định", dùng để trộn
@@ -75,6 +76,16 @@ export const SAVINGS_SERIES_START = '2000-01-01'
 export function savingsSeriesForId(id: string): PricePoint[] {
   const today = new Date().toISOString().substring(0, 10)
   return generateSavingsSeries(parseSavingsRate(id), SAVINGS_SERIES_START, today)
+}
+
+export function savingsPriceSeriesForId(id: string): PriceSeries {
+  return createPriceSeries({
+    assetId: id,
+    currency: 'VND',
+    points: toPriceSeriesPoints(savingsSeriesForId(id)),
+    adjustments: [],
+    source: 'synthetic:savings',
+  })
 }
 
 /**

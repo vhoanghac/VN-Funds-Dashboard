@@ -7,6 +7,39 @@ export interface PricePoint {
   price: number
 }
 
+/** Versioned price-series point at the data-ingress boundary. */
+export interface PriceSeriesPoint {
+  date: string // YYYY-MM-DD
+  value: number
+}
+
+/** A transformation already applied to PriceSeries.points. */
+export interface PriceSeriesAdjustment {
+  kind: 'dividend'
+  exDate: string
+  payDate: string
+  amountPerCert: number
+  taxRate: number
+}
+
+/**
+ * Versioned data contract for every price source entering the dashboard.
+ * points are calculation-ready; rawPoints preserves pre-adjustment NAV when needed.
+ */
+export interface PriceSeriesV1 {
+  version: 1
+  assetId: string
+  currency: string
+  points: PriceSeriesPoint[]
+  rawPoints?: PriceSeriesPoint[]
+  purchasePoints?: PriceSeriesPoint[]
+  adjustments: PriceSeriesAdjustment[]
+  source: string
+  asOf: string
+}
+
+export type PriceSeries = PriceSeriesV1
+
 /** Return data point */
 export interface ReturnPoint {
   date: string

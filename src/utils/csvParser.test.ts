@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { parseCSV, parseFundMetadata, parseGoldCSV } from './csvParser'
+import { formatCsvPriceWarning, parseCSV, parseFundMetadata, parseGoldCSV } from './csvParser'
+
+function parsedPoints(csv: string) {
+  return parseCSV(csv).points
+}
 
 describe('parseCSV', () => {
   it('parses a date,price CSV into points', () => {
     const csv = 'date,price\n2024-01-05,10000\n2024-01-12,10500'
-    expect(parseCSV(csv)).toEqual([
+    expect(parsedPoints(csv)).toEqual([
       { date: '2024-01-05', price: 10000 },
       { date: '2024-01-12', price: 10500 },
     ])
@@ -12,7 +16,7 @@ describe('parseCSV', () => {
 
   it('sorts ascending by date regardless of file order', () => {
     const csv = 'date,price\n2024-03-01,3\n2024-01-01,1\n2024-02-01,2'
-    expect(parseCSV(csv).map((p) => p.date)).toEqual([
+    expect(parsedPoints(csv).map((p) => p.date)).toEqual([
       '2024-01-01',
       '2024-02-01',
       '2024-03-01',
@@ -21,46 +25,91 @@ describe('parseCSV', () => {
 
   it('skips rows with a malformed date', () => {
     const csv = 'date,price\n05/01/2024,10000\n2024-01-12,10500'
-    expect(parseCSV(csv)).toEqual([{ date: '2024-01-12', price: 10500 }])
+    expect(parsedPoints(csv)).toEqual([{ date: '2024-01-12', price: 10500 }])
   })
 
   it('skips calendar dates that do not exist', () => {
-    // Shape matches /^\d{4}-\d{2}-\d{2}$/ and Date.parse accepts it (it rolls
-    // Feb 30 over to Mar 1), so only the round-trip check catches this row.
+    // The shape is valid, but the calendar date rolls over to Mar 1 unless the
+    // date validator compares its UTC round-trip components.
     const csv = 'date,price\n2024-02-30,10000\n2024-01-12,10500'
-    expect(parseCSV(csv)).toEqual([{ date: '2024-01-12', price: 10500 }])
+    expect(parsedPoints(csv)).toEqual([{ date: '2024-01-12', price: 10500 }])
   })
 
   it('keeps Feb 29 in a leap year', () => {
     const csv = 'date,price\n2024-02-29,10000'
-    expect(parseCSV(csv)).toEqual([{ date: '2024-02-29', price: 10000 }])
+    expect(parsedPoints(csv)).toEqual([{ date: '2024-02-29', price: 10000 }])
   })
 
   it('skips Feb 29 in a non-leap year', () => {
-    expect(parseCSV('date,price\n2023-02-29,10000')).toEqual([])
+    expect(parsedPoints('date,price\n2023-02-29,10000')).toEqual([])
   })
 
   it('skips a month past December', () => {
-    expect(parseCSV('date,price\n2024-13-01,10000')).toEqual([])
+    expect(parsedPoints('date,price\n2024-13-01,10000')).toEqual([])
   })
 
-  it('skips rows with a non-numeric, zero, or negative price', () => {
-    const csv = 'date,price\n2024-01-05,abc\n2024-01-12,0\n2024-01-19,-5\n2024-01-26,100'
-    expect(parseCSV(csv)).toEqual([{ date: '2024-01-26', price: 100 }])
+  it('skips rows with a non-numeric, partial-numeric, zero, or negative price', () => {
+    const csv = 'date,price\n2024-01-05,abc\n2024-01-12,100abc\n2024-01-19,0\n2024-01-22,-5\n2024-01-26,100'
+    expect(parsedPoints(csv)).toEqual([{ date: '2024-01-26', price: 100 }])
   })
 
   it('reads the buy column when the file is dual-price (gold, no price column)', () => {
     const csv = 'date,buy,sell\n2024-01-05,7500000,7700000'
-    expect(parseCSV(csv)).toEqual([{ date: '2024-01-05', price: 7500000 }])
+    expect(parsedPoints(csv)).toEqual([{ date: '2024-01-05', price: 7500000 }])
   })
 
   it('prefers the price column when a file has both price and buy', () => {
     const csv = 'date,price,buy\n2024-01-05,100,999'
-    expect(parseCSV(csv)).toEqual([{ date: '2024-01-05', price: 100 }])
+    expect(parsedPoints(csv)).toEqual([{ date: '2024-01-05', price: 100 }])
   })
 
   it('returns an empty array for a header-only file', () => {
-    expect(parseCSV('date,price')).toEqual([])
+    expect(parsedPoints('date,price')).toEqual([])
+  })
+
+  it('keeps the last source row for a duplicate date and warns about the replaced row', () => {
+    const parsed = parseCSV('date,price\n2024-01-05,100\n2024-01-12,200\n2024-01-05,110')
+
+    expect(parsed.points).toEqual([
+      { date: '2024-01-05', price: 110 },
+      { date: '2024-01-12', price: 200 },
+    ])
+    expect(parsed.warnings).toEqual([{ row: 2, code: 'duplicate-date' }])
+  })
+
+  it('keeps usable rows and records malformed rows for the data boundary', () => {
+    const parsed = parseCSV('date,price\n2024-01-05,100\nnot-a-date,200\n2024-01-19,0')
+
+    expect(parsed.points).toEqual([{ date: '2024-01-05', price: 100 }])
+    expect(parsed.warnings).toEqual([
+      { row: 3, code: 'invalid-date' },
+      { row: 4, code: 'invalid-price' },
+    ])
+    expect(parsed.warnings.map(formatCsvPriceWarning)).toEqual([
+      'row 3: invalid-date',
+      'row 4: invalid-price',
+    ])
+  })
+
+  it('drops a parser-error row instead of accepting its truncated price', () => {
+    const parsed = parseCSV('date,price\n2024-01-05,100,000\n2024-01-12,200')
+
+    expect(parsed.points).toEqual([{ date: '2024-01-12', price: 200 }])
+    expect(parsed.warnings).toEqual([{ row: 2, code: 'malformed-csv' }])
+  })
+
+  it('drops an unterminated quoted price on its physical source row', () => {
+    const parsed = parseCSV('date,price\n2024-01-05,100\n2024-01-12,"200')
+
+    expect(parsed.points).toEqual([{ date: '2024-01-05', price: 100 }])
+    expect(parsed.warnings).toEqual([{ row: 3, code: 'malformed-csv' }])
+  })
+
+  it('rejects non-decimal price tokens', () => {
+    const parsed = parseCSV('date,price\n2024-01-05,0x10\n2024-01-12,200')
+
+    expect(parsed.points).toEqual([{ date: '2024-01-12', price: 200 }])
+    expect(parsed.warnings).toEqual([{ row: 2, code: 'invalid-price' }])
   })
 })
 
@@ -102,7 +151,8 @@ describe('parseFundMetadata', () => {
 describe('parseGoldCSV', () => {
   it('splits buy and sell into two series', () => {
     const csv = 'date,buy,sell\n2024-01-05,7500000,7700000\n2024-01-12,7600000,7800000'
-    expect(parseGoldCSV(csv)).toEqual({
+    const parsed = parseGoldCSV(csv)
+    expect({ buy: parsed.buy, sell: parsed.sell }).toEqual({
       buy: [
         { date: '2024-01-05', price: 7500000 },
         { date: '2024-01-12', price: 7600000 },
@@ -112,6 +162,7 @@ describe('parseGoldCSV', () => {
         { date: '2024-01-12', price: 7800000 },
       ],
     })
+    expect(parsed.warnings).toEqual([])
   })
 
   it('sorts both series ascending by date', () => {
@@ -135,5 +186,40 @@ describe('parseGoldCSV', () => {
     const { buy, sell } = parseGoldCSV(csv)
     expect(buy).toHaveLength(2)
     expect(sell).toEqual([{ date: '2024-01-12', price: 7800000 }])
+  })
+
+  it('keeps the last quote for duplicate gold dates', () => {
+    const parsed = parseGoldCSV('date,buy,sell\n2024-01-05,100,110\n2024-01-05,120,130')
+
+    expect(parsed.buy).toEqual([{ date: '2024-01-05', price: 120 }])
+    expect(parsed.sell).toEqual([{ date: '2024-01-05', price: 130 }])
+    expect(parsed.warnings).toEqual([
+      { row: 2, code: 'duplicate-date' },
+      { row: 2, code: 'duplicate-date' },
+    ])
+  })
+
+  it('records which gold price was missing without dropping the other price', () => {
+    const parsed = parseGoldCSV('date,buy,sell\n2024-01-05,7500000,0')
+
+    expect(parsed.buy).toEqual([{ date: '2024-01-05', price: 7500000 }])
+    expect(parsed.sell).toEqual([])
+    expect(parsed.warnings).toEqual([{ row: 2, code: 'invalid-sell' }])
+  })
+
+  it('drops a malformed gold row before keeping either truncated price', () => {
+    const parsed = parseGoldCSV('date,buy,sell\n2024-01-05,100,000,110\n2024-01-12,200,220')
+
+    expect(parsed.buy).toEqual([{ date: '2024-01-12', price: 200 }])
+    expect(parsed.sell).toEqual([{ date: '2024-01-12', price: 220 }])
+    expect(parsed.warnings).toEqual([{ row: 2, code: 'malformed-csv' }])
+  })
+
+  it('drops an unterminated quoted gold row on its physical source row', () => {
+    const parsed = parseGoldCSV('date,buy,sell\n2024-01-05,100,110\n2024-01-12,200,"220')
+
+    expect(parsed.buy).toEqual([{ date: '2024-01-05', price: 100 }])
+    expect(parsed.sell).toEqual([{ date: '2024-01-05', price: 110 }])
+    expect(parsed.warnings).toEqual([{ row: 3, code: 'malformed-csv' }])
   })
 })

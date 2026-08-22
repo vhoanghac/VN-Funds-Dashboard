@@ -5,6 +5,7 @@ import {
   parseSavingsRate,
   assetDisplayName,
   generateSavingsSeries,
+  savingsPriceSeriesForId,
   pruneUnusedSavings,
   pickDefaultSavingsRate,
   DEFAULT_SAVINGS_RATE,
@@ -83,6 +84,24 @@ describe('generateSavingsSeries', () => {
   it('khoảng ngày ngược hoặc hỏng thì trả mảng rỗng, không ném lỗi', () => {
     expect(generateSavingsSeries(6, '2024-01-01', '2020-01-01')).toEqual([])
     expect(generateSavingsSeries(6, 'khong-phai-ngay', '2020-01-01')).toEqual([])
+  })
+})
+
+describe('savingsPriceSeriesForId', () => {
+  it('enters the dashboard through PriceSeries v1 with an explicit synthetic source', () => {
+    const series = savingsPriceSeriesForId('SAVINGS:6')
+
+    expect(series).toMatchObject({
+      version: 1,
+      assetId: 'SAVINGS:6',
+      currency: 'VND',
+      source: 'synthetic:savings',
+      adjustments: [],
+    })
+    expect(series.points[0]).toEqual({ date: '2000-01-01', value: 100 })
+    expect(series.asOf).toBe(series.points[series.points.length - 1]!.date)
+    expect(series.rawPoints).toBeUndefined()
+    expect(series.purchasePoints).toBeUndefined()
   })
 })
 

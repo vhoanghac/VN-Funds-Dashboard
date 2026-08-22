@@ -95,6 +95,8 @@ const MONTHLY_FACTOR: Record<DCAFrequency, number> = {
   yearly: 1 / 12,
 }
 
+const REBALANCE_BISECTION_STEPS = 64
+
 /**
  * Quy đổi số tiền nạp mỗi kỳ (theo tần suất bất kỳ) sang mức TƯƠNG ĐƯƠNG mỗi
  * tháng — dùng làm "monthlyContribution" cho các phép chiếu tương lai
@@ -247,6 +249,78 @@ function buildCommonPriceGrid(priceArrays: PricePoint[][]): CommonPriceGrid | nu
   return dates.length >= 2 ? { dates, priceLookups } : null
 }
 
+function buildPurchasePriceGrid(
+  dates: string[],
+  fundIds: string[],
+  valuationLookups: Map<string, number>[],
+  purchasePrices: Map<string, PricePoint[]> | undefined,
+): CommonPriceGrid | null {
+  if (!purchasePrices || !fundIds.some(id => purchasePrices.has(id))) {
+    return { dates, priceLookups: valuationLookups }
+  }
+
+  const overrides = fundIds.map(id => {
+    const prices = purchasePrices.get(id)
+    return prices ? [...prices].sort((a, b) => a.date.localeCompare(b.date)) : undefined
+  })
+  let start = dates[0]!
+
+  for (const prices of overrides) {
+    if (!prices) continue
+    if (prices.length === 0) return null
+    if (prices[0]!.date > start) start = prices[0]!.date
+  }
+
+  // Không có giá bán trước quote đầu tiên: lùi ngày bắt đầu, không fallback sang giá định giá.
+  const purchaseDates = dates.filter(date => date >= start)
+  if (purchaseDates.length < 2) return null
+
+  const priceLookups: Map<string, number>[] = []
+  for (let index = 0; index < fundIds.length; index++) {
+    const prices = overrides[index]
+    if (!prices) {
+      priceLookups.push(valuationLookups[index]!)
+      continue
+    }
+
+    const lookup = new Map<string, number>()
+    let pointIndex = 0
+    let latestPrice: number | null = null
+    for (const date of purchaseDates) {
+      while (pointIndex < prices.length && prices[pointIndex]!.date <= date) {
+        latestPrice = prices[pointIndex]!.price
+        pointIndex++
+      }
+      if (latestPrice === null) return null
+      lookup.set(date, latestPrice)
+    }
+    priceLookups.push(lookup)
+  }
+
+  return { dates: purchaseDates, priceLookups }
+}
+
+/** Keeps the last quote before a requested date so later dates can forward-fill from it. */
+export function slicePricesWithPredecessor(
+  prices: PricePoint[],
+  from: string,
+  to: string,
+): PricePoint[] {
+  let predecessor: PricePoint | undefined
+  const sliced: PricePoint[] = []
+
+  for (const point of prices) {
+    if (point.date < from) {
+      predecessor = point
+      continue
+    }
+    if (point.date > to) break
+    sliced.push(point)
+  }
+
+  return predecessor ? [predecessor, ...sliced] : sliced
+}
+
 function valueUnits(
   units: number[],
   priceLookups: Map<string, number>[],
@@ -264,11 +338,48 @@ function rebalanceUnits(
   weights: number[],
   priceLookups: Map<string, number>[],
   date: string,
+  purchaseLookups: Map<string, number>[] = priceLookups,
 ): void {
   const totalValue = valueUnits(units, priceLookups, date)
+  if (totalValue <= 0) return
+
+  let hasSpread = false
+  for (let j = 0; j < units.length; j++) {
+    if (purchaseLookups[j]!.get(date)! !== priceLookups[j]!.get(date)!) {
+      hasSpread = true
+      break
+    }
+  }
+  if (!hasSpread) {
+    for (let j = 0; j < units.length; j++) {
+      const price = priceLookups[j]!.get(date)!
+      units[j] = (totalValue * weights[j]!) / price
+    }
+    return
+  }
+
+  // Post-trade value plus the spread paid on buy legs must equal pre-trade value.
+  let low = 0
+  let high = totalValue
+  for (let step = 0; step < REBALANCE_BISECTION_STEPS; step++) {
+    const targetValue = (low + high) / 2
+    let requiredValue = targetValue
+
+    for (let j = 0; j < units.length; j++) {
+      const bid = priceLookups[j]!.get(date)!
+      const ask = purchaseLookups[j]!.get(date)!
+      const boughtUnits = (targetValue * weights[j]!) / bid - units[j]!
+      if (boughtUnits > 0) requiredValue += (ask - bid) * boughtUnits
+    }
+
+    if (requiredValue > totalValue) high = targetValue
+    else low = targetValue
+  }
+
+  const targetValue = (low + high) / 2
   for (let j = 0; j < units.length; j++) {
     const price = priceLookups[j]!.get(date)!
-    units[j] = (totalValue * weights[j]!) / price
+    units[j] = (targetValue * weights[j]!) / price
   }
 }
 
@@ -288,7 +399,8 @@ export interface DCASimulateOptions {
   skipContributionWhen?: (date: string, currentDrawdown: number) => boolean
   contributionAmountOverride?: (date: string, currentDrawdown: number) => number
   /**
-   * Giá dùng để QUY ĐỔI TIỀN THÀNH ĐƠN VỊ khi mua (initial amount + mỗi lần DCA),
+   * Giá dùng để QUY ĐỔI TIỀN THÀNH ĐƠN VỊ khi mua (initial amount, mỗi lần DCA
+   * và phần mua khi tái cân bằng),
    * CHỈ cho những fundId có mặt trong map này — các quỹ khác (không có entry,
    * tức tuyệt đại đa số quỹ mở/ETF) vẫn dùng đúng `dailyPrices` như trước,
    * hành vi không đổi.
@@ -339,18 +451,17 @@ export function simulateDCA(
   if (!commonGrid) {
     return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
   }
-  const { dates: allDates, priceLookups } = commonGrid
-
-  // Purchase-time price lookups: falls back to priceLookups (dailyPrices) for
-  // any fundId not present in options.purchasePrices — so funds/ETFs without
-  // a buy/sell spread are completely unaffected.
-  const purchaseLookups = fundIds.map((id, j) => {
-    const override = options?.purchasePrices?.get(id)
-    if (!override) return priceLookups[j]!
-    const map = new Map<string, number>()
-    for (const p of override) map.set(p.date, p.price)
-    return map
-  })
+  const purchaseGrid = buildPurchasePriceGrid(
+    commonGrid.dates,
+    fundIds,
+    commonGrid.priceLookups,
+    options?.purchasePrices,
+  )
+  if (!purchaseGrid) {
+    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
+  }
+  const { dates: allDates, priceLookups: purchaseLookups } = purchaseGrid
+  const priceLookups = commonGrid.priceLookups
 
   // ── Run DCA simulation ──
   // Note: giá dailyPrices vào đây ĐÃ được dividend-adjusted ở layer CSV loader
@@ -407,14 +518,11 @@ export function simulateDCA(
     const valueBeforeCashflow = valueUnits(units, priceLookups, date)
 
     // Daily TWRR return = market movement only (before adding new money)
-    let dailyReturn = 0
+    let marketReturn = 0
     if (prevEndValue > 0) {
-      dailyReturn = valueBeforeCashflow / prevEndValue - 1
+      marketReturn = valueBeforeCashflow / prevEndValue - 1
     }
-    twrrDailyReturns.push({ date, value: dailyReturn })
-
-    // Chain-link TWRR growth
-    twrrGrowth *= (1 + dailyReturn)
+    const growthAfterMarket = twrrGrowth * (1 + marketReturn)
 
     // ── Step 2: DCA cashflow (add new money AFTER computing return) ──
     if (params.cashflowAmount > 0) {
@@ -423,7 +531,7 @@ export function simulateDCA(
         // Panic-stop hook: cho biến thể hành vi (vd: dừng nạp khi DD < -20%).
         // DD dùng ở đây là TWRR drawdown hiện tại (sau khi đã chain-link return hôm nay).
         // Retail đọc giá đóng cửa, thấy âm, rồi quyết định không nạp.
-        const currentDD = twrrPeak > 0 ? (twrrGrowth / twrrPeak - 1) : 0
+        const currentDD = twrrPeak > 0 ? (growthAfterMarket / twrrPeak - 1) : 0
         const shouldSkip = options?.skipContributionWhen?.(date, currentDD) ?? false
         if (!shouldSkip) {
           const amount = options?.contributionAmountOverride?.(date, currentDD) ?? params.cashflowAmount
@@ -441,19 +549,26 @@ export function simulateDCA(
     }
 
     // ── Step 3: Rebalance check ──
+    let portfolioValue = totalInvested > 0 ? valueUnits(units, priceLookups, date) : 0
+    let rebalanceFactor = 1
     if (totalInvested > 0) {
       if (shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
-        rebalanceUnits(units, weights, priceLookups, date)
+        const valueBeforeRebalance = portfolioValue
+        rebalanceUnits(units, weights, priceLookups, date, purchaseLookups)
+        portfolioValue = valueUnits(units, priceLookups, date)
+        if (valueBeforeRebalance > 0) rebalanceFactor = portfolioValue / valueBeforeRebalance
       }
     }
     prevDateForRebal = date
 
     // ── Record MWRR portfolio value (AFTER cashflow) ──
-    const portfolioValue = totalInvested > 0 ? valueUnits(units, priceLookups, date) : 0
     values.push({ date, value: portfolioValue })
     invested.push({ date, value: totalInvested })
 
     // ── Record TWRR cumulative return ──
+    const dailyReturn = (1 + marketReturn) * rebalanceFactor - 1
+    twrrDailyReturns.push({ date, value: dailyReturn })
+    twrrGrowth *= 1 + dailyReturn
     cumulative.push({ date, value: twrrGrowth - 1 })
 
     // ── Record TWRR drawdown ──
@@ -1285,6 +1400,7 @@ export function trackDividendNarrative(
   params: DCAParams,
   rebalFreq: RebalanceFrequency,
   dividends: Map<string, DividendEvent[]>,
+  purchasePrices?: Map<string, PricePoint[]>,
 ): DividendNarrativeStats[] {
   const validSlots = slots.filter(s => s.fundId && s.weight > 0)
   if (validSlots.length === 0) return []
@@ -1301,7 +1417,15 @@ export function trackDividendNarrative(
 
   const commonGrid = buildCommonPriceGrid(priceArrays)
   if (!commonGrid) return []
-  const { dates: allDates, priceLookups } = commonGrid
+  const purchaseGrid = buildPurchasePriceGrid(
+    commonGrid.dates,
+    fundIds,
+    commonGrid.priceLookups,
+    purchasePrices,
+  )
+  if (!purchaseGrid) return []
+  const { dates: allDates, priceLookups: purchaseLookups } = purchaseGrid
+  const priceLookups = commonGrid.priceLookups
 
   // Schedule dividend events trên weekly grid
   interface ScheduleEntry {
@@ -1346,7 +1470,7 @@ export function trackDividendNarrative(
 
   function buy(amount: number, dateIdx: number) {
     const date = allDates[dateIdx]!
-    allocateUnits(units, amount, weights, priceLookups, date)
+    allocateUnits(units, amount, weights, purchaseLookups, date)
     totalInvested += amount
     lastInvestDate = date
   }
@@ -1405,7 +1529,7 @@ export function trackDividendNarrative(
 
     // Rebalance
     if (totalInvested > 0 && shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
-      rebalanceUnits(units, weights, priceLookups, date)
+      rebalanceUnits(units, weights, priceLookups, date, purchaseLookups)
     }
     prevDateForRebal = date
   }

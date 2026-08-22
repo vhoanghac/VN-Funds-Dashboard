@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
   trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
-  trailingWindowCagr,
+  slicePricesWithPredecessor, trailingWindowCagr,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -322,6 +322,21 @@ describe('simulateDCA + applyDividendAdjustment (integration)', () => {
   })
 })
 
+describe('slicePricesWithPredecessor', () => {
+  it('keeps the last price before the range so later dates can forward-fill', () => {
+    const prices = [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-05', price: 105 },
+      { date: '2024-01-10', price: 110 },
+    ]
+
+    expect(slicePricesWithPredecessor(prices, '2024-01-03', '2024-01-08')).toEqual([
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-05', price: 105 },
+    ])
+  })
+})
+
 describe('common price grid characterization', () => {
   const pricesA: PricePoint[] = [
     { date: '2024-01-01', price: 100 },
@@ -507,6 +522,88 @@ describe('simulateDCA purchasePrices option (gold buy/sell spread)', () => {
     expect(withEmptyOption.finalValue).toBeCloseTo(withoutOption.finalValue, 8)
     expect(withEmptyOption.values[0]!.value).toBeCloseTo(withoutOption.values[0]!.value, 8)
     expect(withEmptyOption.finalValue).toBeCloseTo(1100, 4) // quỹ thường: mua & định giá cùng 1 giá
+  })
+
+  it('waits for the first sell quote and forward-fills later sell gaps', () => {
+    const valuationPrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 100 },
+      { date: '2024-01-03', price: 100 },
+      { date: '2024-01-04', price: 100 },
+    ]]])
+    const purchasePrices = new Map([[GOLD, [
+      { date: '2024-01-02', price: 110 },
+      { date: '2024-01-04', price: 220 },
+    ]]])
+
+    const result = simulateDCA(
+      valuationPrices,
+      [{ fundId: GOLD, weight: 100 }],
+      { initialAmount: 1100, cashflowAmount: 1100, cashflowFreq: 'daily' },
+      'quarterly',
+      { purchasePrices },
+    )
+
+    expect(result.values.map(point => point.date)).toEqual([
+      '2024-01-02', '2024-01-03', '2024-01-04',
+    ])
+    expect(result.totalInvested).toBe(3300)
+    expect(result.values[0]!.value).toBeCloseTo(1000, 8)
+    expect(result.values[1]!.value).toBeCloseTo(2000, 8)
+    expect(result.finalValue).toBeCloseTo(2500, 8)
+    expect(result.values.every(point => Number.isFinite(point.value))).toBe(true)
+  })
+
+  it('does not fall back to the valuation price when an explicit sell series is empty', () => {
+    const valuationPrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 110 },
+    ]]])
+
+    const result = simulateDCA(
+      valuationPrices,
+      [{ fundId: GOLD, weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+      { purchasePrices: new Map([[GOLD, []]]) },
+    )
+
+    expect(result).toEqual({
+      values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0,
+    })
+  })
+
+  it('pays the gold spread again when rebalancing into gold', () => {
+    const FUND = 'FUND'
+    const valuationPrices = new Map([
+      [FUND, [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-02-01', price: 100 },
+        { date: '2024-03-01', price: 100 },
+      ]],
+      [GOLD, [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-02-01', price: 90 },
+        { date: '2024-03-01', price: 180 },
+      ]],
+    ])
+    const purchasePrices = new Map([[GOLD, [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-02-01', price: 100 },
+      { date: '2024-03-01', price: 200 },
+    ]]])
+
+    const result = simulateDCA(
+      valuationPrices,
+      [{ fundId: FUND, weight: 50 }, { fundId: GOLD, weight: 50 }],
+      { initialAmount: 2000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'monthly',
+      { purchasePrices },
+    )
+
+    expect(result.values[1]!.value).toBeCloseTo(36000 / 19, 8)
+    expect(result.finalValue).toBeCloseTo(54000 / 19, 8)
+    expect(result.cumulative[1]!.value).toBeCloseTo(-1 / 19, 8)
   })
 })
 

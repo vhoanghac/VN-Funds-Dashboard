@@ -19,7 +19,10 @@ const CSV: Record<string, string> = {
   DCDE: 'date,price\n2024-01-02,100\n2024-01-03,90',
   TCBF: 'date,price\n2025-07-28,20756\n2025-07-29,19776\n2025-08-20,19842',
   GOLD_SJC: 'date,price,buy,sell\n2024-01-01,900,1000,1100\n2024-01-02,950,1050,1150',
+  GOLD_NO_SELL: 'date,buy,sell\n2024-01-01,1000,0\n2024-01-02,1050,0',
   EMPTY: 'date,price\n',
+  WARN: 'date,price\n2024-01-01,100\nnot-a-date,200\n2024-01-03,0',
+  DUPLICATE: 'date,price\n2024-01-01,100\n2024-01-01,110',
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -64,6 +67,7 @@ function MapProbe({
       <output data-testid="raw">{summary(state.raw)}</output>
       <output data-testid="purchase">{summary(state.purchase)}</output>
       <output data-testid="errors">{JSON.stringify(Array.from(state.errors.entries()))}</output>
+      <output data-testid="warnings">{JSON.stringify(Array.from(state.warnings.entries()))}</output>
     </>
   )
 }
@@ -75,6 +79,7 @@ function SingleProbe({ fundId }: { fundId: string | null }) {
       <output data-testid="single-loading">{String(state.loading)}</output>
       <output data-testid="single-prices">{state.prices ? state.prices.length : 'null'}</output>
       <output data-testid="single-error">{state.error ?? 'null'}</output>
+      <output data-testid="single-warnings">{JSON.stringify(state.warnings)}</output>
     </>
   )
 }
@@ -90,6 +95,7 @@ function MultiProbe({ ids, dualPriceFundIds = new Set<string>() }: {
       <output data-testid="multi-purchase">{summary(state.purchase)}</output>
       <output data-testid="multi-loading">{String(state.loading)}</output>
       <output data-testid="multi-errors">{String(state.errors instanceof Map)}</output>
+      <output data-testid="multi-warnings">{String(state.warnings instanceof Map)}</output>
     </>
   )
 }
@@ -154,6 +160,16 @@ describe('useFundSeriesMap', () => {
     expect(screen.getByTestId('data')).toHaveTextContent('"price":1000')
     expect(screen.getByTestId('raw')).toHaveTextContent('"price":1000')
     expect(screen.getByTestId('purchase')).toHaveTextContent('"price":1100')
+  })
+
+  it('keeps an empty purchase entry when a dual-price fund has no sell quotes', async () => {
+    render(<MapProbe ids={['GOLD_NO_SELL']} dualPriceFundIds={new Set(['GOLD_NO_SELL'])} />)
+
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+
+    expect(screen.getByTestId('data')).toHaveTextContent('"id":"GOLD_NO_SELL"')
+    expect(screen.getByTestId('purchase')).toHaveTextContent('"id":"GOLD_NO_SELL","length":0')
+    expect(screen.getByTestId('warnings')).toHaveTextContent('row 2: invalid-sell')
   })
 
   it('keeps raw different from adjusted data for a dividend fund', async () => {
@@ -234,6 +250,43 @@ describe('useFundSeriesMap', () => {
     expect(screen.getByTestId('data')).toHaveTextContent('DCDS')
   })
 
+  it('keeps usable rows and exposes parse warnings without turning them into data errors', async () => {
+    render(<MapProbe ids={['WARN']} />)
+
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+
+    expect(screen.getByTestId('data')).toHaveTextContent('"id":"WARN"')
+    expect(screen.getByTestId('errors')).not.toHaveTextContent('WARN')
+    expect(screen.getByTestId('warnings')).toHaveTextContent('["WARN",')
+    expect(screen.getByTestId('warnings')).toHaveTextContent('row 3: invalid-date')
+    expect(screen.getByTestId('warnings')).toHaveTextContent('row 4: invalid-price')
+  })
+
+  it('restores warnings from the fund cache when a selected fund returns', async () => {
+    const view = render(<MapProbe ids={['WARN']} />)
+    await waitFor(() => expect(screen.getByTestId('warnings')).toHaveTextContent('row 3: invalid-date'))
+
+    view.rerender(<MapProbe ids={['DCDS']} />)
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+    expect(screen.getByTestId('warnings')).not.toHaveTextContent('WARN')
+
+    view.rerender(<MapProbe ids={['WARN']} />)
+    await waitFor(() => expect(screen.getByTestId('warnings')).toHaveTextContent('row 3: invalid-date'))
+
+    expect(csvCalls().filter(url => url.endsWith('/WARN.csv'))).toHaveLength(1)
+  })
+
+  it('loads a duplicate date using the last source row and exposes a warning', async () => {
+    render(<MapProbe ids={['DUPLICATE']} />)
+
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+
+    expect(screen.getByTestId('data')).toHaveTextContent('DUPLICATE')
+    expect(screen.getByTestId('data')).toHaveTextContent('"price":110')
+    expect(screen.getByTestId('errors')).not.toHaveTextContent('DUPLICATE')
+    expect(screen.getByTestId('warnings')).toHaveTextContent('row 2: duplicate-date')
+  })
+
   it('settles loading after an HTTP error instead of waiting for data forever', async () => {
     render(<MapProbe ids={['MISSING']} />)
 
@@ -295,6 +348,7 @@ describe('useFundData wrappers', () => {
     expect(screen.getByTestId('single-loading')).toHaveTextContent('false')
     expect(screen.getByTestId('single-prices')).toHaveTextContent('null')
     expect(screen.getByTestId('single-error')).toHaveTextContent('null')
+    expect(screen.getByTestId('single-warnings')).toHaveTextContent('[]')
 
     view.rerender(<SingleProbe fundId="DCDS" />)
     await waitFor(() => expect(screen.getByTestId('single-loading')).toHaveTextContent('false'))
@@ -312,5 +366,6 @@ describe('useFundData wrappers', () => {
     await waitFor(() => expect(screen.getByTestId('multi-loading')).toHaveTextContent('false'))
     expect(screen.getByTestId('multi-data')).toHaveTextContent('true')
     expect(screen.getByTestId('multi-errors')).toHaveTextContent('true')
+    expect(screen.getByTestId('multi-warnings')).toHaveTextContent('true')
   })
 })

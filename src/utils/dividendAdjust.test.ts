@@ -2,7 +2,11 @@
  * Tests for applyDividendAdjustment — Yahoo-style tax-adjusted factor.
  */
 import { describe, it, expect } from 'vitest'
-import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
+import {
+  applyDividendAdjustment,
+  applyDividendAdjustments,
+  type DividendEvent,
+} from './dividendAdjust'
 import type { PricePoint } from '../types'
 
 function mkPrices(pairs: Array<[string, number]>): PricePoint[] {
@@ -111,5 +115,46 @@ describe('applyDividendAdjustment', () => {
       { exDate: '2024-06-10', payDate: '2024-06-26', amountPerCert: 1300, taxRate: 0.05 },
     ])
     expect(prices).toEqual(snapshot)
+  })
+
+  it('reports only dividend events that actually changed the series', () => {
+    const prices = mkPrices([
+      ['2024-06-09', 29000],
+      ['2024-06-10', 27700],
+    ])
+    const beforeSeries: DividendEvent = {
+      exDate: '2024-06-10',
+      payDate: '2024-06-26',
+      amountPerCert: 1300,
+      taxRate: 0.05,
+    }
+    const beforeHistory: DividendEvent = {
+      exDate: '2020-01-01',
+      payDate: '2020-01-10',
+      amountPerCert: 100,
+      taxRate: 0,
+    }
+
+    const result = applyDividendAdjustments(prices, [beforeHistory, beforeSeries])
+
+    expect(result.appliedEvents).toEqual([beforeSeries])
+    expect(result.points[0]!.price).toBeLessThan(prices[0]!.price)
+  })
+
+  it('does not record an event when adjustment leaves prices unchanged', () => {
+    const prices = mkPrices([
+      ['2024-06-09', 100],
+      ['2024-06-10', 90],
+    ])
+
+    const result = applyDividendAdjustments(prices, [{
+      exDate: '2024-06-10',
+      payDate: '2024-06-26',
+      amountPerCert: 100,
+      taxRate: 0,
+    }])
+
+    expect(result.points).toEqual(prices)
+    expect(result.appliedEvents).toEqual([])
   })
 })

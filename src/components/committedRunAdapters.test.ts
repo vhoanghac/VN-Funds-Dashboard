@@ -32,6 +32,10 @@ describe('committed-run panel adapters', () => {
     expect(sources.dca).toMatch(/purchasePriceData=\{committed!\.data\.purchasePriceData\}/)
   })
 
+  it('DCA passes sell-price overrides only for dual-price assets', () => {
+    expect(sources.dca).toMatch(/dualPriceFundIds\.has\(slot\.fundId\) && purchasePrices/)
+  })
+
   it('Bitcoin snapshots the amount and uses committed data for auxiliary blocks', () => {
     expect(sources.bitcoin).toMatch(/investAmount,/) 
     expect(sources.bitcoin).toMatch(/investAmount=\{committed\.params\.investAmount\}/)

@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -449,6 +449,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       if (fundStart > globalStart) globalStart = fundStart
       // Global end = earliest end among all funds
       if (fundEnd < globalEnd) globalEnd = fundEnd
+
+      const purchasePrices = purchasePriceData.get(fundId)
+      if (purchasePrices && purchasePrices.length > 0 && purchasePrices[0]!.date > globalStart) {
+        globalStart = purchasePrices[0]!.date
+      }
     }
 
     if (globalStart >= globalEnd) return null
@@ -481,7 +486,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       // lưới ngày khác nhau giữa 2 map, khiến vàng thiếu giá đúng ngày cần mua
       // khi so sánh chung với quỹ khác (portfolio khác) → NaN.
       const purchasePrices = purchasePriceData.get(fundId) ?? prices
-      allFilteredPurchasePrices.set(fundId, purchasePrices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
+      allFilteredPurchasePrices.set(
+        fundId,
+        slicePricesWithPredecessor(purchasePrices, globalStart, globalEnd),
+      )
     }
     const alignedPrices = alignFundsToCommonGridDaily(allFilteredPrices)
     const alignedRawPrices = allFilteredRawPrices.size > 0
@@ -506,7 +514,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         if (!prices) return null
         filteredPrices.set(slot.fundId, prices)
         const purchasePrices = alignedPurchasePrices.get(slot.fundId)
-        if (purchasePrices) portfolioPurchasePrices.set(slot.fundId, purchasePrices)
+        // The main simulation needs only dual-price overrides. Passing adjusted
+        // fund prices into the raw-NAV dividend shadow would corrupt its units.
+        if (dualPriceFundIds.has(slot.fundId) && purchasePrices) {
+          portfolioPurchasePrices.set(slot.fundId, purchasePrices)
+        }
       }
 
       const dcaResult = simulateDCA(
@@ -545,6 +557,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             committed.params,
             p.rebalFreq,
             dividendsByFund,
+            portfolioPurchasePrices,
           )
         : []
 
