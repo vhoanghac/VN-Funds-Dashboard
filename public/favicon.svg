@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fund Dashboard">
+  <rect width="64" height="64" rx="14" fill="#c96442" />
+  <path d="M16 43 27 31l8 7 13-17" fill="none" stroke="#faf9f5" stroke-linecap="round" stroke-linejoin="round" stroke-width="6" />
+  <circle cx="48" cy="21" r="4" fill="#faf9f5" />
+</svg>
