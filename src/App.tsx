@@ -3,7 +3,7 @@ import type { CalculatorId } from './types'
 import { useFundMetadata } from './hooks/useFundData'
 import { useUrlState } from './hooks/useUrlState'
 import { TAB_REGISTRY, type TabContext } from './tabRegistry'
-import { SeoMetadata } from './components/SeoMetadata'
+import { SEO_BY_TAB, SeoMetadata } from './components/SeoMetadata'
 
 export function App() {
   const { metadata, metadataError, loading: metaLoading } = useFundMetadata()
@@ -49,7 +49,7 @@ export function App() {
     <div className="app">
       <SeoMetadata tab={state.tab} />
       <header className="app-header">
-        <h1>So Sánh Quỹ Đầu Tư Việt Nam</h1>
+        <h1>{SEO_BY_TAB[state.tab].heading}</h1>
       </header>
 
       {/* Tabs — duyệt registry, không hardcode */}

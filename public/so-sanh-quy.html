@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="So sánh quỹ mở, ETF và các tài sản tại Việt Nam bằng chuỗi dữ liệu NAV lịch sử, CAGR, drawdown và rolling return." />
+    <meta name="robots" content="index, follow" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+    <link rel="canonical" href="https://fund.vohoanghac.com/so-sanh-quy" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Fund Dashboard" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:url" content="https://fund.vohoanghac.com/so-sanh-quy" />
+    <meta property="og:title" content="So sánh quỹ mở và ETF Việt Nam | Fund Dashboard" />
+    <meta property="og:description" content="Đặt quỹ mở, ETF và các tài sản tại Việt Nam trên cùng dữ liệu lịch sử để xem lợi nhuận, drawdown và rolling return." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="So sánh quỹ mở và ETF Việt Nam | Fund Dashboard" />
+    <meta name="twitter:description" content="Đặt quỹ mở, ETF và các tài sản tại Việt Nam trên cùng dữ liệu lịch sử để xem lợi nhuận, drawdown và rolling return." />
+    <title>So sánh quỹ mở và ETF Việt Nam | Fund Dashboard</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "So sánh quỹ mở và ETF Việt Nam",
+        "url": "https://fund.vohoanghac.com/so-sanh-quy",
+        "description": "Đặt quỹ mở, ETF và các tài sản tại Việt Nam trên cùng dữ liệu lịch sử để xem lợi nhuận, drawdown và rolling return.",
+        "isPartOf": {
+          "@type": "WebApplication",
+          "name": "Fund Dashboard",
+          "url": "https://fund.vohoanghac.com/"
+        },
+        "inLanguage": "vi-VN"
+      }
+    </script>
+    <style>
+      :root {
+        color: #24302f;
+        background: #f5f4ed;
+        font-family: 'Source Serif 4', 'Noto Serif', 'Segoe UI', Arial, sans-serif;
+        font-synthesis: none;
+        font-kerning: normal;
+        line-height: 1.6;
+      }
+
+      * { box-sizing: border-box; }
+
+      body { margin: 0; }
+
+      a { color: #176b62; }
+
+      .page {
+        width: min(100% - 32px, 820px);
+        margin: 0 auto;
+        padding: 72px 0 64px;
+      }
+
+      .eyebrow {
+        margin: 0 0 16px;
+        color: #b35d32;
+        font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1, h2 { line-height: 1.15; }
+
+      h1 {
+        max-width: 720px;
+        margin: 0;
+        font-size: clamp(2.35rem, 6vw, 4.5rem);
+        letter-spacing: -0.02em;
+      }
+
+      .lead {
+        max-width: 650px;
+        margin: 24px 0 32px;
+        color: #53605e;
+        font-size: 1.2rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 72px;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 12px 18px;
+        border: 1px solid #176b62;
+        border-radius: 5px;
+        background: #176b62;
+        color: #fff;
+        font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+        font-size: 0.92rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .button.secondary {
+        background: transparent;
+        color: #176b62;
+      }
+
+      .features {
+        border-top: 1px solid #c9cec5;
+        border-bottom: 1px solid #c9cec5;
+        padding: 8px 0;
+      }
+
+      .features h2 {
+        margin: 16px 0 12px;
+        font-size: 1.35rem;
+      }
+
+      .feature-list {
+        display: grid;
+        gap: 18px;
+        margin: 0;
+        padding: 0 0 18px 1.5rem;
+      }
+
+      .feature-list li { padding-left: 8px; }
+
+      .feature-list h3 {
+        display: inline;
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .feature-list p {
+        display: inline;
+        margin: 0;
+        color: #53605e;
+        font-size: 0.95rem;
+      }
+
+      .note {
+        max-width: 650px;
+        margin-top: 36px;
+        color: #53605e;
+        font-size: 0.92rem;
+      }
+
+      footer {
+        margin-top: 54px;
+        color: #6e7873;
+        font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+        font-size: 0.78rem;
+      }
+
+      @media (max-width: 640px) {
+        .page { padding-top: 44px; }
+        .actions { margin-bottom: 48px; }
+        .features { padding: 4px 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="eyebrow">Fund Dashboard · Quỹ mở Việt Nam</p>
+      <h1>So sánh Quỹ mở và ETF Việt Nam</h1>
+      <p class="lead">Đừng vội kết luận quỹ nào tốt hơn chỉ qua một con số lợi nhuận duy nhất. Công cụ này đặt các quỹ mở, ETF và một số tài sản khác lên cùng một hệ quy chiếu dữ liệu, giúp bạn đánh giá toàn diện về tỷ suất sinh lời, biên độ sụt giảm (drawdown) và mức độ ổn định qua từng chu kỳ thị trường.</p>
+
+      <div class="actions">
+        <a class="button" href="/?tab=compare">Mở công cụ so sánh quỹ</a>
+        <a class="button secondary" href="/">Xem dashboard</a>
+      </div>
+
+      <section class="features" aria-labelledby="features-title">
+        <h2 id="features-title">Các tính năng nổi bật trên Dashboard:</h2>
+        <ol class="feature-list">
+          <li><h3>Đồng bộ hóa biểu đồ so sánh:</h3> <p>Chọn và đặt nhiều quỹ mở, ETF hoặc tài sản lên cùng một biểu đồ. Hệ thống sẽ tự động đồng bộ hóa quãng thời gian có chung dữ liệu để đối chiếu công bằng, thay vì sử dụng mốc thời gian khởi điểm riêng lẻ của từng quỹ.</p></li>
+          <li><h3>Đánh giá rủi ro song hành cùng lợi nhuận:</h3> <p>Theo dõi đồng thời tốc độ tăng trưởng kép (CAGR), lợi nhuận tích lũy, mức sụt giảm sâu nhất (Max Drawdown) và các chu kỳ lợi nhuận cuộn (Rolling Return). Hãy nhớ: lợi nhuận cao hơn không tự động đồng nghĩa với một hành trình đầu tư ít sóng gió hơn.</p></li>
+          <li><h3>Phân tích chuyên sâu theo từng giai đoạn:</h3> <p>Bảng lợi nhuận theo năm, bản đồ nhiệt (heatmap) theo tháng và bộ lọc thời gian tùy chỉnh giúp bạn quan sát cách quỹ vượt qua các chu kỳ kinh tế khác nhau, thay vì chỉ nhìn vào kết quả tại một điểm kết thúc.</p></li>
+        </ol>
+      </section>
+
+      <p class="note"><strong>Lưu ý:</strong> Không có quỹ nào là lựa chọn hoàn hảo cho mọi giai đoạn thị trường. Quãng thời gian được chọn để phân tích có thể làm thay đổi hoàn toàn kết luận so sánh, và kết quả trong quá khứ không mang tính dự báo cho lợi nhuận tương lai.</p>
+
+      <footer>
+        Dữ liệu được trích xuất từ fmarket.vn và vnstock. <a href="/?tab=methodology">Xem chi tiết phương pháp luận và giới hạn dữ liệu.</a>
+      </footer>
+    </main>
+  </body>
+</html>

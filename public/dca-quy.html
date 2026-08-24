@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Mô phỏng đầu tư định kỳ DCA vào quỹ mở bằng chuỗi dữ liệu NAV lịch sử. Trực quan hóa các kịch bản đầu tư đều đặn qua nhiều chu kỳ biến động." />
+    <meta name="robots" content="index, follow" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+    <link rel="canonical" href="https://fund.vohoanghac.com/dca-quy" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Fund Dashboard" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:url" content="https://fund.vohoanghac.com/dca-quy" />
+    <meta property="og:title" content="Mô phỏng Đầu tư định kỳ (DCA) vào Quỹ mở | Fund Dashboard" />
+    <meta property="og:description" content="Trực quan hóa các kịch bản đầu tư đều đặn vào quỹ mở bằng chuỗi dữ liệu NAV lịch sử." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Mô phỏng Đầu tư định kỳ (DCA) vào Quỹ mở | Fund Dashboard" />
+    <meta name="twitter:description" content="Trực quan hóa các kịch bản đầu tư đều đặn vào quỹ mở bằng chuỗi dữ liệu NAV lịch sử." />
+    <title>Mô phỏng Đầu tư định kỳ (DCA) vào Quỹ mở | Fund Dashboard</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Mô phỏng Đầu tư định kỳ (DCA) vào Quỹ mở",
+        "url": "https://fund.vohoanghac.com/dca-quy",
+        "description": "Trực quan hóa các kịch bản đầu tư đều đặn vào quỹ mở bằng chuỗi dữ liệu NAV lịch sử.",
+        "isPartOf": {
+          "@type": "WebApplication",
+          "name": "Fund Dashboard",
+          "url": "https://fund.vohoanghac.com/"
+        },
+        "inLanguage": "vi-VN"
+      }
+    </script>
+    <style>
+      :root {
+        color: #24302f;
+        background: #f5f4ed;
+        font-family: 'Source Serif 4', 'Noto Serif', 'Segoe UI', Arial, sans-serif;
+        font-synthesis: none;
+        font-kerning: normal;
+        line-height: 1.6;
+      }
+
+      * { box-sizing: border-box; }
+
+      body { margin: 0; }
+
+      a { color: #176b62; }
+
+      .page {
+        width: min(100% - 32px, 820px);
+        margin: 0 auto;
+        padding: 72px 0 64px;
+      }
+
+      .eyebrow {
+        margin: 0 0 16px;
+        color: #b35d32;
+        font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1, h2 { line-height: 1.15; }
+
+      h1 {
+        max-width: 720px;
+        margin: 0;
+        font-size: clamp(2.35rem, 6vw, 4.5rem);
+        letter-spacing: -0.02em;
+      }
+
+      .lead {
+        max-width: 650px;
+        margin: 24px 0 32px;
+        color: #53605e;
+        font-size: 1.2rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 72px;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 12px 18px;
+        border: 1px solid #176b62;
+        border-radius: 5px;
+        background: #176b62;
+        color: #fff;
+        font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+        font-size: 0.92rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .button.secondary {
+        background: transparent;
+        color: #176b62;
+      }
+
+      .features {
+        border-top: 1px solid #c9cec5;
+        border-bottom: 1px solid #c9cec5;
+        padding: 8px 0;
+      }
+
+      .features h2 {
+        margin: 16px 0 12px;
+        font-size: 1.35rem;
+      }
+
+      .feature-list {
+        display: grid;
+        gap: 18px;
+        margin: 0;
+        padding: 0 0 18px 1.5rem;
+      }
+
+      .feature-list li { padding-left: 8px; }
+
+      .feature-list h3 {
+        display: inline;
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .feature-list p {
+        display: inline;
+        margin: 0;
+        color: #53605e;
+        font-size: 0.95rem;
+      }
+
+      .note {
+        max-width: 650px;
+        margin-top: 36px;
+        color: #53605e;
+        font-size: 0.92rem;
+      }
+
+      footer {
+        margin-top: 54px;
+        color: #6e7873;
+        font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+        font-size: 0.78rem;
+      }
+
+      @media (max-width: 640px) {
+        .page { padding-top: 44px; }
+        .actions { margin-bottom: 48px; }
+        .features { padding: 4px 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="eyebrow">Fund Dashboard · Quỹ mở Việt Nam</p>
+      <h1>Mô phỏng Đầu tư định kỳ (DCA) vào Quỹ mở</h1>
+      <p class="lead">DCA là chiến lược đầu tư một khoản tiền cố định theo định kỳ, giúp bạn gạt bỏ áp lực phải dự đoán chính xác đỉnh hay đáy thị trường. Thông qua chuỗi dữ liệu NAV lịch sử, công cụ này sẽ trực quan hóa các kịch bản đầu tư đều đặn để bạn có góc nhìn thực tế nhất.</p>
+
+      <div class="actions">
+        <a class="button" href="/?tab=dca">Mở công cụ mô phỏng DCA</a>
+        <a class="button secondary" href="/">Xem dashboard</a>
+      </div>
+
+      <section class="features" aria-labelledby="features-title">
+        <h2 id="features-title">Các tính năng trên Dashboard:</h2>
+        <ol class="feature-list">
+          <li><h3>Thiết lập khoản nạp định kỳ:</h3> <p>Tùy chọn số tiền, tần suất và thời gian đầu tư. Hệ thống sẽ tự động ghi nhận từng giao dịch mua khớp với giá NAV tại thời điểm tương ứng.</p></li>
+          <li><h3>Theo dõi kết quả cuối kỳ:</h3> <p>Đối chiếu trực quan giữa tổng vốn đã nạp, giá trị danh mục thực tế và tỷ suất lợi nhuận của từng kịch bản trên cùng một hệ quy chiếu.</p></li>
+          <li><h3>Kiểm chứng lịch sử đa giai đoạn:</h3> <p>Thử nghiệm với các mốc thời gian bắt đầu khác nhau để đánh giá hiệu quả của DCA qua nhiều chu kỳ biến động, thay vì chỉ nhìn vào những giai đoạn thị trường thuận lợi.</p></li>
+        </ol>
+      </section>
+
+      <p class="note"><strong>Lưu ý:</strong> Kết quả trong quá khứ không dự báo cho lợi nhuận tương lai. DCA là phương pháp giúp kỷ luật hóa việc phân bổ vốn; chiến lược này không loại bỏ hoàn toàn rủi ro suy giảm giá trị của quỹ.</p>
+
+      <footer>
+        Dữ liệu được trích xuất từ fmarket.vn và vnstock. <a href="/?tab=methodology">Xem chi tiết phương pháp và giới hạn dữ liệu.</a>
+      </footer>
+    </main>
+  </body>
+</html>

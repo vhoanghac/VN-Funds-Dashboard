@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/dca-quy", "destination": "/dca-quy.html" },
+    { "source": "/so-sanh-quy", "destination": "/so-sanh-quy.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
