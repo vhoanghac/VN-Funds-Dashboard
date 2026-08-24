@@ -4,7 +4,18 @@ import type { DCASlot } from '../utils/dca'
 import { isSavingsAssetId, savingsAssetId, SAVINGS_OPTION_LABEL } from '../utils/savingsAsset'
 import { SavingsRateInput } from './SavingsRateInput'
 
-export const PORTFOLIO_COLORS = ['#059669', '#2563EB', '#DC2626', '#F59E0B', '#8B5CF6']
+export const PORTFOLIO_COLORS = [
+  '#059669', // green
+  '#2563EB', // blue
+  '#DC2626', // red
+  '#F59E0B', // amber
+  '#8B5CF6', // purple
+  '#EC4899', // pink
+  '#14B8A6', // teal
+  '#F97316', // orange
+  '#6366F1', // indigo
+  '#84CC16', // lime
+]
 export const MAX_PORTFOLIOS = 10
 export const MAX_FUNDS_PER_PORTFOLIO = 10
 
