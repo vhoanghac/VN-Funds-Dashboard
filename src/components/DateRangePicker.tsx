@@ -7,9 +7,12 @@ interface Props {
   onChangeTo: (v: string | null) => void
 }
 
-type Preset = '6m' | '1y' | '3y' | '5y' | 'ytd' | 'all'
+type Preset = '7d' | '1m' | '3m' | '6m' | '1y' | '3y' | '5y' | 'ytd' | 'all'
 
 const PRESETS: { value: Preset; label: string }[] = [
+  { value: '7d', label: '7 ngày' },
+  { value: '1m', label: '1 tháng' },
+  { value: '3m', label: '3 tháng' },
   { value: '6m', label: '6 tháng' },
   { value: '1y', label: '1 năm' },
   { value: '3y', label: '3 năm' },
@@ -23,6 +26,16 @@ function getPresetFrom(preset: Preset): string | null {
   let d: Date
 
   switch (preset) {
+    case '7d':
+      d = new Date(now)
+      d.setDate(now.getDate() - 7)
+      break
+    case '1m':
+      d = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+      break
+    case '3m':
+      d = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+      break
     case '6m':
       d = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
       break

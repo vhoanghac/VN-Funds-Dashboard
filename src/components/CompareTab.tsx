@@ -51,7 +51,14 @@ function CompareTabImpl({
     errors: fundErrors,
   } = useMultiFundSeries(funds, { dualPriceFundIds })
 
-  const comparison = useMultiComparison(funds, fundData, rollingPeriod, dateFrom, dateTo)
+  const comparison = useMultiComparison(
+    funds,
+    fundData,
+    rollingPeriod,
+    dateFrom,
+    dateTo,
+    purchasePriceData,
+  )
 
   const chartSeries: ChartSeries[] = comparison.status === 'ready'
     ? comparison.data.funds.map((f, i) => ({

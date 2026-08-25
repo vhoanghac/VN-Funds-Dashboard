@@ -50,6 +50,8 @@ type ComparisonState =
   | { status: 'ready'; data: ComparisonResult }
   | { status: 'error'; error: ComparisonError }
 
+const EMPTY_PURCHASE_DATA = new Map<string, PricePoint[]>()
+
 /**
  * Compute all comparison metrics for N funds.
  * Uses alignMultiSeries for common date alignment.
@@ -60,6 +62,7 @@ export function useMultiComparison(
   rollingPeriod: number,
   dateFrom: string | null,
   dateTo: string | null,
+  purchaseData: Map<string, PricePoint[]> = EMPTY_PURCHASE_DATA,
 ): ComparisonState {
   // Serialize fundIds for stable dependency
   const fundIdsKey = fundIds.join(',')
@@ -88,8 +91,14 @@ export function useMultiComparison(
         }
       }
 
+      // Gold has a bid/ask spread. An investor enters at ask (sell) and later
+      // values the position at bid (buy). Keep the displayed price series intact.
+      const calculationPrices = aligned.prices.map((prices, i) =>
+        withEntryPurchasePrice(fundIds[i]!, aligned.dates, prices, purchaseData),
+      )
+
       // Compute returns for each fund
-      const allReturns = aligned.prices.map(prices =>
+      const allReturns = calculationPrices.map(prices =>
         weeklyReturns(aligned.dates, prices),
       )
 
@@ -163,7 +172,20 @@ export function useMultiComparison(
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fundIdsKey, fundData, rollingPeriod, dateFrom, dateTo])
+  }, [fundIdsKey, fundData, rollingPeriod, dateFrom, dateTo, purchaseData])
+}
+
+function withEntryPurchasePrice(
+  fundId: string,
+  dates: string[],
+  prices: number[],
+  purchaseData: Map<string, PricePoint[]>,
+): number[] {
+  const purchaseAtStart = new Map(purchaseData.get(fundId)?.map(point => [point.date, point.price]))
+    .get(dates[0]!)
+  if (purchaseAtStart === undefined) return prices
+
+  return prices.map((price, index) => index === 0 ? purchaseAtStart : price)
 }
 
 function filterDateRange(

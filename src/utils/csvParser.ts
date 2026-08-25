@@ -25,11 +25,9 @@ export interface ParsedPricePoints {
  * Returns sorted ascending by date. Skips invalid rows.
  *
  * Cũng tự nhận diện CSV 2-giá (date,buy,sell — vd vàng miếng SJC): dùng cột
- * "buy" (giá mua vào) làm giá hiển thị chung, để mọi nơi trong dashboard
- * KHÔNG cần biết đến khái niệm 2-giá vẫn coi vàng như 1 quỹ "1 giá" bình
- * thường (nhất quán với DCA tab, vốn dùng chính giá này để định giá danh
- * mục xuyên suốt). Chỉ DCA tab mới cần phân biệt buy/sell riêng để tính đúng
- * chi phí mua vào — xem parseGoldCSV() + simulateDCA's purchasePrices option.
+ * "buy" (giá mua vào) làm chuỗi giá hiển thị và định giá. So Sánh thay điểm
+ * đầu bằng giá "sell" khi tính lợi nhuận của một khoảng bắt đầu bằng giao dịch
+ * mua; DCA cũng dùng chuỗi "sell" riêng để tính đúng chi phí mua vào.
  */
 export function parseCSV(csvText: string): ParsedPricePoints {
   const result = Papa.parse<Record<string, string>>(csvText, {
@@ -95,9 +93,9 @@ export function parseFundMetadata(jsonText: string): FundMeta[] {
  * "buy" = giá tiệm vàng mua vào (nhà đầu tư nhận được nếu bán ra).
  * "sell" = giá tiệm vàng bán ra (nhà đầu tư phải trả nếu mua vào).
  *
- * Trả về 2 chuỗi PricePoint[] riêng — dùng cho mô phỏng DCA có 2 giá
- * (mua ở giá sell, định giá/so sánh hiệu suất ở giá buy). Xem simulateDCA's
- * `purchasePrices` option trong utils/dca.ts.
+ * Trả về 2 chuỗi PricePoint[] riêng — DCA mua ở giá sell, còn So Sánh dùng giá
+ * sell tại điểm bắt đầu rồi định giá các điểm sau ở giá buy. Xem
+ * simulateDCA's `purchasePrices` option trong utils/dca.ts.
  */
 export function parseGoldCSV(csvText: string): {
   buy: PricePoint[]
