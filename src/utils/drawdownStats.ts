@@ -110,6 +110,22 @@ export function longestDrawdownDays(drawdown: ReturnPoint[]): number | null {
 }
 
 /**
+ * Hệ số tăng cần có để quay lại đỉnh cũ từ một mức drawdown hiện tại.
+ * Ví dụ: -20% cần tăng 1,25 lần, -50% cần tăng 2 lần.
+ * Trả null khi chuỗi đã mất toàn bộ giá trị hoặc đầu vào không hợp lệ.
+ */
+export function recoveryMultipleFromDrawdown(drawdown: number): number | null {
+  if (!Number.isFinite(drawdown) || drawdown <= -1) return null
+  return 1 / (1 + Math.min(drawdown, 0))
+}
+
+/** Phần trăm tăng cần có để quay lại đỉnh cũ từ một mức drawdown. */
+export function recoveryPercentFromDrawdown(drawdown: number): number | null {
+  const multiple = recoveryMultipleFromDrawdown(drawdown)
+  return multiple === null ? null : (multiple - 1) * 100
+}
+
+/**
  * Độ lệch chuẩn quy năm của lợi nhuận theo kỳ quan sát, suy ra từ chuỗi TWRR
  * cumulative (bắt đầu 0). Hệ số quy năm lấy theo mật độ quan sát thực tế
  * (số điểm / số năm) thay vì hard-code 252, để không lệch khi dữ liệu có gap.

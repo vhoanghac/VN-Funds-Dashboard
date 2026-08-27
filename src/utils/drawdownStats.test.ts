@@ -4,6 +4,8 @@ import {
   avgDrawdown,
   longestDrawdownDays,
   annualizedStdevFromCumulative,
+  recoveryMultipleFromDrawdown,
+  recoveryPercentFromDrawdown,
 } from './drawdownStats'
 import type { ReturnPoint } from '../types'
 
@@ -128,6 +130,24 @@ describe('longestDrawdownDays', () => {
       ['2021-01-01', -0.05],
     ])
     expect(longestDrawdownDays(series)).toBe(366)
+  })
+})
+
+describe('recoveryMultipleFromDrawdown', () => {
+  it('converts drawdown to the growth factor needed to recover', () => {
+    expect(recoveryMultipleFromDrawdown(0)).toBe(1)
+    expect(recoveryMultipleFromDrawdown(-0.20)).toBeCloseTo(1.25, 10)
+    expect(recoveryMultipleFromDrawdown(-0.50)).toBeCloseTo(2, 10)
+  })
+
+  it('does not return a factor below one for non-negative drawdown', () => {
+    expect(recoveryMultipleFromDrawdown(0.05)).toBe(1)
+  })
+
+  it('returns null when recovery is undefined', () => {
+    expect(recoveryMultipleFromDrawdown(-1)).toBeNull()
+    expect(recoveryMultipleFromDrawdown(Number.NaN)).toBeNull()
+    expect(recoveryPercentFromDrawdown(-1)).toBeNull()
   })
 })
 

@@ -13,7 +13,7 @@ import {
   AreaChart, ReferenceLine,
 } from 'recharts'
 import type { DCAStormStats } from '../utils/dca'
-import { drawdownEpisodes } from '../utils/drawdownStats'
+import { drawdownEpisodes, recoveryPercentFromDrawdown } from '../utils/drawdownStats'
 
 export interface StormPortfolio {
   id: string
@@ -413,7 +413,7 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
  * drawdown quan trọng ngang lợi nhuận, không chỉ là con số phụ.
  */
 function recoveryNeededPct(maxDrawdown: number): number {
-  return (1 / (1 - Math.abs(maxDrawdown)) - 1) * 100
+  return recoveryPercentFromDrawdown(maxDrawdown) ?? 0
 }
 
 /** Số ngày → "2.5 năm" / "8 tháng" / "45 ngày" */

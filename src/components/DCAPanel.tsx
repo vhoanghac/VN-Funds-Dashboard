@@ -30,6 +30,8 @@ import { DcaConsistencyBlock } from './DcaConsistencyBlock'
 import { DividendBlock } from './DividendBlock'
 import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import { DataQualityBlock } from './DataQualityBlock'
+import { DrawdownChart } from './DrawdownChart'
+import { DcaRecoveryChart } from './DcaRecoveryChart'
 import { parsePortfolios } from '../utils/portfolio'
 import { FUND_COLORS } from '../constants'
 import {
@@ -126,17 +128,18 @@ interface DcaSnapshot {
 
 /**
  * Các section kết quả, kiểu hl.eco: bấm pill để chỉ hiện section đó.
- * "Tất cả" (mặc định) giữ nguyên mạch kể chuyện đọc từ trên xuống.
+ * "Tóm Tắt" (mặc định) đưa các con số và chart quan trọng nhất lên đầu.
  * Ẩn/hiện bằng display:none để các block (đã bọc React.memo) không phải
  * mount lại khi chuyển qua lại.
  */
-type DcaSectionId = 'all' | 'perf' | 'journey' | 'risk' | 'endgame'
+type DcaSectionId = 'summary' | 'perf' | 'journey' | 'risk' | 'drawdowns' | 'endgame'
 
 const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
-  { id: 'all', label: 'Tất cả' },
+  { id: 'summary', label: 'Tóm Tắt' },
   { id: 'perf', label: 'Hiệu suất đầu tư' },
   { id: 'journey', label: 'Hành trình của bạn' },
   { id: 'risk', label: 'Rủi ro & biến động' },
+  { id: 'drawdowns', label: 'Drawdowns' },
   { id: 'endgame', label: 'Endgame' },
 ]
 
@@ -181,10 +184,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     const saved = readLocal<unknown>('dca_cashflowFreq', 'monthly')
     return isDCAFrequency(saved) ? saved : 'monthly'
   })
-  // Section kết quả đang hiện ('all' = toàn bộ, giữ mạch kể chuyện)
-  const [activeSection, setActiveSection] = useState<DcaSectionId>('all')
+  // Section kết quả đang hiện. Mặc định chỉ hiện phần Tóm Tắt.
+  const [activeSection, setActiveSection] = useState<DcaSectionId>('summary')
+  const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('all')
   const showSection = (id: DcaSectionId) =>
-    activeSection === 'all' || activeSection === id ? undefined : 'none'
+    activeSection === id ? undefined : 'none'
 
   // ── Portfolios ──
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
@@ -233,7 +237,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     const localPortfolios = parsePortfolios(readLocal<unknown>('dca_portfolios', null))
     setPortfolios(hydrateDcaPortfolios(urlParams?.portfolios ?? (hasUrlPayload ? [] : localPortfolios), nextIdRef))
     resetCommitted()
-    setActiveSection('all')
+    setActiveSection('summary')
   }, [shareUrl.key, active]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Persist to localStorage ──
@@ -624,6 +628,19 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     invested: r.investedSeries,
   })), [validResults])
 
+  const dcaDrawdownSeries = useMemo(() => validResults.map(r => ({
+    name: r.name,
+    color: r.color,
+    data: r.drawdown,
+  })), [validResults])
+
+  const recoveryChartData = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    drawdown: r.drawdown,
+  })), [validResults])
+
   const historicalPercentileData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -739,6 +756,22 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     drawdown: r.drawdown,
     valueSeries: r.valueSeries,
   })), [validResults])
+
+  useEffect(() => {
+    if (
+      activeDrawdownPortfolioId !== 'all'
+      && !dcaStormData.some(p => p.id === activeDrawdownPortfolioId)
+    ) {
+      setActiveDrawdownPortfolioId('all')
+    }
+  }, [activeDrawdownPortfolioId, dcaStormData])
+
+  const drawdownViewData = useMemo(
+    () => activeDrawdownPortfolioId === 'all'
+      ? dcaStormData
+      : dcaStormData.filter(p => p.id === activeDrawdownPortfolioId),
+    [activeDrawdownPortfolioId, dcaStormData],
+  )
 
   const dcaConsistencyData = useMemo(() => validResults.map(r => ({
     id: r.id,
@@ -995,9 +1028,34 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             <button
               key={s.id}
               className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
-              onClick={() => setActiveSection(s.id)}
+              onClick={() => {
+                setActiveSection(s.id)
+                if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
+              }}
             >
               {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {validResults.length > 0 && activeSection === 'drawdowns' && (
+        <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Drawdowns">
+          <button
+            className={`dca-drawdown-btn${activeDrawdownPortfolioId === 'all' ? ' dca-drawdown-btn--active' : ''}`}
+            aria-pressed={activeDrawdownPortfolioId === 'all'}
+            onClick={() => setActiveDrawdownPortfolioId('all')}
+          >
+            Tất Cả
+          </button>
+          {dcaStormData.map(p => (
+            <button
+              key={p.id}
+              className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
+              aria-pressed={activeDrawdownPortfolioId === p.id}
+              onClick={() => setActiveDrawdownPortfolioId(p.id)}
+            >
+              {p.name}
             </button>
           ))}
         </div>
@@ -1022,11 +1080,21 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           lại các chart nặng. */}
       {validResults.length > 0 && (
         <>
-          <div style={{ display: showSection('perf') }}>
-            <div className="section-divider">
-              <span className="section-divider-label">Hiệu suất đầu tư</span>
-            </div>
+          <div style={{ display: showSection('summary') }}>
+            <DCAStatsTable
+              portfolios={dcaStatsTableData}
+            />
 
+            <PortfolioValueChart
+              portfolios={portfolioValueChartData}
+            />
+
+            <DrawdownChart series={dcaDrawdownSeries} />
+
+            <DcaRecoveryChart portfolios={recoveryChartData} />
+          </div>
+
+          <div style={{ display: showSection('perf') }}>
             {/* Period info */}
             {startDate && endDate && (
               <div className="comparison-period" style={{ marginBottom: 16 }}>
@@ -1064,11 +1132,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           <div style={{ display: showSection('journey') }}>
             {/* Journey narrative */}
             {startDate && endDate && (
-              <div className="section-divider">
-                <span className="section-divider-label">Hành trình của bạn</span>
-              </div>
-            )}
-            {startDate && endDate && (
               <DcaJourneyBlock
                 portfolios={journeyPortfolios}
                 startDate={startDate}
@@ -1098,18 +1161,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
           <div style={{ display: showSection('risk') }}>
             {/* Kiên trì qua bão */}
-            <div className="section-divider">
-              <span className="section-divider-label">Rủi ro &amp; biến động</span>
-            </div>
-
             {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
             <DcaReturnPainChart portfolios={returnPainData} />
 
             <DcaHistoricalPercentileBlock portfolios={historicalPercentileData} />
-
-            <DcaStormBlock
-              portfolios={dcaStormData}
-            />
 
             <DcaConsistencyBlock
               portfolios={dcaConsistencyData}
@@ -1127,11 +1182,14 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             />
           </div>
 
+          <div style={{ display: showSection('drawdowns') }}>
+            <DcaStormBlock
+              portfolios={drawdownViewData}
+            />
+          </div>
+
           <div style={{ display: showSection('endgame') }}>
             {/* Endgame: projection */}
-            <div className="section-divider">
-              <span className="section-divider-label">Endgame</span>
-            </div>
             <ProjectionBlock
               portfolios={projectionData}
             />
