@@ -137,9 +137,9 @@ type DcaSectionId = 'summary' | 'perf' | 'journey' | 'risk' | 'drawdowns' | 'end
 const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
   { id: 'summary', label: 'Tóm Tắt' },
   { id: 'perf', label: 'Hiệu suất đầu tư' },
+  { id: 'drawdowns', label: 'Drawdowns' },
   { id: 'journey', label: 'Hành trình của bạn' },
   { id: 'risk', label: 'Rủi ro & biến động' },
-  { id: 'drawdowns', label: 'Drawdowns' },
   { id: 'endgame', label: 'Endgame' },
 ]
 
@@ -1023,41 +1023,43 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
       {/* Chọn section kết quả muốn xem (kiểu hl.eco) */}
       {validResults.length > 0 && (
-        <div className="dca-anchor-nav">
-          {DCA_SECTIONS.map(s => (
-            <button
-              key={s.id}
-              className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
-              onClick={() => {
-                setActiveSection(s.id)
-                if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
+        <div className="dca-results-toolbar">
+          <div className="dca-anchor-nav">
+            {DCA_SECTIONS.map(s => (
+              <button
+                key={s.id}
+                className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
+                onClick={() => {
+                  setActiveSection(s.id)
+                  if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
 
-      {validResults.length > 0 && activeSection === 'drawdowns' && (
-        <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Drawdowns">
-          <button
-            className={`dca-drawdown-btn${activeDrawdownPortfolioId === 'all' ? ' dca-drawdown-btn--active' : ''}`}
-            aria-pressed={activeDrawdownPortfolioId === 'all'}
-            onClick={() => setActiveDrawdownPortfolioId('all')}
-          >
-            Tất Cả
-          </button>
-          {dcaStormData.map(p => (
-            <button
-              key={p.id}
-              className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
-              aria-pressed={activeDrawdownPortfolioId === p.id}
-              onClick={() => setActiveDrawdownPortfolioId(p.id)}
-            >
-              {p.name}
-            </button>
-          ))}
+          {activeSection === 'drawdowns' && (
+            <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Drawdowns">
+              <button
+                className={`dca-drawdown-btn${activeDrawdownPortfolioId === 'all' ? ' dca-drawdown-btn--active' : ''}`}
+                aria-pressed={activeDrawdownPortfolioId === 'all'}
+                onClick={() => setActiveDrawdownPortfolioId('all')}
+              >
+                Tất Cả
+              </button>
+              {dcaStormData.map(p => (
+                <button
+                  key={p.id}
+                  className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
+                  aria-pressed={activeDrawdownPortfolioId === p.id}
+                  onClick={() => setActiveDrawdownPortfolioId(p.id)}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

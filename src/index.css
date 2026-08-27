@@ -3418,12 +3418,21 @@ h1, h2, h3 {
 
 /* ── Pill chọn section kết quả DCA (kiểu hl.eco) ── */
 
+.dca-results-toolbar {
+  margin: 14px 0 20px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
 .dca-anchor-nav {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin: 14px 0 20px;
+  margin: 0;
 }
 
 .dca-anchor-btn {
@@ -3464,18 +3473,16 @@ h1, h2, h3 {
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  margin: 0 0 20px;
-  padding: 6px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: #faf9f5;
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid #eceae3;
 }
 
 .dca-drawdown-btn {
   padding: 5px 12px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: transparent;
+  background: #fff;
   font-size: 0.76rem;
   font-weight: 600;
   color: var(--color-text-muted);
