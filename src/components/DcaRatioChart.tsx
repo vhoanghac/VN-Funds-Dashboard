@@ -14,7 +14,7 @@ import {
   Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Customized,
 } from 'recharts'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 interface ValuePoint {
   date: string
@@ -89,7 +89,7 @@ function DcaRatioChartImpl({ portfolios }: Props) {
   const narrative = buildRatioNarrative(ratioData)
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Danh mục nào đang dẫn trước?"
       actions={<span
           className="chart-tooltip-icon"
@@ -205,7 +205,7 @@ function DcaRatioChartImpl({ portfolios }: Props) {
           ngôi chóng vánh, nên đừng neo quá chặt vào con số dẫn đầu hiện tại.
         </p>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

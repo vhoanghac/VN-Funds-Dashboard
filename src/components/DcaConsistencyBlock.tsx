@@ -19,7 +19,7 @@ import type { PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, dcaMWRR, type DCASlot, type DCAFrequency } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
-import { DcaBlock, DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface ConsistencyPortfolio {
   id: string
@@ -169,7 +169,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
   const boost25MWRR = boostScenarios.boost25.mwrr
 
   return (
-    <DcaContentCard title={portfolio.name} className="dca-consist-card">
+    <DcaBlock title={portfolio.name} className="dca-consist-card">
 
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
@@ -413,7 +413,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
           extraAmount={extraAmount}
         />
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

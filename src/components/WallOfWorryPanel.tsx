@@ -234,7 +234,7 @@ function WallOfWorryPanelImpl() {
         <h2>Wall of Worry</h2>
       </div>
 
-      <div className="dca-journey-block">
+      <div className="wow-narrative-block">
         <div className="dca-journey-headline">
           Trong suốt hơn {numYears} năm, không năm nào thiếu tin xấu: chiến tranh, đại dịch,
           khủng hoảng trái phiếu, chủ tịch tập đoàn bị bắt... Vậy mà từ ngày niêm yết

@@ -59,7 +59,7 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
       <div className="section-divider">
         <span className="section-divider-label">Cổ tức &amp; tái đầu tư</span>
       </div>
-      <DcaBlock className="dca-journey-block">
+      <DcaBlock>
         <div className="dca-journey-headline">
           Trong kỳ DCA này, quỹ <strong>{Array.from(byFund.keys()).join(', ')}</strong>{' '}
           đã chi trả cổ tức. Dashboard đã điều chỉnh giá để phản ánh giả định tái đầu

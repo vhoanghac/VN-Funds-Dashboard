@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 interface StatsRow {
   id: string
@@ -25,7 +25,7 @@ function DCAStatsTableImpl({ portfolios }: Props) {
   if (portfolios.length === 0) return null
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Bảng thống kê"
       actions={<span
           className="chart-tooltip-icon"
@@ -110,7 +110,7 @@ function DCAStatsTableImpl({ portfolios }: Props) {
           </tbody>
         </table>
       </div>
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

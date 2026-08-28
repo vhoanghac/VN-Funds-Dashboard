@@ -8,7 +8,7 @@ import {
   formatTooltipDate, formatYear, getYearTicks, mergeAllSeries,
 } from '../utils/chartPlumbing'
 import { recoveryMultipleFromDrawdown } from '../utils/drawdownStats'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface RecoveryPortfolio {
   id: string
@@ -45,7 +45,7 @@ function DcaRecoveryChartImpl({ portfolios }: Props) {
   const yMax = maxRecovery <= 1.05 ? 1.05 : Math.ceil(maxRecovery * 10) / 10
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Hiệu suất để về lại đỉnh"
       actions={<span
           className="chart-tooltip-icon"
@@ -94,7 +94,7 @@ function DcaRecoveryChartImpl({ portfolios }: Props) {
           ))}
         </LineChart>
       </ResponsiveContainer>
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

@@ -18,7 +18,7 @@ import {
   recoveryPercentFromDrawdown,
   summarizeDrawdownEpisodes,
 } from '../utils/drawdownStats'
-import { DcaBlock, DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface StormPortfolio {
   id: string
@@ -137,7 +137,7 @@ function DrawdownSummaryTable({ episodes }: { episodes: ReturnType<typeof drawdo
   ]
 
   return (
-    <DcaContentCard title="Tóm tắt drawdown" className="dca-drawdown-summary">
+      <DcaBlock title="Tóm tắt drawdown" className="dca-drawdown-summary">
       <div className="dca-storm-chart-sub">
         Độ sâu đo từ đỉnh cũ xuống đáy. Thời gian đến đáy tính từ đỉnh đến đáy.
         Thời gian hồi phục tính từ đáy lên đỉnh cũ.
@@ -172,7 +172,7 @@ function DrawdownSummaryTable({ episodes }: { episodes: ReturnType<typeof drawdo
         * Thời gian hồi phục chỉ tính các đợt đã quay lại đỉnh cũ. Các thống kê còn lại vẫn
         tính cả đợt đang diễn ra.
       </div>
-    </DcaContentCard>
+      </DcaBlock>
   )
 }
 
@@ -204,13 +204,13 @@ function MarketDrawdownChart({ portfolios }: { portfolios: StormPortfolio[] }) {
   const floorPct = Math.floor(minDD / 5) * 5
 
   return (
-    <DcaContentCard title="Giá quỹ sập bao nhiêu?" className="dca-storm-chart">
+    <DcaBlock title="Giá quỹ sập bao nhiêu?" className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
         Khoảng cách từ đỉnh giá quỹ. Đây là "bão thị trường thật", đo bằng TWRR
         nên đã loại ảnh hưởng của việc bạn nạp tiền đều đặn.
       </div>
       {renderUnderwaterChart(data, portfolios, floorPct, 'mkt')}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 
@@ -266,7 +266,7 @@ function AccountDrawdownChart({
   const softenedSignificant = softenedBy > 3 // chỉ note nếu chênh đáng kể
 
   return (
-    <DcaContentCard title="Số dư tài khoản sập bao nhiêu?" className="dca-storm-chart">
+    <DcaBlock title="Số dư tài khoản sập bao nhiêu?" className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
         Khoảng cách từ đỉnh số dư tài khoản thực tế của bạn. Đây là thứ bạn thấy khi mở app quỹ.
       </div>
@@ -280,7 +280,7 @@ function AccountDrawdownChart({
           giá quỹ.
         </div>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 
@@ -417,7 +417,7 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
   if (perPortfolio.length === 0) return null
 
   return (
-    <DcaContentCard title="Các đợt sụt giảm lớn nhất" className="dca-episodes-section">
+    <DcaBlock title="Các đợt sụt giảm lớn nhất" className="dca-episodes-section">
       <div className="dca-storm-chart-sub">
         Top 5 đợt sụt từ 5% trở lên của mỗi danh mục. Thời gian hồi phục tính từ
         đáy lên đỉnh cũ. Thời gian dưới đỉnh tính từ lúc lập đỉnh đến khi vượt lại đỉnh cũ.
@@ -469,7 +469,7 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
           * Đợt sụt giảm vẫn đang diễn ra, thời gian tính đến ngày dữ liệu gần nhất.
         </div>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

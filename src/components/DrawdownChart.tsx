@@ -8,7 +8,7 @@ import {
   formatPercent, formatPercentFull, BASELINE_COLOR, DIMMED_COLOR,
 } from '../utils/chartPlumbing'
 import { useDimLegend } from '../hooks/useDimLegend'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 interface Props {
   series: ChartSeries[]
@@ -21,7 +21,7 @@ export function DrawdownChart({ series }: Props) {
   const data = mergeAllSeries(series)
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Tỷ lệ sụt giảm so với đỉnh"
       actions={<span className="chart-tooltip-icon" title="Drawdown cho thấy mức giảm giá trị so với đỉnh cao nhất trước đó. Ví dụ: -20% nghĩa là quỹ đã giảm 20% từ đỉnh. Bấm vào legend để làm mờ/hiện đường.">?</span>}
     >
@@ -86,6 +86,6 @@ export function DrawdownChart({ series }: Props) {
           })}
         </AreaChart>
       </ResponsiveContainer>
-    </DcaContentCard>
+    </DcaBlock>
   )
 }

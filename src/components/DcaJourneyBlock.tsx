@@ -10,7 +10,7 @@
 import { Fragment, memo } from 'react'
 import { formatVND, vndComparison } from '../utils/vndFormat'
 import { dcaYearlyMWRR } from '../utils/dca'
-import { DcaBlock, DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface JourneyPortfolio {
   id: string
@@ -43,7 +43,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
     const comparison = netProfit > 0 ? vndComparison(netProfit) : null
 
     return (
-      <DcaBlock className="dca-journey-block">
+      <DcaBlock>
         <div className="dca-journey-headline">
           Trong suốt <strong>{period}</strong>, đều đặn mỗi tháng bạn để dành một
           khoản tiền để mua <strong style={{ color: p.color }}>{p.name}</strong>.
@@ -106,7 +106,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
   const gapComparison = gap > 0 ? vndComparison(gap) : null
 
   return (
-    <DcaBlock className="dca-journey-block">
+      <DcaBlock>
       <div className="dca-journey-headline">
         Cùng một lịch nạp tiền, cùng trải qua <strong>{period}</strong>, nhưng
         {' '}<strong>{portfolios.length} danh mục</strong> lại cho kết quả rất khác nhau.
@@ -184,7 +184,7 @@ function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] })
   const showDiff = perPortfolio.length === 2
 
   return (
-    <DcaContentCard title="Hiệu suất danh mục của bạn từng năm" className="dca-eoy-block">
+    <DcaBlock title="Hiệu suất danh mục của bạn từng năm" className="dca-eoy-block">
       <p className="dca-eoy-explainer">
         Bảng này tính hiệu suất <strong>có tính đến dòng tiền bạn thực sự nạp</strong>
         {' '}(Modified Dietz method), không phải hiệu suất "nếu đầu tư 1 lần từ đầu"
@@ -263,7 +263,7 @@ function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] })
         * Năm chưa đủ dữ liệu trọn năm (năm đầu hoặc năm cuối của khoảng so sánh).
         {showDiff && ' "Chênh lệch" = lợi nhuận danh mục thứ 2 trừ danh mục thứ 1, tính bằng điểm phần trăm.'}
       </div>
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

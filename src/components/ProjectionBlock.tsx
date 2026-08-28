@@ -16,7 +16,7 @@ import {
 } from 'recharts'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
-import { DcaBlock, DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface ProjectionPortfolio {
   id: string
@@ -157,7 +157,7 @@ function ProjectionForPortfolio({
   const growthBase = finalBase - totalInvestedEnd
 
   return (
-    <DcaContentCard title={portfolio.name} className="dca-projection-card">
+      <DcaBlock title={portfolio.name} className="dca-projection-card">
       <div className="dca-projection-card-header">
         <span className="dca-projection-card-cagr">
           CAGR lịch sử: {(cagr * 100).toFixed(1)}%/năm
@@ -217,7 +217,7 @@ function ProjectionForPortfolio({
         {formatVND(Math.round(growthBase))} là tiền đẻ tiền nhờ lãi kép. Đó là lý do vì
         sao đầu tư là cuộc chơi của thời gian, không phải của canh đỉnh canh đáy.
       </div>
-    </DcaContentCard>
+      </DcaBlock>
   )
 }
 

@@ -1074,9 +1074,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             </div>
 
             {activeSection === 'drawdowns' && (
-              <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Drawdowns">
-                <button
-                  className={`dca-drawdown-btn${activeDrawdownPortfolioId === 'all' ? ' dca-drawdown-btn--active' : ''}`}
+                <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Drawdowns">
+                  <button
+                    className={`dca-results-filter-btn${activeDrawdownPortfolioId === 'all' ? ' dca-results-filter-btn--active' : ''}`}
                   aria-pressed={activeDrawdownPortfolioId === 'all'}
                   onClick={() => setActiveDrawdownPortfolioId('all')}
                 >
@@ -1085,7 +1085,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 {dcaStormData.map(p => (
                   <button
                     key={p.id}
-                    className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
+                    className={`dca-results-filter-btn${activeDrawdownPortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
                     aria-pressed={activeDrawdownPortfolioId === p.id}
                     onClick={() => setActiveDrawdownPortfolioId(p.id)}
                   >
@@ -1096,11 +1096,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             )}
 
             {activeSection === 'endgame' && (
-              <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Endgame">
+              <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Endgame">
                 {validResults.map(p => (
                   <button
                     key={p.id}
-                    className={`dca-drawdown-btn${endgamePortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
+                    className={`dca-results-filter-btn${endgamePortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
                     aria-pressed={endgamePortfolioId === p.id}
                     onClick={() => setActiveEndgamePortfolioId(p.id)}
                   >

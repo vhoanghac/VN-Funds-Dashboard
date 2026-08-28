@@ -15,7 +15,7 @@ import {
 } from 'recharts'
 import { rollingCAGR, histogramBuckets, trailingWindowCagr } from '../utils/dca'
 import type { ReturnPoint } from '../types'
-import { DcaBlock, DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface RollingPortfolio {
   id: string
@@ -98,12 +98,12 @@ function RollingForPortfolio({
         ? `Khoảng thời gian đang chọn chỉ từ ${formatDate(start)} tới ${formatDate(end)}`
         : 'Khoảng thời gian đang chọn quá ngắn'
     return (
-      <DcaContentCard title={portfolio.name} className="dca-rolling-card">
+      <DcaBlock title={portfolio.name} className="dca-rolling-card">
         <div className="dca-rolling-insufficient">
           {span}, chưa đủ để tính chu kỳ {windowYears} năm (cần ít nhất {windowYears + 1} năm).
           Không phải quỹ thiếu dữ liệu, mà là khoảng xem ngắn. Kéo rộng khoảng thời gian ở phần Thông số rồi thử lại.
         </div>
-      </DcaContentCard>
+      </DcaBlock>
     )
   }
 
@@ -120,7 +120,7 @@ function RollingForPortfolio({
   }))
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title={portfolio.name}
       className="dca-rolling-card"
       actions={<span className="dca-rolling-card-count">
@@ -182,7 +182,7 @@ function RollingForPortfolio({
           )}
         </div>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

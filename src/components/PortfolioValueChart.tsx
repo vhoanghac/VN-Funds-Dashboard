@@ -9,7 +9,7 @@ import {
 } from '../utils/chartPlumbing'
 import { formatVNDFull } from '../utils/vndFormat'
 import { useDimLegend } from '../hooks/useDimLegend'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 interface ValuePoint {
   date: string
@@ -57,7 +57,7 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
     : []
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Giá trị tài sản"
       actions={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
@@ -176,7 +176,7 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
           ))}
         </div>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

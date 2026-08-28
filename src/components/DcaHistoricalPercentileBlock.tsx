@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
@@ -50,7 +50,7 @@ function DcaHistoricalPercentileBlockImpl({ portfolios }: Props) {
   const hasWindows = results.some(result => result.windows.size > 0)
 
   return (
-    <DcaContentCard
+    <DcaBlock
       className="dca-historical-percentile"
       title="Hiệu suất lịch sử theo percentile"
     >
@@ -124,7 +124,7 @@ function DcaHistoricalPercentileBlockImpl({ portfolios }: Props) {
           Khoảng dữ liệu đang chọn chưa đủ 1 năm. Dashboard giữ block này để bạn biết mốc nào chưa dùng được.
         </p>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

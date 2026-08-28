@@ -12,7 +12,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 export interface ReturnPainPortfolio {
   id: string
@@ -63,7 +63,7 @@ function DcaReturnPainChartImpl({ portfolios }: Props) {
   const narrative = data.length >= 2 ? buildNarrative(data) : null
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Bản đồ lợi nhuận và rủi ro"
       actions={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
@@ -155,7 +155,7 @@ function DcaReturnPainChartImpl({ portfolios }: Props) {
           cho tương lai.
         </p>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

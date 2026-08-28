@@ -431,9 +431,18 @@ textarea {
 }
 
 /* ─── Chart Containers ────────────────────────── */
-.chart-container,
-.dca-content-card {
+.chart-container {
   background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 16px 8px;
+  margin-bottom: 16px;
+}
+
+/* Every named DCA result is one block, regardless of whether it contains a chart or table. */
+.dca-block {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 16px 16px 8px;
@@ -1504,9 +1513,7 @@ textarea {
   font-weight: 700;
 }
 
-/* ─── DCA Journey Block (hero narrative for DCA tab) ─────────────────────────────── */
-
-.dca-journey-block {
+.wow-narrative-block {
   margin-bottom: 18px;
   padding: 22px 24px;
   background: var(--color-surface);
@@ -1612,15 +1619,6 @@ textarea {
 }
 
 /* EOY Returns table (Modified Dietz) */
-
-.dca-eoy-block {
-  margin-bottom: 18px;
-  padding: 22px 24px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-}
 
 .dca-eoy-title {
   margin: 0 0 6px 0;
@@ -1836,7 +1834,6 @@ textarea {
 }
 
 /* ─── Dividend Block (DCDE reinvestment narrative) ─────────────────────────────── */
-/* Palette: neutral. Chỉ background của .dca-journey-block bên ngoài mới có màu. */
 
 .dca-dividend-group {
   margin-top: 14px;
@@ -1906,15 +1903,6 @@ textarea {
 }
 
 /* ─── Bank Comparison Block ────────────────────────────────────────────────────── */
-
-.dca-bank-compare-block {
-  margin-bottom: 20px;
-  padding: 20px 22px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
 
 .dca-bank-compare-head {
   display: flex;
@@ -3514,7 +3502,7 @@ textarea {
   color: var(--color-primary-fg);
 }
 
-.dca-drawdown-nav {
+.dca-results-filter-toolbar {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -3524,7 +3512,7 @@ textarea {
   border-top: 1px solid #eceae3;
 }
 
-.dca-drawdown-btn {
+.dca-results-filter-btn {
   padding: 5px 12px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
@@ -3536,14 +3524,14 @@ textarea {
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
-.dca-drawdown-btn:hover {
+.dca-results-filter-btn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: var(--color-primary-light);
 }
 
-.dca-drawdown-btn--active,
-.dca-drawdown-btn--active:hover {
+.dca-results-filter-btn--active,
+.dca-results-filter-btn--active:hover {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-primary-fg);
@@ -4955,12 +4943,6 @@ textarea {
   font-style: italic;
 }
 
-.dca-storm-chart {
-  margin: 16px 0;
-  padding: 14px 12px 10px 12px;
-  background: #faf9f5;
-}
-
 .dca-storm-chart-title {
   font-size: 0.9rem;
   font-weight: 600;
@@ -5008,12 +4990,6 @@ textarea {
 }
 
 /* Bảng phân bố drawdown cho một danh mục, không hiển thị ở Tất Cả. */
-.dca-drawdown-summary {
-  margin: 16px 0;
-  padding: 14px 12px 10px;
-  background: #faf9f5;
-}
-
 .dca-drawdown-summary-table {
   min-width: 780px;
 }
@@ -5024,12 +5000,6 @@ textarea {
 }
 
 /* Bảng các đợt sụt giảm lớn nhất (trong khối Kiên trì qua bão) */
-.dca-episodes-section {
-  margin: 16px 0;
-  padding: 14px 12px 10px;
-  background: #faf9f5;
-}
-
 .dca-episodes-portfolio {
   margin-bottom: 14px;
 }
@@ -5271,14 +5241,6 @@ textarea {
 
 /* ─── Consistency Block (panic-stop simulation) ─────────────────────────────── */
 
-.dca-consist-block {
-  margin-bottom: 20px;
-  padding: 20px 22px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 10px;
-}
-
 .dca-consist-title {
   margin: 0 0 6px 0;
   font-size: 1.05rem;
@@ -5319,14 +5281,6 @@ textarea {
   font-size: 0.96rem;
   font-weight: 700;
   color: #141413;
-}
-
-.dca-consist-card {
-  margin-bottom: 14px;
-  padding: 14px;
-  background: var(--color-surface);
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
 }
 
 .dca-consist-card-header {
@@ -5444,14 +5398,6 @@ textarea {
 
 /* ─── Projection Block ──────────────────────────────────────────────────────── */
 
-.dca-projection-block {
-  margin-bottom: 20px;
-  padding: 20px 22px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 10px;
-}
-
 .dca-projection-title {
   margin: 0 0 6px 0;
   font-size: 1.05rem;
@@ -5527,14 +5473,6 @@ textarea {
   color: #87867f;
   font-style: italic;
   margin: -8px 0 16px 0;
-}
-
-.dca-projection-card {
-  margin-bottom: 14px;
-  padding: 14px;
-  background: var(--color-surface);
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
 }
 
 .dca-projection-card-header {
@@ -6158,14 +6096,6 @@ textarea {
 
 /* ─── Rolling Return Block ──────────────────────────────────────────────────── */
 
-.dca-rolling-block {
-  margin-bottom: 20px;
-  padding: 20px 22px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 10px;
-}
-
 .dca-rolling-title {
   margin: 0 0 6px 0;
   font-size: 1.05rem;
@@ -6245,14 +6175,6 @@ textarea {
   background: var(--color-primary-dark);
 }
 
-.dca-rolling-card {
-  margin-bottom: 14px;
-  padding: 14px;
-  background: var(--color-surface);
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
-}
-
 .dca-rolling-card-header {
   display: flex;
   justify-content: space-between;
@@ -6330,14 +6252,6 @@ textarea {
 }
 
 /* ─── Monte Carlo Block ─────────────────────────────────────────────────────── */
-
-.dca-mc-block {
-  margin-bottom: 20px;
-  padding: 20px 22px;
-  background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 10px;
-}
 
 .dca-mc-title {
   margin: 0 0 6px 0;
@@ -6549,14 +6463,6 @@ textarea {
 .dca-historical-percentile-card > strong {
   color: #141413;
   font-size: 0.85rem;
-}
-
-.dca-mc-card {
-  margin-bottom: 14px;
-  padding: 14px;
-  background: var(--color-surface);
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
 }
 
 .dca-mc-card-header {
@@ -8019,21 +7925,7 @@ textarea {
   background: #fff;
 }
 
-.dca-results-content .chart-header h3,
-.dca-results-content .dca-storm-chart-title,
-.dca-results-content .dca-storm-title,
-.dca-results-content .dca-eoy-title,
-.dca-results-content .dca-consist-title,
-.dca-results-content .dca-projection-title,
-.dca-results-content .dca-rolling-title,
-.dca-results-content .dca-mc-title,
-.dca-results-content .dca-bank-compare-title {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.dca-block-header,
-.dca-content-card-header {
+.dca-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8042,15 +7934,10 @@ textarea {
 }
 
 .dca-block-header {
-  margin-bottom: 6px;
-}
-
-.dca-content-card-header {
   margin-bottom: 12px;
 }
 
-.dca-block-title,
-.dca-content-card-title {
+.dca-block-title {
   margin: 0;
   color: var(--color-text);
   font-family: var(--font-display);

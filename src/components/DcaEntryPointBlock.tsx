@@ -14,7 +14,7 @@ import { useMemo, memo } from 'react'
 import type { PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, slicePricesWithPredecessor, type DCASlot } from '../utils/dca'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
-import { DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 
 /** Số tiền cố định cho mỗi lần vào, chọn tròn 100 triệu cho dễ nhẩm. */
 const AMOUNT = 100_000_000
@@ -117,7 +117,7 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
   const narrative = buildNarrative(rows)
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title="Cùng 100 triệu, vào ở thời điểm khác nhau"
       actions={<span
           className="chart-tooltip-icon"
@@ -201,7 +201,7 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
           gì đảm bảo những năm tới sẽ lặp lại đúng như vậy.
         </p>
       )}
-    </DcaContentCard>
+    </DcaBlock>
   )
 }
 

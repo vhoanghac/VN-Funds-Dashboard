@@ -22,7 +22,7 @@ import {
 } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
-import { DcaBlock, DcaContentCard } from './DcaLayout'
+import { DcaBlock } from './DcaLayout'
 import type { ReturnPoint } from '../types'
 
 export interface MonteCarloPortfolio {
@@ -238,12 +238,12 @@ function MonteCarloForPortfolio({
 
   if (monthlyPool.length < BLOCK_SIZE) {
     return (
-      <DcaContentCard title={portfolio.name} className="dca-mc-card">
+      <DcaBlock title={portfolio.name} className="dca-mc-card">
         <div className="dca-mc-insufficient">
           Không đủ lịch sử để mô phỏng Monte Carlo (cần ít nhất {BLOCK_SIZE} tháng dữ liệu,
           hiện có {monthlyPool.length} tháng). Chọn khoảng thời gian dài hơn ở phần "Thông số" phía trên.
         </div>
-      </DcaContentCard>
+      </DcaBlock>
     )
   }
 
@@ -275,7 +275,7 @@ function MonteCarloForPortfolio({
     : Array.from({ length: Math.floor(years / 5) + 1 }, (_, i) => i * 5)
 
   return (
-    <DcaContentCard
+    <DcaBlock
       title={portfolio.name}
       className="dca-mc-card"
       actions={<span className="dca-mc-card-sub">
@@ -333,7 +333,7 @@ function MonteCarloForPortfolio({
         <strong>{formatVND(Math.round(p90))}</strong>.
       </div>
       <MonteCarloDetails portfolio={portfolio} result={result} years={years} />
-      </DcaContentCard>
+      </DcaBlock>
   )
 }
 

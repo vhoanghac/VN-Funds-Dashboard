@@ -13,13 +13,6 @@ interface DcaBlockProps {
   className?: string
 }
 
-interface DcaContentCardProps {
-  title?: ReactNode
-  actions?: ReactNode
-  children: ReactNode
-  className?: string
-}
-
 function withClassName(base: string, className?: string): string {
   return className ? `${base} ${className}` : base
 }
@@ -42,20 +35,6 @@ export function DcaBlock({ title, actions, children, className }: DcaBlockProps)
       {(title || actions) && (
         <header className="dca-block-header">
           {title && <h3 className="dca-block-title">{title}</h3>}
-          {actions}
-        </header>
-      )}
-      {children}
-    </section>
-  )
-}
-
-export function DcaContentCard({ title, actions, children, className }: DcaContentCardProps) {
-  return (
-    <section className={withClassName('dca-content-card', className)}>
-      {(title || actions) && (
-        <header className="dca-content-card-header">
-          {title && <h3 className="dca-content-card-title">{title}</h3>}
           {actions}
         </header>
       )}
