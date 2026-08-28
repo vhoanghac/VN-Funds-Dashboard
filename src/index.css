@@ -4988,7 +4988,11 @@ h1, h2, h3 {
 
 /* Bảng các đợt sụt giảm lớn nhất (trong khối Kiên trì qua bão) */
 .dca-episodes-section {
-  margin-top: 16px;
+  margin: 16px 0;
+  padding: 14px 12px 10px;
+  background: #faf9f5;
+  border: 1px solid #e8e6dc;
+  border-radius: 8px;
 }
 
 .dca-episodes-portfolio {
