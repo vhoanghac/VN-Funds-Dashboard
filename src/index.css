@@ -7961,3 +7961,52 @@ textarea {
 .dca-results-content .dca-mc-stat-sublabel {
   font-size: var(--font-size-label);
 }
+
+/* --- DCA neutral surfaces ---------------------------------------------------- */
+/* Keep all neutral DCA content white; semantic status colors remain unchanged. */
+.dca-results-surface {
+  --color-surface: #fff;
+}
+
+.dca-results-surface :where(
+  .dca-storm-block,
+  .dca-storm-stat,
+  .dca-storm-chart,
+  .dca-storm-chart-note,
+  .dca-drawdown-summary,
+  .dca-episodes-section,
+  .dca-storm-takeaway,
+  .dca-eoy-block,
+  .dca-explainer-block,
+  .dca-explainer-toggle,
+  .dca-journey-block,
+  .dca-journey-card,
+  .dca-journey-takeaway,
+  .dca-bank-compare-block,
+  .dca-bank-rate-btn,
+  .dca-bank-compare-row,
+  .dca-bank-compare-portfolio,
+  .dca-bank-compare-bank,
+  .dca-historical-percentile-card,
+  .dca-consist-block,
+  .dca-consist-card,
+  .dca-consist-takeaway,
+  .dca-rolling-block,
+  .dca-rolling-card,
+  .dca-rolling-btn,
+  .dca-projection-block,
+  .dca-projection-btn,
+  .dca-projection-card,
+  .dca-projection-takeaway,
+  .dca-mc-block,
+  .dca-mc-controls,
+  .dca-mc-btn,
+  .dca-mc-custom-input,
+  .dca-mc-card,
+  .dca-mc-stat,
+  .dca-mc-takeaway,
+  .dca-mc-path-card,
+  .dca-mc-distribution-card
+) {
+  background: #fff;
+}
