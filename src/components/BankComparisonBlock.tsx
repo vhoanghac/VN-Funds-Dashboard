@@ -13,6 +13,7 @@
  */
 import { useState, memo } from 'react'
 import { formatVND } from '../utils/vndFormat'
+import { DcaBlock } from './DcaLayout'
 
 const DEFAULT_BANK_RATE = 0.065  // 6.5%/năm
 
@@ -65,10 +66,8 @@ function BankComparisonBlockImpl({ results, endDate }: Props) {
   })
 
   return (
-    <div className="dca-bank-compare-block">
-      <div className="dca-bank-compare-head">
-        <h3 className="dca-bank-compare-title">So với gửi tiết kiệm ngân hàng thì sao?</h3>
-        <div className="dca-bank-compare-rate">
+    <DcaBlock title="So với gửi tiết kiệm ngân hàng thì sao?" className="dca-bank-compare-block">
+      <div className="dca-bank-compare-rate">
           <span>Lãi suất giả định:</span>
           <div className="dca-bank-compare-rate-btns">
             {RATE_OPTIONS.map(opt => (
@@ -82,7 +81,6 @@ function BankComparisonBlockImpl({ results, endDate }: Props) {
               </button>
             ))}
           </div>
-        </div>
       </div>
 
       <p className="dca-bank-compare-sub">
@@ -121,7 +119,7 @@ function BankComparisonBlockImpl({ results, endDate }: Props) {
       {comparisons.length > 0 && (
         <BankTakeaway comparisons={comparisons} />
       )}
-    </div>
+    </DcaBlock>
   )
 }
 

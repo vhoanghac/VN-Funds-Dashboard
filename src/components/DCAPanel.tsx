@@ -32,6 +32,7 @@ import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import { DataQualityBlock } from './DataQualityBlock'
 import { DrawdownChart } from './DrawdownChart'
 import { DcaRecoveryChart } from './DcaRecoveryChart'
+import { DcaSectionPanel } from './DcaLayout'
 import { parsePortfolios } from '../utils/portfolio'
 import { FUND_COLORS } from '../constants'
 import {
@@ -187,8 +188,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // Section kết quả đang hiện. Mặc định chỉ hiện phần Tóm Tắt.
   const [activeSection, setActiveSection] = useState<DcaSectionId>('summary')
   const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('all')
-  const showSection = (id: DcaSectionId) =>
-    activeSection === id ? undefined : 'none'
 
   // ── Portfolios ──
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
@@ -850,7 +849,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
       {/* ── Parameters Section ── */}
       <div className="dca-params-card">
-        <h3 className="dca-section-title">Thông số</h3>
+        <h3 className="dca-title">Thông số</h3>
 
         {/* Date Range Mode */}
         <div className="dca-param-row">
@@ -920,7 +919,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
         {/* DCA Cash Flow subsection — mặc định 0, tức là mô phỏng đầu tư 1 lần */}
         <div className="dca-subsection">
-          <h4 className="dca-subsection-title">Dòng Tiền DCA</h4>
+          <h4 className="dca-title">Dòng Tiền DCA</h4>
           <p className="dca-subsection-hint">
             Để 0 nếu chỉ muốn mô phỏng đầu tư 1 lần. Nhập số tiền nếu muốn lên kế hoạch DCA định kỳ.
           </p>
@@ -957,7 +956,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       {/* ── Portfolio Cards ── */}
       <div className="dca-portfolios-card">
         <div className="dca-portfolios-card-header">
-          <h3 className="dca-section-title">Danh mục</h3>
+          <h3 className="dca-title">Danh mục</h3>
           {portfolios.length < MAX_PORTFOLIOS && (
             <button className="dca-add-portfolio-btn" onClick={addPortfolio}>
               + Thêm Danh Mục
@@ -1082,7 +1081,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 display:none (không unmount) để chuyển section không phải render
                 lại các chart nặng. */}
             <>
-              <div style={{ display: showSection('summary') }}>
+              <DcaSectionPanel id="summary" active={activeSection === 'summary'}>
                 <DCAStatsTable
                   portfolios={dcaStatsTableData}
                 />
@@ -1094,9 +1093,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 <DrawdownChart series={dcaDrawdownSeries} />
 
                 <DcaRecoveryChart portfolios={recoveryChartData} />
-              </div>
+              </DcaSectionPanel>
 
-              <div style={{ display: showSection('perf') }}>
+              <DcaSectionPanel id="perf" active={activeSection === 'perf'}>
                 {/* Period info */}
                 {startDate && endDate && (
                   <div className="comparison-period" style={{ marginBottom: 16 }}>
@@ -1129,9 +1128,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 <DcaReturnExplainer
                   portfolios={dcaReturnExplainerData}
                 />
-              </div>
+              </DcaSectionPanel>
 
-              <div style={{ display: showSection('journey') }}>
+              <DcaSectionPanel id="journey" active={activeSection === 'journey'}>
                 {/* Journey narrative */}
                 {startDate && endDate && (
                   <DcaJourneyBlock
@@ -1159,9 +1158,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                     endDate={endDate}
                   />
                 )}
-              </div>
+              </DcaSectionPanel>
 
-              <div style={{ display: showSection('risk') }}>
+              <DcaSectionPanel id="risk" active={activeSection === 'risk'}>
                 {/* Kiên trì qua bão */}
                 {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
                 <DcaReturnPainChart portfolios={returnPainData} />
@@ -1182,15 +1181,15 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 <RollingReturnBlock
                   portfolios={rollingReturnData}
                 />
-              </div>
+              </DcaSectionPanel>
 
-              <div style={{ display: showSection('drawdowns') }}>
+              <DcaSectionPanel id="drawdowns" active={activeSection === 'drawdowns'}>
                 <DcaStormBlock
                   portfolios={drawdownViewData}
                 />
-              </div>
+              </DcaSectionPanel>
 
-              <div style={{ display: showSection('endgame') }}>
+              <DcaSectionPanel id="endgame" active={activeSection === 'endgame'}>
                 {/* Endgame: projection */}
                 <ProjectionBlock
                   portfolios={projectionData}
@@ -1199,7 +1198,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 <MonteCarloBlock
                   portfolios={monteCarloData}
                 />
-              </div>
+              </DcaSectionPanel>
             </>
           </div>
         </div>

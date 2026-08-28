@@ -22,6 +22,7 @@ import {
 } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
+import { DcaBlock, DcaContentCard } from './DcaLayout'
 import type { ReturnPoint } from '../types'
 
 export interface MonteCarloPortfolio {
@@ -83,8 +84,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
   const detailPortfolio = portfolios.find(p => p.id === detailPortfolioId) ?? portfolios[0]!
 
   return (
-    <div className="dca-mc-block">
-      <h3 className="dca-mc-title">Dựa trên {ITERATIONS.toLocaleString('vi-VN')} kịch bản trong quá khứ, khả năng bạn đạt mục tiêu là:</h3>
+    <DcaBlock title={`Dựa trên ${ITERATIONS.toLocaleString('vi-VN')} kịch bản trong quá khứ, khả năng bạn đạt mục tiêu là:`} className="dca-mc-block">
       <p className="dca-mc-sub">
         Thay vì 3 kịch bản Xấu/Base/Tốt cố định ở trên, cách này lấy nguyên các đoạn 12 tháng
         đã từng xảy ra thật trong lịch sử quỹ — ví dụ đúng 12 tháng của một năm khủng hoảng,
@@ -198,7 +198,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
         phối này càng kém tin cậy vì cùng vài giai đoạn bị lặp lại nhiều lần trong 1.000 kịch
         bản. Hãy xem đây là "nếu thì", không phải "sẽ là".
       </div>
-    </div>
+    </DcaBlock>
   )
 }
 
@@ -238,15 +238,12 @@ function MonteCarloForPortfolio({
 
   if (monthlyPool.length < BLOCK_SIZE) {
     return (
-      <div className="dca-mc-card">
-        <div className="dca-mc-card-header">
-          <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
-        </div>
+      <DcaContentCard title={portfolio.name} className="dca-mc-card">
         <div className="dca-mc-insufficient">
           Không đủ lịch sử để mô phỏng Monte Carlo (cần ít nhất {BLOCK_SIZE} tháng dữ liệu,
           hiện có {monthlyPool.length} tháng). Chọn khoảng thời gian dài hơn ở phần "Thông số" phía trên.
         </div>
-      </div>
+      </DcaContentCard>
     )
   }
 
@@ -278,14 +275,14 @@ function MonteCarloForPortfolio({
     : Array.from({ length: Math.floor(years / 5) + 1 }, (_, i) => i * 5)
 
   return (
-    <div className="dca-mc-card">
-      <div className="dca-mc-card-header">
-        <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
-        <span className="dca-mc-card-sub">
+    <DcaContentCard
+      title={portfolio.name}
+      className="dca-mc-card"
+      actions={<span className="dca-mc-card-sub">
           {portfolio.cagr !== null && <>CAGR lịch sử: {(portfolio.cagr * 100).toFixed(1)}%/năm · </>}
           {ITERATIONS.toLocaleString('vi-VN')} kịch bản · dựa trên {monthlyPool.length} tháng lịch sử
-        </span>
-      </div>
+        </span>}
+    >
 
       <ResponsiveContainer width="100%" height={240}>
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
@@ -335,9 +332,8 @@ function MonteCarloForPortfolio({
         <strong>{formatVND(Math.round(p10))}</strong>, kịch bản tốt nhất (đỉnh 90%) lên tới{' '}
         <strong>{formatVND(Math.round(p90))}</strong>.
       </div>
-
       <MonteCarloDetails portfolio={portfolio} result={result} years={years} />
-    </div>
+      </DcaContentCard>
   )
 }
 

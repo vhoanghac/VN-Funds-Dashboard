@@ -12,6 +12,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { DcaContentCard } from './DcaLayout'
 
 export interface ReturnPainPortfolio {
   id: string
@@ -62,10 +63,9 @@ function DcaReturnPainChartImpl({ portfolios }: Props) {
   const narrative = data.length >= 2 ? buildNarrative(data) : null
 
   return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <h3>Bản đồ lợi nhuận và rủi ro</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <DcaContentCard
+      title="Bản đồ lợi nhuận và rủi ro"
+      actions={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             className={`log-scale-btn${logScale ? ' log-scale-btn-active' : ''}`}
             onClick={() => setLogScale(v => !v)}
@@ -77,8 +77,8 @@ function DcaReturnPainChartImpl({ portfolios }: Props) {
             className="chart-tooltip-icon"
             title="Trục ngang: mức sụt giảm sâu nhất so với đỉnh (drawdown), càng sang phải càng đau. Trục dọc: tổng số lần nhân vốn. Góc trên-trái là vùng lý tưởng: lợi nhuận cao mà ít đau."
           >?</span>
-        </div>
-      </div>
+        </div>}
+    >
 
       <p className="dca-ratio-sub">
         Mỗi chấm là một danh mục, đặt lợi nhuận cạnh cái giá phải trả để có được nó.
@@ -155,7 +155,7 @@ function DcaReturnPainChartImpl({ portfolios }: Props) {
           cho tương lai.
         </p>
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 

@@ -9,6 +9,7 @@ import {
 } from '../utils/chartPlumbing'
 import { formatVNDFull } from '../utils/vndFormat'
 import { useDimLegend } from '../hooks/useDimLegend'
+import { DcaContentCard } from './DcaLayout'
 
 interface ValuePoint {
   date: string
@@ -56,10 +57,9 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
     : []
 
   return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <h3>Giá trị tài sản</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <DcaContentCard
+      title="Giá trị tài sản"
+      actions={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             className={`log-scale-btn${showEvents ? ' log-scale-btn-active' : ''}`}
             onClick={() => setShowEvents(v => !v)}
@@ -78,8 +78,8 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
             className="chart-tooltip-icon"
             title="Biểu đồ giá trị tài sản thực tế (MWRR) của nhà đầu tư theo thời gian. Đường nét đứt là tổng chi phí đã đầu tư (cost basis). Bấm vào legend để làm mờ/hiện đường."
           >?</span>
-        </div>
-      </div>
+        </div>}
+    >
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -176,7 +176,7 @@ function PortfolioValueChartImpl({ portfolios }: Props) {
           ))}
         </div>
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 

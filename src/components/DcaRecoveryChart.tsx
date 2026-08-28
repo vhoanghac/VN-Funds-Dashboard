@@ -8,6 +8,7 @@ import {
   formatTooltipDate, formatYear, getYearTicks, mergeAllSeries,
 } from '../utils/chartPlumbing'
 import { recoveryMultipleFromDrawdown } from '../utils/drawdownStats'
+import { DcaContentCard } from './DcaLayout'
 
 export interface RecoveryPortfolio {
   id: string
@@ -44,14 +45,13 @@ function DcaRecoveryChartImpl({ portfolios }: Props) {
   const yMax = maxRecovery <= 1.05 ? 1.05 : Math.ceil(maxRecovery * 10) / 10
 
   return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <h3>Hiệu suất để về lại đỉnh</h3>
-        <span
+    <DcaContentCard
+      title="Hiệu suất để về lại đỉnh"
+      actions={<span
           className="chart-tooltip-icon"
           title="Từ mức drawdown hiện tại, giá quỹ cần tăng bao nhiêu lần để quay lại đỉnh cũ."
-        >?</span>
-      </div>
+        >?</span>}
+    >
       <p className="dca-recovery-sub">
         1,00× nghĩa là danh mục đang ở đỉnh. Khi đường lên 1,25×, giá quỹ cần tăng thêm
         25% mới quay lại đỉnh cũ.
@@ -94,7 +94,7 @@ function DcaRecoveryChartImpl({ portfolios }: Props) {
           ))}
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </DcaContentCard>
   )
 }
 

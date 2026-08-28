@@ -431,7 +431,8 @@ textarea {
 }
 
 /* ─── Chart Containers ────────────────────────── */
-.chart-container {
+.chart-container,
+.dca-content-card {
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -2352,7 +2353,7 @@ textarea {
   margin-bottom: 16px;
 }
 
-.dca-portfolios-card-header .dca-section-title {
+.dca-portfolios-card-header .dca-title {
   margin-bottom: 0;
 }
 
@@ -3096,6 +3097,22 @@ textarea {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 4px;
+}
+
+.dca-panel .dca-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 16px;
+}
+
+.dca-subsection .dca-title {
+  margin-bottom: 4px;
+}
+
+.dca-portfolios-card-header .dca-title {
+  margin-bottom: 0;
 }
 
 .dca-subsection-hint {
@@ -4942,8 +4959,6 @@ textarea {
   margin: 16px 0;
   padding: 14px 12px 10px 12px;
   background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
 }
 
 .dca-storm-chart-title {
@@ -4997,8 +5012,6 @@ textarea {
   margin: 16px 0;
   padding: 14px 12px 10px;
   background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
 }
 
 .dca-drawdown-summary-table {
@@ -5015,8 +5028,6 @@ textarea {
   margin: 16px 0;
   padding: 14px 12px 10px;
   background: #faf9f5;
-  border: 1px solid #e8e6dc;
-  border-radius: 8px;
 }
 
 .dca-episodes-portfolio {
@@ -8009,4 +8020,44 @@ textarea {
   .dca-mc-distribution-card
 ) {
   background: #fff;
+}
+
+.dca-results-content .chart-header h3,
+.dca-results-content .dca-storm-chart-title,
+.dca-results-content .dca-storm-title,
+.dca-results-content .dca-eoy-title,
+.dca-results-content .dca-consist-title,
+.dca-results-content .dca-projection-title,
+.dca-results-content .dca-rolling-title,
+.dca-results-content .dca-mc-title,
+.dca-results-content .dca-bank-compare-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dca-block-header,
+.dca-content-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dca-block-header {
+  margin-bottom: 6px;
+}
+
+.dca-content-card-header {
+  margin-bottom: 12px;
+}
+
+.dca-block-title,
+.dca-content-card-title {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
 }

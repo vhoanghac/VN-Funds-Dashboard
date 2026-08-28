@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { rollingCAGR, histogramBuckets, trailingWindowCagr } from '../utils/dca'
 import type { ReturnPoint } from '../types'
+import { DcaBlock, DcaContentCard } from './DcaLayout'
 
 export interface RollingPortfolio {
   id: string
@@ -35,8 +36,7 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
   if (portfolios.length === 0) return null
 
   return (
-    <div className="dca-rolling-block">
-      <h3 className="dca-rolling-title">Nếu bạn bắt đầu ở thời điểm khác thì sao?</h3>
+    <DcaBlock title="Nếu bạn bắt đầu ở thời điểm khác thì sao?" className="dca-rolling-block">
       <p className="dca-rolling-sub">
         Giả sử có rất nhiều người cùng đầu tư vào quỹ này nhưng mỗi người bắt đầu ở một
         tháng khác nhau và giữ đúng <strong>{windowYears} năm</strong>. Kết quả của mỗi
@@ -61,7 +61,7 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
       {portfolios.map(p => (
         <RollingForPortfolio key={p.id} portfolio={p} windowYears={windowYears} />
       ))}
-    </div>
+    </DcaBlock>
   )
 }
 
@@ -98,15 +98,12 @@ function RollingForPortfolio({
         ? `Khoảng thời gian đang chọn chỉ từ ${formatDate(start)} tới ${formatDate(end)}`
         : 'Khoảng thời gian đang chọn quá ngắn'
     return (
-      <div className="dca-rolling-card">
-        <div className="dca-rolling-card-header">
-          <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
-        </div>
+      <DcaContentCard title={portfolio.name} className="dca-rolling-card">
         <div className="dca-rolling-insufficient">
           {span}, chưa đủ để tính chu kỳ {windowYears} năm (cần ít nhất {windowYears + 1} năm).
           Không phải quỹ thiếu dữ liệu, mà là khoảng xem ngắn. Kéo rộng khoảng thời gian ở phần Thông số rồi thử lại.
         </div>
-      </div>
+      </DcaContentCard>
     )
   }
 
@@ -123,13 +120,13 @@ function RollingForPortfolio({
   }))
 
   return (
-    <div className="dca-rolling-card">
-      <div className="dca-rolling-card-header">
-        <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
-        <span className="dca-rolling-card-count">
+    <DcaContentCard
+      title={portfolio.name}
+      className="dca-rolling-card"
+      actions={<span className="dca-rolling-card-count">
           {rolls.length} chu kỳ {windowYears} năm
-        </span>
-      </div>
+        </span>}
+    >
 
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
@@ -185,7 +182,7 @@ function RollingForPortfolio({
           )}
         </div>
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 

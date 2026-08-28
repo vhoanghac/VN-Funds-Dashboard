@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { DcaContentCard } from './DcaLayout'
 
 interface StatsRow {
   id: string
@@ -24,14 +25,13 @@ function DCAStatsTableImpl({ portfolios }: Props) {
   if (portfolios.length === 0) return null
 
   return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <h3>Bảng thống kê</h3>
-        <span
+    <DcaContentCard
+      title="Bảng thống kê"
+      actions={<span
           className="chart-tooltip-icon"
           title="Tổng hợp các chỉ số hiệu suất của từng danh mục trên cùng 1 hàng để dễ so sánh."
-        >?</span>
-      </div>
+        >?</span>}
+    >
       <div className="dca-stats-table-scroll">
         <table className="dca-stats-table">
           <thead>
@@ -110,7 +110,7 @@ function DCAStatsTableImpl({ portfolios }: Props) {
           </tbody>
         </table>
       </div>
-    </div>
+    </DcaContentCard>
   )
 }
 

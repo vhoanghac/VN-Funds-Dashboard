@@ -16,6 +16,7 @@ import {
 } from 'recharts'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
+import { DcaBlock, DcaContentCard } from './DcaLayout'
 
 export interface ProjectionPortfolio {
   id: string
@@ -52,8 +53,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
   const effectiveContribution = contribOverride ?? defaultContribution
 
   return (
-    <div className="dca-projection-block">
-      <h3 className="dca-projection-title">Nếu bạn kiên trì thêm nhiều năm nữa thì sao?</h3>
+    <DcaBlock title="Nếu bạn kiên trì thêm nhiều năm nữa thì sao?" className="dca-projection-block">
       <p className="dca-projection-sub">
         Giả sử bạn vẫn đều đặn nạp tiền mỗi tháng như bây giờ, và CAGR tương lai loanh
         quanh mức lịch sử. Đây không phải là dự báo, không ai biết trước thị trường sẽ
@@ -102,7 +102,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
         Thực tế sẽ dao động lớn hơn nhiều, và kết quả của bạn có thể lệch xa cả ba kịch
         bản này. Hãy xem đây là "nếu thì", không phải "sẽ là".
       </div>
-    </div>
+    </DcaBlock>
   )
 }
 
@@ -157,9 +157,8 @@ function ProjectionForPortfolio({
   const growthBase = finalBase - totalInvestedEnd
 
   return (
-    <div className="dca-projection-card">
+    <DcaContentCard title={portfolio.name} className="dca-projection-card">
       <div className="dca-projection-card-header">
-        <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
         <span className="dca-projection-card-cagr">
           CAGR lịch sử: {(cagr * 100).toFixed(1)}%/năm
         </span>
@@ -218,7 +217,7 @@ function ProjectionForPortfolio({
         {formatVND(Math.round(growthBase))} là tiền đẻ tiền nhờ lãi kép. Đó là lý do vì
         sao đầu tư là cuộc chơi của thời gian, không phải của canh đỉnh canh đáy.
       </div>
-    </div>
+    </DcaContentCard>
   )
 }
 

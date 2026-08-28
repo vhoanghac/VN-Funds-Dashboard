@@ -14,6 +14,7 @@ import {
   Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Customized,
 } from 'recharts'
+import { DcaContentCard } from './DcaLayout'
 
 interface ValuePoint {
   date: string
@@ -88,14 +89,13 @@ function DcaRatioChartImpl({ portfolios }: Props) {
   const narrative = buildRatioNarrative(ratioData)
 
   return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <h3>Danh mục nào đang dẫn trước?</h3>
-        <span
+    <DcaContentCard
+      title="Danh mục nào đang dẫn trước?"
+      actions={<span
           className="chart-tooltip-icon"
           title="Tỷ số giá trị giữa 2 danh mục theo thời gian. Đường đi lên nghĩa là danh mục thứ nhất đang tăng nhanh hơn (hoặc giảm chậm hơn) danh mục thứ hai, kể cả khi cả hai cùng tăng hay cùng giảm."
-        >?</span>
-      </div>
+        >?</span>}
+    >
 
       <p className="dca-ratio-sub">
         Hai đường giá trị chồng lên nhau rất khó nhìn ra giai đoạn nào danh mục nào
@@ -205,7 +205,7 @@ function DcaRatioChartImpl({ portfolios }: Props) {
           ngôi chóng vánh, nên đừng neo quá chặt vào con số dẫn đầu hiện tại.
         </p>
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 

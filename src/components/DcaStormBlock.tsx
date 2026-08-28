@@ -18,6 +18,7 @@ import {
   recoveryPercentFromDrawdown,
   summarizeDrawdownEpisodes,
 } from '../utils/drawdownStats'
+import { DcaBlock, DcaContentCard } from './DcaLayout'
 
 export interface StormPortfolio {
   id: string
@@ -53,8 +54,7 @@ function DcaStormBlockImpl({ portfolios }: Props) {
   if (stormed.length === 0) {
     const worstDD = Math.min(...portfolios.map(p => p.storm.maxDrawdown))
     return (
-      <div className="dca-storm-block dca-storm-block--calm">
-        <h3 className="dca-storm-title">⛅ Giai đoạn êm ả</h3>
+      <DcaBlock title="⛅ Giai đoạn êm ả">
         <p className="dca-storm-calm-text">
           Suốt kỳ đầu tư này, danh mục không trải qua cơn bão nào đáng kể.
           Drawdown tệ nhất chỉ <strong>{(worstDD * 100).toFixed(1)}%</strong>.
@@ -64,7 +64,7 @@ function DcaStormBlockImpl({ portfolios }: Props) {
           (bao trùm 2018-2019 hoặc 2022) để thấy bức tranh đầy đủ hơn.
         </p>
         <DrawdownSummaryTable episodes={singlePortfolioEpisodes} />
-      </div>
+      </DcaBlock>
     )
   }
 
@@ -74,13 +74,7 @@ function DcaStormBlockImpl({ portfolios }: Props) {
   const bearName = s.inBearPeriod ? BEAR_LABEL[s.inBearPeriod] : null
 
   return (
-    <div className="dca-storm-block">
-      <h3 className="dca-storm-title">🌊 Kiên trì qua bão</h3>
-      <p className="dca-storm-sub">
-        Hành trình DCA không bao giờ là một đường thẳng. Đây là những cơn bão
-        mà danh mục {portfolios.length > 1 ? 'của bạn' : `${worst.name} của bạn`} đã trải qua.
-      </p>
-
+    <>
       <div className="dca-storm-grid">
         <div className="dca-storm-stat">
           <div className="dca-storm-stat-label">Drawdown tệ nhất</div>
@@ -125,7 +119,7 @@ function DcaStormBlockImpl({ portfolios }: Props) {
       <DrawdownEpisodesSection portfolios={portfolios} />
 
       <StormTakeaway storm={s} worstName={worst.name} multi={portfolios.length > 1} />
-    </div>
+    </>
   )
 }
 
@@ -143,8 +137,7 @@ function DrawdownSummaryTable({ episodes }: { episodes: ReturnType<typeof drawdo
   ]
 
   return (
-    <div className="dca-drawdown-summary">
-      <div className="dca-storm-chart-title">Tóm tắt drawdown</div>
+    <DcaContentCard title="Tóm tắt drawdown" className="dca-drawdown-summary">
       <div className="dca-storm-chart-sub">
         Độ sâu đo từ đỉnh cũ xuống đáy. Thời gian đến đáy tính từ đỉnh đến đáy.
         Thời gian hồi phục tính từ đáy lên đỉnh cũ.
@@ -179,7 +172,7 @@ function DrawdownSummaryTable({ episodes }: { episodes: ReturnType<typeof drawdo
         * Thời gian hồi phục chỉ tính các đợt đã quay lại đỉnh cũ. Các thống kê còn lại vẫn
         tính cả đợt đang diễn ra.
       </div>
-    </div>
+    </DcaContentCard>
   )
 }
 
@@ -211,14 +204,13 @@ function MarketDrawdownChart({ portfolios }: { portfolios: StormPortfolio[] }) {
   const floorPct = Math.floor(minDD / 5) * 5
 
   return (
-    <div className="dca-storm-chart">
-      <div className="dca-storm-chart-title">Giá quỹ sập bao nhiêu?</div>
+    <DcaContentCard title="Giá quỹ sập bao nhiêu?" className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
         Khoảng cách từ đỉnh giá quỹ. Đây là "bão thị trường thật", đo bằng TWRR
         nên đã loại ảnh hưởng của việc bạn nạp tiền đều đặn.
       </div>
       {renderUnderwaterChart(data, portfolios, floorPct, 'mkt')}
-    </div>
+    </DcaContentCard>
   )
 }
 
@@ -274,8 +266,7 @@ function AccountDrawdownChart({
   const softenedSignificant = softenedBy > 3 // chỉ note nếu chênh đáng kể
 
   return (
-    <div className="dca-storm-chart">
-      <div className="dca-storm-chart-title">Số dư tài khoản sập bao nhiêu?</div>
+    <DcaContentCard title="Số dư tài khoản sập bao nhiêu?" className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
         Khoảng cách từ đỉnh số dư tài khoản thực tế của bạn. Đây là thứ bạn thấy khi mở app quỹ.
       </div>
@@ -289,7 +280,7 @@ function AccountDrawdownChart({
           giá quỹ.
         </div>
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 
@@ -343,7 +334,7 @@ function renderUnderwaterChart(
 
   return (
     <>
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={350}>
       <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
         <defs>
           {portfolios.map(p => (
@@ -426,11 +417,10 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
   if (perPortfolio.length === 0) return null
 
   return (
-    <div className="dca-episodes-section">
-      <div className="dca-storm-chart-title">Các đợt sụt giảm lớn nhất</div>
+    <DcaContentCard title="Các đợt sụt giảm lớn nhất" className="dca-episodes-section">
       <div className="dca-storm-chart-sub">
-        Top 5 đợt sụt từ 5% trở lên của mỗi danh mục. "Dưới đỉnh" là tổng thời
-        gian từ lúc lập đỉnh đến khi vượt lại đỉnh cũ.
+        Top 5 đợt sụt từ 5% trở lên của mỗi danh mục. Thời gian hồi phục tính từ
+        đáy lên đỉnh cũ. Thời gian dưới đỉnh tính từ lúc lập đỉnh đến khi vượt lại đỉnh cũ.
       </div>
 
       {perPortfolio.map(p => (
@@ -446,21 +436,25 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Sụt giảm</th>
-                  <th>Từ đỉnh</th>
-                  <th>Chạm đáy</th>
+                  <th>Đỉnh</th>
+                  <th>Đáy</th>
                   <th>Hồi phục</th>
-                  <th>Dưới đỉnh</th>
+                  <th>Sụt giảm</th>
+                  <th>Thời gian đến đáy</th>
+                  <th>Thời gian hồi phục</th>
+                  <th>Thời gian dưới đỉnh</th>
                 </tr>
               </thead>
               <tbody>
                 {p.episodes.map((e, i) => (
                   <tr key={e.peakDate}>
                     <td>{i + 1}</td>
-                    <td className="dca-loss">{(e.depth * 100).toFixed(1)}%</td>
                     <td>{formatMonthYear(e.peakDate)}</td>
                     <td>{formatMonthYear(e.troughDate)}</td>
                     <td>{e.recoveryDate ? formatMonthYear(e.recoveryDate) : 'chưa hồi phục'}</td>
+                    <td className="dca-loss">{(e.depth * 100).toFixed(1)}%</td>
+                    <td>{formatEpisodeDuration(e.timeToTroughDays)}</td>
+                    <td>{e.recoveryDays === null ? 'chưa hồi phục' : formatEpisodeDuration(e.recoveryDays)}</td>
                     <td>{formatEpisodeDuration(e.totalDays)}{e.recoveryDate === null ? ' *' : ''}</td>
                   </tr>
                 ))}
@@ -475,7 +469,7 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
           * Đợt sụt giảm vẫn đang diễn ra, thời gian tính đến ngày dữ liệu gần nhất.
         </div>
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 

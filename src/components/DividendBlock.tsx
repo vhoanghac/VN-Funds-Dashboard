@@ -13,6 +13,7 @@
 import { memo } from 'react'
 import type { DividendEvent, DividendNarrativeStats } from '../utils/dividendAdjust'
 import { formatVNDFull } from '../utils/vndFormat'
+import { DcaBlock } from './DcaLayout'
 
 export interface PortfolioDividendNarrative {
   portfolioId: string
@@ -58,7 +59,7 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
       <div className="section-divider">
         <span className="section-divider-label">Cổ tức &amp; tái đầu tư</span>
       </div>
-      <div className="dca-journey-block">
+      <DcaBlock className="dca-journey-block">
         <div className="dca-journey-headline">
           Trong kỳ DCA này, quỹ <strong>{Array.from(byFund.keys()).join(', ')}</strong>{' '}
           đã chi trả cổ tức. Dashboard đã điều chỉnh giá để phản ánh giả định tái đầu
@@ -169,7 +170,7 @@ function DividendBlockImpl({ fundIds, dividendsByFund, startDate, endDate, narra
             trước ngày chốt quyền và giá trị cổ tức thực nhận (sau thuế TNCN).
           </div>
         </div>
-      </div>
+      </DcaBlock>
     </>
   )
 }

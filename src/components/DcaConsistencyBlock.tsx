@@ -19,6 +19,7 @@ import type { PricePoint, RebalanceFrequency } from '../types'
 import { simulateDCA, dcaMWRR, type DCASlot, type DCAFrequency } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
+import { DcaBlock, DcaContentCard } from './DcaLayout'
 
 export interface ConsistencyPortfolio {
   id: string
@@ -46,8 +47,7 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
   if (portfolios.length === 0 || valid.length === 0) return null
 
   return (
-    <div className="dca-consist-block">
-      <h3 className="dca-consist-title">Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?</h3>
+    <DcaBlock title="Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?" className="dca-consist-block">
       <p className="dca-consist-sub">
         Nhà đầu tư cá nhân thường có xu hướng bỏ DCA trong bối cảnh thị trường giảm sâu vì sợ
         mất thêm tiền, rồi chần chừ không dám đầu tư lại cho đến khi thị trường hồi phục. Đây
@@ -65,7 +65,7 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
           showTakeaways={index === 0}
         />
       ))}
-    </div>
+    </DcaBlock>
   )
 }
 
@@ -169,10 +169,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
   const boost25MWRR = boostScenarios.boost25.mwrr
 
   return (
-    <div className="dca-consist-card">
-      <div className="dca-consist-card-header">
-        <span style={{ color: portfolio.color, fontWeight: 700 }}>{portfolio.name}</span>
-      </div>
+    <DcaContentCard title={portfolio.name} className="dca-consist-card">
 
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
@@ -416,7 +413,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
           extraAmount={extraAmount}
         />
       )}
-    </div>
+    </DcaContentCard>
   )
 }
 
