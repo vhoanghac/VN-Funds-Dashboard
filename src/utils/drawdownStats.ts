@@ -16,6 +16,8 @@ import { daysBetween } from './dateMath'
 const AT_PEAK = -1e-9
 
 export interface DrawdownEpisode {
+  /** ID ổn định trong một chuỗi, lấy từ ngày bắt đầu episode */
+  episodeId: string
   /** Ngày cuối cùng còn ở đỉnh trước khi bắt đầu rơi */
   peakDate: string
   /** Ngày chạm đáy (drawdown sâu nhất trong đợt) */
@@ -32,7 +34,22 @@ export interface DrawdownEpisode {
   recoveryDays: number | null
   /** Mức drawdown trung bình trong thời gian đang dưới đỉnh */
   averageDrawdown: number
+  /** Chuỗi điểm của episode, gồm mốc đỉnh và mốc hồi phục nếu có */
+  points: DrawdownEpisodePoint[]
+  /** true khi đã quay lại đỉnh cũ */
+  recovered: boolean
 }
+
+export interface DrawdownEpisodePoint {
+  date: string
+  value: number
+}
+
+export type DrawdownEpisodeRanking =
+  | 'deepest'
+  | 'longest'
+  | 'slowestRecovery'
+  | 'fastestDecline'
 
 export interface NumericSummary {
   minimum: number | null
@@ -66,8 +83,10 @@ export function drawdownEpisodes(
   let depth = 0
   let drawdownSum = 0
   let drawdownCount = 0
+  let episodePoints: DrawdownEpisodePoint[] = []
 
   const closeEpisode = (recoveryDate: string | null, lastDate: string): DrawdownEpisode => ({
+    episodeId: peakDate,
     peakDate,
     troughDate,
     recoveryDate,
@@ -76,17 +95,21 @@ export function drawdownEpisodes(
     timeToTroughDays: daysBetween(peakDate, troughDate),
     recoveryDays: recoveryDate === null ? null : daysBetween(troughDate, recoveryDate),
     averageDrawdown: drawdownCount > 0 ? drawdownSum / drawdownCount : 0,
+    points: episodePoints,
+    recovered: recoveryDate !== null,
   })
 
   for (const pt of drawdown) {
     if (pt.value >= AT_PEAK) {
       if (inEpisode) {
         // Hồi phục: đóng đợt hiện tại
+        episodePoints.push({ date: pt.date, value: pt.value })
         episodes.push(closeEpisode(pt.date, pt.date))
         inEpisode = false
         depth = 0
         drawdownSum = 0
         drawdownCount = 0
+        episodePoints = []
       }
       peakDate = pt.date
     } else {
@@ -96,14 +119,20 @@ export function drawdownEpisodes(
         depth = pt.value
         drawdownSum = pt.value
         drawdownCount = 1
+        episodePoints = [
+          { date: peakDate, value: 0 },
+          { date: pt.date, value: pt.value },
+        ]
       } else if (pt.value < depth) {
         depth = pt.value
         troughDate = pt.date
         drawdownSum += pt.value
         drawdownCount += 1
+        episodePoints.push({ date: pt.date, value: pt.value })
       } else {
         drawdownSum += pt.value
         drawdownCount += 1
+        episodePoints.push({ date: pt.date, value: pt.value })
       }
     }
   }
@@ -117,6 +146,52 @@ export function drawdownEpisodes(
   return episodes
     .filter(e => e.depth <= minDepth)
     .sort((a, b) => a.depth - b.depth)
+}
+
+/** Tách episode từ chuỗi giá trị tài khoản, không bị lẫn với drawdown TWRR. */
+export function drawdownEpisodesFromValueSeries(
+  valueSeries: ReturnPoint[],
+  minDepth = -0.05,
+): DrawdownEpisode[] {
+  let peak = 0
+  const drawdown: ReturnPoint[] = []
+
+  for (const point of valueSeries) {
+    if (!Number.isFinite(point.value) || point.value <= 0) continue
+    if (point.value > peak) peak = point.value
+    drawdown.push({
+      date: point.date,
+      value: peak > 0 ? point.value / peak - 1 : 0,
+    })
+  }
+
+  return drawdownEpisodes(drawdown, minDepth)
+}
+
+/** Xếp episode theo một tiêu chí, giữ nguyên thứ tự tương đối khi bằng điểm. */
+export function rankDrawdownEpisodes(
+  episodes: DrawdownEpisode[],
+  ranking: DrawdownEpisodeRanking,
+): DrawdownEpisode[] {
+  const candidates = ranking === 'slowestRecovery'
+    ? episodes.filter(episode => episode.recoveryDays !== null)
+    : episodes
+
+  return candidates
+    .map((episode, index) => ({ episode, index }))
+    .sort((a, b) => {
+      const left = a.episode
+      const right = b.episode
+      let comparison = 0
+
+      if (ranking === 'deepest') comparison = left.depth - right.depth
+      if (ranking === 'longest') comparison = right.totalDays - left.totalDays
+      if (ranking === 'slowestRecovery') comparison = right.recoveryDays! - left.recoveryDays!
+      if (ranking === 'fastestDecline') comparison = left.timeToTroughDays - right.timeToTroughDays
+
+      return comparison || a.index - b.index
+    })
+    .map(item => item.episode)
 }
 
 /** Tóm tắt phân bố các đợt drawdown, giữ null cho nhóm chưa có dữ liệu. */

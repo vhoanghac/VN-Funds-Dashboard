@@ -86,7 +86,7 @@ export interface MonthlyReturn {
 }
 
 /** Rebalancing frequency options */
-export type RebalanceFrequency = 'monthly' | 'quarterly' | 'yearly'
+export type RebalanceFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 
 export interface PortfolioSlot {
   fundId: string

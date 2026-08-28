@@ -138,7 +138,7 @@ type DcaSectionId = 'summary' | 'perf' | 'journey' | 'risk' | 'drawdowns' | 'end
 const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
   { id: 'summary', label: 'Tóm Tắt' },
   { id: 'perf', label: 'Hiệu suất đầu tư' },
-  { id: 'drawdowns', label: 'Drawdowns' },
+  { id: 'drawdowns', label: 'Mức sụt giảm' },
   { id: 'journey', label: 'Hành trình của bạn' },
   { id: 'risk', label: 'Rủi ro & biến động' },
   { id: 'endgame', label: 'Endgame' },
@@ -187,7 +187,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   })
   // Section kết quả đang hiện. Mặc định chỉ hiện phần Tóm Tắt.
   const [activeSection, setActiveSection] = useState<DcaSectionId>('summary')
-  const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('all')
+  const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('')
   const [activeEndgamePortfolioId, setActiveEndgamePortfolioId] = useState('')
 
   // ── Portfolios ──
@@ -300,7 +300,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       name: derivePortfolioName(slots, `Portfolio ${num}`),
       isNameCustom: false,
       slots,
-      rebalFreq: 'quarterly',
+      rebalFreq: 'yearly',
     }
     setPortfolios([...portfolios, portfolio])
   }
@@ -752,24 +752,20 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     id: r.id,
     name: r.name,
     color: r.color,
+    assetCount: r.simulationInputs?.slots.length ?? 0,
     storm: r.storm,
     drawdown: r.drawdown,
     valueSeries: r.valueSeries,
   })), [validResults])
 
   useEffect(() => {
-    if (
-      activeDrawdownPortfolioId !== 'all'
-      && !dcaStormData.some(p => p.id === activeDrawdownPortfolioId)
-    ) {
-      setActiveDrawdownPortfolioId('all')
+    if (!dcaStormData.some(p => p.id === activeDrawdownPortfolioId)) {
+      setActiveDrawdownPortfolioId(dcaStormData[0]?.id ?? '')
     }
   }, [activeDrawdownPortfolioId, dcaStormData])
 
   const drawdownViewData = useMemo(
-    () => activeDrawdownPortfolioId === 'all'
-      ? dcaStormData
-      : dcaStormData.filter(p => p.id === activeDrawdownPortfolioId),
+    () => dcaStormData.filter(p => p.id === activeDrawdownPortfolioId),
     [activeDrawdownPortfolioId, dcaStormData],
   )
 
@@ -1064,7 +1060,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                   className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
                   onClick={() => {
                     setActiveSection(s.id)
-                    if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
+                    if (s.id === 'drawdowns') setActiveDrawdownPortfolioId(dcaStormData[0]?.id ?? '')
                     if (s.id === 'endgame') setActiveEndgamePortfolioId(validResults[0]?.id ?? '')
                   }}
                 >
@@ -1074,14 +1070,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             </div>
 
             {activeSection === 'drawdowns' && (
-                <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Drawdowns">
-                  <button
-                    className={`dca-results-filter-btn${activeDrawdownPortfolioId === 'all' ? ' dca-results-filter-btn--active' : ''}`}
-                  aria-pressed={activeDrawdownPortfolioId === 'all'}
-                  onClick={() => setActiveDrawdownPortfolioId('all')}
-                >
-                  Tất Cả
-                </button>
+              <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Mức sụt giảm">
                 {dcaStormData.map(p => (
                   <button
                     key={p.id}

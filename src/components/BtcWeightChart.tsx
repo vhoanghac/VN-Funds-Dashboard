@@ -38,6 +38,7 @@ function SmallDot(props: Record<string, unknown>) {
 }
 
 const REBAL_LABEL: Record<RebalanceFrequency, string> = {
+  weekly:    'hàng tuần',
   monthly:   'hàng tháng',
   quarterly: 'hàng quý',
   yearly:    'hàng năm',

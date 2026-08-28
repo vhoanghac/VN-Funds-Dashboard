@@ -4999,7 +4999,7 @@ textarea {
   color: #141413;
 }
 
-/* Bảng các đợt sụt giảm lớn nhất (trong khối Kiên trì qua bão) */
+/* So sánh các chu kỳ drawdown của account equity. */
 .dca-episodes-portfolio {
   margin-bottom: 14px;
 }
@@ -5014,32 +5014,41 @@ textarea {
   margin-bottom: 6px;
 }
 
-.dca-storm-takeaway {
-  display: flex;
-  gap: 12px;
-  padding: 14px 16px;
-  background: #faf9f5;
-  border-left: 3px solid #87867f;
-  border-radius: 6px;
-  font-size: 0.92rem;
-  line-height: 1.55;
+.dca-episodes-empty {
+  margin: -4px 0 14px;
   color: #5e5d59;
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
-.dca-storm-takeaway--ongoing {
-  background: #faf9f5;
-  border-left-color: #87867f;
-  color: #5e5d59;
+.dca-episodes-chart {
+  margin: 8px 0 14px;
 }
 
-.dca-storm-takeaway-icon {
-  flex-shrink: 0;
-  font-size: 1.3rem;
-  line-height: 1;
-}
-
-.dca-storm-takeaway strong {
+.dca-episodes-chart-title {
+  margin-bottom: 2px;
   color: #141413;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.dca-episodes-tooltip {
+  padding: 8px 10px;
+  border: 1px solid #e8e6dc;
+  border-radius: 6px;
+  background: #fff;
+  color: #5e5d59;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgb(20 20 19 / 8%);
+}
+
+.dca-episodes-tooltip strong {
+  color: #141413;
+}
+
+.dca-episodes-table {
+  min-width: 780px;
 }
 
 /* ─── DCA Return Explainer ──────────────────────────────────────────────────── */
@@ -7892,7 +7901,6 @@ textarea {
   .dca-storm-chart-note,
   .dca-drawdown-summary,
   .dca-episodes-section,
-  .dca-storm-takeaway,
   .dca-eoy-block,
   .dca-explainer-block,
   .dca-explainer-toggle,

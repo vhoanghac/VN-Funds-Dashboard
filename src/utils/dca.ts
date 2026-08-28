@@ -1026,6 +1026,8 @@ function shouldRebalForDCA(
   const next = new Date(nextDate)
 
   switch (freq) {
+    case 'weekly':
+      return daysBetween(prevDate, nextDate) >= 5
     case 'monthly':
       return prev.getMonth() !== next.getMonth() || prev.getFullYear() !== next.getFullYear()
     case 'quarterly': {

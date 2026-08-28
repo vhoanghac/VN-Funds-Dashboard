@@ -81,6 +81,7 @@ function refShouldRebal(prevDate: string, nextDate: string, freq: RebalanceFrequ
   const py = +prevDate.slice(0, 4), pm = +prevDate.slice(5, 7)
   const ny = +nextDate.slice(0, 4), nm = +nextDate.slice(5, 7)
   switch (freq) {
+    case 'weekly': return daysBetween(prevDate, nextDate) >= 5
     case 'monthly': return py !== ny || pm !== nm
     case 'quarterly': return py !== ny || Math.ceil(pm / 3) !== Math.ceil(nm / 3)
     case 'yearly': return py !== ny
@@ -966,6 +967,15 @@ describe('differential: simulateDCA (weighted-return reference)', () => {
     const params = { initialAmount: 2_000_000, cashflowAmount: 500_000, cashflowFreq: 'weekly' as DCAFrequency }
     const prod = simulateDCA(prices, slots, params, 'monthly')
     const ref = refSimulateDCA(prices, slots, params, 'monthly')
+    expectSimEqual(prod, ref)
+  })
+
+  it('2 quỹ tỷ trọng lệch, weekly rebalance', () => {
+    const prices = new Map([['A', FUND_A], ['B', FUND_B]])
+    const slots = [{ fundId: 'A', weight: 70 }, { fundId: 'B', weight: 30 }]
+    const params = { initialAmount: 2_000_000, cashflowAmount: 500_000, cashflowFreq: 'monthly' as DCAFrequency }
+    const prod = simulateDCA(prices, slots, params, 'weekly')
+    const ref = refSimulateDCA(prices, slots, params, 'weekly')
     expectSimEqual(prod, ref)
   })
 

@@ -7,23 +7,28 @@
  * Block này kể lại cơn bão tệ nhất trong kỳ DCA, có reference
  * giai đoạn bear lịch sử VN (2018-2019, COVID 3/2020, 2022).
  */
-import { useMemo, memo } from 'react'
+import { useMemo, memo, useState } from 'react'
 import {
   Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, ReferenceLine,
+  AreaChart, Line, LineChart, ReferenceLine,
 } from 'recharts'
 import type { DCAStormStats } from '../utils/dca'
 import {
   drawdownEpisodes,
+  drawdownEpisodesFromValueSeries,
   recoveryPercentFromDrawdown,
   summarizeDrawdownEpisodes,
 } from '../utils/drawdownStats'
+import type { DrawdownEpisode } from '../utils/drawdownStats'
+import { daysBetween } from '../utils/dateMath'
 import { DcaBlock } from './DcaLayout'
+import { DcaRecoveryChart } from './DcaRecoveryChart'
 
 export interface StormPortfolio {
   id: string
   name: string
   color: string
+  assetCount: number
   storm: DCAStormStats
   /** TWRR drawdown series, đã loại noise cashflow, khớp với s.maxDrawdown trong storm stats */
   drawdown: { date: string; value: number }[]
@@ -114,11 +119,11 @@ function DcaStormBlockImpl({ portfolios }: Props) {
 
       <MarketDrawdownChart portfolios={portfolios} />
       <AccountDrawdownChart portfolios={portfolios} worstPortfolioId={worst.id} marketMaxDD={s.maxDrawdown} />
+      <DcaRecoveryChart portfolios={portfolios} />
       <DrawdownSummaryTable episodes={singlePortfolioEpisodes} />
 
       <DrawdownEpisodesSection portfolios={portfolios} />
 
-      <StormTakeaway storm={s} worstName={worst.name} multi={portfolios.length > 1} />
     </>
   )
 }
@@ -194,6 +199,9 @@ function formatSummaryDuration(days: number | null): string {
  * với stat "Drawdown tệ nhất -X%" trong storm stats.
  */
 function MarketDrawdownChart({ portfolios }: { portfolios: StormPortfolio[] }) {
+  // Với danh mục nhiều quỹ, không gọi drawdown của cả danh mục là "giá quỹ".
+  if (portfolios.length !== 1 || portfolios[0]!.assetCount !== 1) return null
+
   const { data, minDD } = useMemo(
     () => computeSeriesDD(portfolios, p => p.drawdown.map(pt => ({ date: pt.date, dd: pt.value * 100 }))),
     [portfolios],
@@ -266,7 +274,7 @@ function AccountDrawdownChart({
   const softenedSignificant = softenedBy > 3 // chỉ note nếu chênh đáng kể
 
   return (
-    <DcaBlock title="Số dư tài khoản sập bao nhiêu?" className="dca-storm-chart">
+    <DcaBlock title="Giá trị danh mục sụt giảm bao nhiêu?" className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
         Khoảng cách từ đỉnh số dư tài khoản thực tế của bạn. Đây là thứ bạn thấy khi mở app quỹ.
       </div>
@@ -399,28 +407,33 @@ function renderUnderwaterChart(
 }
 
 /**
- * DrawdownEpisodesSection: bảng "Các đợt sụt giảm lớn nhất" kiểu Testfolio.
+ * DrawdownEpisodesSection: so sánh các chu kỳ drawdown trên account equity.
  *
- * Khối stats phía trên chỉ kể về cơn bão TỆ NHẤT; bảng này liệt kê top 5 đợt
- * sụt ≥ 5% của từng danh mục: sâu bao nhiêu, đỉnh/đáy lúc nào, mất bao lâu để
- * vượt lại đỉnh cũ. Người mới nhìn vào sẽ thấy: sụt sâu đã từng xảy ra N lần
- * trong lịch sử, và (đa số) đều đã hồi phục.
+ * Mọi episode bắt đầu tại (0 ngày, 0%) để người dùng so tốc độ rơi và thời gian
+ * hồi phục mà không bị ngày lịch của từng episode che mất.
  */
 function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] }) {
-  const perPortfolio = useMemo(() => portfolios.map(p => ({
-    id: p.id,
-    name: p.name,
-    color: p.color,
-    episodes: drawdownEpisodes(p.drawdown).slice(0, 5),
-  })).filter(p => p.episodes.length > 0), [portfolios])
+  const perPortfolio = useMemo(() => portfolios.map(p => {
+    // Episodes luôn đo trên giá trị danh mục, kể cả danh mục chỉ có một quỹ.
+    const episodes = drawdownEpisodesFromValueSeries(p.valueSeries)
+    return {
+      id: p.id,
+      name: p.name,
+      color: p.color,
+      episodes: episodes.slice(0, 10),
+      totalEpisodes: episodes.length,
+    }
+  }).filter(p => p.totalEpisodes > 0), [portfolios])
 
   if (perPortfolio.length === 0) return null
 
   return (
-    <DcaBlock title="Các đợt sụt giảm lớn nhất" className="dca-episodes-section">
+    <DcaBlock title="So sánh các chu kỳ drawdown" className="dca-episodes-section">
       <div className="dca-storm-chart-sub">
-        Top 5 đợt sụt từ 5% trở lên của mỗi danh mục. Thời gian hồi phục tính từ
-        đáy lên đỉnh cũ. Thời gian dưới đỉnh tính từ lúc lập đỉnh đến khi vượt lại đỉnh cũ.
+        Một đợt sụt giảm tài sản (drawdown) được tính từ lúc tài khoản đạt đỉnh, rớt xuống đáy
+        và kết thúc khi phục hồi lại mức đỉnh ban đầu. Các đợt sụt giảm trên biểu đồ được đưa
+        về cùng một vạch xuất phát để bạn dễ dàng so sánh đợt nào rớt nhanh hơn và mất bao lâu
+        để "về bờ". Bảng bên dưới thống kê 10 đợt sụt giảm nặng nề nhất
       </div>
 
       {perPortfolio.map(p => (
@@ -430,9 +443,10 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
               <span className="perf-dot" style={{ background: p.color }} />
               {p.name}
             </div>
-          )}
+            )}
+          <EpisodeComparisonChart episodes={p.episodes} />
           <div className="dca-stats-table-scroll">
-            <table className="dca-stats-table">
+            <table className="dca-stats-table dca-episodes-table">
               <thead>
                 <tr>
                   <th>#</th>
@@ -473,6 +487,134 @@ function DrawdownEpisodesSection({ portfolios }: { portfolios: StormPortfolio[] 
   )
 }
 
+interface EpisodeChartRow {
+  elapsedDays: number
+  [key: string]: number | null
+}
+
+const EPISODE_COLORS = ['#b45309', '#2563eb', '#0f766e', '#7c3aed', '#be123c', '#4d7c0f', '#c2410c', '#0369a1', '#86198f', '#52525b']
+
+function EpisodeComparisonChart({ episodes }: { episodes: DrawdownEpisode[] }) {
+  const [hoveredEpisodeIndex, setHoveredEpisodeIndex] = useState<number | null>(null)
+  const { data, minDD } = useMemo(() => {
+    const rows = new Map<number, EpisodeChartRow>()
+    episodes.forEach((episode, index) => {
+      const key = episodeKey(index)
+      for (const point of episode.points) {
+        const elapsedDays = daysBetween(episode.peakDate, point.date)
+        const row = rows.get(elapsedDays) ?? { elapsedDays }
+        row[key] = point.value * 100
+        rows.set(elapsedDays, row)
+      }
+    })
+    const data = [...rows.values()].sort((a, b) => a.elapsedDays - b.elapsedDays)
+    const minDD = Math.min(...episodes.map(episode => episode.depth * 100), -5)
+    return { data, minDD: Math.floor(minDD / 5) * 5 }
+  }, [episodes])
+
+  return (
+    <div className="dca-episodes-chart">
+      <div className="dca-episodes-chart-title">Chu kỳ bắt đầu từ cùng một đỉnh</div>
+      <ResponsiveContainer width="100%" height={320}>
+        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+          <XAxis
+            type="number"
+            dataKey="elapsedDays"
+            domain={[0, 'dataMax']}
+            tickFormatter={formatElapsedDays}
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            minTickGap={36}
+          />
+          <YAxis
+            domain={[minDD, 0]}
+            tickFormatter={value => `${value}%`}
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            width={44}
+          />
+          <Tooltip
+            shared={false}
+            content={<EpisodeTooltip episodes={episodes} hoveredEpisodeIndex={hoveredEpisodeIndex} />}
+            labelFormatter={value => `Sau ${formatElapsedDays(Number(value))}`}
+            contentStyle={{ fontSize: 12, borderRadius: 6 }}
+          />
+          <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
+          {episodes.map((episode, index) => (
+            <Line
+              key={episodeKey(index)}
+              type="monotone"
+              dataKey={episodeKey(index)}
+              name={`Đỉnh ${formatMonthYear(episode.peakDate)}`}
+              stroke={hoveredEpisodeIndex === null
+                ? '#9a9890'
+                : hoveredEpisodeIndex === index
+                  ? EPISODE_COLORS[index % EPISODE_COLORS.length]
+                  : '#d8d5ca'}
+              strokeWidth={hoveredEpisodeIndex === index ? 2.8 : 1.5}
+              strokeOpacity={hoveredEpisodeIndex !== null && hoveredEpisodeIndex !== index ? 0.8 : 1}
+              dot={false}
+              activeDot={hoveredEpisodeIndex === index ? { r: 4, strokeWidth: 1, fill: '#fff' } : false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          ))}
+          {episodes.map((_, index) => (
+            <Line
+              key={`hit-${episodeKey(index)}`}
+              className="dca-episodes-hit-line"
+              type="monotone"
+              dataKey={episodeKey(index)}
+              stroke="transparent"
+              strokeWidth={18}
+              strokeOpacity={0.001}
+              dot={false}
+              activeDot={false}
+              connectNulls
+              onMouseEnter={() => setHoveredEpisodeIndex(index)}
+              onMouseLeave={() => setHoveredEpisodeIndex(null)}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+interface EpisodeTooltipProps {
+  active?: boolean
+  payload?: Array<{ dataKey?: string | number; value?: number }>
+  label?: number | string
+  episodes: DrawdownEpisode[]
+  hoveredEpisodeIndex: number | null
+}
+
+function EpisodeTooltip({ active, payload, label, episodes, hoveredEpisodeIndex }: EpisodeTooltipProps) {
+  if (!active || hoveredEpisodeIndex === null || label === undefined) return null
+  const episode = episodes[hoveredEpisodeIndex]
+  if (!episode) return null
+  const entry = payload?.find(item => item.dataKey === episodeKey(hoveredEpisodeIndex))
+  if (!entry || typeof entry.value !== 'number') return null
+
+  return (
+    <div className="dca-episodes-tooltip">
+      <strong>Đỉnh {formatMonthYear(episode.peakDate)} → {episode.recoveryDate ? `hồi phục ${formatMonthYear(episode.recoveryDate)}` : 'đang diễn ra'}</strong>
+      <div>Tổng thời gian: {formatEpisodeDuration(episode.totalDays)}</div>
+      <div>Sau {formatElapsedDays(Number(label))}: <strong>{entry.value.toFixed(1)}%</strong></div>
+    </div>
+  )
+}
+
+function episodeKey(index: number): string {
+  return `episode_${index}`
+}
+
+function formatElapsedDays(days: number): string {
+  if (days >= 365) return `${(days / 365.25).toFixed(1)} năm`
+  if (days >= 60) return `${Math.round(days / 30.44)} tháng`
+  return `${Math.round(days)} ngày`
+}
+
 /**
  * % cần tăng để hòa vốn sau 1 đợt sụt giảm. Toán học bất đối xứng của
  * drawdown: -42% cần +72% mới về lại đỉnh cũ, -82% cần +456%. Vì vậy
@@ -501,65 +643,6 @@ function formatDateFull(dateStr: string): string {
   const parts = dateStr.split('-')
   if (parts.length < 3) return dateStr
   return `${parts[2]}/${parts[1]}/${parts[0]}`
-}
-
-interface TakeawayProps {
-  storm: DCAStormStats
-  worstName: string
-  multi: boolean
-}
-
-function StormTakeaway({ storm, worstName, multi }: TakeawayProps) {
-  const s = storm
-  const bearName = s.inBearPeriod ? BEAR_LABEL[s.inBearPeriod] : null
-  const ddPct = Math.abs(s.maxDrawdown * 100).toFixed(1)
-  const recoveryPct = recoveryNeededPct(s.maxDrawdown).toFixed(0)
-
-  // Case 1: Đã hồi phục, message kiên trì được đền đáp
-  if (s.recoveryMonths !== null) {
-    return (
-      <div className="dca-storm-takeaway">
-        <span className="dca-storm-takeaway-icon">⚓</span>
-        <div>
-          {multi ? (
-            <>Đáy sâu nhất của danh mục <strong>{worstName}</strong> là</>
-          ) : (
-            <>Đáy sâu nhất là</>
-          )}
-          {' '}<strong>-{ddPct}%</strong> vào{' '}
-          <strong>{formatMonthYear(s.maxDDDate)}</strong>
-          {bearName && <>, đúng vào {bearName}</>}. Từ đáy đó, giá cần tăng{' '}
-          <strong>+{recoveryPct}%</strong> chỉ để hòa vốn, sụt càng sâu thì càng khó gỡ lại.
-          Nếu bạn hoảng loạn bán lúc đó, toàn bộ khoản lỗ sẽ hiện thực hóa. Nhưng bạn đã
-          kiên trì nạp tiền thêm, và thị trường hồi phục về đỉnh cũ sau{' '}
-          <strong>{s.recoveryMonths} tháng</strong>. Đó là lý do vì sao đầu tư đều đặn qua
-          từng tháng quan trọng hơn đoán đỉnh đoán đáy thị trường.
-        </div>
-      </div>
-    )
-  }
-
-  // Case 2: Chưa hồi phục, message thẳng thắn
-  return (
-    <div className="dca-storm-takeaway dca-storm-takeaway--ongoing">
-      <span className="dca-storm-takeaway-icon">⛈️</span>
-      <div>
-        {multi ? (
-          <>Danh mục <strong>{worstName}</strong> chạm đáy</>
-        ) : (
-          <>Danh mục chạm đáy</>
-        )}
-        {' '}<strong>-{ddPct}%</strong> vào <strong>{formatMonthYear(s.maxDDDate)}</strong>
-        {bearName && <>, đúng vào {bearName}</>} và hiện vẫn chưa hồi phục về đỉnh cũ. Để
-        hòa vốn từ đáy này, giá cần tăng <strong>+{recoveryPct}%</strong>, một lời nhắc
-        rằng sụt càng sâu thì càng khó gỡ lại. Thị trường Việt Nam là thị trường cận biên,
-        từ bull sang bear diễn ra chóng vánh.
-        {' '}Có thể bạn đang trong giai đoạn bão. Hãy kiên trì nạp tiền đều đặn qua từng
-        tháng, mua được nhiều chứng chỉ quỹ hơn khi giá thấp. Lịch sử cho thấy các bear
-        market trước đây (2018-2019, 2022) đều đã hồi phục.
-      </div>
-    </div>
-  )
 }
 
 /** "15/03/2020" → "03/2020" */

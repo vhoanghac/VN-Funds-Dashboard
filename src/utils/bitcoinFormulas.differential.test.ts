@@ -324,6 +324,7 @@ function refShouldRebalance(currentDate: string, nextDate: string, freq: Rebalan
   const next = { y: +nextDate.slice(0, 4), m: +nextDate.slice(5, 7) }
   const q = (m: number) => Math.ceil(m / 3)
   switch (freq) {
+    case 'weekly': return (Date.parse(nextDate) - Date.parse(currentDate)) / 86400000 >= 5
     case 'monthly': return cur.y !== next.y || cur.m !== next.m
     case 'quarterly': return cur.y !== next.y || q(cur.m) !== q(next.m)
     case 'yearly': return cur.y !== next.y
@@ -624,7 +625,7 @@ describe('differential: rollingReturns / rollingAnnualizedStdev / rollingMaxDraw
 
 // ============================================================================
 describe('differential: simulateMultiFundPortfolio (share-based)', () => {
-  it.each(['monthly', 'quarterly', 'yearly'] as RebalanceFrequency[])('%s rebal khớp', freq => {
+  it.each(['weekly', 'monthly', 'quarterly', 'yearly'] as RebalanceFrequency[])('%s rebal khớp', freq => {
     expectPointsEqual(
       simulateMultiFundPortfolio([RA, RB], [0.5, 0.5], freq),
       refSimulateMultiFundPortfolio([RA, RB], [0.5, 0.5], freq),

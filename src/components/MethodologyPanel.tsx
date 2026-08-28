@@ -380,7 +380,7 @@ function MethodologyPanelImpl() {
             tiền. Đây là "bão thị trường thật" của bản thân quỹ, thường sâu hơn.
           </li>
           <li>
-            <strong>Số dư tài khoản sập bao nhiêu?</strong> Dùng chuỗi giá trị thật của
+            <strong>Giá trị danh mục sụt giảm bao nhiêu?</strong> Dùng chuỗi giá trị thật của
             ví bạn (đã gồm tiền nạp). Đây là thứ bạn thấy khi mở app quỹ.
           </li>
         </ul>
@@ -390,7 +390,7 @@ function MethodologyPanelImpl() {
           là phần DCA cứu vớt. Ví dụ trong lịch sử DCDS, giá quỹ từng sập khoảng −69,5%
           nhưng số dư tài khoản lúc tệ nhất chỉ khoảng −52,2%.
         </p>
-        <SeenAt>hai biểu đồ "Giá quỹ sập bao nhiêu?" và "Số dư tài khoản sập bao nhiêu?" trong "Kiên trì qua bão".</SeenAt>
+        <SeenAt>hai biểu đồ "Giá quỹ sập bao nhiêu?" và "Giá trị danh mục sụt giảm bao nhiêu?" trong "Kiên trì qua bão".</SeenAt>
 
         <h4 className="method-sub">3.2. Sụt giảm tối đa, trung bình, lâu nhất</h4>
         <p>

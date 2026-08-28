@@ -64,7 +64,8 @@ describe('portfolio parsing', () => {
     expect(parsePortfolios(null)).toEqual([])
   })
 
-  it('accepts only the three supported rebalance frequencies', () => {
+  it('accepts the four supported rebalance frequencies', () => {
+    expect(isRebalanceFrequency('weekly')).toBe(true)
     expect(isRebalanceFrequency('monthly')).toBe(true)
     expect(isRebalanceFrequency('quarterly')).toBe(true)
     expect(isRebalanceFrequency('yearly')).toBe(true)

@@ -7,6 +7,8 @@ import {
   annualizedStdevFromCumulative,
   recoveryMultipleFromDrawdown,
   recoveryPercentFromDrawdown,
+  drawdownEpisodesFromValueSeries,
+  rankDrawdownEpisodes,
 } from './drawdownStats'
 import type { ReturnPoint } from '../types'
 
@@ -47,6 +49,10 @@ describe('drawdownEpisodes', () => {
     })
     // 10/01 → 01/05 = 112 ngày
     expect(eps[0]!.totalDays).toBe(112)
+    expect(eps[0]!.recovered).toBe(true)
+    expect(eps[0]!.points.map(point => point.date)).toEqual([
+      '2020-01-10', '2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01',
+    ])
   })
 
   it('marks ongoing episode with recoveryDate null and length to series end', () => {
@@ -58,6 +64,7 @@ describe('drawdownEpisodes', () => {
     const eps = drawdownEpisodes(series, 0)
     expect(eps).toHaveLength(1)
     expect(eps[0]!.recoveryDate).toBeNull()
+    expect(eps[0]!.recovered).toBe(false)
     expect(eps[0]!.troughDate).toBe('2020-02-01')
     expect(eps[0]!.totalDays).toBe(60) // 01/01 → 01/03
   })
@@ -94,16 +101,22 @@ describe('drawdownEpisodes', () => {
   it('summarizes episode depth, durations, and excludes ongoing recovery time', () => {
     const episodes = [
       {
+        episodeId: '2020-01-01',
         peakDate: '2020-01-01', troughDate: '2020-01-11', recoveryDate: '2020-01-31',
         depth: -0.10, totalDays: 30, timeToTroughDays: 10, recoveryDays: 20, averageDrawdown: -0.05,
+        points: [], recovered: true,
       },
       {
+        episodeId: '2020-02-01',
         peakDate: '2020-02-01', troughDate: '2020-02-21', recoveryDate: '2020-04-01',
         depth: -0.30, totalDays: 60, timeToTroughDays: 20, recoveryDays: 40, averageDrawdown: -0.15,
+        points: [], recovered: true,
       },
       {
+        episodeId: '2020-05-01',
         peakDate: '2020-05-01', troughDate: '2020-05-31', recoveryDate: null,
         depth: -0.20, totalDays: 90, timeToTroughDays: 30, recoveryDays: null, averageDrawdown: -0.10,
+        points: [], recovered: false,
       },
     ]
 
@@ -115,6 +128,49 @@ describe('drawdownEpisodes', () => {
     expect(summary.totalDays).toEqual({ minimum: 30, median: 60, average: 60, maximum: 90 })
     expect(summary.averageDrawdown).toMatchObject({ minimum: 0.05, median: 0.10, maximum: 0.15 })
     expect(summary.averageDrawdown.average).toBeCloseTo(0.10, 10)
+  })
+
+  it('extracts episodes from account equity peaks', () => {
+    const series = dd([
+      ['2020-01-01', 100],
+      ['2020-02-01', 90],
+      ['2020-03-01', 80],
+      ['2020-04-01', 100],
+    ])
+    const episodes = drawdownEpisodesFromValueSeries(series, 0)
+    expect(episodes[0]).toMatchObject({
+      peakDate: '2020-01-01',
+      troughDate: '2020-03-01',
+      recoveryDate: '2020-04-01',
+    })
+    expect(episodes[0]!.depth).toBeCloseTo(-0.2, 10)
+  })
+
+  it('ranks episodes and excludes ongoing episodes from slowest recovery', () => {
+    const episodes = [
+      {
+        episodeId: '2020-01-01',
+        peakDate: '2020-01-01', troughDate: '2020-01-11', recoveryDate: '2020-02-20',
+        depth: -0.10, totalDays: 50, timeToTroughDays: 10, recoveryDays: 40, averageDrawdown: -0.05,
+        points: [], recovered: true,
+      },
+      {
+        episodeId: '2020-03-01',
+        peakDate: '2020-03-01', troughDate: '2020-03-11', recoveryDate: null,
+        depth: -0.30, totalDays: 100, timeToTroughDays: 10, recoveryDays: null, averageDrawdown: -0.15,
+        points: [], recovered: false,
+      },
+      {
+        episodeId: '2020-06-01',
+        peakDate: '2020-06-01', troughDate: '2020-06-21', recoveryDate: '2020-09-01',
+        depth: -0.20, totalDays: 92, timeToTroughDays: 20, recoveryDays: 72, averageDrawdown: -0.10,
+        points: [], recovered: true,
+      },
+    ]
+    expect(rankDrawdownEpisodes(episodes, 'deepest').map(e => e.depth)).toEqual([-0.30, -0.20, -0.10])
+    expect(rankDrawdownEpisodes(episodes, 'longest').map(e => e.totalDays)).toEqual([100, 92, 50])
+    expect(rankDrawdownEpisodes(episodes, 'slowestRecovery').map(e => e.recoveryDays)).toEqual([72, 40])
+    expect(rankDrawdownEpisodes(episodes, 'fastestDecline').map(e => e.timeToTroughDays)).toEqual([10, 10, 20])
   })
 })
 

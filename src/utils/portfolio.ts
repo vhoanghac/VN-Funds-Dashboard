@@ -11,7 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isRebalanceFrequency(value: unknown): value is RebalanceFrequency {
-  return value === 'monthly' || value === 'quarterly' || value === 'yearly'
+  return value === 'weekly' || value === 'monthly' || value === 'quarterly' || value === 'yearly'
 }
 
 function parseSlots(value: unknown): PortfolioSlot[] | null {
@@ -136,7 +136,7 @@ export function simulateMultiFundPortfolio(
 
 /**
  * Determine if we should rebalance between two consecutive dates.
- * Rebalance at the start of a new period (month/quarter/year).
+ * Rebalance at the start of a new period (week/month/quarter/year).
  */
 function shouldRebalance(
   currentDate: string,
@@ -147,6 +147,8 @@ function shouldRebalance(
   const next = parseYMD(nextDate)
 
   switch (freq) {
+    case 'weekly':
+      return weekKey(current) !== weekKey(next)
     case 'monthly':
       return current.month !== next.month || current.year !== next.year
     case 'quarterly':
@@ -161,9 +163,15 @@ function getQuarter(month: number): number {
   return Math.ceil(month / 3)
 }
 
-function parseYMD(date: string): { year: number; month: number } {
+function parseYMD(date: string): { year: number; month: number; day: number } {
   return {
     year: parseInt(date.substring(0, 4), 10),
     month: parseInt(date.substring(5, 7), 10),
+    day: parseInt(date.substring(8, 10), 10),
   }
+}
+
+function weekKey(date: { year: number; month: number; day: number }): number {
+  const daysSinceEpoch = Date.UTC(date.year, date.month - 1, date.day) / 86400000
+  return Math.floor((daysSinceEpoch + 3) / 7)
 }

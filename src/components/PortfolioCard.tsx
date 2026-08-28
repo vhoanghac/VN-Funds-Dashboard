@@ -20,9 +20,10 @@ export const MAX_PORTFOLIOS = 10
 export const MAX_FUNDS_PER_PORTFOLIO = 10
 
 export const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
-  { value: 'monthly', label: 'Hàng tháng' },
-  { value: 'quarterly', label: 'Hàng quý' },
-  { value: 'yearly', label: 'Hàng năm' },
+  { value: 'weekly', label: 'Tuần' },
+  { value: 'quarterly', label: 'Quý' },
+  { value: 'monthly', label: 'Tháng' },
+  { value: 'yearly', label: 'Năm' },
 ]
 
 interface Props {
@@ -80,7 +81,7 @@ export function PortfolioCard({
         />
         {showRebal && (
           <div className="portfolio-rebal">
-            <label>Rebalance</label>
+            <label>Tái cân bằng</label>
             <select
               value={portfolio.rebalFreq}
               onChange={e => onUpdate({ rebalFreq: e.target.value as RebalanceFrequency })}

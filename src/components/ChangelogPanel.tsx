@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v4.5',
+    date: '28/08/2026',
+    items: [
+      'Thiết kế lại tab DCA',
+    ],
+  },
+  {
     version: 'v4.4',
     date: '22/08/2026',
     items: [
