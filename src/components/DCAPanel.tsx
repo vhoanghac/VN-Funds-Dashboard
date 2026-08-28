@@ -1021,48 +1021,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         dateTo={effectiveDates.to}
       />
 
-      {/* Chọn section kết quả muốn xem (kiểu hl.eco) */}
-      {validResults.length > 0 && (
-        <div className="dca-results-toolbar">
-          <div className="dca-anchor-nav">
-            {DCA_SECTIONS.map(s => (
-              <button
-                key={s.id}
-                className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
-                onClick={() => {
-                  setActiveSection(s.id)
-                  if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-
-          {activeSection === 'drawdowns' && (
-            <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Drawdowns">
-              <button
-                className={`dca-drawdown-btn${activeDrawdownPortfolioId === 'all' ? ' dca-drawdown-btn--active' : ''}`}
-                aria-pressed={activeDrawdownPortfolioId === 'all'}
-                onClick={() => setActiveDrawdownPortfolioId('all')}
-              >
-                Tất Cả
-              </button>
-              {dcaStormData.map(p => (
-                <button
-                  key={p.id}
-                  className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
-                  aria-pressed={activeDrawdownPortfolioId === p.id}
-                  onClick={() => setActiveDrawdownPortfolioId(p.id)}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {isLoading && <div className="loading-indicator">Đang tải dữ liệu...</div>}
 
       {!isLoading && dataError && (
@@ -1076,131 +1034,175 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         </div>
       )}
 
-      {/* ── Results ──
-          Mỗi section bọc trong div ẩn/hiện theo pill đang chọn. Dùng
-          display:none (không unmount) để chuyển section không phải render
-          lại các chart nặng. */}
+      {/* Chọn section kết quả muốn xem (kiểu hl.eco) */}
       {validResults.length > 0 && (
-        <>
-          <div style={{ display: showSection('summary') }}>
-            <DCAStatsTable
-              portfolios={dcaStatsTableData}
-            />
+        <div className="dca-results-surface">
+          <div className="dca-results-toolbar">
+            <div className="dca-anchor-nav">
+              {DCA_SECTIONS.map(s => (
+                <button
+                  key={s.id}
+                  className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
+                  onClick={() => {
+                    setActiveSection(s.id)
+                    if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
 
-            <PortfolioValueChart
-              portfolios={portfolioValueChartData}
-            />
-
-            <DrawdownChart series={dcaDrawdownSeries} />
-
-            <DcaRecoveryChart portfolios={recoveryChartData} />
-          </div>
-
-          <div style={{ display: showSection('perf') }}>
-            {/* Period info */}
-            {startDate && endDate && (
-              <div className="comparison-period" style={{ marginBottom: 16 }}>
-                DCA từ {formatDate(startDate)} đến {formatDate(endDate)}
+            {activeSection === 'drawdowns' && (
+              <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Drawdowns">
+                <button
+                  className={`dca-drawdown-btn${activeDrawdownPortfolioId === 'all' ? ' dca-drawdown-btn--active' : ''}`}
+                  aria-pressed={activeDrawdownPortfolioId === 'all'}
+                  onClick={() => setActiveDrawdownPortfolioId('all')}
+                >
+                  Tất Cả
+                </button>
+                {dcaStormData.map(p => (
+                  <button
+                    key={p.id}
+                    className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
+                    aria-pressed={activeDrawdownPortfolioId === p.id}
+                    onClick={() => setActiveDrawdownPortfolioId(p.id)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
               </div>
             )}
-
-            {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
-            <DCAStatsTable
-              portfolios={dcaStatsTableData}
-            />
-
-            {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
-            <PortfolioValueChart
-              portfolios={portfolioValueChartData}
-            />
-
-            {/* Tỷ số sức mạnh tương đối giữa 2 danh mục (chỉ hiện khi có từ 2 danh mục) */}
-            {validResults.length >= 2 && (
-              <DcaRatioChart portfolios={ratioChartData} />
-            )}
-
-            {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
-                trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
-            <EOYReturnsTable
-              portfolios={journeyPortfolios}
-            />
-
-            {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
-            <DcaReturnExplainer
-              portfolios={dcaReturnExplainerData}
-            />
           </div>
 
-          <div style={{ display: showSection('journey') }}>
-            {/* Journey narrative */}
-            {startDate && endDate && (
-              <DcaJourneyBlock
-                portfolios={journeyPortfolios}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            )}
+          <div className="dca-results-content">
+            {/* ── Results ──
+                Mỗi section bọc trong div ẩn/hiện theo pill đang chọn. Dùng
+                display:none (không unmount) để chuyển section không phải render
+                lại các chart nặng. */}
+            <>
+              <div style={{ display: showSection('summary') }}>
+                <DCAStatsTable
+                  portfolios={dcaStatsTableData}
+                />
 
-            {/* Cổ tức & tái đầu tư (chỉ hiển thị khi danh mục có quỹ chia cổ tức như DCDE) */}
-            {startDate && endDate && (
-              <DividendBlock
-                fundIds={dividendFundIds}
-                dividendsByFund={committed!.data.dividendsByFund}
-                startDate={startDate}
-                endDate={endDate}
-                narrativeByPortfolio={dividendNarrativeData}
-              />
-            )}
+                <PortfolioValueChart
+                  portfolios={portfolioValueChartData}
+                />
 
-            {/* So sánh với gửi tiết kiệm */}
-            {endDate && (
-              <BankComparisonBlock
-                results={bankComparisonData}
-                endDate={endDate}
-              />
-            )}
+                <DrawdownChart series={dcaDrawdownSeries} />
+
+                <DcaRecoveryChart portfolios={recoveryChartData} />
+              </div>
+
+              <div style={{ display: showSection('perf') }}>
+                {/* Period info */}
+                {startDate && endDate && (
+                  <div className="comparison-period" style={{ marginBottom: 16 }}>
+                    DCA từ {formatDate(startDate)} đến {formatDate(endDate)}
+                  </div>
+                )}
+
+                {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
+                <DCAStatsTable
+                  portfolios={dcaStatsTableData}
+                />
+
+                {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
+                <PortfolioValueChart
+                  portfolios={portfolioValueChartData}
+                />
+
+                {/* Tỷ số sức mạnh tương đối giữa 2 danh mục (chỉ hiện khi có từ 2 danh mục) */}
+                {validResults.length >= 2 && (
+                  <DcaRatioChart portfolios={ratioChartData} />
+                )}
+
+                {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
+                    trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
+                <EOYReturnsTable
+                  portfolios={journeyPortfolios}
+                />
+
+                {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
+                <DcaReturnExplainer
+                  portfolios={dcaReturnExplainerData}
+                />
+              </div>
+
+              <div style={{ display: showSection('journey') }}>
+                {/* Journey narrative */}
+                {startDate && endDate && (
+                  <DcaJourneyBlock
+                    portfolios={journeyPortfolios}
+                    startDate={startDate}
+                    endDate={endDate}
+                  />
+                )}
+
+                {/* Cổ tức & tái đầu tư (chỉ hiển thị khi danh mục có quỹ chia cổ tức như DCDE) */}
+                {startDate && endDate && (
+                  <DividendBlock
+                    fundIds={dividendFundIds}
+                    dividendsByFund={committed!.data.dividendsByFund}
+                    startDate={startDate}
+                    endDate={endDate}
+                    narrativeByPortfolio={dividendNarrativeData}
+                  />
+                )}
+
+                {/* So sánh với gửi tiết kiệm */}
+                {endDate && (
+                  <BankComparisonBlock
+                    results={bankComparisonData}
+                    endDate={endDate}
+                  />
+                )}
+              </div>
+
+              <div style={{ display: showSection('risk') }}>
+                {/* Kiên trì qua bão */}
+                {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
+                <DcaReturnPainChart portfolios={returnPainData} />
+
+                <DcaHistoricalPercentileBlock portfolios={historicalPercentileData} />
+
+                <DcaConsistencyBlock
+                  portfolios={dcaConsistencyData}
+                />
+
+                {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
+                <DcaEntryPointBlock
+                  portfolios={entryPointPortfolios}
+                  fundData={committed!.data.fundData}
+                  purchasePriceData={committed!.data.purchasePriceData}
+                />
+
+                <RollingReturnBlock
+                  portfolios={rollingReturnData}
+                />
+              </div>
+
+              <div style={{ display: showSection('drawdowns') }}>
+                <DcaStormBlock
+                  portfolios={drawdownViewData}
+                />
+              </div>
+
+              <div style={{ display: showSection('endgame') }}>
+                {/* Endgame: projection */}
+                <ProjectionBlock
+                  portfolios={projectionData}
+                />
+
+                <MonteCarloBlock
+                  portfolios={monteCarloData}
+                />
+              </div>
+            </>
           </div>
-
-          <div style={{ display: showSection('risk') }}>
-            {/* Kiên trì qua bão */}
-            {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
-            <DcaReturnPainChart portfolios={returnPainData} />
-
-            <DcaHistoricalPercentileBlock portfolios={historicalPercentileData} />
-
-            <DcaConsistencyBlock
-              portfolios={dcaConsistencyData}
-            />
-
-            {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
-            <DcaEntryPointBlock
-              portfolios={entryPointPortfolios}
-              fundData={committed!.data.fundData}
-              purchasePriceData={committed!.data.purchasePriceData}
-            />
-
-            <RollingReturnBlock
-              portfolios={rollingReturnData}
-            />
-          </div>
-
-          <div style={{ display: showSection('drawdowns') }}>
-            <DcaStormBlock
-              portfolios={drawdownViewData}
-            />
-          </div>
-
-          <div style={{ display: showSection('endgame') }}>
-            {/* Endgame: projection */}
-            <ProjectionBlock
-              portfolios={projectionData}
-            />
-
-            <MonteCarloBlock
-              portfolios={monteCarloData}
-            />
-          </div>
-        </>
+        </div>
       )}
 
       {portfolios.length === 0 && (

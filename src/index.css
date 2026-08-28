@@ -3418,13 +3418,20 @@ h1, h2, h3 {
 
 /* ── Pill chọn section kết quả DCA (kiểu hl.eco) ── */
 
-.dca-results-toolbar {
+.dca-results-surface {
   margin: 14px 0 20px;
-  padding: 10px 12px;
+  padding: 0 12px 24px;
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.dca-results-toolbar {
+  margin: 0 0 20px;
+  padding: 14px 0 12px;
+  background: #fff;
+  border-bottom: 1px solid #eceae3;
 }
 
 .dca-anchor-nav {
@@ -4958,6 +4965,24 @@ h1, h2, h3 {
 }
 
 .dca-storm-chart-note strong {
+  color: #141413;
+}
+
+/* Bảng phân bố drawdown cho một danh mục, không hiển thị ở Tất Cả. */
+.dca-drawdown-summary {
+  margin: 16px 0;
+  padding: 14px 12px 10px;
+  background: #faf9f5;
+  border: 1px solid #e8e6dc;
+  border-radius: 8px;
+}
+
+.dca-drawdown-summary-table {
+  min-width: 780px;
+}
+
+.dca-drawdown-summary-table tbody th {
+  font-weight: 700;
   color: #141413;
 }
 

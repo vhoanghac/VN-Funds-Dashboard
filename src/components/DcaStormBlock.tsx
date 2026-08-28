@@ -13,7 +13,11 @@ import {
   AreaChart, ReferenceLine,
 } from 'recharts'
 import type { DCAStormStats } from '../utils/dca'
-import { drawdownEpisodes, recoveryPercentFromDrawdown } from '../utils/drawdownStats'
+import {
+  drawdownEpisodes,
+  recoveryPercentFromDrawdown,
+  summarizeDrawdownEpisodes,
+} from '../utils/drawdownStats'
 
 export interface StormPortfolio {
   id: string
@@ -41,6 +45,9 @@ function DcaStormBlockImpl({ portfolios }: Props) {
 
   // Lọc portfolio có bão đáng kể (DD ≤ -10%)
   const stormed = portfolios.filter(p => p.storm.maxDrawdown <= -0.10)
+  const singlePortfolioEpisodes = portfolios.length === 1
+    ? drawdownEpisodes(portfolios[0]!.drawdown)
+    : []
 
   // Nếu không có portfolio nào có bão đáng kể
   if (stormed.length === 0) {
@@ -56,6 +63,7 @@ function DcaStormBlockImpl({ portfolios }: Props) {
           vội kết luận DCA luôn êm ả như vậy. Thử chọn khoảng thời gian dài hơn
           (bao trùm 2018-2019 hoặc 2022) để thấy bức tranh đầy đủ hơn.
         </p>
+        <DrawdownSummaryTable episodes={singlePortfolioEpisodes} />
       </div>
     )
   }
@@ -112,6 +120,7 @@ function DcaStormBlockImpl({ portfolios }: Props) {
 
       <MarketDrawdownChart portfolios={portfolios} />
       <AccountDrawdownChart portfolios={portfolios} worstPortfolioId={worst.id} marketMaxDD={s.maxDrawdown} />
+      <DrawdownSummaryTable episodes={singlePortfolioEpisodes} />
 
       <DrawdownEpisodesSection portfolios={portfolios} />
 
@@ -121,6 +130,69 @@ function DcaStormBlockImpl({ portfolios }: Props) {
 }
 
 export const DcaStormBlock = memo(DcaStormBlockImpl)
+
+function DrawdownSummaryTable({ episodes }: { episodes: ReturnType<typeof drawdownEpisodes> }) {
+  if (episodes.length === 0) return null
+
+  const summary = summarizeDrawdownEpisodes(episodes)
+  const rows = [
+    { label: 'Thấp nhất', key: 'minimum' as const },
+    { label: 'Trung vị', key: 'median' as const },
+    { label: 'Trung bình', key: 'average' as const },
+    { label: 'Sâu nhất', key: 'maximum' as const },
+  ]
+
+  return (
+    <div className="dca-drawdown-summary">
+      <div className="dca-storm-chart-title">Tóm tắt drawdown</div>
+      <div className="dca-storm-chart-sub">
+        Độ sâu đo từ đỉnh cũ xuống đáy. Thời gian đến đáy tính từ đỉnh đến đáy.
+        Thời gian hồi phục tính từ đáy lên đỉnh cũ.
+      </div>
+      <div className="dca-stats-table-scroll">
+        <table className="dca-stats-table dca-drawdown-summary-table">
+          <thead>
+            <tr>
+              <th scope="col">Chỉ số</th>
+              <th scope="col">Độ sâu</th>
+              <th scope="col">Thời gian đến đáy</th>
+              <th scope="col">Thời gian hồi phục</th>
+              <th scope="col">Thời gian dưới đỉnh</th>
+              <th scope="col">Trung bình drawdown</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.key}>
+                <th scope="row">{row.label}</th>
+                <td className="dca-loss">{formatSummaryPercent(summary.depth[row.key])}</td>
+                <td>{formatSummaryDuration(summary.timeToTroughDays[row.key])}</td>
+                <td>{formatSummaryDuration(summary.recoveryDays[row.key])}</td>
+                <td>{formatSummaryDuration(summary.totalDays[row.key])}</td>
+                <td className="dca-loss">{formatSummaryPercent(summary.averageDrawdown[row.key])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="dca-eoy-footnote">
+        * Thời gian hồi phục chỉ tính các đợt đã quay lại đỉnh cũ. Các thống kê còn lại vẫn
+        tính cả đợt đang diễn ra.
+      </div>
+    </div>
+  )
+}
+
+function formatSummaryPercent(value: number | null): string {
+  return value === null ? '-' : `${(value * 100).toFixed(1)}%`
+}
+
+function formatSummaryDuration(days: number | null): string {
+  if (days === null) return '-'
+  if (days >= 365) return `${(days / 365.25).toFixed(1).replace('.', ',')} năm`
+  if (days >= 60) return `${(days / 30.44).toFixed(1).replace('.', ',')} tháng`
+  return `${Math.round(days)} ngày`
+}
 
 /**
  * MarketDrawdownChart: DD của giá quỹ (TWRR, đã loại noise cashflow).

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   drawdownEpisodes,
+  summarizeDrawdownEpisodes,
   avgDrawdown,
   longestDrawdownDays,
   annualizedStdevFromCumulative,
@@ -40,6 +41,9 @@ describe('drawdownEpisodes', () => {
       troughDate: '2020-03-01',
       recoveryDate: '2020-05-01',
       depth: -0.30,
+      timeToTroughDays: 51,
+      recoveryDays: 61,
+      averageDrawdown: (-0.10 - 0.30 - 0.05) / 3,
     })
     // 10/01 → 01/05 = 112 ngày
     expect(eps[0]!.totalDays).toBe(112)
@@ -85,6 +89,32 @@ describe('drawdownEpisodes', () => {
     const eps = drawdownEpisodes(series) // mặc định -5%
     expect(eps).toHaveLength(1)
     expect(eps[0]!.depth).toBe(-0.30)
+  })
+
+  it('summarizes episode depth, durations, and excludes ongoing recovery time', () => {
+    const episodes = [
+      {
+        peakDate: '2020-01-01', troughDate: '2020-01-11', recoveryDate: '2020-01-31',
+        depth: -0.10, totalDays: 30, timeToTroughDays: 10, recoveryDays: 20, averageDrawdown: -0.05,
+      },
+      {
+        peakDate: '2020-02-01', troughDate: '2020-02-21', recoveryDate: '2020-04-01',
+        depth: -0.30, totalDays: 60, timeToTroughDays: 20, recoveryDays: 40, averageDrawdown: -0.15,
+      },
+      {
+        peakDate: '2020-05-01', troughDate: '2020-05-31', recoveryDate: null,
+        depth: -0.20, totalDays: 90, timeToTroughDays: 30, recoveryDays: null, averageDrawdown: -0.10,
+      },
+    ]
+
+    const summary = summarizeDrawdownEpisodes(episodes)
+    expect(summary.depth).toMatchObject({ minimum: 0.10, median: 0.20, maximum: 0.30 })
+    expect(summary.depth.average).toBeCloseTo(0.20, 10)
+    expect(summary.timeToTroughDays).toEqual({ minimum: 10, median: 20, average: 20, maximum: 30 })
+    expect(summary.recoveryDays).toEqual({ minimum: 20, median: 30, average: 30, maximum: 40 })
+    expect(summary.totalDays).toEqual({ minimum: 30, median: 60, average: 60, maximum: 90 })
+    expect(summary.averageDrawdown).toMatchObject({ minimum: 0.05, median: 0.10, maximum: 0.15 })
+    expect(summary.averageDrawdown.average).toBeCloseTo(0.10, 10)
   })
 })
 

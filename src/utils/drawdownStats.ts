@@ -26,6 +26,27 @@ export interface DrawdownEpisode {
   depth: number
   /** Tổng số ngày dưới đỉnh: peak → recovery (hoặc → cuối kỳ nếu chưa hồi phục) */
   totalDays: number
+  /** Số ngày từ đỉnh đến đáy */
+  timeToTroughDays: number
+  /** Số ngày từ đáy đến khi hồi phục; null = chưa hồi phục */
+  recoveryDays: number | null
+  /** Mức drawdown trung bình trong thời gian đang dưới đỉnh */
+  averageDrawdown: number
+}
+
+export interface NumericSummary {
+  minimum: number | null
+  median: number | null
+  average: number | null
+  maximum: number | null
+}
+
+export interface DrawdownSummary {
+  depth: NumericSummary
+  timeToTroughDays: NumericSummary
+  recoveryDays: NumericSummary
+  totalDays: NumericSummary
+  averageDrawdown: NumericSummary
 }
 
 /**
@@ -43,20 +64,29 @@ export function drawdownEpisodes(
   let inEpisode = false
   let troughDate = ''
   let depth = 0
+  let drawdownSum = 0
+  let drawdownCount = 0
+
+  const closeEpisode = (recoveryDate: string | null, lastDate: string): DrawdownEpisode => ({
+    peakDate,
+    troughDate,
+    recoveryDate,
+    depth,
+    totalDays: daysBetween(peakDate, lastDate),
+    timeToTroughDays: daysBetween(peakDate, troughDate),
+    recoveryDays: recoveryDate === null ? null : daysBetween(troughDate, recoveryDate),
+    averageDrawdown: drawdownCount > 0 ? drawdownSum / drawdownCount : 0,
+  })
 
   for (const pt of drawdown) {
     if (pt.value >= AT_PEAK) {
       if (inEpisode) {
         // Hồi phục: đóng đợt hiện tại
-        episodes.push({
-          peakDate,
-          troughDate,
-          recoveryDate: pt.date,
-          depth,
-          totalDays: daysBetween(peakDate, pt.date),
-        })
+        episodes.push(closeEpisode(pt.date, pt.date))
         inEpisode = false
         depth = 0
+        drawdownSum = 0
+        drawdownCount = 0
       }
       peakDate = pt.date
     } else {
@@ -64,9 +94,16 @@ export function drawdownEpisodes(
         inEpisode = true
         troughDate = pt.date
         depth = pt.value
+        drawdownSum = pt.value
+        drawdownCount = 1
       } else if (pt.value < depth) {
         depth = pt.value
         troughDate = pt.date
+        drawdownSum += pt.value
+        drawdownCount += 1
+      } else {
+        drawdownSum += pt.value
+        drawdownCount += 1
       }
     }
   }
@@ -74,18 +111,41 @@ export function drawdownEpisodes(
   // Đợt cuối chưa hồi phục tính đến cuối chuỗi
   if (inEpisode) {
     const lastDate = drawdown[drawdown.length - 1]!.date
-    episodes.push({
-      peakDate,
-      troughDate,
-      recoveryDate: null,
-      depth,
-      totalDays: daysBetween(peakDate, lastDate),
-    })
+    episodes.push(closeEpisode(null, lastDate))
   }
 
   return episodes
     .filter(e => e.depth <= minDepth)
     .sort((a, b) => a.depth - b.depth)
+}
+
+/** Tóm tắt phân bố các đợt drawdown, giữ null cho nhóm chưa có dữ liệu. */
+export function summarizeDrawdownEpisodes(episodes: DrawdownEpisode[]): DrawdownSummary {
+  const summarize = (values: number[]): NumericSummary => {
+    if (values.length === 0) {
+      return { minimum: null, median: null, average: null, maximum: null }
+    }
+    const sorted = [...values].sort((a, b) => a - b)
+    const middle = Math.floor(sorted.length / 2)
+    const median = sorted.length % 2 === 0
+      ? (sorted[middle - 1]! + sorted[middle]!) / 2
+      : sorted[middle]!
+    return {
+      minimum: sorted[0]!,
+      median,
+      average: sorted.reduce((sum, value) => sum + value, 0) / sorted.length,
+      maximum: sorted[sorted.length - 1]!,
+    }
+  }
+
+  return {
+    // Summary displays drawdown depth as a positive distance below the peak.
+    depth: summarize(episodes.map(e => Math.abs(e.depth))),
+    timeToTroughDays: summarize(episodes.map(e => e.timeToTroughDays)),
+    recoveryDays: summarize(episodes.flatMap(e => e.recoveryDays === null ? [] : [e.recoveryDays])),
+    totalDays: summarize(episodes.map(e => e.totalDays)),
+    averageDrawdown: summarize(episodes.map(e => Math.abs(e.averageDrawdown))),
+  }
 }
 
 /**
