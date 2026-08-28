@@ -188,6 +188,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // Section kết quả đang hiện. Mặc định chỉ hiện phần Tóm Tắt.
   const [activeSection, setActiveSection] = useState<DcaSectionId>('summary')
   const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('')
+  const [activeRiskPortfolioId, setActiveRiskPortfolioId] = useState('')
   const [activeEndgamePortfolioId, setActiveEndgamePortfolioId] = useState('')
 
   // ── Portfolios ──
@@ -764,6 +765,12 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     }
   }, [activeDrawdownPortfolioId, dcaStormData])
 
+  useEffect(() => {
+    if (!validResults.some(p => p.id === activeRiskPortfolioId)) {
+      setActiveRiskPortfolioId(validResults[0]?.id ?? '')
+    }
+  }, [activeRiskPortfolioId, validResults])
+
   const drawdownViewData = useMemo(
     () => dcaStormData.filter(p => p.id === activeDrawdownPortfolioId),
     [activeDrawdownPortfolioId, dcaStormData],
@@ -841,6 +848,28 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     cumulative: r.cumulative,
   })), [validResults])
 
+  const riskPortfolioId = activeRiskPortfolioId || validResults[0]?.id
+  const riskReturnPainData = useMemo(
+    () => returnPainData.filter(p => p.id === riskPortfolioId),
+    [returnPainData, riskPortfolioId],
+  )
+  const riskHistoricalPercentileData = useMemo(
+    () => historicalPercentileData.filter(p => p.id === riskPortfolioId),
+    [historicalPercentileData, riskPortfolioId],
+  )
+  const riskConsistencyData = useMemo(
+    () => dcaConsistencyData.filter(p => p.id === riskPortfolioId),
+    [dcaConsistencyData, riskPortfolioId],
+  )
+  const riskEntryPointPortfolios = useMemo(
+    () => entryPointPortfolios.filter(p => p.id === riskPortfolioId),
+    [entryPointPortfolios, riskPortfolioId],
+  )
+  const riskRollingReturnData = useMemo(
+    () => rollingReturnData.filter(p => p.id === riskPortfolioId),
+    [rollingReturnData, riskPortfolioId],
+  )
+
   // ── Format helpers ──
   function formatDate(dateStr: string): string {
     const [y, m, d] = dateStr.split('-')
@@ -872,13 +901,13 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           <label className="dca-label">Khoảng thời gian</label>
           <div className="dca-date-mode">
             <button
-              className={`dca-mode-btn ${dateMode === 'all' ? 'dca-mode-btn-active' : ''}`}
+              className={`dca-choice-btn dca-mode-btn${dateMode === 'all' ? ' dca-choice-btn--active' : ''}`}
               onClick={() => setDateMode('all')}
             >
               Tất cả
             </button>
             <button
-              className={`dca-mode-btn ${dateMode === 'years' ? 'dca-mode-btn-active' : ''}`}
+              className={`dca-choice-btn dca-mode-btn${dateMode === 'years' ? ' dca-choice-btn--active' : ''}`}
               onClick={() => setDateMode('years')}
             >
               X năm qua
@@ -894,7 +923,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                 <button
                   key={n}
-                  className={`dca-year-btn ${yearsBack === n ? 'dca-year-btn-active' : ''}`}
+                  className={`dca-choice-btn dca-year-btn${yearsBack === n ? ' dca-choice-btn--active' : ''}`}
                   onClick={() => setYearsBack(n)}
                 >
                   {n}
@@ -1060,6 +1089,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                   className={`dca-anchor-btn${activeSection === s.id ? ' dca-anchor-btn--active' : ''}`}
                   onClick={() => {
                     setActiveSection(s.id)
+                    if (s.id === 'risk') setActiveRiskPortfolioId(validResults[0]?.id ?? '')
                     if (s.id === 'drawdowns') setActiveDrawdownPortfolioId(dcaStormData[0]?.id ?? '')
                     if (s.id === 'endgame') setActiveEndgamePortfolioId(validResults[0]?.id ?? '')
                   }}
@@ -1077,6 +1107,21 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                     className={`dca-results-filter-btn${activeDrawdownPortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
                     aria-pressed={activeDrawdownPortfolioId === p.id}
                     onClick={() => setActiveDrawdownPortfolioId(p.id)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeSection === 'risk' && (
+              <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Rủi ro và biến động">
+                {validResults.map(p => (
+                  <button
+                    key={p.id}
+                    className={`dca-results-filter-btn${riskPortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
+                    aria-pressed={riskPortfolioId === p.id}
+                    onClick={() => setActiveRiskPortfolioId(p.id)}
                   >
                     {p.name}
                   </button>
@@ -1188,23 +1233,23 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               <DcaSectionPanel id="risk" active={activeSection === 'risk'}>
                 {/* Kiên trì qua bão */}
                 {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
-                <DcaReturnPainChart portfolios={returnPainData} />
+                <DcaReturnPainChart portfolios={riskReturnPainData} />
 
-                <DcaHistoricalPercentileBlock portfolios={historicalPercentileData} />
+                <DcaHistoricalPercentileBlock portfolios={riskHistoricalPercentileData} />
 
                 <DcaConsistencyBlock
-                  portfolios={dcaConsistencyData}
+                  portfolios={riskConsistencyData}
                 />
 
                 {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
                 <DcaEntryPointBlock
-                  portfolios={entryPointPortfolios}
+                  portfolios={riskEntryPointPortfolios}
                   fundData={committed!.data.fundData}
                   purchasePriceData={committed!.data.purchasePriceData}
                 />
 
                 <RollingReturnBlock
-                  portfolios={rollingReturnData}
+                  portfolios={riskRollingReturnData}
                 />
               </DcaSectionPanel>
 

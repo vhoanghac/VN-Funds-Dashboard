@@ -1920,6 +1920,11 @@ textarea {
   background: #f5f4ed;
 }
 
+.dca-choice-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .dca-choice-btn--active {
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -3139,24 +3144,7 @@ textarea {
 }
 
 .dca-mode-btn {
-  padding: 6px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.dca-mode-btn:hover {
-  border-color: var(--color-primary);
-}
-
-.dca-mode-btn-active {
-  background: var(--color-primary);
-  color: var(--color-primary-fg);
-  font-weight: 600;
-  border-color: var(--color-primary);
+  /* Layout marker; visual states come from .dca-choice-btn. */
 }
 
 .dca-years-row {
@@ -3172,26 +3160,10 @@ textarea {
 .dca-year-btn {
   width: 36px;
   height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.15s;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.dca-year-btn:hover {
-  border-color: var(--color-primary);
-}
-
-.dca-year-btn-active {
-  background: var(--color-primary);
-  color: var(--color-primary-fg);
-  font-weight: 600;
-  border-color: var(--color-primary);
 }
 
 .dca-date-inputs {
@@ -6364,11 +6336,6 @@ textarea {
   font-size: 0.85rem;
 }
 
-.dca-historical-percentile-controls .dca-choice-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.38;
-}
-
 .dca-historical-percentile-table td {
   min-width: 102px;
 }
@@ -6867,16 +6834,12 @@ textarea {
 
 .tactical-ma-btn {
   width: auto;
-  padding: 0 10px;
-  font-size: 0.85rem;
   white-space: nowrap;
 }
 
 /* Nhãn dài hơn hẳn nút SMA/EMA/RSI nên cần rộng hơn, cùng chiều cao. */
 .tactical-freq-btn {
   width: auto;
-  padding: 0 12px;
-  font-size: 0.85rem;
   white-space: nowrap;
 }
 

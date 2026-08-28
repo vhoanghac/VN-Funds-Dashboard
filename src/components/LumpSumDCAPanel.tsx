@@ -637,13 +637,13 @@ function LumpSumDCAPanelImpl({ funds, shareUrl, active }: Props) {
           <label className="dca-label">Tần suất DCA</label>
           <div className="lsdca-freq-btns">
             <button
-              className={`dca-mode-btn ${freq === 'monthly' ? 'dca-mode-btn-active' : ''}`}
+              className={`dca-choice-btn dca-mode-btn${freq === 'monthly' ? ' dca-choice-btn--active' : ''}`}
               onClick={() => setFreq('monthly')}
             >
               Hàng tháng
             </button>
             <button
-              className={`dca-mode-btn ${freq === 'weekly' ? 'dca-mode-btn-active' : ''}`}
+              className={`dca-choice-btn dca-mode-btn${freq === 'weekly' ? ' dca-choice-btn--active' : ''}`}
               onClick={() => setFreq('weekly')}
             >
               Hàng tuần

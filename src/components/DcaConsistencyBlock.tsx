@@ -41,6 +41,15 @@ interface Props {
   portfolios: ConsistencyPortfolio[]
 }
 
+export interface ConsistencyChartRow {
+  date: string
+  base?: number
+  p15?: number
+  p25?: number
+  b15?: number
+  b25?: number
+}
+
 function DcaConsistencyBlockImpl({ portfolios }: Props) {
   const valid = portfolios.filter(p => p.simulationInputs !== null && p.valueSeries.length > 0)
   const [extraAmount, setExtraAmount] = useState(() => valid[0]?.simulationInputs?.params.cashflowAmount ?? 0)
@@ -71,6 +80,20 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
 
 export const DcaConsistencyBlock = memo(DcaConsistencyBlockImpl)
 
+export function getScenarioValueDomain(rows: ConsistencyChartRow[]): [number, number] {
+  const values = rows.flatMap(row => [row.base, row.p15, row.p25, row.b15, row.b25])
+    .filter((value): value is number => value !== undefined && Number.isFinite(value))
+
+  if (values.length === 0) return [0, 1]
+
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min
+  const padding = range > 0 ? range * 0.08 : Math.max(Math.abs(max) * 0.05, 1)
+
+  return [Math.max(0, min - padding), max + padding]
+}
+
 function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, showTakeaways }: {
   portfolio: ConsistencyPortfolio
   extraAmount: number
@@ -93,8 +116,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
   }, [portfolio, extraAmount])
 
   const chartData = useMemo(() => {
-    type Row = { date: string; base?: number; p15?: number; p25?: number }
-    const byDate = new Map<string, Row>()
+    const byDate = new Map<string, ConsistencyChartRow>()
     for (const pt of scenarios.baseline.valueSeries) {
       byDate.set(pt.date, { date: pt.date, base: pt.value })
     }
@@ -112,8 +134,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
   }, [scenarios])
 
   const boostChartData = useMemo(() => {
-    type Row = { date: string; base?: number; b15?: number; b25?: number }
-    const byDate = new Map<string, Row>()
+    const byDate = new Map<string, ConsistencyChartRow>()
     for (const pt of scenarios.baseline.valueSeries) {
       byDate.set(pt.date, { date: pt.date, base: pt.value })
     }
@@ -129,6 +150,9 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
   }, [scenarios.baseline.valueSeries, boostScenarios])
+
+  const chartDomain = getScenarioValueDomain(chartData)
+  const boostChartDomain = getScenarioValueDomain(boostChartData)
 
   const baseProfit = scenarios.baseline.finalValue - scenarios.baseline.totalInvested
   const p15Profit = scenarios.panic15.finalValue - scenarios.panic15.totalInvested
@@ -181,6 +205,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
             minTickGap={40}
           />
           <YAxis
+            domain={chartDomain}
             tickFormatter={formatMillions}
             tick={{ fontSize: 11, fill: '#6b7280' }}
             width={56}
@@ -318,6 +343,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
             minTickGap={40}
           />
           <YAxis
+            domain={boostChartDomain}
             tickFormatter={formatMillions}
             tick={{ fontSize: 11, fill: '#6b7280' }}
             width={56}

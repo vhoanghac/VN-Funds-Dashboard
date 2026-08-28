@@ -409,8 +409,8 @@ function BitcoinPanelImpl({ funds }: Props) {
         <div className="dca-param-row">
           <label className="dca-label">Khoảng thời gian</label>
           <div className="dca-date-mode">
-            <button className={`dca-mode-btn ${dateMode === 'all' ? 'dca-mode-btn-active' : ''}`} onClick={() => setDateMode('all')}>Tất cả</button>
-            <button className={`dca-mode-btn ${dateMode === 'years' ? 'dca-mode-btn-active' : ''}`} onClick={() => setDateMode('years')}>X năm qua</button>
+            <button className={`dca-choice-btn dca-mode-btn${dateMode === 'all' ? ' dca-choice-btn--active' : ''}`} onClick={() => setDateMode('all')}>Tất cả</button>
+            <button className={`dca-choice-btn dca-mode-btn${dateMode === 'years' ? ' dca-choice-btn--active' : ''}`} onClick={() => setDateMode('years')}>X năm qua</button>
           </div>
         </div>
 
@@ -419,7 +419,7 @@ function BitcoinPanelImpl({ funds }: Props) {
             <label className="dca-label">Số năm</label>
             <div className="dca-years-selector">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                <button key={n} className={`dca-year-btn ${yearsBack === n ? 'dca-year-btn-active' : ''}`} onClick={() => setYearsBack(n)}>{n}</button>
+                <button key={n} className={`dca-choice-btn dca-year-btn${yearsBack === n ? ' dca-choice-btn--active' : ''}`} onClick={() => setYearsBack(n)}>{n}</button>
               ))}
             </div>
           </div>

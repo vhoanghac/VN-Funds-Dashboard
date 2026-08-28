@@ -32,6 +32,13 @@ const WINDOW_OPTIONS = [3, 5, 7, 10]
 
 function RollingReturnBlockImpl({ portfolios }: Props) {
   const [windowYears, setWindowYears] = useState<number>(5)
+  const availableWindowYears = useMemo(
+    () => WINDOW_OPTIONS.filter(years => portfolios.some(portfolio => hasEnoughRollingHistory(portfolio, years))),
+    [portfolios],
+  )
+  const activeWindowYears = availableWindowYears.includes(windowYears)
+    ? windowYears
+    : availableWindowYears[availableWindowYears.length - 1] ?? windowYears
 
   if (portfolios.length === 0) return null
 
@@ -50,8 +57,9 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
         {WINDOW_OPTIONS.map(w => (
           <button
             key={w}
-            className={`dca-choice-btn${w === windowYears ? ' dca-choice-btn--active' : ''}`}
+            className={`dca-choice-btn${w === activeWindowYears ? ' dca-choice-btn--active' : ''}`}
             onClick={() => setWindowYears(w)}
+            disabled={!availableWindowYears.includes(w)}
           >
             {w} năm
           </button>
@@ -59,13 +67,17 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
       </div>
 
       {portfolios.map(p => (
-        <RollingForPortfolio key={p.id} portfolio={p} windowYears={windowYears} />
-      ))}
+          <RollingForPortfolio key={p.id} portfolio={p} windowYears={activeWindowYears} />
+        ))}
     </DcaBlock>
   )
 }
 
 export const RollingReturnBlock = memo(RollingReturnBlockImpl)
+
+function hasEnoughRollingHistory(portfolio: RollingPortfolio, windowYears: number): boolean {
+  return rollingCAGR(portfolio.cumulative, windowYears).length >= 3
+}
 
 function RollingForPortfolio({
   portfolio,
