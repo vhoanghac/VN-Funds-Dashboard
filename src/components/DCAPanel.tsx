@@ -144,6 +144,8 @@ const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
   { id: 'endgame', label: 'Endgame' },
 ]
 
+const ALL_RISK_PORTFOLIOS = '__all__'
+
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'daily', label: 'Hàng ngày' },
   { value: 'weekly', label: '1 tuần' },
@@ -766,7 +768,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   }, [activeDrawdownPortfolioId, dcaStormData])
 
   useEffect(() => {
-    if (!validResults.some(p => p.id === activeRiskPortfolioId)) {
+    if (activeRiskPortfolioId !== ALL_RISK_PORTFOLIOS && !validResults.some(p => p.id === activeRiskPortfolioId)) {
       setActiveRiskPortfolioId(validResults[0]?.id ?? '')
     }
   }, [activeRiskPortfolioId, validResults])
@@ -1116,6 +1118,13 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
             {activeSection === 'risk' && (
               <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Rủi ro và biến động">
+                <button
+                  className={`dca-results-filter-btn${riskPortfolioId === ALL_RISK_PORTFOLIOS ? ' dca-results-filter-btn--active' : ''}`}
+                  aria-pressed={riskPortfolioId === ALL_RISK_PORTFOLIOS}
+                  onClick={() => setActiveRiskPortfolioId(ALL_RISK_PORTFOLIOS)}
+                >
+                  Tất cả
+                </button>
                 {validResults.map(p => (
                   <button
                     key={p.id}
@@ -1231,26 +1240,31 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               </DcaSectionPanel>
 
               <DcaSectionPanel id="risk" active={activeSection === 'risk'}>
-                {/* Kiên trì qua bão */}
-                {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
-                <DcaReturnPainChart portfolios={riskReturnPainData} />
+                {riskPortfolioId === ALL_RISK_PORTFOLIOS ? (
+                  <DcaReturnPainChart portfolios={returnPainData} />
+                ) : (
+                  <>
+                    {/* Tổng quan lợi nhuận đổi lấy rủi ro, trước khi đi vào chi tiết từng chart */}
+                    <DcaReturnPainChart portfolios={riskReturnPainData} />
 
-                <DcaHistoricalPercentileBlock portfolios={riskHistoricalPercentileData} />
+                    <DcaHistoricalPercentileBlock portfolios={riskHistoricalPercentileData} />
 
-                <DcaConsistencyBlock
-                  portfolios={riskConsistencyData}
-                />
+                    <DcaConsistencyBlock
+                      portfolios={riskConsistencyData}
+                    />
 
-                {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
-                <DcaEntryPointBlock
-                  portfolios={riskEntryPointPortfolios}
-                  fundData={committed!.data.fundData}
-                  purchasePriceData={committed!.data.purchasePriceData}
-                />
+                    {/* Câu chuyện tiền thật ngày thật, trước khi vào phân phối xác suất (rolling) */}
+                    <DcaEntryPointBlock
+                      portfolios={riskEntryPointPortfolios}
+                      fundData={committed!.data.fundData}
+                      purchasePriceData={committed!.data.purchasePriceData}
+                    />
 
-                <RollingReturnBlock
-                  portfolios={riskRollingReturnData}
-                />
+                    <RollingReturnBlock
+                      portfolios={riskRollingReturnData}
+                    />
+                  </>
+                )}
               </DcaSectionPanel>
 
               <DcaSectionPanel id="drawdowns" active={activeSection === 'drawdowns'}>
