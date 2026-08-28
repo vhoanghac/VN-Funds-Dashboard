@@ -74,7 +74,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
       </div>
 
       <div className="dca-projection-controls">
-        <span className="dca-projection-controls-label">Nạp/tháng:</span>
+        <span className="dca-projection-controls-label">Đầu tư/tháng:</span>
         <MoneyInput
           value={effectiveContribution}
           onChange={setContribOverride}

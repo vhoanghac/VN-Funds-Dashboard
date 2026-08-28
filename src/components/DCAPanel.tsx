@@ -188,6 +188,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // Section kết quả đang hiện. Mặc định chỉ hiện phần Tóm Tắt.
   const [activeSection, setActiveSection] = useState<DcaSectionId>('summary')
   const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('all')
+  const [activeEndgamePortfolioId, setActiveEndgamePortfolioId] = useState('')
 
   // ── Portfolios ──
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
@@ -818,6 +819,25 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     }
   }), [validResults])
 
+  const endgamePortfolioId = activeEndgamePortfolioId || validResults[0]?.id
+  const endgameProjectionData = useMemo(
+    () => projectionData.filter(p => p.id === endgamePortfolioId),
+    [endgamePortfolioId, projectionData],
+  )
+  const endgameMonteCarloData = useMemo(
+    () => monteCarloData.filter(p => p.id === endgamePortfolioId),
+    [endgamePortfolioId, monteCarloData],
+  )
+
+  useEffect(() => {
+    if (
+      activeEndgamePortfolioId !== ''
+      && !validResults.some(p => p.id === activeEndgamePortfolioId)
+    ) {
+      setActiveEndgamePortfolioId('')
+    }
+  }, [activeEndgamePortfolioId, validResults])
+
   const rollingReturnData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -1045,6 +1065,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                   onClick={() => {
                     setActiveSection(s.id)
                     if (s.id === 'drawdowns') setActiveDrawdownPortfolioId('all')
+                    if (s.id === 'endgame') setActiveEndgamePortfolioId(validResults[0]?.id ?? '')
                   }}
                 >
                   {s.label}
@@ -1067,6 +1088,21 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                     className={`dca-drawdown-btn${activeDrawdownPortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
                     aria-pressed={activeDrawdownPortfolioId === p.id}
                     onClick={() => setActiveDrawdownPortfolioId(p.id)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeSection === 'endgame' && (
+              <div className="dca-drawdown-nav" aria-label="Chọn danh mục trong Endgame">
+                {validResults.map(p => (
+                  <button
+                    key={p.id}
+                    className={`dca-drawdown-btn${endgamePortfolioId === p.id ? ' dca-drawdown-btn--active' : ''}`}
+                    aria-pressed={endgamePortfolioId === p.id}
+                    onClick={() => setActiveEndgamePortfolioId(p.id)}
                   >
                     {p.name}
                   </button>
@@ -1192,11 +1228,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               <DcaSectionPanel id="endgame" active={activeSection === 'endgame'}>
                 {/* Endgame: projection */}
                 <ProjectionBlock
-                  portfolios={projectionData}
+                  portfolios={endgameProjectionData}
                 />
 
                 <MonteCarloBlock
-                  portfolios={monteCarloData}
+                  portfolios={endgameMonteCarloData}
                 />
               </DcaSectionPanel>
             </>
