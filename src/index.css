@@ -1902,6 +1902,34 @@ textarea {
   border-bottom: none;
 }
 
+/* ─── Shared DCA choice buttons ────────────────────────────────────────────────── */
+
+.dca-choice-btn {
+  padding: 5px 12px;
+  border: 1px solid #e8e6dc;
+  background: #faf9f5;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #5e5d59;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dca-choice-btn:hover {
+  border-color: #87867f;
+  background: #f5f4ed;
+}
+
+.dca-choice-btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.dca-choice-btn--active:hover {
+  background: var(--color-primary-dark);
+}
+
 /* ─── Bank Comparison Block ────────────────────────────────────────────────────── */
 
 .dca-bank-compare-head {
@@ -1931,29 +1959,6 @@ textarea {
 .dca-bank-compare-rate-btns {
   display: flex;
   gap: 4px;
-}
-
-.dca-bank-rate-btn {
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  background: #faf9f5;
-  color: #5e5d59;
-  border: 1px solid #e8e6dc;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.dca-bank-rate-btn:hover {
-  background: #faf9f5;
-  border-color: #87867f;
-}
-
-.dca-bank-rate-btn--active {
-  background: #c96442;
-  color: #fff;
-  border-color: #c96442;
 }
 
 .dca-bank-compare-sub {
@@ -5435,32 +5440,6 @@ textarea {
   font-weight: 500;
 }
 
-.dca-projection-btn {
-  padding: 5px 12px;
-  border: 1px solid #e8e6dc;
-  background: #faf9f5;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #5e5d59;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.dca-projection-btn:hover {
-  border-color: #87867f;
-  background: #faf9f5;
-}
-
-.dca-projection-btn--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-fg);
-}
-
-.dca-projection-btn--active:hover {
-  background: var(--color-primary-dark);
-}
-
 .dca-projection-custom-input {
   padding: 5px 10px;
   border: 1px solid #e8e6dc;
@@ -6158,32 +6137,6 @@ textarea {
   font-weight: 500;
 }
 
-.dca-rolling-btn {
-  padding: 5px 12px;
-  border: 1px solid #e8e6dc;
-  background: #faf9f5;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #5e5d59;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.dca-rolling-btn:hover {
-  border-color: #87867f;
-  background: #faf9f5;
-}
-
-.dca-rolling-btn--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-fg);
-}
-
-.dca-rolling-btn--active:hover {
-  background: var(--color-primary-dark);
-}
-
 .dca-rolling-card-header {
   display: flex;
   justify-content: space-between;
@@ -6300,32 +6253,6 @@ textarea {
   min-width: 70px;
 }
 
-.dca-mc-btn {
-  padding: 5px 12px;
-  border: 1px solid #e8e6dc;
-  background: #faf9f5;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #5e5d59;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.dca-mc-btn:hover {
-  border-color: #87867f;
-  background: #f5f4ed;
-}
-
-.dca-mc-btn--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-fg);
-}
-
-.dca-mc-btn--active:hover {
-  background: var(--color-primary-dark);
-}
-
 .dca-mc-custom {
   display: inline-flex;
   align-items: center;
@@ -6437,7 +6364,7 @@ textarea {
   font-size: 0.85rem;
 }
 
-.dca-historical-percentile-controls .dca-mc-btn:disabled {
+.dca-historical-percentile-controls .dca-choice-btn:disabled {
   cursor: not-allowed;
   opacity: 0.38;
 }
@@ -7908,7 +7835,6 @@ textarea {
   .dca-journey-card,
   .dca-journey-takeaway,
   .dca-bank-compare-block,
-  .dca-bank-rate-btn,
   .dca-bank-compare-row,
   .dca-bank-compare-portfolio,
   .dca-bank-compare-bank,

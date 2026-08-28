@@ -60,7 +60,7 @@ function DcaHistoricalPercentileBlockImpl({ portfolios }: Props) {
         {WINDOW_OPTIONS.map(years => (
           <button
             key={years}
-            className={`dca-mc-btn${years === activeWindowYears ? ' dca-mc-btn--active' : ''}`}
+            className={`dca-choice-btn${years === activeWindowYears ? ' dca-choice-btn--active' : ''}`}
             onClick={() => setWindowYears(years)}
             disabled={!availableWindowYears.includes(years)}
           >

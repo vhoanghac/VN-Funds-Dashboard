@@ -105,7 +105,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
           {PRESET_TARGETS.map(p => (
             <button
               key={p.value}
-              className={`dca-mc-btn${target === p.value ? ' dca-mc-btn--active' : ''}`}
+              className={`dca-choice-btn${target === p.value ? ' dca-choice-btn--active' : ''}`}
               onClick={() => { setTarget(p.value); setCustomInput(''); setCustomError(null) }}
             >
               {p.label}
@@ -132,7 +132,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
           {YEAR_OPTIONS.map(y => (
             <button
               key={y}
-              className={`dca-mc-btn${years === y ? ' dca-mc-btn--active' : ''}`}
+              className={`dca-choice-btn${years === y ? ' dca-choice-btn--active' : ''}`}
               onClick={() => setYears(y)}
             >
               {y} năm
@@ -148,7 +148,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
             className="dca-mc-custom-input"
           />
           {contribOverride !== null && contribOverride !== defaultContribution && (
-            <button className="dca-mc-btn" onClick={() => setContribOverride(null)}>
+            <button className="dca-choice-btn" onClick={() => setContribOverride(null)}>
               ↺ Về mặc định ({formatVND(defaultContribution)})
             </button>
           )}
@@ -176,7 +176,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
               </select>
             </label>
           )}
-          <button className="dca-mc-btn" onClick={() => setResampleVersion(v => v + 1)}>
+          <button className="dca-choice-btn" onClick={() => setResampleVersion(v => v + 1)}>
             ↻ Lấy mẫu lại
           </button>
         </div>

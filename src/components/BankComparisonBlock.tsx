@@ -73,7 +73,7 @@ function BankComparisonBlockImpl({ results, endDate }: Props) {
             {RATE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                className={`dca-bank-rate-btn${Math.abs(opt.value - bankRate) < 1e-6 ? ' dca-bank-rate-btn--active' : ''}`}
+                className={`dca-choice-btn${Math.abs(opt.value - bankRate) < 1e-6 ? ' dca-choice-btn--active' : ''}`}
                 onClick={() => setBankRate(opt.value)}
                 title="Lãi suất tiết kiệm có kỳ hạn giả định, compound hàng năm"
               >

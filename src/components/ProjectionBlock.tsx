@@ -65,7 +65,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
         {HORIZON_OPTIONS.map(h => (
           <button
             key={h}
-            className={`dca-projection-btn${h === years ? ' dca-projection-btn--active' : ''}`}
+            className={`dca-choice-btn${h === years ? ' dca-choice-btn--active' : ''}`}
             onClick={() => setYears(h)}
           >
             {h} năm nữa
@@ -81,7 +81,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
           className="dca-projection-custom-input"
         />
         {contribOverride !== null && contribOverride !== defaultContribution && (
-          <button className="dca-projection-btn" onClick={() => setContribOverride(null)}>
+          <button className="dca-choice-btn" onClick={() => setContribOverride(null)}>
             ↺ Về mặc định ({formatVND(defaultContribution)})
           </button>
         )}

@@ -50,7 +50,7 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
         {WINDOW_OPTIONS.map(w => (
           <button
             key={w}
-            className={`dca-rolling-btn${w === windowYears ? ' dca-rolling-btn--active' : ''}`}
+            className={`dca-choice-btn${w === windowYears ? ' dca-choice-btn--active' : ''}`}
             onClick={() => setWindowYears(w)}
           >
             {w} năm
