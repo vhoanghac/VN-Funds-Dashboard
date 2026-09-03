@@ -10,14 +10,15 @@ import { useDimLegend } from '../hooks/useDimLegend'
 interface YearlySeries {
   name: string
   color: string
-  data: YearlyReturn[]
+  data: Array<Pick<YearlyReturn, 'year' | 'isPartial'> & { value: number | null }>
 }
 
 interface Props {
   series: YearlySeries[]
+  title?: string
 }
 
-export function YearlyPerformanceChart({ series }: Props) {
+export function YearlyPerformanceChart({ series, title = 'Hiệu suất theo từng năm' }: Props) {
   const seriesKey = series.map(s => s.name).join(',')
   const { handleLegendClick, isDimmed } = useDimLegend(seriesKey)
 
@@ -46,7 +47,7 @@ export function YearlyPerformanceChart({ series }: Props) {
   return (
     <div className="chart-container">
       <div className="chart-header">
-        <h3>Hiệu suất theo từng năm</h3>
+        <h3>{title}</h3>
         <span className="chart-tooltip-icon" title="So sánh lợi nhuận các quỹ trong mỗi năm. Năm có dấu * là năm chưa đầy đủ dữ liệu. Bấm vào legend để làm mờ/hiện cột.">?</span>
       </div>
       <ResponsiveContainer width="100%" height={350}>

@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -32,6 +32,7 @@ import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import { DataQualityBlock } from './DataQualityBlock'
 import { DrawdownChart } from './DrawdownChart'
 import { DcaRecoveryChart } from './DcaRecoveryChart'
+import { YearlyPerformanceChart } from './YearlyPerformanceChart'
 import { DcaSectionPanel } from './DcaLayout'
 import { parsePortfolios } from '../utils/portfolio'
 import { FUND_COLORS } from '../constants'
@@ -684,6 +685,16 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     cashflows: r.cashflows,
   })), [validResults])
 
+  const yearlyPerformanceSeries = useMemo(() => journeyPortfolios.map(p => ({
+    name: p.name,
+    color: p.color,
+    data: dcaYearlyMWRR(p.valueSeries, p.cashflows).map(({ year, value, isPartial }) => ({
+      year,
+      value,
+      isPartial,
+    })),
+  })), [journeyPortfolios])
+
   const dcaReturnExplainerData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -1196,6 +1207,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                 {validResults.length >= 2 && (
                   <DcaRatioChart portfolios={ratioChartData} />
                 )}
+
+                <YearlyPerformanceChart
+                  series={yearlyPerformanceSeries}
+                  title="Hiệu suất theo năm"
+                />
 
                 {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
                     trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
