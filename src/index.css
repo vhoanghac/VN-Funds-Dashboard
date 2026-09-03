@@ -7842,3 +7842,58 @@ textarea {
   font-weight: 700;
   line-height: 1.25;
 }
+
+.dca-allocation-single {
+  margin: 24px 0 28px;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dca-allocation-legend {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin: 0 8px 8px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.dca-allocation-legend-date {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dca-allocation-legend-items {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.dca-allocation-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.dca-allocation-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+@media (max-width: 640px) {
+  .dca-allocation-legend {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dca-allocation-legend-items {
+    justify-content: flex-start;
+  }
+}

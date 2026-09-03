@@ -139,6 +139,8 @@ export interface DCAParams {
 export interface DCAResult {
   /** Portfolio value over time (absolute VND), includes cashflows (for MWRR / value chart) */
   values: { date: string; value: number }[]
+  /** Portfolio value by asset over time, used to show allocation drift. */
+  assetValues?: DCAAssetValueSeries[]
   /** Total money invested over time */
   invested: { date: string; value: number }[]
   /** Individual cashflow events: { date, amount }, cho MWRR/IRR calculation */
@@ -152,6 +154,11 @@ export interface DCAResult {
   /** Summary stats */
   totalInvested: number
   finalValue: number
+}
+
+export interface DCAAssetValueSeries {
+  fundId: string
+  values: { date: string; value: number }[]
 }
 
 /**
@@ -474,6 +481,10 @@ export function simulateDCA(
 
   // MWRR series (portfolio value includes cashflows)
   const values: { date: string; value: number }[] = []
+  const assetValues: DCAAssetValueSeries[] = fundIds.map(fundId => ({
+    fundId,
+    values: [],
+  }))
   const invested: { date: string; value: number }[] = []
   const cashflows: { date: string; amount: number }[] = []
 
@@ -491,6 +502,15 @@ export function simulateDCA(
     lastInvestDate = date
   }
 
+  function recordAssetValues(date: string) {
+    for (let j = 0; j < fundIds.length; j++) {
+      assetValues[j]!.values.push({
+        date,
+        value: units[j]! * priceLookups[j]!.get(date)!,
+      })
+    }
+  }
+
   // Initial investment on first date
   if (params.initialAmount > 0) {
     buyFunds(params.initialAmount, 0)
@@ -506,6 +526,7 @@ export function simulateDCA(
 
   // Record day 0
   values.push({ date: allDates[0]!, value: prevEndValue })
+  recordAssetValues(allDates[0]!)
   invested.push({ date: allDates[0]!, value: totalInvested })
   cumulative.push({ date: allDates[0]!, value: 0 })  // 0% return on day 0
   drawdown.push({ date: allDates[0]!, value: 0 })
@@ -563,6 +584,7 @@ export function simulateDCA(
 
     // ── Record MWRR portfolio value (AFTER cashflow) ──
     values.push({ date, value: portfolioValue })
+    recordAssetValues(date)
     invested.push({ date, value: totalInvested })
 
     // ── Record TWRR cumulative return ──
@@ -592,6 +614,7 @@ export function simulateDCA(
 
   return {
     values,
+    assetValues,
     invested,
     cashflows: allCashflows,
     cumulative,

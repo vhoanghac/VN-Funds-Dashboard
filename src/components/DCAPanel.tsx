@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats } from '../utils/dca'
+import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -33,6 +33,7 @@ import { DataQualityBlock } from './DataQualityBlock'
 import { DrawdownChart } from './DrawdownChart'
 import { DcaRecoveryChart } from './DcaRecoveryChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
+import { DcaAllocationBlock } from './DcaAllocationBlock'
 import { DcaSectionPanel } from './DcaLayout'
 import { parsePortfolios } from '../utils/portfolio'
 import { FUND_COLORS } from '../constants'
@@ -88,6 +89,7 @@ interface DCAPortfolioResult {
   profitFactor: number | null
   investedSeries: { date: string; value: number }[]
   valueSeries: { date: string; value: number }[]
+  assetValues: DCAAssetValueSeries[]
   /** Toàn bộ cashflows (âm = nạp tiền, dòng cuối dương = finalValue) — dùng để tính MWRR theo từng năm */
   cashflows: { date: string; amount: number }[]
   /**
@@ -134,7 +136,7 @@ interface DcaSnapshot {
  * Ẩn/hiện bằng display:none để các block (đã bọc React.memo) không phải
  * mount lại khi chuyển qua lại.
  */
-type DcaSectionId = 'summary' | 'perf' | 'journey' | 'risk' | 'drawdowns' | 'endgame'
+type DcaSectionId = 'summary' | 'perf' | 'allocation' | 'journey' | 'risk' | 'drawdowns' | 'endgame'
 
 const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
   { id: 'summary', label: 'Tóm Tắt' },
@@ -142,6 +144,7 @@ const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
   { id: 'drawdowns', label: 'Mức sụt giảm' },
   { id: 'journey', label: 'Hành trình của bạn' },
   { id: 'risk', label: 'Rủi ro & biến động' },
+  { id: 'allocation', label: 'Phân bổ' },
   { id: 'endgame', label: 'Endgame' },
 ]
 
@@ -543,7 +546,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           cumulative: [], drawdown: [],
           totalInvested: 0, finalValue: 0, mwrr: null, profitFactor: null,
           storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
-          investedSeries: [], valueSeries: [], cashflows: [],
+           investedSeries: [], valueSeries: [], assetValues: [], cashflows: [],
           simulationInputs: null,
           dividendNarrative: [],
         })
@@ -580,6 +583,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         profitFactor: dcaProfitFactor(dcaResult.returns),
         investedSeries: dcaResult.invested,
         valueSeries: dcaResult.values,
+        assetValues: dcaResult.assetValues ?? [],
         cashflows: dcaResult.cashflows,
         simulationInputs: {
           filteredPrices,
@@ -683,6 +687,12 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     finalValue: r.finalValue,
     valueSeries: r.valueSeries,
     cashflows: r.cashflows,
+  })), [validResults])
+
+  const allocationPortfolios = useMemo(() => validResults.map(r => ({
+    id: r.id,
+    name: r.name,
+    assetValues: r.assetValues,
   })), [validResults])
 
   const yearlyPerformanceSeries = useMemo(() => journeyPortfolios.map(p => ({
@@ -1281,6 +1291,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                     />
                   </>
                 )}
+              </DcaSectionPanel>
+
+              <DcaSectionPanel id="allocation" active={activeSection === 'allocation'}>
+                <DcaAllocationBlock portfolios={allocationPortfolios} />
               </DcaSectionPanel>
 
               <DcaSectionPanel id="drawdowns" active={activeSection === 'drawdowns'}>

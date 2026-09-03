@@ -417,6 +417,81 @@ describe('common price grid characterization', () => {
   })
 })
 
+describe('simulateDCA assetValues', () => {
+  it('records each asset after periodic cashflows', () => {
+    const result = simulateDCA(
+      new Map([
+        ['A', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-01-02', price: 110 },
+          { date: '2024-01-03', price: 120 },
+        ]],
+        ['B', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-01-02', price: 100 },
+          { date: '2024-01-03', price: 100 },
+        ]],
+      ]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 1000, cashflowFreq: 'daily' },
+      'quarterly',
+    )
+
+    expect(result.assetValues).toHaveLength(2)
+    expect(result.assetValues?.[0]?.values[0]).toEqual({ date: '2024-01-01', value: 500 })
+    expect(result.assetValues?.[1]?.values[0]).toEqual({ date: '2024-01-01', value: 500 })
+    expect(result.assetValues?.[0]?.values[1]?.value).toBeCloseTo(1050, 8)
+    expect(result.assetValues?.[1]?.values[1]?.value).toBeCloseTo(1000, 8)
+
+    for (let index = 0; index < result.values.length; index++) {
+      const assetTotal = result.assetValues!.reduce(
+        (total, series) => total + series.values[index]!.value,
+        0,
+      )
+      expect(assetTotal).toBeCloseTo(result.values[index]!.value, 8)
+    }
+  })
+
+  it('records post-rebalance values at the target weights', () => {
+    const result = simulateDCA(
+      new Map([
+        ['A', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 110 },
+          { date: '2024-03-01', price: 100 },
+        ]],
+        ['B', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 100 },
+          { date: '2024-03-01', price: 100 },
+        ]],
+      ]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'monthly',
+    )
+
+    expect(result.assetValues?.[0]?.values[1]?.value).toBeCloseTo(525, 8)
+    expect(result.assetValues?.[1]?.values[1]?.value).toBeCloseTo(525, 8)
+  })
+
+  it('keeps duplicate fund slots as separate value series for allocation aggregation', () => {
+    const result = simulateDCA(
+      new Map([['A', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-01-02', price: 200 },
+      ]]]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'A', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+    )
+
+    expect(result.assetValues?.map(series => series.fundId)).toEqual(['A', 'A'])
+    expect(result.assetValues?.map(series => series.values[0]!.value)).toEqual([500, 500])
+    expect(result.assetValues?.map(series => series.values[1]!.value)).toEqual([1000, 1000])
+  })
+})
+
 /**
  * `purchasePrices` option: hỗ trợ tài sản 2 giá mua/bán (vàng miếng SJC).
  *
