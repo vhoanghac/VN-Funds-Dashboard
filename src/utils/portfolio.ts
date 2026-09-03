@@ -1,9 +1,11 @@
+import { normalizeTransactionCostRates } from './dca'
 import type {
   Portfolio,
   PortfolioSlot,
   RebalanceFrequency,
   ReturnPoint,
   StoredPortfolio,
+  TransactionCostRates,
 } from '../types'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,6 +28,15 @@ function parseSlots(value: unknown): PortfolioSlot[] | null {
   })
 }
 
+function parseTransactionCostRates(value: unknown): TransactionCostRates | undefined {
+  if (!isRecord(value)) return undefined
+  return normalizeTransactionCostRates({
+    buyFeeRate: typeof value.buyFeeRate === 'number' ? value.buyFeeRate : undefined,
+    sellFeeRate: typeof value.sellFeeRate === 'number' ? value.sellFeeRate : undefined,
+    sellTaxRate: typeof value.sellTaxRate === 'number' ? value.sellTaxRate : undefined,
+  })
+}
+
 function parseStoredPortfolioShape(value: unknown): StoredPortfolio | null {
   if (!isRecord(value)) return null
   const slots = parseSlots(value.slots)
@@ -43,6 +54,7 @@ function parseStoredPortfolioShape(value: unknown): StoredPortfolio | null {
 export function parsePortfolio(value: unknown): Portfolio | null {
   const stored = parseStoredPortfolioShape(value)
   if (!stored) return null
+  const transactionCostRates = isRecord(value) ? parseTransactionCostRates(value.transactionCostRates) : undefined
 
   return {
     slots: stored.slots,
@@ -50,6 +62,7 @@ export function parsePortfolio(value: unknown): Portfolio | null {
       ? stored.rebalFreq
       : 'quarterly',
     name: stored.name,
+    ...(transactionCostRates ? { transactionCostRates } : {}),
   }
 }
 

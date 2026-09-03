@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
   trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
-  slicePricesWithPredecessor, trailingWindowCagr,
+  normalizeTransactionCostRates, slicePricesWithPredecessor, trailingWindowCagr,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -492,6 +492,132 @@ describe('simulateDCA assetValues', () => {
   })
 })
 
+describe('simulateDCA transaction costs', () => {
+  it('treats the contribution as total cash paid, including the buy fee', () => {
+    const result = simulateDCA(
+      new Map([['A', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-01-02', price: 100 },
+      ]]]),
+      [{ fundId: 'A', weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'yearly',
+      { transactionCostRates: { buyFeeRate: 0.01, sellFeeRate: 0, sellTaxRate: 0 } },
+    )
+
+    expect(result.totalInvested).toBe(1000)
+    expect(result.transactionCosts.buyFees).toBeCloseTo(1000 - 1000 / 1.01, 10)
+    expect(result.transactionCosts.total).toBeCloseTo(result.transactionCosts.buyFees, 10)
+    expect(result.finalValue).toBeCloseTo(1000 / 1.01, 10)
+  })
+
+  it('charges buy fee, sell fee, and sell tax when rebalancing creates both legs', () => {
+    const result = simulateDCA(
+      new Map([
+        ['A', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 200 },
+        ]],
+        ['B', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 100 },
+        ]],
+      ]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'monthly',
+      { transactionCostRates: { buyFeeRate: 0.01, sellFeeRate: 0.02, sellTaxRate: 0.001 } },
+    )
+
+    const finalA = result.assetValues?.[0]?.values[1]?.value ?? 0
+    const finalB = result.assetValues?.[1]?.values[1]?.value ?? 0
+    expect(finalA).toBeCloseTo(finalB, 8)
+    expect(result.transactionCosts.buyFees).toBeGreaterThan(0)
+    expect(result.transactionCosts.sellFees).toBeGreaterThan(0)
+    expect(result.transactionCosts.sellTaxes).toBeGreaterThan(0)
+    expect(result.transactionCosts.total).toBeCloseTo(
+      result.transactionCosts.buyFees + result.transactionCosts.sellFees + result.transactionCosts.sellTaxes,
+      10,
+    )
+    expect(result.finalValue).toBeLessThan(1500)
+  })
+
+  it('solves the post-rebalance value from every fee leg, not by subtracting a fee afterward', () => {
+    const buyFeeRate = 0.01
+    const sellFeeRate = 0.02
+    const sellTaxRate = 0.001
+    const result = simulateDCA(
+      new Map([
+        ['A', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 200 },
+        ]],
+        ['B', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 100 },
+        ]],
+      ]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'monthly',
+      { transactionCostRates: { buyFeeRate, sellFeeRate, sellTaxRate } },
+    )
+
+    const initialPurchase = 1000 / (1 + buyFeeRate)
+    const valueBeforeRebalanceA = initialPurchase
+    const valueBeforeRebalanceB = initialPurchase / 2
+    const valueBeforeRebalance = valueBeforeRebalanceA + valueBeforeRebalanceB
+    const sellCostRate = sellFeeRate + sellTaxRate
+    const expectedFinalValue = (
+      valueBeforeRebalance - sellCostRate * valueBeforeRebalanceA + buyFeeRate * valueBeforeRebalanceB
+    ) / (1 + buyFeeRate / 2 - sellCostRate / 2)
+    const expectedBuyValue = expectedFinalValue / 2 - valueBeforeRebalanceB
+    const expectedSellValue = valueBeforeRebalanceA - expectedFinalValue / 2
+
+    expect(result.finalValue).toBeCloseTo(expectedFinalValue, 8)
+    expect(result.assetValues?.[0]?.values[1]?.value).toBeCloseTo(expectedFinalValue / 2, 8)
+    expect(result.assetValues?.[1]?.values[1]?.value).toBeCloseTo(expectedFinalValue / 2, 8)
+    expect(result.transactionCosts.buyFees).toBeCloseTo(
+      1000 - initialPurchase + expectedBuyValue * buyFeeRate,
+      8,
+    )
+    expect(result.transactionCosts.sellFees).toBeCloseTo(expectedSellValue * sellFeeRate, 8)
+    expect(result.transactionCosts.sellTaxes).toBeCloseTo(expectedSellValue * sellTaxRate, 8)
+  })
+
+  it('does not charge sell fee or sell tax without a sale', () => {
+    const result = simulateDCA(
+      new Map([['A', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-02-01', price: 120 },
+      ]]]),
+      [{ fundId: 'A', weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'monthly',
+      { transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0.02, sellTaxRate: 0.001 } },
+    )
+
+    expect(result.transactionCosts.sellFees).toBe(0)
+    expect(result.transactionCosts.sellTaxes).toBe(0)
+    expect(result.finalValue).toBe(1200)
+  })
+})
+
+describe('normalizeTransactionCostRates', () => {
+  it('uses the DCA defaults for missing fields and clamps invalid rates', () => {
+    expect(normalizeTransactionCostRates({ buyFeeRate: 0.002 })).toEqual({
+      buyFeeRate: 0.002,
+      sellFeeRate: 0,
+      sellTaxRate: 0.001,
+    })
+    expect(normalizeTransactionCostRates({ buyFeeRate: -1, sellFeeRate: 2, sellTaxRate: Number.NaN })).toEqual({
+      buyFeeRate: 0,
+      sellFeeRate: 1,
+      sellTaxRate: 0.001,
+    })
+  })
+})
+
 /**
  * `purchasePrices` option: hỗ trợ tài sản 2 giá mua/bán (vàng miếng SJC).
  *
@@ -645,6 +771,7 @@ describe('simulateDCA purchasePrices option (gold buy/sell spread)', () => {
 
     expect(result).toEqual({
       values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0,
+      transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 },
     })
   })
 

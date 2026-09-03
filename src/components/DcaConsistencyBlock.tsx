@@ -15,7 +15,7 @@ import { useState, useMemo, memo } from 'react'
 import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart,
 } from 'recharts'
-import type { PricePoint, RebalanceFrequency } from '../types'
+import type { PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
 import { simulateDCA, dcaMWRR, type DCASlot, type DCAFrequency } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
@@ -34,6 +34,7 @@ export interface ConsistencyPortfolio {
     params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
     rebalFreq: RebalanceFrequency
     purchasePrices: Map<string, PricePoint[]>
+    transactionCostRates: TransactionCostRates
   } | null
 }
 
@@ -620,7 +621,7 @@ function runBaseline(inputs: NonNullable<ConsistencyPortfolio['simulationInputs'
     inputs.slots,
     inputs.params,
     inputs.rebalFreq,
-    { purchasePrices: inputs.purchasePrices },
+    { purchasePrices: inputs.purchasePrices, transactionCostRates: inputs.transactionCostRates },
   )
   return {
     totalInvested: result.totalInvested,
@@ -662,6 +663,7 @@ function runPanicStop(
         return false
       },
       purchasePrices: inputs.purchasePrices,
+      transactionCostRates: inputs.transactionCostRates,
     },
   )
   return {
@@ -705,6 +707,7 @@ function runBoostBuy(
         return inputs.params.cashflowAmount
       },
       purchasePrices: inputs.purchasePrices,
+      transactionCostRates: inputs.transactionCostRates,
     },
   )
   return {

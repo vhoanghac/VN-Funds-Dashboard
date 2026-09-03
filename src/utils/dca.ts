@@ -1,4 +1,4 @@
-import type { PortfolioSlot, PricePoint, ReturnPoint, RebalanceFrequency, YearlyReturn } from '../types'
+import type { PortfolioSlot, PricePoint, ReturnPoint, RebalanceFrequency, TransactionCostRates, YearlyReturn } from '../types'
 import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
 import { daysBetween } from './dateMath'
 import { rollingWindowStarts } from './dateWindow'
@@ -136,6 +136,38 @@ export interface DCAParams {
   cashflowFreq: DCAFrequency
 }
 
+/** Tỷ lệ thập phân, vd 0,001 = 0,1%. */
+export interface TransactionCostSummary {
+  buyFees: number
+  sellFees: number
+  sellTaxes: number
+  total: number
+}
+
+export const DEFAULT_TRANSACTION_COST_RATES: TransactionCostRates = {
+  buyFeeRate: 0,
+  sellFeeRate: 0,
+  sellTaxRate: 0.001,
+}
+
+export type { TransactionCostRates }
+
+export function normalizeTransactionCostRates(
+  rates: Partial<TransactionCostRates> | undefined,
+  defaults: TransactionCostRates = DEFAULT_TRANSACTION_COST_RATES,
+): TransactionCostRates {
+  const normalize = (value: number | undefined, fallback: number) =>
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.max(0, Math.min(1, value))
+      : fallback
+
+  return {
+    buyFeeRate: normalize(rates?.buyFeeRate, defaults.buyFeeRate),
+    sellFeeRate: normalize(rates?.sellFeeRate, defaults.sellFeeRate),
+    sellTaxRate: normalize(rates?.sellTaxRate, defaults.sellTaxRate),
+  }
+}
+
 export interface DCAResult {
   /** Portfolio value over time (absolute VND), includes cashflows (for MWRR / value chart) */
   values: { date: string; value: number }[]
@@ -154,6 +186,7 @@ export interface DCAResult {
   /** Summary stats */
   totalInvested: number
   finalValue: number
+  transactionCosts: TransactionCostSummary
 }
 
 export interface DCAAssetValueSeries {
@@ -346,48 +379,76 @@ function rebalanceUnits(
   priceLookups: Map<string, number>[],
   date: string,
   purchaseLookups: Map<string, number>[] = priceLookups,
-): void {
+  transactionCostRates: TransactionCostRates = { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 },
+): TransactionCostSummary {
+  const emptyCosts: TransactionCostSummary = { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 }
   const totalValue = valueUnits(units, priceLookups, date)
-  if (totalValue <= 0) return
+  if (totalValue <= 0) return emptyCosts
 
-  let hasSpread = false
+  let hasTradingCosts = transactionCostRates.buyFeeRate > 0 ||
+    transactionCostRates.sellFeeRate > 0 || transactionCostRates.sellTaxRate > 0
   for (let j = 0; j < units.length; j++) {
     if (purchaseLookups[j]!.get(date)! !== priceLookups[j]!.get(date)!) {
-      hasSpread = true
+      hasTradingCosts = true
       break
     }
   }
-  if (!hasSpread) {
+  if (!hasTradingCosts) {
     for (let j = 0; j < units.length; j++) {
       const price = priceLookups[j]!.get(date)!
       units[j] = (totalValue * weights[j]!) / price
     }
-    return
+    return emptyCosts
   }
 
-  // Post-trade value plus the spread paid on buy legs must equal pre-trade value.
-  let low = 0
-  let high = totalValue
-  for (let step = 0; step < REBALANCE_BISECTION_STEPS; step++) {
-    const targetValue = (low + high) / 2
-    let requiredValue = targetValue
+  function costsAtTarget(targetValue: number): TransactionCostSummary {
+    let buyFees = 0
+    let sellFees = 0
+    let sellTaxes = 0
+    let spreadCost = 0
 
     for (let j = 0; j < units.length; j++) {
       const bid = priceLookups[j]!.get(date)!
       const ask = purchaseLookups[j]!.get(date)!
-      const boughtUnits = (targetValue * weights[j]!) / bid - units[j]!
-      if (boughtUnits > 0) requiredValue += (ask - bid) * boughtUnits
+      const unitDelta = (targetValue * weights[j]!) / bid - units[j]!
+      if (unitDelta > 0) {
+        const buyValue = ask * unitDelta
+        buyFees += buyValue * transactionCostRates.buyFeeRate
+        spreadCost += (ask - bid) * unitDelta
+      } else if (unitDelta < 0) {
+        const sellValue = -unitDelta * bid
+        sellFees += sellValue * transactionCostRates.sellFeeRate
+        sellTaxes += sellValue * transactionCostRates.sellTaxRate
+      }
     }
+
+    return {
+      buyFees,
+      sellFees,
+      sellTaxes,
+      total: buyFees + sellFees + sellTaxes + spreadCost,
+    }
+  }
+
+  // Giá trị sau tái cân bằng cộng toàn bộ chi phí mua, bán, thuế và spread
+  // phải đúng bằng giá trị danh mục trước khi giao dịch.
+  let low = 0
+  let high = totalValue
+  for (let step = 0; step < REBALANCE_BISECTION_STEPS; step++) {
+    const targetValue = (low + high) / 2
+    const requiredValue = targetValue + costsAtTarget(targetValue).total
 
     if (requiredValue > totalValue) high = targetValue
     else low = targetValue
   }
 
   const targetValue = (low + high) / 2
+  const costs = costsAtTarget(targetValue)
   for (let j = 0; j < units.length; j++) {
     const price = priceLookups[j]!.get(date)!
     units[j] = (targetValue * weights[j]!) / price
   }
+  return costs
 }
 
 /**
@@ -419,6 +480,8 @@ export interface DCASimulateOptions {
    * thay vì giả định vàng cũng chỉ có 1 giá như quỹ mở/ETF.
    */
   purchasePrices?: Map<string, PricePoint[]>
+  /** Phí mua/bán và thuế bán. Bỏ trống thì engine giữ hành vi cũ: cả ba bằng 0%. */
+  transactionCostRates?: TransactionCostRates
 }
 
 /**
@@ -443,7 +506,7 @@ export function simulateDCA(
 ): DCAResult {
   const validSlots = slots.filter(s => s.fundId && s.weight > 0)
   if (validSlots.length === 0) {
-    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
+    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0, transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 } }
   }
 
   // Normalize weights to fractions
@@ -456,7 +519,7 @@ export function simulateDCA(
 
   const commonGrid = buildCommonPriceGrid(priceArrays)
   if (!commonGrid) {
-    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
+    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0, transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 } }
   }
   const purchaseGrid = buildPurchasePriceGrid(
     commonGrid.dates,
@@ -465,7 +528,7 @@ export function simulateDCA(
     options?.purchasePrices,
   )
   if (!purchaseGrid) {
-    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0 }
+    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0, transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 } }
   }
   const { dates: allDates, priceLookups: purchaseLookups } = purchaseGrid
   const priceLookups = commonGrid.priceLookups
@@ -476,6 +539,12 @@ export function simulateDCA(
   // trực tiếp trên giá adjusted sẽ tự động phản ánh giả định tái đầu tư cổ
   // tức sau thuế. Không cần xử lý ex-date/pay-date ở đây nữa.
   const units = new Array(fundIds.length).fill(0)
+  const transactionCostRates = normalizeTransactionCostRates(options?.transactionCostRates, {
+    buyFeeRate: 0,
+    sellFeeRate: 0,
+    sellTaxRate: 0,
+  })
+  const transactionCosts: TransactionCostSummary = { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 }
   let totalInvested = 0
   let lastInvestDate = ''
 
@@ -497,7 +566,9 @@ export function simulateDCA(
   // tức priceLookups cho quỹ thường, purchaseLookups/giá "bán ra" cho vàng)
   function buyFunds(amount: number, dateIdx: number) {
     const date = allDates[dateIdx]!
-    allocateUnits(units, amount, weights, purchaseLookups, date)
+    const purchaseAmount = amount / (1 + transactionCostRates.buyFeeRate)
+    transactionCosts.buyFees += amount - purchaseAmount
+    allocateUnits(units, purchaseAmount, weights, purchaseLookups, date)
     totalInvested += amount
     lastInvestDate = date
   }
@@ -575,7 +646,12 @@ export function simulateDCA(
     if (totalInvested > 0) {
       if (shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
         const valueBeforeRebalance = portfolioValue
-        rebalanceUnits(units, weights, priceLookups, date, purchaseLookups)
+        const rebalanceCosts = rebalanceUnits(
+          units, weights, priceLookups, date, purchaseLookups, transactionCostRates,
+        )
+        transactionCosts.buyFees += rebalanceCosts.buyFees
+        transactionCosts.sellFees += rebalanceCosts.sellFees
+        transactionCosts.sellTaxes += rebalanceCosts.sellTaxes
         portfolioValue = valueUnits(units, priceLookups, date)
         if (valueBeforeRebalance > 0) rebalanceFactor = portfolioValue / valueBeforeRebalance
       }
@@ -605,6 +681,7 @@ export function simulateDCA(
   const dailyReturnsOut = twrrDailyReturns
 
   const finalValue = values.length > 0 ? values[values.length - 1]!.value : 0
+  transactionCosts.total = transactionCosts.buyFees + transactionCosts.sellFees + transactionCosts.sellTaxes
 
   // Add final value as positive cashflow (terminal)
   const allCashflows = [
@@ -622,6 +699,7 @@ export function simulateDCA(
     returns: dailyReturnsOut,
     totalInvested,
     finalValue,
+    transactionCosts,
   }
 }
 
@@ -1426,6 +1504,7 @@ export function trackDividendNarrative(
   rebalFreq: RebalanceFrequency,
   dividends: Map<string, DividendEvent[]>,
   purchasePrices?: Map<string, PricePoint[]>,
+  transactionCostRates?: TransactionCostRates,
 ): DividendNarrativeStats[] {
   const validSlots = slots.filter(s => s.fundId && s.weight > 0)
   if (validSlots.length === 0) return []
@@ -1492,10 +1571,15 @@ export function trackDividendNarrative(
   const stats = new Map<string, DividendNarrativeStats>()
   let totalInvested = 0
   let lastInvestDate = ''
+  const normalizedTransactionCostRates = normalizeTransactionCostRates(transactionCostRates, {
+    buyFeeRate: 0,
+    sellFeeRate: 0,
+    sellTaxRate: 0,
+  })
 
   function buy(amount: number, dateIdx: number) {
     const date = allDates[dateIdx]!
-    allocateUnits(units, amount, weights, purchaseLookups, date)
+    allocateUnits(units, amount / (1 + normalizedTransactionCostRates.buyFeeRate), weights, purchaseLookups, date)
     totalInvested += amount
     lastInvestDate = date
   }
@@ -1554,7 +1638,7 @@ export function trackDividendNarrative(
 
     // Rebalance
     if (totalInvested > 0 && shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
-      rebalanceUnits(units, weights, priceLookups, date, purchaseLookups)
+      rebalanceUnits(units, weights, priceLookups, date, purchaseLookups, normalizedTransactionCostRates)
     }
     prevDateForRebal = date
   }

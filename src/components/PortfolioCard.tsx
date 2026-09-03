@@ -1,5 +1,5 @@
 import Select from 'react-select'
-import type { FundMeta, PortfolioCardState, RebalanceFrequency } from '../types'
+import type { FundMeta, PortfolioCardState, RebalanceFrequency, TransactionCostRates } from '../types'
 import type { DCASlot } from '../utils/dca'
 import { isSavingsAssetId, savingsAssetId, SAVINGS_OPTION_LABEL } from '../utils/savingsAsset'
 import { SavingsRateInput } from './SavingsRateInput'
@@ -39,6 +39,8 @@ interface Props {
   onSetEqualWeights: () => void
   showRebal?: boolean
   showRemove?: boolean
+  transactionCostRates?: TransactionCostRates
+  onTransactionCostRatesChange?: (rates: TransactionCostRates) => void
 }
 
 export function PortfolioCard({
@@ -53,6 +55,8 @@ export function PortfolioCard({
   onSetEqualWeights,
   showRebal = true,
   showRemove = true,
+  transactionCostRates,
+  onTransactionCostRatesChange,
 }: Props) {
   const totalWeight = portfolio.slots.reduce((s, f) => s + f.weight, 0)
   const isOverUnder = Math.abs(totalWeight - 100) > 0.01
@@ -93,6 +97,27 @@ export function PortfolioCard({
           </div>
         )}
       </div>
+
+      {transactionCostRates && onTransactionCostRatesChange && (
+        <div className="portfolio-transaction-costs">
+          <span className="portfolio-transaction-costs-label">Thuế phí</span>
+          <TransactionCostInput
+            label="Phí mua"
+            value={transactionCostRates.buyFeeRate}
+            onChange={buyFeeRate => onTransactionCostRatesChange({ ...transactionCostRates, buyFeeRate })}
+          />
+          <TransactionCostInput
+            label="Phí bán"
+            value={transactionCostRates.sellFeeRate}
+            onChange={sellFeeRate => onTransactionCostRatesChange({ ...transactionCostRates, sellFeeRate })}
+          />
+          <TransactionCostInput
+            label="Thuế bán"
+            value={transactionCostRates.sellTaxRate}
+            onChange={sellTaxRate => onTransactionCostRatesChange({ ...transactionCostRates, sellTaxRate })}
+          />
+        </div>
+      )}
 
       <div className="portfolio-actions">
         <button
@@ -168,7 +193,29 @@ export function PortfolioCard({
         <span className="portfolio-total-value">{totalWeight}</span>
         <span>%</span>
       </div>
+
     </div>
+  )
+}
+
+function TransactionCostInput({ label, value, onChange }: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="portfolio-transaction-cost-input">
+      <span>{label}</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step={0.01}
+        value={value * 100}
+        onChange={event => onChange(Math.max(0, Math.min(100, Number(event.target.value) || 0)) / 100)}
+      />
+      <span>%</span>
+    </label>
   )
 }
 

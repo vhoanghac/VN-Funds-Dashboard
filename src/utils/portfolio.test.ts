@@ -48,6 +48,18 @@ describe('portfolio parsing', () => {
     })?.slots).toEqual([{ fundId: 'DCDS', weight: 120 }])
   })
 
+  it('keeps valid transaction costs when another stored rate is invalid', () => {
+    expect(parsePortfolio({
+      slots: [{ fundId: 'DCDS', weight: 100 }],
+      rebalFreq: 'quarterly',
+      transactionCostRates: { buyFeeRate: 1.2, sellFeeRate: 0.02, sellTaxRate: 0.003 },
+    })?.transactionCostRates).toEqual({
+      buyFeeRate: 1,
+      sellFeeRate: 0.02,
+      sellTaxRate: 0.003,
+    })
+  })
+
   it('drops non-string names without affecting the portfolio', () => {
     expect(parsePortfolio({ slots: [], rebalFreq: 'monthly', name: 42 })?.name).toBeUndefined()
     expect(parsePortfolio({ slots: [], rebalFreq: 'monthly', name: '' })?.name).toBeUndefined()

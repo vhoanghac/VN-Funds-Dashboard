@@ -93,10 +93,18 @@ export interface PortfolioSlot {
   weight: number // 0-100
 }
 
+/** Tỷ lệ thập phân, vd 0,001 = 0,1%. Chỉ tab DCA hiện dùng các mức này. */
+export interface TransactionCostRates {
+  buyFeeRate: number
+  sellFeeRate: number
+  sellTaxRate: number
+}
+
 export interface Portfolio {
   slots: PortfolioSlot[]
   rebalFreq: RebalanceFrequency
   name?: string
+  transactionCostRates?: TransactionCostRates
 }
 
 export type StoredPortfolio =

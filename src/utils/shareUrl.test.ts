@@ -51,6 +51,34 @@ describe('DCA share link', () => {
     expect(parseDcaParams()!.portfolios![1]!.name).toBe('Danh mục của tôi')
   })
 
+  it('keeps per-portfolio transaction costs through a share link', () => {
+    const state: DcaShareState = {
+      ...dcaState,
+      portfolios: [{
+        slots: [{ fundId: 'DCDS', weight: 100 }],
+        rebalFreq: 'quarterly',
+        transactionCostRates: { buyFeeRate: 0.001, sellFeeRate: 0.002, sellTaxRate: 0.001 },
+      }],
+    }
+    visit(buildDcaUrl(state))
+    expect(parseDcaParams()!.portfolios![0]!.transactionCostRates).toEqual({
+      buyFeeRate: 0.001,
+      sellFeeRate: 0.002,
+      sellTaxRate: 0.001,
+    })
+  })
+
+  it('fills missing fee fields in a compact link with DCA defaults', () => {
+    visitCompact('dca', {
+      p: [{ s: 'DCDS:100', r: 'quarterly', bf: 0.002 }],
+    })
+    expect(parseDcaParams()!.portfolios![0]!.transactionCostRates).toEqual({
+      buyFeeRate: 0.002,
+      sellFeeRate: 0,
+      sellTaxRate: 0.001,
+    })
+  })
+
   it('keeps a name with diacritics and URL-significant characters intact', () => {
     // '&', '?' and '=' would split the query string if the payload were not
     // encoded, so this is the case that breaks first if compression changes.

@@ -5,8 +5,8 @@ import { buildDcaUrl } from '../utils/shareUrl'
 import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
-import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency } from '../types'
-import { simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
+import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
+import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -55,7 +55,7 @@ interface Props {
   active: boolean
 }
 
-type DCAPortfolioState = PortfolioCardState
+type DCAPortfolioState = PortfolioCardState & { transactionCostRates: TransactionCostRates }
 
 function hydrateDcaPortfolios(
   source: Portfolio[],
@@ -70,6 +70,7 @@ function hydrateDcaPortfolios(
       isNameCustom: !!p.name,
       slots: p.slots,
       rebalFreq: p.rebalFreq,
+      transactionCostRates: normalizeTransactionCostRates(p.transactionCostRates),
     }
   })
 }
@@ -84,6 +85,7 @@ interface DCAPortfolioResult {
   drawdown: ReturnPoint[]
   totalInvested: number
   finalValue: number
+  transactionCosts: number
   mwrr: number | null
   storm: DCAStormStats
   profitFactor: number | null
@@ -103,6 +105,7 @@ interface DCAPortfolioResult {
     rebalFreq: RebalanceFrequency
     /** Giá "bán ra" cho các slot là quỹ 2-giá (vàng) — xem simulateDCA's purchasePrices option. */
     purchasePrices: Map<string, PricePoint[]>
+    transactionCostRates: TransactionCostRates
   } | null
   /**
    * Shadow simulation cổ tức trên RAW NAV — số tiền thật, số ccq thật nhà
@@ -257,6 +260,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     if (!skipUrlPersist) saveLS('dca_portfolios', portfolios.map(p => ({
       slots: p.slots, rebalFreq: p.rebalFreq,
       name: p.isNameCustom ? p.name : undefined,
+      transactionCostRates: p.transactionCostRates,
     })))
   }, [portfolios])
 
@@ -308,6 +312,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       isNameCustom: false,
       slots,
       rebalFreq: 'yearly',
+      transactionCostRates: { ...DEFAULT_TRANSACTION_COST_RATES },
     }
     setPortfolios([...portfolios, portfolio])
   }
@@ -537,14 +542,17 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         p.slots,
         committed.params,
         p.rebalFreq,
-        { purchasePrices: portfolioPurchasePrices },
+        {
+          purchasePrices: portfolioPurchasePrices,
+          transactionCostRates: p.transactionCostRates,
+        },
       )
 
       if (dcaResult.cumulative.length === 0) {
         portfolioResults.push({
           id: p.id, name: p.name, color,
           cumulative: [], drawdown: [],
-          totalInvested: 0, finalValue: 0, mwrr: null, profitFactor: null,
+          totalInvested: 0, finalValue: 0, transactionCosts: 0, mwrr: null, profitFactor: null,
           storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
            investedSeries: [], valueSeries: [], assetValues: [], cashflows: [],
           simulationInputs: null,
@@ -569,6 +577,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             p.rebalFreq,
             dividendsByFund,
             portfolioPurchasePrices,
+            p.transactionCostRates,
           )
         : []
 
@@ -578,6 +587,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         drawdown: dcaResult.drawdown,
         totalInvested: dcaResult.totalInvested,
         finalValue: dcaResult.finalValue,
+        transactionCosts: dcaResult.transactionCosts.total,
         mwrr: dcaMWRR(dcaResult.cashflows),
         storm: dcaStormStats(dcaResult.drawdown, dcaResult.cumulative),
         profitFactor: dcaProfitFactor(dcaResult.returns),
@@ -591,6 +601,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           params: committed.params,
           rebalFreq: p.rebalFreq,
           purchasePrices: portfolioPurchasePrices,
+          transactionCostRates: p.transactionCostRates,
         },
         dividendNarrative,
       })
@@ -669,6 +680,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     color: r.color,
     finalValue: r.finalValue,
     totalInvested: r.totalInvested,
+    transactionCosts: r.transactionCosts,
     cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
     mwrr: r.mwrr,
     maxDrawdown: r.storm.maxDrawdown,
@@ -761,6 +773,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       color: r.color,
       slots: r.simulationInputs!.slots,
       rebalFreq: r.simulationInputs!.rebalFreq,
+      transactionCostRates: r.simulationInputs!.transactionCostRates,
     })), [validResults])
 
   const returnPainData = useMemo(() => validResults.map(r => ({
@@ -911,6 +924,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           portfolios: portfolios.map(p => ({
             slots: p.slots, rebalFreq: p.rebalFreq,
             name: p.isNameCustom ? p.name : undefined,
+            transactionCostRates: p.transactionCostRates,
           })),
         })} />
       </div>
@@ -1045,6 +1059,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               onRemoveSlot={idx => removeSlot(portfolio.id, idx)}
               onUpdateSlot={(idx, update) => updateSlot(portfolio.id, idx, update)}
               onSetEqualWeights={() => setEqualWeights(portfolio.id)}
+              transactionCostRates={portfolio.transactionCostRates}
+              onTransactionCostRatesChange={transactionCostRates => updatePortfolio(portfolio.id, { transactionCostRates })}
             />
           ))}
         </div>

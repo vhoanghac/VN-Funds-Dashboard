@@ -7,6 +7,7 @@ interface StatsRow {
   color: string
   finalValue: number
   totalInvested: number
+  transactionCosts: number
   cagr: number | null
   mwrr: number | null
   maxDrawdown: number | null
@@ -44,6 +45,10 @@ function DCAStatsTableImpl({ portfolios }: Props) {
               <th>
                 Tổng đầu tư
                 <span className="dca-info-icon" title="Tổng số tiền đã nạp vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
+              </th>
+              <th>
+                Thuế phí
+                <span className="dca-info-icon" title="Tổng phí mua, phí bán và thuế bán đã phát sinh trong backtest. Thuế bán chỉ phát sinh khi tái cân bằng tạo lệnh bán.">?</span>
               </th>
               <th>
                 Lợi nhuận tích lũy
@@ -90,6 +95,7 @@ function DCAStatsTableImpl({ portfolios }: Props) {
                   </td>
                   <td>{formatVND(Math.round(p.finalValue))}</td>
                   <td>{formatVND(p.totalInvested)}</td>
+                  <td>{formatVND(p.transactionCosts)}</td>
                   <td className={signClass(cumReturn)}>{formatSignedPercent(cumReturn)}</td>
                   <td className={signClass(p.cagr)}>{formatSignedPercent(p.cagr)}</td>
                   <td className={signClass(p.mwrr)}>{formatSignedPercent(p.mwrr)}</td>

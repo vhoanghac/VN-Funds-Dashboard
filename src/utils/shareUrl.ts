@@ -1,6 +1,6 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { Portfolio, PortfolioSlot, RebalanceFrequency } from '../types'
-import { isDCAFrequency, type DCAFrequency } from './dca'
+import type { Portfolio, PortfolioSlot, RebalanceFrequency, TransactionCostRates } from '../types'
+import { isDCAFrequency, normalizeTransactionCostRates, type DCAFrequency } from './dca'
 import { isCashMode, isLSvsDCAFreq, type CashMode, type LSvsDCAFreq } from './lsVsDca'
 import { parsePortfolio } from './portfolio'
 
@@ -116,7 +116,7 @@ export interface DcaShareState {
 interface CompactDca {
   i?: number; c?: number; f?: DCAFrequency; dm?: 'all' | 'years'; y?: number
   from?: string; to?: string
-  p?: { s: string; r: RebalanceFrequency; n?: string }[]
+  p?: { s: string; r: RebalanceFrequency; n?: string; bf?: number; sf?: number; st?: number }[]
 }
 
 export function buildDcaUrl(s: DcaShareState): string {
@@ -129,7 +129,14 @@ export function buildDcaUrl(s: DcaShareState): string {
     from: s.dateFrom || undefined,
     to: s.dateTo || undefined,
     p: s.portfolios
-      .map(portfolio => ({ s: encodeSlots(portfolio.slots), r: portfolio.rebalFreq, n: portfolio.name || undefined }))
+      .map(portfolio => ({
+        s: encodeSlots(portfolio.slots),
+        r: portfolio.rebalFreq,
+        n: portfolio.name || undefined,
+        bf: portfolio.transactionCostRates?.buyFeeRate,
+        sf: portfolio.transactionCostRates?.sellFeeRate,
+        st: portfolio.transactionCostRates?.sellTaxRate,
+      }))
       .filter(portfolio => portfolio.s),
   }
   const encoded = compressToEncodedURIComponent(JSON.stringify(compact))
@@ -173,6 +180,9 @@ function parseCompactDca(compressed: string): Partial<DcaShareState> | null {
           slots,
           rebalFreq: rawPortfolio.r,
           name: rawPortfolio.n,
+          transactionCostRates: hasTransactionCostRates(rawPortfolio)
+            ? parseTransactionCostRates(rawPortfolio)
+            : undefined,
         })
         if (portfolio) portfolios.push(portfolio)
       }
@@ -219,6 +229,18 @@ function parseLegacyDcaParams(p: URLSearchParams): Partial<DcaShareState> {
   if (portfolios.length > 0) result.portfolios = portfolios
 
   return result
+}
+
+function parseTransactionCostRates(value: Record<string, unknown>): TransactionCostRates {
+  return normalizeTransactionCostRates({
+    buyFeeRate: typeof value.bf === 'number' ? value.bf : undefined,
+    sellFeeRate: typeof value.sf === 'number' ? value.sf : undefined,
+    sellTaxRate: typeof value.st === 'number' ? value.st : undefined,
+  })
+}
+
+function hasTransactionCostRates(value: Record<string, unknown>): boolean {
+  return 'bf' in value || 'sf' in value || 'st' in value
 }
 
 // ─── LS vs DCA ────────────────────────────────────────────────────────────

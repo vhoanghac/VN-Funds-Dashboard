@@ -2390,6 +2390,40 @@ textarea {
   margin-bottom: 12px;
 }
 
+.portfolio-transaction-costs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.portfolio-transaction-costs-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.portfolio-transaction-cost-input {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.portfolio-transaction-cost-input input {
+  width: 52px;
+  padding: 4px 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
 .portfolio-icon-row {
   display: flex;
   justify-content: flex-end;

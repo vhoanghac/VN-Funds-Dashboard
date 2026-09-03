@@ -11,7 +11,7 @@
  * liệu của quỹ, không phụ thuộc khoảng thời gian đã chọn ở phần Thông số.
  */
 import { useMemo, memo } from 'react'
-import type { PricePoint, RebalanceFrequency } from '../types'
+import type { PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
 import { simulateDCA, slicePricesWithPredecessor, type DCASlot } from '../utils/dca'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { DcaBlock } from './DcaLayout'
@@ -33,6 +33,7 @@ export interface EntryPointPortfolio {
   color: string
   slots: DCASlot[]
   rebalFreq: RebalanceFrequency
+  transactionCostRates: TransactionCostRates
 }
 
 interface Props {
@@ -103,7 +104,7 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
           p.slots,
           { initialAmount: AMOUNT, cashflowAmount: 0, cashflowFreq: 'monthly' },
           p.rebalFreq,
-          { purchasePrices: alignedPurchase },
+          { purchasePrices: alignedPurchase, transactionCostRates: p.transactionCostRates },
         )
         return { portfolio: p, value: sim.cumulative.length > 0 ? sim.finalValue : null }
       })

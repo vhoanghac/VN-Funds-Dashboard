@@ -91,6 +91,7 @@ function refShouldRebal(prevDate: string, nextDate: string, freq: RebalanceFrequ
 const EMPTY_SIM: DCAResult = {
   values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [],
   totalInvested: 0, finalValue: 0,
+  transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 },
 }
 
 /**
@@ -228,7 +229,10 @@ function refSimulateDCA(
 
   const finalValue = values.length > 0 ? values[values.length - 1]!.value : 0
   const allCashflows = [...cashflows, { date: allDates[allDates.length - 1]!, amount: finalValue }]
-  return { values, invested, cashflows: allCashflows, cumulative, drawdown, returns, totalInvested, finalValue }
+  return {
+    values, invested, cashflows: allCashflows, cumulative, drawdown, returns, totalInvested, finalValue,
+    transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 },
+  }
 }
 
 /** MWRR — bisection (không đạo hàm) thay vì Newton-Raphson. */
