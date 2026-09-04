@@ -1,7 +1,6 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
-  LabelList,
 } from 'recharts'
 import type { YearlyReturn } from '../types'
 import { formatPercentFull, BASELINE_COLOR, DIMMED_COLOR } from '../utils/chartPlumbing'
@@ -97,16 +96,7 @@ export function YearlyPerformanceChart({ series, title = 'Hiệu suất theo t�
                 opacity={isDimmedBar ? 0.35 : 1}
                 radius={[2, 2, 0, 0]}
                 isAnimationActive={false}
-              >
-                {!isDimmedBar && (
-                  <LabelList
-                    dataKey={s.name}
-                    position="top"
-                    formatter={(v: number) => v !== null ? (v * 100).toFixed(1) + '%' : ''}
-                    style={{ fontSize: 10, fill: '#666' }}
-                  />
-                )}
-              </Bar>
+              />
             )
           })}
         </BarChart>
