@@ -240,14 +240,14 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
               MWRR
               <span
                 className="dca-info-icon"
-                title="Money-Weighted Rate of Return: lãi suất kép hàng năm có tính đến ĐÚNG thời điểm mỗi đồng được nạp vào, khác '% Lợi nhuận' (không phân biệt tiền vào sớm hay muộn). Đây là cách so sánh công bằng nhất giữa các kịch bản có tổng vốn và lịch nạp khác nhau."
+                title="Money-Weighted Rate of Return: lãi suất kép hàng năm có tính đến ĐÚNG thời điểm mỗi đồng được đầu tư, khác '% Lợi nhuận' (không phân biệt tiền vào sớm hay muộn). Đây là cách so sánh công bằng nhất giữa các kịch bản có tổng vốn và lịch đầu tư khác nhau."
               >?</span>
             </th>
             <th>
               Chi phí cơ hội
               <span
                 className="dca-info-icon"
-                title="Panic bỏ nạp nên đầu tư ít tiền hơn hẳn — nếu so thẳng giá trị cuối, chênh lệch sẽ bị thổi phồng bởi phần 'chưa đầu tư', không phải do đầu tư kém. Cột này giả định số tiền bị bỏ nạp vẫn nằm trong túi bạn (tiền mặt, không sinh lời), cộng lại vào giá trị cuối của panic rồi mới so với kịch bản nạp đều đặn — ra đúng phần thiệt hại do mua sai thời điểm và mất lãi kép."
+                title="Panic dừng đầu tư nên tổng vốn thấp hơn hẳn — nếu so thẳng giá trị cuối, chênh lệch sẽ bị thổi phồng bởi phần 'chưa đầu tư', không phải do đầu tư kém. Cột này giả định số tiền chưa đầu tư vẫn nằm trong túi bạn (tiền mặt, không sinh lời), cộng lại vào giá trị cuối của panic rồi mới so với kịch bản đầu tư đều đặn — ra đúng phần thiệt hại do mua sai thời điểm và mất lãi kép."
               >?</span>
             </th>
           </tr>
@@ -298,11 +298,11 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
       </table>
 
       <p className="dca-note">
-        * "Chi phí cơ hội" đã cộng lại phần tiền bị bỏ nạp (giả định giữ làm tiền mặt, không
+        * "Chi phí cơ hội" đã cộng lại phần tiền chưa đầu tư (giả định giữ làm tiền mặt, không
         sinh lời) trước khi so với kịch bản đầu tư đều đặn — nên đây là thiệt hại thực do mua
         sai thời điểm và mất lãi kép, không lẫn với việc panic đơn giản là có ít vốn hơn. "MWRR"
         là cách so sánh khác, có tính thời gian: lãi suất kép hàng năm theo đúng ngày mỗi đồng
-        được nạp vào.
+        được đầu tư.
       </p>
 
       {showTakeaways && (
@@ -319,7 +319,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
       <h4 className="dca-consist-subtitle">Ngược lại, nếu bạn tăng tiền khi thấy đỏ?</h4>
 
       <div className="dca-consist-boost-control">
-        <label>Tăng thêm mỗi lần nạp khi giảm sâu</label>
+        <label>Tăng thêm mỗi lần đầu tư khi giảm sâu</label>
         <div className="dca-amount-input">
           <MoneyInput value={extraAmount} onChange={onExtraAmountChange} min={0} />
           <span className="dca-currency">₫</span>
@@ -327,7 +327,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
       </div>
 
       <p className="dca-consist-sub">
-        Một số nhà đầu tư chọn cách ngược với hoảng loạn: chủ động nạp thêm tiền đúng lúc quỹ
+        Một số nhà đầu tư chọn cách ngược với hoảng loạn: chủ động đầu tư thêm tiền đúng lúc quỹ
         giảm sâu, tức mua thêm khi giá rẻ. Đây là phép thử tương tự ở trên, nhưng đảo chiều: so
         sánh đầu tư đều đặn với hai biến thể tăng thêm{' '}
         <strong>{formatVND(extraAmount)}</strong> mỗi lần quỹ giảm <strong>-15%</strong> và{' '}
@@ -378,7 +378,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
               MWRR
               <span
                 className="dca-info-icon"
-                title="Money-Weighted Rate of Return: lãi suất kép hàng năm có tính đến ĐÚNG thời điểm mỗi đồng được nạp vào, khác '% Lợi nhuận' (không phân biệt tiền vào sớm hay muộn). Đây là cách so sánh công bằng nhất giữa các kịch bản có tổng vốn và lịch nạp khác nhau."
+                title="Money-Weighted Rate of Return: lãi suất kép hàng năm có tính đến ĐÚNG thời điểm mỗi đồng được đầu tư, khác '% Lợi nhuận' (không phân biệt tiền vào sớm hay muộn). Đây là cách so sánh công bằng nhất giữa các kịch bản có tổng vốn và lịch đầu tư khác nhau."
               >?</span>
             </th>
           </tr>
@@ -471,10 +471,10 @@ function ConsistencyTakeaway({
   if (skipped15 === 0 && skipped25 === 0) {
     return (
       <div className="dca-consist-takeaway">
-        Trong kỳ này, không lần nạp tiền hàng tháng nào rơi đúng vào lúc quỹ giảm sâu quá
+        Trong kỳ này, không lần đầu tư hàng tháng nào rơi đúng vào lúc quỹ giảm sâu quá
         -15%, nên cả ba kịch bản cho kết quả giống nhau. Điều này không có nghĩa quỹ chưa
         từng giảm đến mức đó. Quỹ vẫn có thể đã giảm sâu như vậy, chỉ là gọn trong vài tuần
-        ngắn giữa hai lần nạp, không lần kiểm tra hàng tháng nào rơi đúng lúc. Xem bảng
+        ngắn giữa hai lần đầu tư, không lần kiểm tra hàng tháng nào rơi đúng lúc. Xem bảng
         "Các đợt sụt giảm lớn nhất" ở trên để biết quỹ thực sự từng giảm sâu đến đâu, hoặc
         thử kéo dài kỳ backtest để xem mình sẽ xử lý thế nào khi có bão thật.
       </div>
@@ -551,10 +551,10 @@ function BoostTakeaway({
   if (boosted15 === 0 && boosted25 === 0) {
     return (
       <div className="dca-consist-takeaway">
-        Trong kỳ này, không lần nạp tiền hàng tháng nào rơi đúng vào lúc quỹ giảm sâu quá
+        Trong kỳ này, không lần đầu tư hàng tháng nào rơi đúng vào lúc quỹ giảm sâu quá
         -15%, nên tăng tiền chưa có cơ hội áp dụng. Cả ba kịch bản cho kết quả giống nhau.
         Quỹ vẫn có thể từng giảm đến mức đó, chỉ là không rơi đúng vào ngày bạn định kỳ
-        nạp tiền.
+        đầu tư.
       </div>
     )
   }
@@ -570,7 +570,7 @@ function BoostTakeaway({
     <div className="dca-consist-takeaway">
       <p>
         Nếu bạn tăng thêm tiền mỗi khi quỹ giảm <strong>{bestLabel}</strong> từ đỉnh ({bestCount} lần,
-        tổng cộng nạp thêm <strong>{formatVND(bestExtra)}</strong>), MWRR (lãi suất kép hàng năm có
+        tổng cộng đầu tư thêm <strong>{formatVND(bestExtra)}</strong>), MWRR (lãi suất kép hàng năm có
         tính đến thời điểm dòng tiền) {better ? 'nhỉnh hơn' : 'lại kém hơn'} kịch bản đầu tư đều đặn
         ({formatSignedPercent(bestMWRR)}/năm so với {formatSignedPercent(baseMWRR)}/năm). Đây là phép
         so sánh công bằng hơn "% Lợi nhuận" thô ở bảng trên, vì MWRR tính đúng số năm mỗi đồng đã có

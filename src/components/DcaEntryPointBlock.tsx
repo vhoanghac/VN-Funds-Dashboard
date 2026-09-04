@@ -122,7 +122,7 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
       title="Cùng 100 triệu, vào ở thời điểm khác nhau"
       actions={<span
           className="chart-tooltip-icon"
-          title="Mô phỏng mua MỘT LẦN 100 triệu tại từng mốc thời gian rồi giữ đến nay (khác với mô phỏng nạp đều đặn ở các mục trên). Tính trên toàn bộ lịch sử dữ liệu của quỹ, không phụ thuộc khoảng thời gian bạn chọn ở phần Thông số."
+          title="Mô phỏng mua MỘT LẦN 100 triệu tại từng mốc thời gian rồi giữ đến nay (khác với mô phỏng đầu tư đều đặn ở các mục trên). Tính trên toàn bộ lịch sử dữ liệu của quỹ, không phụ thuộc khoảng thời gian bạn chọn ở phần Thông số."
         >?</span>}
     >
 

@@ -216,7 +216,7 @@ function buildPercentileText(pct: number): string {
     return `Bạn đang nằm trên median, tốt hơn ${pct.toFixed(0)}% các chu kỳ lịch sử. Một kết quả tử tế, không quá lung lay.`
   if (pct >= 25)
     return `Bạn đang nằm dưới median, chỉ hơn ${pct.toFixed(0)}% các chu kỳ lịch sử. Đừng vội phản bội chính mình bán ra. Giữ tiếp, trung bình sẽ kéo bạn về gần median.`
-  return `Bạn đang ở đáy của phân phối (percentile ${pct.toFixed(0)}). Thời điểm vào của bạn không thuận, nhưng đó không phải lỗi, không ai biết trước được. Điều quan trọng là tiếp tục nạp tiền đều đặn qua từng tháng, lịch sử cho thấy trung bình có xu hướng kéo về median khi giữ đủ lâu.`
+  return `Bạn đang ở đáy của phân phối (percentile ${pct.toFixed(0)}). Thời điểm vào của bạn không thuận, nhưng đó không phải lỗi, không ai biết trước được. Điều quan trọng là tiếp tục đầu tư đều đặn qua từng tháng, lịch sử cho thấy trung bình có xu hướng kéo về median khi giữ đủ lâu.`
 }
 
 interface Stats {
