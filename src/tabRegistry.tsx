@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { CalculatorId, DashboardState, FundMeta } from './types'
+import type { DashboardState, FundMeta } from './types'
 import type { DcaShareState, LsDcaShareState, ShareUrlState } from './utils/shareUrl'
 import { CompareTab } from './components/CompareTab'
 import { DCAPanel } from './components/DCAPanel'
@@ -7,10 +7,8 @@ import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { FundAnalysisPanel } from './components/FundAnalysisPanel'
 import { OverlapPanel } from './components/OverlapPanel'
 import { RebalanceSensitivityPanel } from './components/RebalanceSensitivityPanel'
-import { TacticalAllocationPanel } from './components/TacticalAllocationPanel'
 import { BitcoinPanel } from './components/BitcoinPanel'
 import { WallOfWorryPanel } from './components/WallOfWorryPanel'
-import { CalculatorTab } from './components/calculators/CalculatorTab'
 import { MethodologyPanel } from './components/MethodologyPanel'
 import { ChangelogPanel } from './components/ChangelogPanel'
 
@@ -29,12 +27,12 @@ import { ChangelogPanel } from './components/ChangelogPanel'
  * CSS đang dùng để style tiêu đề của tab So Sánh). Không khai báo thì để trống.
  */
 
-/** Kiểu id của tab. Khai báo tay ở đây (12 giá trị), registry và các file khác
+/** Kiểu id của tab. Khai báo tay ở đây (10 giá trị), registry và các file khác
  * đều suy từ nó — thêm tab phải thêm id vào union này VÀ một entry trong registry. */
 export type TabId =
   | 'compare' | 'dca' | 'lsdca' | 'fundanalysis' | 'overlap'
-  | 'rebalance' | 'tactical' | 'bitcoin' | 'wallofworry'
-  | 'calculator' | 'methodology' | 'changelog'
+  | 'rebalance' | 'bitcoin' | 'wallofworry'
+  | 'methodology' | 'changelog'
 
 /** Manifest của một tab trong registry. */
 export interface TabManifest {
@@ -58,7 +56,6 @@ export interface TabContext {
   onChangeDateFrom: (v: string | null) => void
   onChangeDateTo: (v: string | null) => void
   onChangeRollingPeriod: (p: number) => void
-  onSelectCalculator: (id: CalculatorId) => void
 }
 
 export const TAB_REGISTRY: TabManifest[] = [
@@ -112,12 +109,6 @@ export const TAB_REGISTRY: TabManifest[] = [
     render: ({ metadata }: TabContext): ReactElement => <RebalanceSensitivityPanel funds={metadata} />,
   },
   {
-    id: 'tactical',
-    label: 'Chiến Thuật Phân Bổ',
-    keepMounted: true,
-    render: ({ metadata }: TabContext): ReactElement => <TacticalAllocationPanel funds={metadata} />,
-  },
-  {
     id: 'bitcoin',
     label: 'Bitcoin',
     keepMounted: true,
@@ -128,14 +119,6 @@ export const TAB_REGISTRY: TabManifest[] = [
     label: 'Wall of Worry',
     keepMounted: true,
     render: (): ReactElement => <WallOfWorryPanel />,
-  },
-  {
-    id: 'calculator',
-    label: 'Máy Tính',
-    keepMounted: false,
-    render: ({ state, onSelectCalculator }: TabContext): ReactElement => (
-      <CalculatorTab calcId={state.calcId} onSelect={onSelectCalculator} />
-    ),
   },
   {
     id: 'methodology',

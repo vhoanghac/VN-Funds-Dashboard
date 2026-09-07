@@ -31,15 +31,15 @@ describe('SeoMetadata', () => {
 
     unmount()
     render(
-      <MemoryRouter initialEntries={['/?tab=calculator']}>
-        <SeoMetadata tab="calculator" />
+      <MemoryRouter initialEntries={['/?tab=bitcoin']}>
+        <SeoMetadata tab="bitcoin" />
       </MemoryRouter>,
     )
 
-    expect(document.title).toBe('Máy tính đầu tư và lãi kép | Fund Dashboard')
+    expect(document.title).toBe('Phân tích Bitcoin và quỹ đầu tư | Fund Dashboard')
     expect(document.head.querySelector('meta[property="og:title"]')).toHaveAttribute(
       'content',
-      'Máy tính đầu tư và lãi kép | Fund Dashboard',
+      'Phân tích Bitcoin và quỹ đầu tư | Fund Dashboard',
     )
     expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute(
       'href',

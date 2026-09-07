@@ -48,12 +48,6 @@ export const SEO_BY_TAB: Record<TabId, SeoMeta> = {
     heading: 'Mô Phỏng Tái Cân Bằng Danh Mục',
     indexable: true,
   },
-  tactical: {
-    title: 'Phân tích phân bổ chiến thuật | Fund Dashboard',
-    description: 'Kiểm tra chiến lược phân bổ chiến thuật trên dữ liệu lịch sử, cùng các cảnh báo về giới hạn backtest.',
-    heading: 'Phân Bổ Chiến Thuật',
-    indexable: true,
-  },
   bitcoin: {
     title: 'Phân tích Bitcoin và quỹ đầu tư | Fund Dashboard',
     description: 'So sánh Bitcoin với quỹ đầu tư và các tài sản khác trên dữ liệu lịch sử.',
@@ -64,12 +58,6 @@ export const SEO_BY_TAB: Record<TabId, SeoMeta> = {
     title: 'Wall of Worry: những nỗi lo thị trường | Fund Dashboard',
     description: 'Xem các nỗi lo thị trường từng xuất hiện và cách chúng kết thúc qua thời gian.',
     heading: 'Wall of Worry: Những Nỗi Lo Thị Trường',
-    indexable: true,
-  },
-  calculator: {
-    title: 'Máy tính đầu tư và lãi kép | Fund Dashboard',
-    description: 'Tính lãi kép, CAGR và mức phí quỹ ăn mòn giá trị đầu tư theo thời gian.',
-    heading: 'Máy Tính Đầu Tư và Lãi Kép',
     indexable: true,
   },
   methodology: {

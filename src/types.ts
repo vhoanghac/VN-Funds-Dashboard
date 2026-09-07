@@ -1,5 +1,5 @@
-import type { CALCULATOR_IDS } from './constants'
 import type { TabId } from './tabRegistry'
+import type { CALCULATOR_IDS } from './constants'
 
 /** Price data point (date, price) — used for both raw daily CSV rows and any resampled/aligned series */
 export interface PricePoint {
@@ -110,6 +110,9 @@ export interface Portfolio {
 export type StoredPortfolio =
   Omit<Portfolio, 'rebalFreq'> & { rebalFreq: string }
 
+/** Id của các calculator đã gỡ khỏi giao diện, giữ lại để source cũ vẫn typecheck. */
+export type CalculatorId = typeof CALCULATOR_IDS[number]
+
 export type PortfolioCardState = Omit<Portfolio, 'name'> & {
   id: string
   /** Số cố định gắn với danh mục lúc tạo, dùng làm fallback tên. */
@@ -119,12 +122,6 @@ export type PortfolioCardState = Omit<Portfolio, 'name'> & {
   isNameCustom: boolean
 }
 
-/**
- * Máy tính trong tab "Máy tính".
- * Suy ra từ CALCULATOR_IDS nên chỉ cần sửa danh sách đó, không sửa hai chỗ.
- */
-export type CalculatorId = typeof CALCULATOR_IDS[number]
-
 /** URL state for the dashboard */
 export interface DashboardState {
   funds: string[] // selected fund IDs for comparison
@@ -133,6 +130,4 @@ export interface DashboardState {
   rollingPeriod: number // months: 6, 12, 24, 36, 48
   dateFrom: string | null
   dateTo: string | null
-  /** Máy tính đang mở, chỉ có nghĩa khi tab === 'calculator' */
-  calcId?: CalculatorId
 }

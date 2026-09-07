@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from 'react'
-import type { CalculatorId } from './types'
 import { useFundMetadata } from './hooks/useFundData'
 import { useUrlState } from './hooks/useUrlState'
 import { TAB_REGISTRY, type TabContext } from './tabRegistry'
@@ -16,8 +15,6 @@ export function App() {
   const onChangeDateFrom = useCallback((v: string | null) => updateState({ dateFrom: v }), [updateState])
   const onChangeDateTo = useCallback((v: string | null) => updateState({ dateTo: v }), [updateState])
   const onChangeRollingPeriod = useCallback((p: number) => updateState({ rollingPeriod: p }), [updateState])
-  const onSelectCalculator = useCallback((calcId: CalculatorId) => updateState({ calcId }), [updateState])
-
   // Context truyền vào từng tab. Phải đặt TRƯỚC early return (Rules of Hooks):
   // mọi hook gọi vô điều kiện ở đầu component. Khi metadata chưa có thì chỉ
   // là [] thừa — không ai dùng vì đã return loading screen.
@@ -32,9 +29,8 @@ export function App() {
       onChangeDateFrom,
       onChangeDateTo,
       onChangeRollingPeriod,
-      onSelectCalculator,
     }),
-    [metadata, state, updateState, dcaUrlParams, lsDcaUrlParams, onChangeFunds, onChangeDateFrom, onChangeDateTo, onChangeRollingPeriod, onSelectCalculator],
+    [metadata, state, updateState, dcaUrlParams, lsDcaUrlParams, onChangeFunds, onChangeDateFrom, onChangeDateTo, onChangeRollingPeriod],
   )
 
   if (metaLoading) {

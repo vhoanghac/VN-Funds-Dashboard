@@ -1,8 +1,8 @@
 import { useSearchParams } from 'react-router-dom'
 import { useCallback, useMemo } from 'react'
-import type { CalculatorId, DashboardState } from '../types'
+import type { DashboardState } from '../types'
 import { TAB_REGISTRY, type TabId } from '../tabRegistry'
-import { CALCULATOR_IDS, DEFAULT_FUNDS } from '../constants'
+import { DEFAULT_FUNDS } from '../constants'
 import { loadLS, saveLS } from '../utils/localStorage'
 import {
   clearSharePayload,
@@ -20,8 +20,6 @@ import {
 
 const VALID_TABS = TAB_REGISTRY.map(t => t.id) as readonly TabId[]
 const VALID_PERIODS = [6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
-const DEFAULT_CALC_ID: CalculatorId = 'compound'
-
 function isShareTab(tab: string | null): tab is ShareTab {
   return tab === 'dca' || tab === 'lsdca'
 }
@@ -41,8 +39,6 @@ export function useUrlState() {
   const bParam = searchParams.get('b')
   const fromParam = searchParams.get('from')
   const toParam = searchParams.get('to')
-  const calcParam = searchParams.get('calcId')
-
   // Chỉ tạo lại mảng funds khi GIÁ TRỊ param thực sự đổi, không phải mỗi khi
   // searchParams đổi reference vì lý do khác (vd chuyển tab). Nhờ vậy các
   // component nhận `funds` làm prop (được bọc React.memo) mới thực sự bỏ
@@ -73,11 +69,6 @@ export function useUrlState() {
     rollingPeriod: VALID_PERIODS.includes(roll) ? roll : 12,
     dateFrom: fromParam || null,
     dateTo: toParam || null,
-    // Link hỏng hoặc ai sửa tay URL thì quay về máy tính đầu tiên, không để
-    // trang trắng. Cùng mẫu whitelist với VALID_TABS phía trên.
-    calcId: CALCULATOR_IDS.includes(calcParam as CalculatorId)
-      ? (calcParam as CalculatorId)
-      : DEFAULT_CALC_ID,
   }
 
   const dcaShareKey = getDcaShareKey(searchParams)
@@ -117,11 +108,9 @@ export function useUrlState() {
             clearSharePayload(next, isShareTab(previousTab) ? previousTab : null)
           }
           next.set('tab', updates.tab)
-          // Rời tab Máy tính thì bỏ luôn calcId, đừng để nó bám lại trong URL
-          // rồi lẫn vào link người ta copy đi chia sẻ.
-          if (updates.tab !== 'calculator') next.delete('calcId')
+          // Xoá state của các tab đã gỡ khỏi dashboard khỏi link cũ.
+          next.delete('calcId')
         }
-        if (updates.calcId !== undefined) next.set('calcId', updates.calcId)
         if (updates.rollingPeriod !== undefined) next.set('roll', String(updates.rollingPeriod))
         if (updates.dateFrom !== undefined) {
           if (updates.dateFrom) next.set('from', updates.dateFrom)
