@@ -46,6 +46,17 @@ describe('DCA share link', () => {
     expect(parseDcaParams()).toEqual(dcaState)
   })
 
+  it('keeps annual DCA contribution increase through a share link', () => {
+    const state = { ...dcaState, annualContributionIncreaseAmount: 1_000_000 }
+    visit(buildDcaUrl(state))
+    expect(parseDcaParams()!.annualContributionIncreaseAmount).toBe(1_000_000)
+  })
+
+  it('ignores an invalid annual DCA contribution increase in a compact link', () => {
+    visitCompact('dca', { ...dcaState, a: -1 })
+    expect(parseDcaParams()!.annualContributionIncreaseAmount).toBeUndefined()
+  })
+
   it('keeps a custom portfolio name', () => {
     visit(buildDcaUrl(dcaState))
     expect(parseDcaParams()!.portfolios![1]!.name).toBe('Danh mục của tôi')

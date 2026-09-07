@@ -28,6 +28,8 @@ export interface ProjectionPortfolio {
   cagr: number | null
   /** Số tiền nạp mỗi tháng (ước lượng từ lịch nạp thực tế) */
   monthlyContribution: number
+  /** Số tiền tăng thêm mỗi tháng sau mỗi năm, đã quy đổi theo tần suất DCA. */
+  monthlyContributionIncrease: number
 }
 
 interface Props {
@@ -88,12 +90,18 @@ function ProjectionBlockImpl({ portfolios }: Props) {
       </div>
       <div className="dca-projection-hint">
         Mặc định đúng bằng số tiền đầu tư định kỳ ở phần "Thông số" phía trên. Chỉnh số ở đây
-        chỉ thay đổi giả định cho tương lai — không ảnh hưởng tới lịch sử hay giá trị danh mục
-        hiện tại.
+        chỉ thay đổi giả định cho tương lai, không ảnh hưởng tới lịch sử hay giá trị danh mục
+        hiện tại. {portfolioGrowthHint(valid[0]?.monthlyContributionIncrease ?? 0)}
       </div>
 
       {valid.map(p => (
-        <ProjectionForPortfolio key={p.id} portfolio={p} years={years} monthlyContribution={effectiveContribution} />
+        <ProjectionForPortfolio
+          key={p.id}
+          portfolio={p}
+          years={years}
+          monthlyContribution={effectiveContribution}
+          monthlyContributionIncrease={p.monthlyContributionIncrease}
+        />
       ))}
 
       <div className="dca-projection-disclaimer">
@@ -108,21 +116,31 @@ function ProjectionBlockImpl({ portfolios }: Props) {
 
 export const ProjectionBlock = memo(ProjectionBlockImpl)
 
+function portfolioGrowthHint(increaseAmount: number): string {
+  return increaseAmount > 0
+    ? `Lịch sử của bạn đang tăng thêm ${formatVND(Math.round(increaseAmount))}/tháng sau mỗi năm, nên phần chiếu cũng tăng theo.`
+    : ''
+}
+
 function ProjectionForPortfolio({
   portfolio,
   years,
   monthlyContribution,
+  monthlyContributionIncrease,
 }: {
   portfolio: ProjectionPortfolio
   years: number
   monthlyContribution: number
+  monthlyContributionIncrease: number
 }) {
   const cagr = portfolio.cagr ?? 0
   const baseRate = cagr
   const pessRate = cagr - 0.03
   const optRate = cagr + 0.03
+  const effectiveMonthlyContributionIncrease = monthlyContribution > 0
+    ? monthlyContributionIncrease
+    : 0
 
-  const monthlyContrib = monthlyContribution
   const months = years * 12
 
   // Simulate month by month: value_next = value_now * (1 + monthly_rate) + monthly_contrib
@@ -132,12 +150,16 @@ function ProjectionForPortfolio({
     let v = portfolio.finalValue
     series.push({ month: 0, value: v })
     for (let m = 1; m <= months; m++) {
-      v = v * (1 + monthlyRate) + monthlyContrib
+      const contribution = monthlyContribution + effectiveMonthlyContributionIncrease * Math.floor((m - 1) / 12)
+      v = v * (1 + monthlyRate) + contribution
       series.push({ month: m, value: v })
     }
     return series
   }
 
+  const futureContributions = Array.from({ length: months }, (_, index) =>
+    monthlyContribution + effectiveMonthlyContributionIncrease * Math.floor(index / 12),
+  ).reduce((sum, contribution) => sum + contribution, 0)
   const basePts = project(baseRate)
   const pessPts = project(pessRate)
   const optPts = project(optRate)
@@ -152,8 +174,7 @@ function ProjectionForPortfolio({
   const finalBase = basePts[basePts.length - 1]!.value
   const finalPess = pessPts[pessPts.length - 1]!.value
   const finalOpt = optPts[optPts.length - 1]!.value
-  const totalContribFuture = monthlyContrib * months
-  const totalInvestedEnd = portfolio.totalInvested + totalContribFuture
+  const totalInvestedEnd = portfolio.totalInvested + futureContributions
   const growthBase = finalBase - totalInvestedEnd
 
   return (
@@ -210,10 +231,11 @@ function ProjectionForPortfolio({
         <strong>{formatVND(Math.round(portfolio.finalValue))}</strong> — đây là điểm xuất phát,
         không phải bắt đầu từ 0 đồng. Nếu CAGR giữ được mức lịch sử{' '}
         <strong>{(cagr * 100).toFixed(1)}%/năm</strong> và
-        bạn vẫn đều đặn nạp <strong>{formatVND(Math.round(monthlyContrib))}/tháng</strong>,
+        bạn vẫn đều đặn nạp <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>
+        {monthlyContributionIncrease > 0 && <> và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng</strong> mỗi năm</>},
         sau <strong>{years} năm nữa</strong> danh mục có thể chạm{' '}
         <strong>{formatVND(Math.round(finalBase))}</strong>. Trong đó bạn chỉ nạp thêm{' '}
-        {formatVND(Math.round(totalContribFuture))}, phần còn lại{' '}
+        {formatVND(Math.round(futureContributions))}, phần còn lại{' '}
         {formatVND(Math.round(growthBase))} là tiền đẻ tiền nhờ lãi kép. Đó là lý do vì
         sao đầu tư là cuộc chơi của thời gian, không phải của canh đỉnh canh đáy.
       </div>

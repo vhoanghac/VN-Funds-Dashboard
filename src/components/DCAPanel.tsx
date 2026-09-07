@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
+import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -86,6 +86,7 @@ interface DCAPortfolioResult {
   totalInvested: number
   finalValue: number
   transactionCosts: number
+  lastCashflowAmount: number
   mwrr: number | null
   storm: DCAStormStats
   profitFactor: number | null
@@ -101,7 +102,7 @@ interface DCAPortfolioResult {
   simulationInputs: {
     filteredPrices: Map<string, PricePoint[]>
     slots: DCASlot[]
-    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
+    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency; annualContributionIncreaseAmount?: number }
     rebalFreq: RebalanceFrequency
     /** Giá "bán ra" cho các slot là quỹ 2-giá (vàng) — xem simulateDCA's purchasePrices option. */
     purchasePrices: Map<string, PricePoint[]>
@@ -119,6 +120,7 @@ interface DcaParams {
   initialAmount: number
   cashflowAmount: number
   cashflowFreq: DCAFrequency
+  annualContributionIncreaseAmount: number
   dateFrom: string
   dateTo: string
 }
@@ -194,6 +196,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     const saved = readLocal<unknown>('dca_cashflowFreq', 'monthly')
     return isDCAFrequency(saved) ? saved : 'monthly'
   })
+  const [annualContributionIncreaseAmount, setAnnualContributionIncreaseAmount] = useState(() =>
+    normalizeAnnualContributionIncreaseAmount(
+      urlParams?.annualContributionIncreaseAmount ?? readLocal('dca_annualContributionIncreaseAmount', 0),
+    ),
+  )
   // Section kết quả đang hiện. Mặc định chỉ hiện phần Tóm Tắt.
   const [activeSection, setActiveSection] = useState<DcaSectionId>('summary')
   const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('')
@@ -243,6 +250,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     setCashflowAmount(urlParams?.cashflowAmount ?? (hasUrlPayload ? 0 : readLocal('dca_cashflowAmount', 0)))
     const savedFreq = readLocal<unknown>('dca_cashflowFreq', 'monthly')
     setCashflowFreq(urlParams?.cashflowFreq ?? (hasUrlPayload ? 'monthly' : isDCAFrequency(savedFreq) ? savedFreq : 'monthly'))
+    setAnnualContributionIncreaseAmount(
+      normalizeAnnualContributionIncreaseAmount(
+        urlParams?.annualContributionIncreaseAmount ?? (hasUrlPayload ? 0 : readLocal('dca_annualContributionIncreaseAmount', 0)),
+      ),
+    )
     nextIdRef.current = 1
     const localPortfolios = parsePortfolios(readLocal<unknown>('dca_portfolios', null))
     setPortfolios(hydrateDcaPortfolios(urlParams?.portfolios ?? (hasUrlPayload ? [] : localPortfolios), nextIdRef))
@@ -254,6 +266,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_initialAmount', initialAmount) }, [initialAmount])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_cashflowAmount', cashflowAmount) }, [cashflowAmount])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_cashflowFreq', cashflowFreq) }, [cashflowFreq])
+  useEffect(() => { if (!skipUrlPersist) saveLS('dca_annualContributionIncreaseAmount', annualContributionIncreaseAmount) }, [annualContributionIncreaseAmount])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_dateMode', dateMode) }, [dateMode])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_yearsBack', yearsBack) }, [yearsBack])
   useEffect(() => {
@@ -401,6 +414,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     initialAmount,
     cashflowAmount,
     cashflowFreq,
+    annualContributionIncreaseAmount,
     dateFrom: liveDates.from,
     dateTo: liveDates.to,
   }
@@ -420,6 +434,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         initialAmount,
         cashflowAmount,
         cashflowFreq,
+        annualContributionIncreaseAmount,
         dateFrom: getEffectiveDates().from,
         dateTo: getEffectiveDates().to,
       },
@@ -552,7 +567,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         portfolioResults.push({
           id: p.id, name: p.name, color,
           cumulative: [], drawdown: [],
-          totalInvested: 0, finalValue: 0, transactionCosts: 0, mwrr: null, profitFactor: null,
+          totalInvested: 0, finalValue: 0, transactionCosts: 0, lastCashflowAmount: 0, mwrr: null, profitFactor: null,
           storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
            investedSeries: [], valueSeries: [], assetValues: [], cashflows: [],
           simulationInputs: null,
@@ -588,6 +603,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         totalInvested: dcaResult.totalInvested,
         finalValue: dcaResult.finalValue,
         transactionCosts: dcaResult.transactionCosts.total,
+        lastCashflowAmount: dcaResult.lastCashflowAmount ?? 0,
         mwrr: dcaMWRR(dcaResult.cashflows),
         storm: dcaStormStats(dcaResult.drawdown, dcaResult.cumulative),
         profitFactor: dcaProfitFactor(dcaResult.returns),
@@ -832,7 +848,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     // vì cách đó lẫn cả "Số tiền đầu tiên" (nạp 1 lần) vào trung bình, khiến
     // con số cao hơn mức nạp định kỳ thực tế.
     const params = r.simulationInputs!.params
-    const monthlyContribution = monthlyEquivalentContribution(params.cashflowAmount, params.cashflowFreq)
+    const currentContribution = r.lastCashflowAmount > 0 ? r.lastCashflowAmount : params.cashflowAmount
+    const monthlyContribution = monthlyEquivalentContribution(currentContribution, params.cashflowFreq)
     return {
       id: r.id,
       name: r.name,
@@ -841,18 +858,25 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       finalValue: r.finalValue,
       cagr,
       monthlyContribution,
+      monthlyContributionIncrease: params.cashflowAmount > 0
+        ? monthlyEquivalentContribution(params.annualContributionIncreaseAmount ?? 0, params.cashflowFreq)
+        : 0,
     }
   }), [validResults])
 
   const monteCarloData = useMemo(() => validResults.map(r => {
     const params = r.simulationInputs!.params
-    const monthlyContribution = monthlyEquivalentContribution(params.cashflowAmount, params.cashflowFreq)
+    const currentContribution = r.lastCashflowAmount > 0 ? r.lastCashflowAmount : params.cashflowAmount
+    const monthlyContribution = monthlyEquivalentContribution(currentContribution, params.cashflowFreq)
     return {
       id: r.id,
       name: r.name,
       color: r.color,
       finalValue: r.finalValue,
       monthlyContribution,
+      monthlyContributionIncrease: params.cashflowAmount > 0
+        ? monthlyEquivalentContribution(params.annualContributionIncreaseAmount ?? 0, params.cashflowFreq)
+        : 0,
       cumulative: r.cumulative,
       cagr: dcaCagr(r.cumulative),
     }
@@ -919,7 +943,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       <div className="panel-header">
         <h2>Tích Lũy Định Kỳ (DCA)</h2>
         <ShareButton getUrl={() => buildDcaUrl({
-          initialAmount, cashflowAmount, cashflowFreq,
+          initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount,
           dateMode, yearsBack, dateFrom, dateTo,
           portfolios: portfolios.map(p => ({
             slots: p.slots, rebalFreq: p.rebalFreq,
@@ -1015,6 +1039,14 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             </div>
           </div>
 
+          {/* Annual contribution growth */}
+          <div className="dca-param-row">
+            <label className="dca-label">Tăng thêm mỗi năm</label>
+            <div className="dca-amount-input">
+              <MoneyInput value={annualContributionIncreaseAmount} onChange={setAnnualContributionIncreaseAmount} min={0} />
+              <span className="dca-currency">₫</span>
+            </div>
+          </div>
           {/* Cashflow Frequency */}
           <div className="dca-param-row">
             <label className="dca-label">Tần suất đầu tư</label>
@@ -1098,6 +1130,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         portfolios={portfolios}
         initialAmount={initialAmount}
         cashflowAmount={cashflowAmount}
+        cashflowFreq={cashflowFreq}
+        annualContributionIncreaseAmount={annualContributionIncreaseAmount}
         funds={funds}
         purchasePriceData={purchasePriceData}
         dateFrom={effectiveDates.from}

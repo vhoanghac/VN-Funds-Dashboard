@@ -134,6 +134,35 @@ export interface DCAParams {
   initialAmount: number    // Initial lump sum
   cashflowAmount: number   // Amount per period
   cashflowFreq: DCAFrequency
+  /** Số tiền tăng thêm cho mỗi kỳ DCA sau mỗi năm. */
+  annualContributionIncreaseAmount?: number
+}
+
+/** Chặn mức tăng tiền DCA hàng năm về số không âm. */
+export function normalizeAnnualContributionIncreaseAmount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, value)
+    : 0
+}
+
+/**
+ * Số tiền DCA ở một ngày cụ thể.
+ * Năm đầu dùng số tiền gốc; mỗi ngày kỷ niệm của kỳ DCA đầu tiên thì cộng thêm
+ * một khoản cố định. Nếu chưa có kỳ DCA nào thì trả về số tiền gốc.
+ */
+export function contributionAmountAtDate(
+  baseAmount: number,
+  annualIncreaseAmount: number | undefined,
+  firstContributionDate: string,
+  date: string,
+): number {
+  if (baseAmount <= 0) return 0
+  const increaseAmount = normalizeAnnualContributionIncreaseAmount(annualIncreaseAmount)
+  if (increaseAmount === 0 || !firstContributionDate || date <= firstContributionDate) return baseAmount
+
+  let years = Number(date.slice(0, 4)) - Number(firstContributionDate.slice(0, 4))
+  if (date.slice(5) < firstContributionDate.slice(5)) years--
+  return baseAmount + increaseAmount * Math.max(0, years)
 }
 
 /** Tỷ lệ thập phân, vd 0,001 = 0,1%. */
@@ -187,6 +216,8 @@ export interface DCAResult {
   totalInvested: number
   finalValue: number
   transactionCosts: TransactionCostSummary
+  /** Số tiền của kỳ DCA gần nhất, không bao gồm vốn đầu tư ban đầu. */
+  lastCashflowAmount?: number
 }
 
 export interface DCAAssetValueSeries {
@@ -464,8 +495,8 @@ function rebalanceUnits(
  *   đều set, skipContributionWhen được ưu tiên (bỏ qua = 0 đồng, bất kể override).
  */
 export interface DCASimulateOptions {
-  skipContributionWhen?: (date: string, currentDrawdown: number) => boolean
-  contributionAmountOverride?: (date: string, currentDrawdown: number) => number
+  skipContributionWhen?: (date: string, currentDrawdown: number, scheduledAmount: number) => boolean
+  contributionAmountOverride?: (date: string, currentDrawdown: number, scheduledAmount: number) => number
   /**
    * Giá dùng để QUY ĐỔI TIỀN THÀNH ĐƠN VỊ khi mua (initial amount, mỗi lần DCA
    * và phần mua khi tái cân bằng),
@@ -547,6 +578,8 @@ export function simulateDCA(
   const transactionCosts: TransactionCostSummary = { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 }
   let totalInvested = 0
   let lastInvestDate = ''
+  let firstCashflowDate: string | null = null
+  let lastCashflowAmount = 0
 
   // MWRR series (portfolio value includes cashflows)
   const values: { date: string; value: number }[] = []
@@ -620,15 +653,23 @@ export function simulateDCA(
     if (params.cashflowAmount > 0) {
       const investDate = lastInvestDate || allDates[0]!
       if (shouldInvest(investDate, date, params.cashflowFreq)) {
+        firstCashflowDate ??= date
+        const scheduledAmount = contributionAmountAtDate(
+          params.cashflowAmount,
+          params.annualContributionIncreaseAmount,
+          firstCashflowDate,
+          date,
+        )
         // Panic-stop hook: cho biến thể hành vi (vd: dừng nạp khi DD < -20%).
         // DD dùng ở đây là TWRR drawdown hiện tại (sau khi đã chain-link return hôm nay).
         // Retail đọc giá đóng cửa, thấy âm, rồi quyết định không nạp.
         const currentDD = twrrPeak > 0 ? (growthAfterMarket / twrrPeak - 1) : 0
-        const shouldSkip = options?.skipContributionWhen?.(date, currentDD) ?? false
+        const shouldSkip = options?.skipContributionWhen?.(date, currentDD, scheduledAmount) ?? false
         if (!shouldSkip) {
-          const amount = options?.contributionAmountOverride?.(date, currentDD) ?? params.cashflowAmount
+          const amount = options?.contributionAmountOverride?.(date, currentDD, scheduledAmount) ?? scheduledAmount
           buyFunds(amount, i)
           cashflows.push({ date, amount: -amount })
+          lastCashflowAmount = amount
         } else {
           // Vẫn phải dời mốc "kỳ nạp gần nhất" tới ngày hôm nay dù bỏ qua lần
           // này — nếu không, investDate ở trên cứ đứng yên tại lần nạp thành
@@ -700,7 +741,22 @@ export function simulateDCA(
     totalInvested,
     finalValue,
     transactionCosts,
+    lastCashflowAmount,
   }
+}
+
+/** Ngày đầu tiên engine sẽ nạp tiền định kỳ trên một chuỗi ngày. */
+export function firstScheduledContributionDate(
+  dates: string[],
+  freq: DCAFrequency,
+): string | null {
+  const firstDate = dates[0]
+  if (!firstDate) return null
+
+  for (let i = 1; i < dates.length; i++) {
+    if (shouldInvest(firstDate, dates[i]!, freq)) return dates[i]!
+  }
+  return null
 }
 
 /**
@@ -1382,6 +1438,7 @@ export function monteCarloProjection(opts: {
   monthlyReturnPool: number[]
   startValue: number
   monthlyContribution: number
+  monthlyContributionIncrease?: number
   horizonMonths: number
   iterations?: number
   blockSize?: number
@@ -1392,6 +1449,7 @@ export function monteCarloProjection(opts: {
     monthlyReturnPool: pool,
     startValue,
     monthlyContribution,
+    monthlyContributionIncrease = 0,
     horizonMonths,
     iterations = DEFAULT_ITERATIONS,
     blockSize = DEFAULT_BLOCK_SIZE,
@@ -1404,6 +1462,9 @@ export function monteCarloProjection(opts: {
   }
 
   const effectiveBlockSize = Math.max(1, Math.floor(blockSize))
+  const increaseAmount = monthlyContribution > 0
+    ? normalizeAnnualContributionIncreaseAmount(monthlyContributionIncrease)
+    : 0
 
   // matrix[month][iteration] — cột theo tháng để tính percentile cho fan chart.
   const matrix: number[][] = Array.from({ length: horizonMonths + 1 }, () => new Array(iterations))
@@ -1427,7 +1488,8 @@ export function monteCarloProjection(opts: {
         growth *= 1 + r
         if (growth > peakGrowth) peakGrowth = growth
         maxDrawdown = Math.min(maxDrawdown, growth / peakGrowth - 1)
-        v = v * (1 + r) + monthlyContribution
+        const contribution = monthlyContribution + increaseAmount * Math.floor(built / 12)
+        v = v * (1 + r) + contribution
         built++
         matrix[built]![it] = v
         values.push(v)
@@ -1571,6 +1633,7 @@ export function trackDividendNarrative(
   const stats = new Map<string, DividendNarrativeStats>()
   let totalInvested = 0
   let lastInvestDate = ''
+  let firstCashflowDate: string | null = null
   const normalizedTransactionCostRates = normalizeTransactionCostRates(transactionCostRates, {
     buyFeeRate: 0,
     sellFeeRate: 0,
@@ -1632,7 +1695,13 @@ export function trackDividendNarrative(
     if (params.cashflowAmount > 0) {
       const investDate = lastInvestDate || allDates[0]!
       if (shouldInvest(investDate, date, params.cashflowFreq)) {
-        buy(params.cashflowAmount, i)
+        firstCashflowDate ??= date
+        buy(contributionAmountAtDate(
+          params.cashflowAmount,
+          params.annualContributionIncreaseAmount,
+          firstCashflowDate,
+          date,
+        ), i)
       }
     }
 

@@ -101,6 +101,7 @@ export interface DcaShareState {
   initialAmount: number
   cashflowAmount: number
   cashflowFreq: DCAFrequency
+  annualContributionIncreaseAmount?: number
   dateMode: 'all' | 'years'
   yearsBack: number
   dateFrom: string
@@ -114,7 +115,7 @@ export interface DcaShareState {
  * danh mục/nhiều quỹ, mà vẫn chạy hoàn toàn phía client (không cần backend).
  */
 interface CompactDca {
-  i?: number; c?: number; f?: DCAFrequency; dm?: 'all' | 'years'; y?: number
+  i?: number; c?: number; f?: DCAFrequency; a?: number; dm?: 'all' | 'years'; y?: number
   from?: string; to?: string
   p?: { s: string; r: RebalanceFrequency; n?: string; bf?: number; sf?: number; st?: number }[]
 }
@@ -124,6 +125,7 @@ export function buildDcaUrl(s: DcaShareState): string {
     i: s.initialAmount,
     c: s.cashflowAmount,
     f: s.cashflowFreq,
+    a: s.annualContributionIncreaseAmount || undefined,
     dm: s.dateMode,
     y: s.dateMode === 'years' ? s.yearsBack : undefined,
     from: s.dateFrom || undefined,
@@ -164,6 +166,7 @@ function parseCompactDca(compressed: string): Partial<DcaShareState> | null {
 
     if (typeof c.i === 'number' && c.i >= 0) result.initialAmount = c.i
     if (typeof c.c === 'number' && c.c >= 0) result.cashflowAmount = c.c
+    if (typeof c.a === 'number' && c.a >= 0) result.annualContributionIncreaseAmount = c.a
     if ('f' in c) result.cashflowFreq = isDCAFrequency(c.f) ? c.f : 'monthly'
     if (c.dm === 'all' || c.dm === 'years') result.dateMode = c.dm
     if (typeof c.y === 'number' && c.y > 0) result.yearsBack = c.y

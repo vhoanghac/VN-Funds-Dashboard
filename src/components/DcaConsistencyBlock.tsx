@@ -31,7 +31,7 @@ export interface ConsistencyPortfolio {
   simulationInputs: {
     filteredPrices: Map<string, PricePoint[]>
     slots: DCASlot[]
-    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency }
+    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency; annualContributionIncreaseAmount?: number }
     rebalFreq: RebalanceFrequency
     purchasePrices: Map<string, PricePoint[]>
     transactionCostRates: TransactionCostRates
@@ -649,15 +649,17 @@ function runPanicStop(
   mwrr: number | null
 } {
   let skippedCount = 0
+  let skippedCash = 0
   const result = simulateDCA(
     inputs.filteredPrices,
     inputs.slots,
     inputs.params,
     inputs.rebalFreq,
     {
-      skipContributionWhen: (_date, dd) => {
+      skipContributionWhen: (_date, dd, scheduledAmount) => {
         if (dd <= threshold) {
           skippedCount++
+          skippedCash += scheduledAmount
           return true
         }
         return false
@@ -671,7 +673,7 @@ function runPanicStop(
     finalValue: result.finalValue,
     valueSeries: result.values,
     skippedCount,
-    skippedCash: skippedCount * inputs.params.cashflowAmount,
+    skippedCash,
     mwrr: computeMWRR(result.cashflows),
   }
 }
@@ -699,12 +701,12 @@ function runBoostBuy(
     inputs.params,
     inputs.rebalFreq,
     {
-      contributionAmountOverride: (_date, dd) => {
+      contributionAmountOverride: (_date, dd, scheduledAmount) => {
         if (dd <= threshold) {
           boostedCount++
-          return inputs.params.cashflowAmount + extraAmount
+          return scheduledAmount + extraAmount
         }
-        return inputs.params.cashflowAmount
+        return scheduledAmount
       },
       purchasePrices: inputs.purchasePrices,
       transactionCostRates: inputs.transactionCostRates,

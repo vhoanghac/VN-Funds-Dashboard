@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
   trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
-  normalizeTransactionCostRates, slicePricesWithPredecessor, trailingWindowCagr,
+  contributionAmountAtDate, firstScheduledContributionDate, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates,
+  slicePricesWithPredecessor, trailingWindowCagr,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -213,6 +214,58 @@ describe('computeDCARolling', () => {
  *    tất cả đều lấy từ cùng 1 chuỗi giá đã adjusted, nên tái đầu tư cổ tức tự
  *    động phản ánh nhất quán vào mọi chỉ số, không cần xử lý riêng lẻ ở từng nơi.
  */
+describe('annual DCA contribution increase', () => {
+  it('uses the first scheduled date for each DCA frequency', () => {
+    const dates = ['2020-01-15', '2020-01-31', '2020-02-01', '2020-04-01', '2021-01-01']
+    expect(firstScheduledContributionDate(dates, 'monthly')).toBe('2020-02-01')
+    expect(firstScheduledContributionDate(dates, 'quarterly')).toBe('2020-04-01')
+    expect(firstScheduledContributionDate(dates, 'yearly')).toBe('2021-01-01')
+    expect(firstScheduledContributionDate(['2020-01-15'], 'monthly')).toBeNull()
+  })
+
+  it('keeps the base amount before the first anniversary and adds a fixed amount afterward', () => {
+    expect(contributionAmountAtDate(100, 5, '2020-02-01', '2021-01-31')).toBe(100)
+    expect(contributionAmountAtDate(100, 5, '2020-02-01', '2021-02-01')).toBe(105)
+    expect(contributionAmountAtDate(100, 5, '2020-02-01', '2022-02-01')).toBe(110)
+  })
+
+  it('does not increase the initial lump sum or the first recurring contribution', () => {
+    const dates = ['2020-01-01', '2020-02-01', '2021-02-01', '2021-03-01']
+    const prices = new Map([['FUND', dates.map(date => ({ date, price: 100 }))]])
+    const result = simulateDCA(
+      prices,
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 1_000, cashflowAmount: 100, cashflowFreq: 'monthly', annualContributionIncreaseAmount: 5 },
+      'yearly',
+    )
+
+    expect(result.cashflows.filter(cf => cf.amount < 0).map(cf => cf.amount)).toEqual([-1_000, -100, -105, -105])
+    expect(result.totalInvested).toBe(1_310)
+    expect(result.lastCashflowAmount).toBeCloseTo(105)
+  })
+
+  it('does not create recurring contributions when the recurring amount is zero', () => {
+    const dates = ['2020-01-01', '2021-01-01', '2022-01-01']
+    const prices = new Map([['FUND', dates.map(date => ({ date, price: 100 }))]])
+    const result = simulateDCA(
+      prices,
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 1_000, cashflowAmount: 0, cashflowFreq: 'monthly', annualContributionIncreaseAmount: 1_000_000 },
+      'yearly',
+    )
+
+    expect(result.cashflows.filter(cf => cf.amount < 0)).toEqual([{ date: '2020-01-01', amount: -1_000 }])
+    expect(result.totalInvested).toBe(1_000)
+  })
+
+  it('normalizes missing and negative annual increases', () => {
+    expect(normalizeAnnualContributionIncreaseAmount(undefined)).toBe(0)
+    expect(normalizeAnnualContributionIncreaseAmount(-100)).toBe(0)
+    expect(normalizeAnnualContributionIncreaseAmount(1_500_000)).toBe(1_500_000)
+    expect(normalizeAnnualContributionIncreaseAmount(5)).toBe(5)
+  })
+})
+
 describe('simulateDCA + applyDividendAdjustment (integration)', () => {
   const FUND = 'TF'
 
@@ -414,6 +467,24 @@ describe('common price grid characterization', () => {
       net: 95,
     })
     expect(narrative[0]!.events[0]!.sharesAdded).toBeCloseTo(0.76, 12)
+  })
+
+  it('uses the increased contribution in the dividend narrative after the anniversary', () => {
+    const dates = [
+      '2020-01-01', '2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01',
+      '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01',
+      '2021-01-01', '2021-02-01', '2021-03-01', '2021-03-15',
+    ]
+    const narrative = trackDividendNarrative(
+      new Map([['FUND', dates.map(date => ({ date, price: 100 }))]]),
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 100, cashflowFreq: 'monthly', annualContributionIncreaseAmount: 50 },
+      'quarterly',
+      new Map([['FUND', [{ exDate: '2021-03-01', payDate: '2021-03-15', amountPerCert: 10, taxRate: 0 }]]]),
+    )
+
+    expect(narrative[0]!.events[0]!.unitsAtEx).toBe(13.5)
+    expect(narrative[0]!.events[0]!.gross).toBe(135)
   })
 })
 
@@ -1037,6 +1108,37 @@ describe('monteCarloProjection', () => {
     })
     expect(result).not.toBeNull()
     expect(result!.finalValues[0]!).toBeCloseTo(300, 6)
+  })
+
+  it('raises the monthly contribution after each 12-month anniversary', () => {
+    const result = monteCarloProjection({
+      monthlyReturnPool: new Array(24).fill(0),
+      startValue: 0,
+      monthlyContribution: 100,
+      monthlyContributionIncrease: 5,
+      horizonMonths: 24,
+      iterations: 1,
+      blockSize: 24,
+      rng: () => 0,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.finalValues[0]!).toBeCloseTo(12 * 100 + 12 * 105, 6)
+  })
+
+  it('does not create contributions when the base monthly contribution is zero', () => {
+    const result = monteCarloProjection({
+      monthlyReturnPool: new Array(24).fill(0),
+      startValue: 0,
+      monthlyContribution: 0,
+      monthlyContributionIncrease: 1_000_000,
+      horizonMonths: 24,
+      iterations: 1,
+      blockSize: 24,
+      rng: () => 0,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.finalValues[0]).toBe(0)
   })
 
   it('keeps path-level CAGR and drawdown separate from monthly contributions', () => {

@@ -25,6 +25,7 @@
 import { useMemo, useState } from 'react'
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { formatVND } from '../utils/vndFormat'
+import { contributionAmountAtDate, firstScheduledContributionDate, type DCAFrequency } from '../utils/dca'
 
 /** Đơn vị bán lẻ nhỏ nhất SJC thực tế cho cả vàng miếng và vàng nhẫn. */
 const SMALLEST_LOT_CHI = 0.5
@@ -34,6 +35,8 @@ interface Props {
   portfolios: PortfolioCardState[]
   initialAmount: number
   cashflowAmount: number
+  cashflowFreq: DCAFrequency
+  annualContributionIncreaseAmount: number
   funds: FundMeta[]
   /** Giá "bán ra" (sell) — giá nhà đầu tư phải trả khi mua. Chỉ có entry cho quỹ vàng. */
   purchasePriceData: Map<string, PricePoint[]>
@@ -97,7 +100,7 @@ function evaluateContribution(arr: PricePoint[], contribution: number) {
 }
 
 export function GoldLotWarningBlock({
-  portfolios, initialAmount, cashflowAmount, funds, purchasePriceData, dateFrom, dateTo,
+  portfolios, initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, funds, purchasePriceData, dateFrom, dateTo,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -123,7 +126,16 @@ export function GoldLotWarningBlock({
         const weightFrac = s.weight / 100
 
         if (cashflowAmount > 0) {
-          const contribution = cashflowAmount * weightFrac
+          const firstContributionDate = firstScheduledContributionDate(
+            prices.map(price => price.date),
+            cashflowFreq,
+          )
+          const contribution = contributionAmountAtDate(
+            cashflowAmount,
+            annualContributionIncreaseAmount,
+            firstContributionDate ?? '',
+            prices[prices.length - 1]!.date,
+          ) * weightFrac
           const detail = contribution > 0 ? evaluateContribution(prices, contribution) : null
           if (detail) {
             issues.push({
@@ -149,7 +161,7 @@ export function GoldLotWarningBlock({
       }
     }
     return { issues, hasGold }
-  }, [portfolios, initialAmount, cashflowAmount, purchasePriceData, goldFunds, dateFrom, dateTo])
+  }, [portfolios, initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, purchasePriceData, goldFunds, dateFrom, dateTo])
 
   if (!hasGold) return null
 

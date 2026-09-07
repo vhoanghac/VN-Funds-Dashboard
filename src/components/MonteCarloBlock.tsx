@@ -31,6 +31,7 @@ export interface MonteCarloPortfolio {
   color: string
   finalValue: number
   monthlyContribution: number
+  monthlyContributionIncrease: number
   cumulative: ReturnPoint[]
   /** CAGR lịch sử (TWRR) của chính giai đoạn dùng làm pool bootstrap — chỉ để đối chiếu, không dùng trong phép tính Monte Carlo. */
   cagr: number | null
@@ -187,6 +188,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
         target={target}
         years={years}
         monthlyContribution={effectiveContribution}
+        monthlyContributionIncrease={detailPortfolio.monthlyContributionIncrease}
         resampleVersion={resampleVersion}
       />
 
@@ -209,12 +211,14 @@ function MonteCarloForPortfolio({
   target,
   years,
   monthlyContribution,
+  monthlyContributionIncrease,
   resampleVersion,
 }: {
   portfolio: MonteCarloPortfolio
   target: number
   years: number
   monthlyContribution: number
+  monthlyContributionIncrease: number
   resampleVersion: number
 }) {
   const monthlyPool = useMemo(
@@ -228,13 +232,14 @@ function MonteCarloForPortfolio({
       monthlyReturnPool: monthlyPool,
       startValue: portfolio.finalValue,
       monthlyContribution,
+      monthlyContributionIncrease,
       horizonMonths: years * 12,
       iterations: ITERATIONS,
       blockSize: BLOCK_SIZE,
       rng: seededRandom(`${portfolio.id}:${resampleVersion}`),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthlyPool, portfolio.id, portfolio.finalValue, monthlyContribution, years, resampleVersion])
+  }, [monthlyPool, portfolio.id, portfolio.finalValue, monthlyContribution, monthlyContributionIncrease, years, resampleVersion])
 
   if (monthlyPool.length < BLOCK_SIZE) {
     return (
@@ -325,7 +330,10 @@ function MonteCarloForPortfolio({
 
       <div className="dca-mc-takeaway">
         Giả sử bạn vẫn đều đặn đầu tư{' '}
-        <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong> như hiện tại,
+        <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>{' '}
+        {monthlyContributionIncrease > 0
+          ? <>và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng mỗi năm</strong>,</>
+          : 'như hiện tại,'}
         sau <strong>{years} năm</strong> nữa: trong {ITERATIONS.toLocaleString('vi-VN')} kịch bản,
         bạn có tỷ lệ <strong>{prob.toFixed(0)}%</strong> đạt được mục tiêu{' '}
         <strong>{formatVND(target)}</strong>. Kịch bản tệ nhất (đáy 10%) chỉ còn{' '}
