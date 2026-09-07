@@ -2746,6 +2746,16 @@ textarea {
   color: var(--color-primary);
 }
 
+.share-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.share-btn:disabled:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
 .share-btn-copied {
   border-color: #16a34a;
   color: #16a34a;
@@ -3255,6 +3265,41 @@ textarea {
 
 .dca-cashflow-row .dca-freq-label {
   min-width: auto;
+}
+
+.dca-until-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+}
+
+.dca-until-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.dca-until-date {
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  min-width: 150px;
+}
+
+.dca-annual-increase-note,
+.dca-cashflow-error {
+  margin: -4px 0 12px 172px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.dca-cashflow-error {
+  color: var(--color-danger, #b91c1c);
 }
 
 .dca-note {
@@ -4380,6 +4425,10 @@ textarea {
     margin-left: 0;
     width: 100%;
   }
+
+  .dca-cashflow-row {
+    flex-wrap: wrap;
+  }
 }
 
 /* ─── Responsive: Mobile (≤480px) ────────────── */
@@ -4623,6 +4672,11 @@ textarea {
 
   .dca-label {
     min-width: 0;
+  }
+
+  .dca-annual-increase-note,
+  .dca-cashflow-error {
+    margin-left: 0;
   }
 
   .dca-amount-input input {

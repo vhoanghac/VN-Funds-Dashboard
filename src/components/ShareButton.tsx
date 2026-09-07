@@ -2,9 +2,10 @@ import { useState } from 'react'
 
 interface Props {
   getUrl: () => string
+  disabled?: boolean
 }
 
-export function ShareButton({ getUrl }: Props) {
+export function ShareButton({ getUrl, disabled = false }: Props) {
   const [copied, setCopied] = useState(false)
 
   async function handleClick() {
@@ -26,7 +27,7 @@ export function ShareButton({ getUrl }: Props) {
   }
 
   return (
-    <button className={`share-btn ${copied ? 'share-btn-copied' : ''}`} onClick={handleClick}>
+    <button className={`share-btn ${copied ? 'share-btn-copied' : ''}`} onClick={handleClick} disabled={disabled}>
       {copied ? '✓ Đã copy link!' : '🔗 Copy link chia sẻ'}
     </button>
   )

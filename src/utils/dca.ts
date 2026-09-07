@@ -2,6 +2,7 @@ import type { PortfolioSlot, PricePoint, ReturnPoint, RebalanceFrequency, Transa
 import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
 import { daysBetween } from './dateMath'
 import { rollingWindowStarts } from './dateWindow'
+import { isIsoDate } from './priceSeries'
 import { assetDisplayName } from './savingsAsset'
 import { percentileSorted } from './stats'
 
@@ -85,6 +86,42 @@ export function isDCAFrequency(value: unknown): value is DCAFrequency {
     value === 'yearly'
 }
 
+export interface DCAContributionPhase {
+  amount: number
+  freq: DCAFrequency
+  /** Ngày cuối cùng áp dụng dòng tiền này. null = không giới hạn. */
+  until: string | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** Đọc lịch DCA đã lưu, bỏ phần sau dòng đầu tiên không có ngày kết thúc. */
+export function normalizeDCAContributionSchedule(value: unknown): DCAContributionPhase[] {
+  if (!Array.isArray(value)) return []
+
+  const result: DCAContributionPhase[] = []
+  let previousUntil = ''
+  for (const raw of value) {
+    if (!isRecord(raw)) return []
+    if (typeof raw.amount !== 'number' || !Number.isFinite(raw.amount) || raw.amount < 0) return []
+    if (!isDCAFrequency(raw.freq)) return []
+    const amount = raw.amount
+    const freq = raw.freq
+    const until = raw.until === null || raw.until === undefined
+      ? null
+      : typeof raw.until === 'string' && isIsoDate(raw.until) && (!previousUntil || raw.until > previousUntil)
+        ? raw.until
+        : null
+    if (raw.until !== null && raw.until !== undefined && until === null) return []
+    result.push({ amount, freq, until })
+    if (until === null) break
+    previousUntil = until
+  }
+  return result
+}
+
 const MONTHLY_FACTOR: Record<DCAFrequency, number> = {
   daily: 365.25 / 12,
   weekly: 365.25 / 7 / 12,
@@ -136,6 +173,80 @@ export interface DCAParams {
   cashflowFreq: DCAFrequency
   /** Số tiền tăng thêm cho mỗi kỳ DCA sau mỗi năm. */
   annualContributionIncreaseAmount?: number
+  /** Lịch DCA nhiều giai đoạn. Nếu có từ 2 dòng, mức tăng hằng năm bị bỏ qua. */
+  cashflowSchedule?: DCAContributionPhase[]
+}
+
+export function resolveDCAContributionSchedule(params: DCAParams): DCAContributionPhase[] {
+  const schedule = normalizeDCAContributionSchedule(params.cashflowSchedule)
+  return schedule.length > 0
+    ? schedule
+    : [{ amount: Math.max(0, params.cashflowAmount), freq: params.cashflowFreq, until: null }]
+}
+
+export function dcaContributionPhaseAtDate(
+  schedule: DCAContributionPhase[],
+  date: string,
+): DCAContributionPhase {
+  return schedule[dcaContributionPhaseIndexAtDate(schedule, date)]
+    ?? { amount: 0, freq: 'monthly', until: null }
+}
+
+export function dcaContributionPhaseIndexAtDate(
+  schedule: DCAContributionPhase[],
+  date: string,
+): number {
+  for (let index = 0; index < schedule.length; index++) {
+    const phase = schedule[index]!
+    if (phase.until === null || date <= phase.until) return index
+  }
+  // A malformed/imported schedule may end with a finite date. After that date,
+  // no phase is active instead of silently continuing the final phase forever.
+  return schedule.length
+}
+
+/** Số tiền DCA đang áp dụng tại ngày đó, đã xét cả lịch nhiều dòng. */
+export function dcaContributionAmountAtDate(
+  params: DCAParams,
+  date: string,
+  firstContributionDate = '',
+): number {
+  const schedule = resolveDCAContributionSchedule(params)
+  const phase = dcaContributionPhaseAtDate(schedule, date)
+  if (schedule.length > 1) return phase.amount
+  return contributionAmountAtDate(
+    phase.amount,
+    params.annualContributionIncreaseAmount,
+    firstContributionDate,
+    date,
+  )
+}
+
+export function dcaMonthlyContributionSchedule(
+  schedule: DCAContributionPhase[],
+  startDate: string,
+  horizonMonths: number,
+): number[] {
+  const result: number[] = []
+  for (let month = 1; month <= horizonMonths; month++) {
+    const date = addIsoMonths(startDate, month)
+    const phase = dcaContributionPhaseAtDate(schedule, date)
+    result.push(monthlyEquivalentContribution(phase.amount, phase.freq))
+  }
+  return result
+}
+
+function addIsoMonths(date: string, months: number): string {
+  const [year, month, day] = date.split('-').map(Number)
+  if (!year || !month || !day) return date
+  const next = new Date(Date.UTC(year, month - 1 + months, 1))
+  const daysInTargetMonth = new Date(Date.UTC(
+    next.getUTCFullYear(),
+    next.getUTCMonth() + 1,
+    0,
+  )).getUTCDate()
+  next.setUTCDate(Math.min(day, daysInTargetMonth))
+  return next.toISOString().slice(0, 10)
 }
 
 /** Chặn mức tăng tiền DCA hàng năm về số không âm. */
@@ -563,6 +674,7 @@ export function simulateDCA(
   }
   const { dates: allDates, priceLookups: purchaseLookups } = purchaseGrid
   const priceLookups = commonGrid.priceLookups
+  const cashflowSchedule = resolveDCAContributionSchedule(params)
 
   // ── Run DCA simulation ──
   // Note: giá dailyPrices vào đây ĐÃ được dividend-adjusted ở layer CSV loader
@@ -580,6 +692,8 @@ export function simulateDCA(
   let lastInvestDate = ''
   let firstCashflowDate: string | null = null
   let lastCashflowAmount = 0
+  let activeCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, allDates[0]!)
+  let phaseJustStarted = false
 
   // MWRR series (portfolio value includes cashflows)
   const values: { date: string; value: number }[] = []
@@ -650,16 +764,18 @@ export function simulateDCA(
     const growthAfterMarket = twrrGrowth * (1 + marketReturn)
 
     // ── Step 2: DCA cashflow (add new money AFTER computing return) ──
-    if (params.cashflowAmount > 0) {
+    const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
+    if (nextCashflowPhase !== activeCashflowPhase) {
+      activeCashflowPhase = nextCashflowPhase
+      phaseJustStarted = true
+    }
+    const cashflowPhase = cashflowSchedule[activeCashflowPhase]
+      ?? { amount: 0, freq: 'monthly' as const, until: null }
+    if (cashflowPhase.amount > 0) {
       const investDate = lastInvestDate || allDates[0]!
-      if (shouldInvest(investDate, date, params.cashflowFreq)) {
+      if (phaseJustStarted || shouldInvest(investDate, date, cashflowPhase.freq)) {
         firstCashflowDate ??= date
-        const scheduledAmount = contributionAmountAtDate(
-          params.cashflowAmount,
-          params.annualContributionIncreaseAmount,
-          firstCashflowDate,
-          date,
-        )
+        const scheduledAmount = dcaContributionAmountAtDate(params, date, firstCashflowDate)
         // Panic-stop hook: cho biến thể hành vi (vd: dừng nạp khi DD < -20%).
         // DD dùng ở đây là TWRR drawdown hiện tại (sau khi đã chain-link return hôm nay).
         // Retail đọc giá đóng cửa, thấy âm, rồi quyết định không nạp.
@@ -678,6 +794,7 @@ export function simulateDCA(
           // skippedCount bị đếm trùng hàng chục lần cho một đợt bão duy nhất.
           lastInvestDate = date
         }
+        phaseJustStarted = false
       }
     }
 
@@ -1439,6 +1556,8 @@ export function monteCarloProjection(opts: {
   startValue: number
   monthlyContribution: number
   monthlyContributionIncrease?: number
+  /** Mức nạp theo từng tháng tương lai, dùng cho lịch DCA nhiều giai đoạn. */
+  monthlyContributionSchedule?: number[]
   horizonMonths: number
   iterations?: number
   blockSize?: number
@@ -1450,6 +1569,7 @@ export function monteCarloProjection(opts: {
     startValue,
     monthlyContribution,
     monthlyContributionIncrease = 0,
+    monthlyContributionSchedule,
     horizonMonths,
     iterations = DEFAULT_ITERATIONS,
     blockSize = DEFAULT_BLOCK_SIZE,
@@ -1488,7 +1608,8 @@ export function monteCarloProjection(opts: {
         growth *= 1 + r
         if (growth > peakGrowth) peakGrowth = growth
         maxDrawdown = Math.min(maxDrawdown, growth / peakGrowth - 1)
-        const contribution = monthlyContribution + increaseAmount * Math.floor(built / 12)
+        const contribution = monthlyContributionSchedule?.[built]
+          ?? (monthlyContribution + increaseAmount * Math.floor(built / 12))
         v = v * (1 + r) + contribution
         built++
         matrix[built]![it] = v
@@ -1634,6 +1755,9 @@ export function trackDividendNarrative(
   let totalInvested = 0
   let lastInvestDate = ''
   let firstCashflowDate: string | null = null
+  const cashflowSchedule = resolveDCAContributionSchedule(params)
+  let activeCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, allDates[0]!)
+  let phaseJustStarted = false
   const normalizedTransactionCostRates = normalizeTransactionCostRates(transactionCostRates, {
     buyFeeRate: 0,
     sellFeeRate: 0,
@@ -1692,16 +1816,19 @@ export function trackDividendNarrative(
     }
 
     // Cashflow
-    if (params.cashflowAmount > 0) {
+    const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
+    if (nextCashflowPhase !== activeCashflowPhase) {
+      activeCashflowPhase = nextCashflowPhase
+      phaseJustStarted = true
+    }
+    const cashflowPhase = cashflowSchedule[activeCashflowPhase]
+      ?? { amount: 0, freq: 'monthly' as const, until: null }
+    if (cashflowPhase.amount > 0) {
       const investDate = lastInvestDate || allDates[0]!
-      if (shouldInvest(investDate, date, params.cashflowFreq)) {
+      if (phaseJustStarted || shouldInvest(investDate, date, cashflowPhase.freq)) {
         firstCashflowDate ??= date
-        buy(contributionAmountAtDate(
-          params.cashflowAmount,
-          params.annualContributionIncreaseAmount,
-          firstCashflowDate,
-          date,
-        ), i)
+        buy(dcaContributionAmountAtDate(params, date, firstCashflowDate), i)
+        phaseJustStarted = false
       }
     }
 

@@ -15,6 +15,7 @@ import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, ReferenceLine,
 } from 'recharts'
 import { formatVND } from '../utils/vndFormat'
+import { dcaMonthlyContributionSchedule, type DCAContributionPhase } from '../utils/dca'
 import { MoneyInput } from './MoneyInput'
 import { DcaBlock } from './DcaLayout'
 
@@ -30,6 +31,9 @@ export interface ProjectionPortfolio {
   monthlyContribution: number
   /** Số tiền tăng thêm mỗi tháng sau mỗi năm, đã quy đổi theo tần suất DCA. */
   monthlyContributionIncrease: number
+  /** Lịch DCA nhiều giai đoạn, chỉ có khi người dùng đã tạo từ 2 dòng. */
+  cashflowSchedule?: DCAContributionPhase[]
+  projectionStartDate?: string
 }
 
 interface Props {
@@ -57,7 +61,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
   return (
     <DcaBlock title="Nếu bạn kiên trì thêm nhiều năm nữa thì sao?" className="dca-projection-block">
       <p className="dca-projection-sub">
-        Giả sử bạn vẫn đều đặn nạp tiền mỗi tháng như bây giờ, và CAGR tương lai loanh
+        Giả sử bạn vẫn duy trì lịch DCA hiện tại, và CAGR tương lai loanh
         quanh mức lịch sử. Đây không phải là dự báo, không ai biết trước thị trường sẽ
         đi đâu. Chỉ là để bạn cảm nhận sức nặng của lãi kép khi chơi đủ lâu.
       </p>
@@ -100,7 +104,13 @@ function ProjectionBlockImpl({ portfolios }: Props) {
           portfolio={p}
           years={years}
           monthlyContribution={effectiveContribution}
-          monthlyContributionIncrease={p.monthlyContributionIncrease}
+          monthlyContributionIncrease={p.cashflowSchedule && p.cashflowSchedule.length > 1
+            ? 0
+            : p.monthlyContributionIncrease}
+          cashflowSchedule={contribOverride === null && p.cashflowSchedule && p.cashflowSchedule.length > 1
+            ? p.cashflowSchedule
+            : undefined}
+          projectionStartDate={p.projectionStartDate}
         />
       ))}
 
@@ -127,11 +137,15 @@ function ProjectionForPortfolio({
   years,
   monthlyContribution,
   monthlyContributionIncrease,
+  cashflowSchedule,
+  projectionStartDate,
 }: {
   portfolio: ProjectionPortfolio
   years: number
   monthlyContribution: number
   monthlyContributionIncrease: number
+  cashflowSchedule?: DCAContributionPhase[]
+  projectionStartDate?: string
 }) {
   const cagr = portfolio.cagr ?? 0
   const baseRate = cagr
@@ -142,6 +156,12 @@ function ProjectionForPortfolio({
     : 0
 
   const months = years * 12
+  const scheduledContributions = cashflowSchedule && projectionStartDate
+    ? dcaMonthlyContributionSchedule(cashflowSchedule, projectionStartDate, months)
+    : null
+
+  const contributionAtMonth = (month: number) => scheduledContributions?.[month - 1]
+    ?? (monthlyContribution + effectiveMonthlyContributionIncrease * Math.floor((month - 1) / 12))
 
   // Simulate month by month: value_next = value_now * (1 + monthly_rate) + monthly_contrib
   function project(annualRate: number): { month: number; value: number }[] {
@@ -150,7 +170,7 @@ function ProjectionForPortfolio({
     let v = portfolio.finalValue
     series.push({ month: 0, value: v })
     for (let m = 1; m <= months; m++) {
-      const contribution = monthlyContribution + effectiveMonthlyContributionIncrease * Math.floor((m - 1) / 12)
+      const contribution = contributionAtMonth(m)
       v = v * (1 + monthlyRate) + contribution
       series.push({ month: m, value: v })
     }
@@ -158,7 +178,7 @@ function ProjectionForPortfolio({
   }
 
   const futureContributions = Array.from({ length: months }, (_, index) =>
-    monthlyContribution + effectiveMonthlyContributionIncrease * Math.floor(index / 12),
+    contributionAtMonth(index + 1),
   ).reduce((sum, contribution) => sum + contribution, 0)
   const basePts = project(baseRate)
   const pessPts = project(pessRate)
@@ -231,8 +251,10 @@ function ProjectionForPortfolio({
         <strong>{formatVND(Math.round(portfolio.finalValue))}</strong> — đây là điểm xuất phát,
         không phải bắt đầu từ 0 đồng. Nếu CAGR giữ được mức lịch sử{' '}
         <strong>{(cagr * 100).toFixed(1)}%/năm</strong> và
-        bạn vẫn đều đặn nạp <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>
-        {monthlyContributionIncrease > 0 && <> và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng</strong> mỗi năm</>},
+        {cashflowSchedule && cashflowSchedule.length > 1
+          ? ' bạn vẫn duy trì lịch DCA hiện tại'
+          : <> bạn vẫn đều đặn nạp <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>
+              {monthlyContributionIncrease > 0 && <> và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng</strong> mỗi năm</>}</>},
         sau <strong>{years} năm nữa</strong> danh mục có thể chạm{' '}
         <strong>{formatVND(Math.round(finalBase))}</strong>. Trong đó bạn chỉ nạp thêm{' '}
         {formatVND(Math.round(futureContributions))}, phần còn lại{' '}

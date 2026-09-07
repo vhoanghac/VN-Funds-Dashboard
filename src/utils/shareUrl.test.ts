@@ -52,9 +52,34 @@ describe('DCA share link', () => {
     expect(parseDcaParams()!.annualContributionIncreaseAmount).toBe(1_000_000)
   })
 
+  it('keeps a multi-phase cashflow schedule through a share link', () => {
+    const state: DcaShareState = {
+      ...dcaState,
+      cashflowSchedule: [
+        { amount: 5_000_000, freq: 'monthly', until: '2027-12-31' },
+        { amount: 8_000_000, freq: 'quarterly', until: null },
+      ],
+    }
+    visit(buildDcaUrl(state))
+    expect(parseDcaParams()!.cashflowSchedule).toEqual(state.cashflowSchedule)
+  })
+
   it('ignores an invalid annual DCA contribution increase in a compact link', () => {
     visitCompact('dca', { ...dcaState, a: -1 })
     expect(parseDcaParams()!.annualContributionIncreaseAmount).toBeUndefined()
+  })
+
+  it('falls back to the legacy cashflow fields when the compact schedule is malformed', () => {
+    visitCompact('dca', {
+      c: 100,
+      f: 'monthly',
+      cf: [{ a: '100', f: 'monthly', u: null }],
+    })
+    expect(parseDcaParams()).toMatchObject({
+      cashflowAmount: 100,
+      cashflowFreq: 'monthly',
+    })
+    expect(parseDcaParams()!.cashflowSchedule).toBeUndefined()
   })
 
   it('keeps a custom portfolio name', () => {

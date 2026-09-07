@@ -16,7 +16,7 @@ import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart,
 } from 'recharts'
 import type { PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { simulateDCA, dcaMWRR, type DCASlot, type DCAFrequency } from '../utils/dca'
+import { dcaContributionAmountAtDate, firstScheduledContributionDate, simulateDCA, dcaMWRR, type DCAParams, type DCASlot } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
 import { DcaBlock } from './DcaLayout'
@@ -31,7 +31,7 @@ export interface ConsistencyPortfolio {
   simulationInputs: {
     filteredPrices: Map<string, PricePoint[]>
     slots: DCASlot[]
-    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency; annualContributionIncreaseAmount?: number }
+    params: DCAParams
     rebalFreq: RebalanceFrequency
     purchasePrices: Map<string, PricePoint[]>
     transactionCostRates: TransactionCostRates
@@ -53,7 +53,18 @@ export interface ConsistencyChartRow {
 
 function DcaConsistencyBlockImpl({ portfolios }: Props) {
   const valid = portfolios.filter(p => p.simulationInputs !== null && p.valueSeries.length > 0)
-  const [extraAmount, setExtraAmount] = useState(() => valid[0]?.simulationInputs?.params.cashflowAmount ?? 0)
+  const [extraAmount, setExtraAmount] = useState(() => {
+    const portfolio = valid[0]
+    const inputs = portfolio?.simulationInputs
+    const endDate = portfolio?.valueSeries[portfolio.valueSeries.length - 1]?.date
+    const firstSeries = inputs ? Array.from(inputs.filteredPrices.values())[0] : undefined
+    const firstContributionDate = inputs && firstSeries
+      ? firstScheduledContributionDate(firstSeries.map(point => point.date), inputs.params.cashflowFreq) ?? ''
+      : ''
+    return inputs && endDate
+      ? dcaContributionAmountAtDate(inputs.params, endDate, firstContributionDate)
+      : 0
+  })
   if (portfolios.length === 0 || valid.length === 0) return null
 
   return (

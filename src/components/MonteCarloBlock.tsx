@@ -18,7 +18,7 @@ import {
 } from 'recharts'
 import {
   dcaMonthlyReturns, histogramBuckets, monteCarloProjection, probabilityAtLeast,
-  type MonteCarloRepresentativePath, type MonteCarloResult,
+  dcaMonthlyContributionSchedule, type DCAContributionPhase, type MonteCarloRepresentativePath, type MonteCarloResult,
 } from '../utils/dca'
 import { formatVND } from '../utils/vndFormat'
 import { MoneyInput } from './MoneyInput'
@@ -35,6 +35,9 @@ export interface MonteCarloPortfolio {
   cumulative: ReturnPoint[]
   /** CAGR lịch sử (TWRR) của chính giai đoạn dùng làm pool bootstrap — chỉ để đối chiếu, không dùng trong phép tính Monte Carlo. */
   cagr: number | null
+  /** Lịch DCA nhiều giai đoạn, chỉ có khi người dùng đã tạo từ 2 dòng. */
+  cashflowSchedule?: DCAContributionPhase[]
+  projectionStartDate?: string
 }
 
 interface Props {
@@ -189,6 +192,8 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
         years={years}
         monthlyContribution={effectiveContribution}
         monthlyContributionIncrease={detailPortfolio.monthlyContributionIncrease}
+        cashflowSchedule={contribOverride === null ? detailPortfolio.cashflowSchedule : undefined}
+        projectionStartDate={detailPortfolio.projectionStartDate}
         resampleVersion={resampleVersion}
       />
 
@@ -212,6 +217,8 @@ function MonteCarloForPortfolio({
   years,
   monthlyContribution,
   monthlyContributionIncrease,
+  cashflowSchedule,
+  projectionStartDate,
   resampleVersion,
 }: {
   portfolio: MonteCarloPortfolio
@@ -219,11 +226,19 @@ function MonteCarloForPortfolio({
   years: number
   monthlyContribution: number
   monthlyContributionIncrease: number
+  cashflowSchedule?: DCAContributionPhase[]
+  projectionStartDate?: string
   resampleVersion: number
 }) {
   const monthlyPool = useMemo(
     () => dcaMonthlyReturns(portfolio.cumulative).map(r => r.value),
     [portfolio.cumulative],
+  )
+  const monthlyContributionSchedule = useMemo(
+    () => cashflowSchedule && projectionStartDate
+      ? dcaMonthlyContributionSchedule(cashflowSchedule, projectionStartDate, years * 12)
+      : undefined,
+    [cashflowSchedule, projectionStartDate, years],
   )
 
   const result = useMemo(() => {
@@ -233,13 +248,14 @@ function MonteCarloForPortfolio({
       startValue: portfolio.finalValue,
       monthlyContribution,
       monthlyContributionIncrease,
+      monthlyContributionSchedule,
       horizonMonths: years * 12,
       iterations: ITERATIONS,
       blockSize: BLOCK_SIZE,
       rng: seededRandom(`${portfolio.id}:${resampleVersion}`),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthlyPool, portfolio.id, portfolio.finalValue, monthlyContribution, monthlyContributionIncrease, years, resampleVersion])
+  }, [monthlyPool, portfolio.id, portfolio.finalValue, monthlyContribution, monthlyContributionIncrease, monthlyContributionSchedule, years, resampleVersion])
 
   if (monthlyPool.length < BLOCK_SIZE) {
     return (
@@ -329,11 +345,15 @@ function MonteCarloForPortfolio({
       </div>
 
       <div className="dca-mc-takeaway">
-        Giả sử bạn vẫn đều đặn đầu tư{' '}
-        <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>{' '}
-        {monthlyContributionIncrease > 0
-          ? <>và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng mỗi năm</strong>,</>
-          : 'như hiện tại,'}
+        Giả sử bạn vẫn duy trì{' '}
+        {cashflowSchedule && cashflowSchedule.length > 1
+          ? 'lịch DCA nhiều giai đoạn hiện tại,'
+          : <>
+              đầu tư <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>{' '}
+              {monthlyContributionIncrease > 0
+                ? <>và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng mỗi năm</strong>,</>
+                : 'như hiện tại,'}
+            </>}
         sau <strong>{years} năm</strong> nữa: trong {ITERATIONS.toLocaleString('vi-VN')} kịch bản,
         bạn có tỷ lệ <strong>{prob.toFixed(0)}%</strong> đạt được mục tiêu{' '}
         <strong>{formatVND(target)}</strong>. Kịch bản tệ nhất (đáy 10%) chỉ còn{' '}

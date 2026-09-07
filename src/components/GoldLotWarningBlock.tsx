@@ -25,7 +25,7 @@
 import { useMemo, useState } from 'react'
 import type { FundMeta, PortfolioCardState, PricePoint } from '../types'
 import { formatVND } from '../utils/vndFormat'
-import { contributionAmountAtDate, firstScheduledContributionDate, type DCAFrequency } from '../utils/dca'
+import { dcaContributionAmountAtDate, dcaContributionPhaseAtDate, firstScheduledContributionDate, type DCAContributionPhase, type DCAFrequency } from '../utils/dca'
 
 /** Đơn vị bán lẻ nhỏ nhất SJC thực tế cho cả vàng miếng và vàng nhẫn. */
 const SMALLEST_LOT_CHI = 0.5
@@ -37,6 +37,7 @@ interface Props {
   cashflowAmount: number
   cashflowFreq: DCAFrequency
   annualContributionIncreaseAmount: number
+  cashflowSchedule: DCAContributionPhase[]
   funds: FundMeta[]
   /** Giá "bán ra" (sell) — giá nhà đầu tư phải trả khi mua. Chỉ có entry cho quỹ vàng. */
   purchasePriceData: Map<string, PricePoint[]>
@@ -100,7 +101,7 @@ function evaluateContribution(arr: PricePoint[], contribution: number) {
 }
 
 export function GoldLotWarningBlock({
-  portfolios, initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, funds, purchasePriceData, dateFrom, dateTo,
+  portfolios, initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, cashflowSchedule, funds, purchasePriceData, dateFrom, dateTo,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -125,16 +126,19 @@ export function GoldLotWarningBlock({
         if (prices.length === 0) continue
         const weightFrac = s.weight / 100
 
-        if (cashflowAmount > 0) {
+        const schedule = cashflowSchedule.length > 0
+          ? cashflowSchedule
+          : [{ amount: cashflowAmount, freq: cashflowFreq, until: null }]
+        const activePhase = dcaContributionPhaseAtDate(schedule, prices[prices.length - 1]!.date)
+        if (activePhase.amount > 0) {
           const firstContributionDate = firstScheduledContributionDate(
             prices.map(price => price.date),
-            cashflowFreq,
+            activePhase.freq,
           )
-          const contribution = contributionAmountAtDate(
-            cashflowAmount,
-            annualContributionIncreaseAmount,
-            firstContributionDate ?? '',
+          const contribution = dcaContributionAmountAtDate(
+            { initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, cashflowSchedule: schedule },
             prices[prices.length - 1]!.date,
+            schedule.length > 1 ? '' : firstContributionDate ?? '',
           ) * weightFrac
           const detail = contribution > 0 ? evaluateContribution(prices, contribution) : null
           if (detail) {
@@ -161,7 +165,7 @@ export function GoldLotWarningBlock({
       }
     }
     return { issues, hasGold }
-  }, [portfolios, initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, purchasePriceData, goldFunds, dateFrom, dateTo])
+  }, [portfolios, initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount, cashflowSchedule, purchasePriceData, goldFunds, dateFrom, dateTo])
 
   if (!hasGold) return null
 

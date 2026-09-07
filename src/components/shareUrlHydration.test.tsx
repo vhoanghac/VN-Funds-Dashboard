@@ -51,6 +51,22 @@ afterEach(() => {
 })
 
 describe('share URL hydration', () => {
+  it('rehydrates a multi-phase DCA schedule from localStorage', async () => {
+    saveLS('dca_cashflowSchedule', [
+      { amount: 5_000_000, freq: 'monthly', until: '2027-12-31' },
+      { amount: 8_000_000, freq: 'quarterly', until: null },
+    ])
+
+    render(
+      <BrowserRouter>
+        <DcaHarness />
+      </BrowserRouter>,
+    )
+
+    await waitFor(() => expect(document.querySelectorAll('.dca-cashflow-row')).toHaveLength(2))
+    expect(document.querySelectorAll('.dca-cashflow-row')[1]?.querySelector('input')).toHaveValue('8.000.000')
+  })
+
   it('rehydrates DCA inputs without persisting the shared values', async () => {
     saveLS('dca_initialAmount', 9_000_000)
     window.history.replaceState({}, '', `/?tab=dca&s=${compressToEncodedURIComponent(JSON.stringify({ i: 1_000_000 }))}`)

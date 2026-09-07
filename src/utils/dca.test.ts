@@ -3,7 +3,7 @@ import {
   dcaYearlyMWRR, computeDCARolling, derivePortfolioName, simulateDCA,
   trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
   contributionAmountAtDate, firstScheduledContributionDate, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates,
-  slicePricesWithPredecessor, trailingWindowCagr,
+  dcaMonthlyContributionSchedule, normalizeDCAContributionSchedule, slicePricesWithPredecessor, trailingWindowCagr,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -263,6 +263,130 @@ describe('annual DCA contribution increase', () => {
     expect(normalizeAnnualContributionIncreaseAmount(-100)).toBe(0)
     expect(normalizeAnnualContributionIncreaseAmount(1_500_000)).toBe(1_500_000)
     expect(normalizeAnnualContributionIncreaseAmount(5)).toBe(5)
+  })
+
+  it('switches amount and frequency at each contribution phase boundary', () => {
+    const dates = ['2020-01-01', '2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01']
+    const prices = new Map([['FUND', dates.map(date => ({ date, price: 100 }))]])
+    const result = simulateDCA(
+      prices,
+      [{ fundId: 'FUND', weight: 100 }],
+      {
+        initialAmount: 0,
+        cashflowAmount: 100,
+        cashflowFreq: 'monthly',
+        annualContributionIncreaseAmount: 1_000,
+        cashflowSchedule: [
+          { amount: 100, freq: 'monthly', until: '2020-03-01' },
+          { amount: 200, freq: 'quarterly', until: null },
+        ],
+      },
+      'yearly',
+    )
+
+    expect(result.cashflows.filter(cf => cf.amount < 0)).toEqual([
+      { date: '2020-02-01', amount: -100 },
+      { date: '2020-03-01', amount: -100 },
+      { date: '2020-04-01', amount: -200 },
+      { date: '2020-07-01', amount: -200 },
+    ])
+  })
+
+  it('starts the new phase on the first grid date after an off-grid boundary', () => {
+    const dates = ['2024-01-01', '2024-01-10', '2024-01-16', '2024-02-01']
+    const result = simulateDCA(
+      new Map([['FUND', dates.map(date => ({ date, price: 100 }))]]),
+      [{ fundId: 'FUND', weight: 100 }],
+      {
+        initialAmount: 0,
+        cashflowAmount: 100,
+        cashflowFreq: 'monthly',
+        cashflowSchedule: [
+          { amount: 100, freq: 'monthly', until: '2024-01-15' },
+          { amount: 200, freq: 'yearly', until: null },
+        ],
+      },
+      'yearly',
+    )
+
+    expect(result.cashflows.filter(cf => cf.amount < 0)).toEqual([
+      { date: '2024-01-16', amount: -200 },
+    ])
+  })
+
+  it('ignores annual increase when multiple contribution phases exist', () => {
+    const schedule = [
+      { amount: 100, freq: 'monthly' as const, until: '2020-02-01' },
+      { amount: 200, freq: 'monthly' as const, until: null },
+    ]
+    const prices = new Map([['FUND', ['2020-01-01', '2020-02-01', '2020-03-01'].map(date => ({ date, price: 100 }))]])
+    const result = simulateDCA(
+      prices,
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 0, cashflowAmount: 100, cashflowFreq: 'monthly', annualContributionIncreaseAmount: 9_999, cashflowSchedule: schedule },
+      'yearly',
+    )
+
+    expect(result.cashflows.filter(cf => cf.amount < 0).map(cf => cf.amount)).toEqual([-100, -200])
+  })
+
+  it('normalizes a persisted schedule and stops at the first open-ended row', () => {
+    expect(normalizeDCAContributionSchedule([
+      { amount: 100, freq: 'monthly', until: '2025-12-31' },
+      { amount: 200, freq: 'weekly', until: null },
+      { amount: 300, freq: 'daily', until: '2030-12-31' },
+    ])).toEqual([
+      { amount: 100, freq: 'monthly', until: '2025-12-31' },
+      { amount: 200, freq: 'weekly', until: null },
+    ])
+  })
+
+  it('rejects malformed schedule rows instead of overriding the legacy fields', () => {
+    expect(normalizeDCAContributionSchedule([
+      { amount: '100', freq: 'monthly', until: null },
+      { amount: 200, freq: 'weekly', until: null },
+    ])).toEqual([])
+    expect(normalizeDCAContributionSchedule([
+      { amount: 100, freq: 'monthly', until: '2025-12-31' },
+      { amount: 200, freq: 'monthly', until: '2025-01-01' },
+    ])).toEqual([])
+  })
+
+  it('stops contributions after a malformed schedule with no open-ended phase', () => {
+    const result = simulateDCA(
+      new Map([['FUND', [
+        { date: '2020-01-01', price: 100 },
+        { date: '2020-02-01', price: 100 },
+        { date: '2020-03-01', price: 100 },
+        { date: '2020-04-01', price: 100 },
+      ]]]),
+      [{ fundId: 'FUND', weight: 100 }],
+      {
+        initialAmount: 0,
+        cashflowAmount: 100,
+        cashflowFreq: 'monthly',
+        cashflowSchedule: [{ amount: 100, freq: 'monthly', until: '2020-02-15' }],
+      },
+      'yearly',
+    )
+
+    expect(result.cashflows.filter(cf => cf.amount < 0)).toEqual([
+      { date: '2020-02-01', amount: -100 },
+    ])
+  })
+
+  it('converts each future phase to its own monthly equivalent', () => {
+    expect(dcaMonthlyContributionSchedule([
+      { amount: 12_000_000, freq: 'monthly', until: '2026-06-30' },
+      { amount: 3_000_000, freq: 'quarterly', until: null },
+    ], '2026-05-15', 3)).toEqual([12_000_000, 1_000_000, 1_000_000])
+  })
+
+  it('keeps the projection date when comparing a mid-month phase boundary', () => {
+    expect(dcaMonthlyContributionSchedule([
+      { amount: 100, freq: 'monthly', until: '2026-06-15' },
+      { amount: 300, freq: 'monthly', until: null },
+    ], '2026-05-31', 2)).toEqual([300, 300])
   })
 })
 
@@ -1123,6 +1247,22 @@ describe('monteCarloProjection', () => {
     })
     expect(result).not.toBeNull()
     expect(result!.finalValues[0]!).toBeCloseTo(12 * 100 + 12 * 105, 6)
+  })
+
+  it('uses a supplied monthly schedule instead of the annual increase', () => {
+    const result = monteCarloProjection({
+      monthlyReturnPool: new Array(3).fill(0),
+      startValue: 0,
+      monthlyContribution: 100,
+      monthlyContributionIncrease: 999,
+      monthlyContributionSchedule: [200, 300, 400],
+      horizonMonths: 3,
+      iterations: 1,
+      blockSize: 3,
+      rng: () => 0,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.finalValues[0]!).toBeCloseTo(900, 6)
   })
 
   it('does not create contributions when the base monthly contribution is zero', () => {

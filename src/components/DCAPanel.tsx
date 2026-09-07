@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, isDCAFrequency, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
+import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -102,7 +102,7 @@ interface DCAPortfolioResult {
   simulationInputs: {
     filteredPrices: Map<string, PricePoint[]>
     slots: DCASlot[]
-    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency; annualContributionIncreaseAmount?: number }
+    params: { initialAmount: number; cashflowAmount: number; cashflowFreq: DCAFrequency; annualContributionIncreaseAmount?: number; cashflowSchedule?: DCAContributionPhase[] }
     rebalFreq: RebalanceFrequency
     /** Giá "bán ra" cho các slot là quỹ 2-giá (vàng) — xem simulateDCA's purchasePrices option. */
     purchasePrices: Map<string, PricePoint[]>
@@ -121,6 +121,7 @@ interface DcaParams {
   cashflowAmount: number
   cashflowFreq: DCAFrequency
   annualContributionIncreaseAmount: number
+  cashflowSchedule: DCAContributionPhase[]
   dateFrom: string
   dateTo: string
 }
@@ -165,6 +166,30 @@ const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'yearly', label: '1 năm' },
 ]
 
+function buildCashflowSchedule(
+  scheduleValue: unknown,
+  amountValue: unknown,
+  freqValue: unknown,
+): DCAContributionPhase[] {
+  const schedule = normalizeDCAContributionSchedule(scheduleValue)
+  if (schedule.length > 0) return schedule
+  return [{
+    amount: typeof amountValue === 'number' && Number.isFinite(amountValue) ? Math.max(0, amountValue) : 0,
+    freq: isDCAFrequency(freqValue) ? freqValue : 'monthly',
+    until: null,
+  }]
+}
+
+function cashflowScheduleError(schedule: DCAContributionPhase[]): string | null {
+  for (let i = 0; i < schedule.length - 1; i++) {
+    const until = schedule[i]!.until
+    const nextUntil = schedule[i + 1]!.until
+    if (!until) return `Dòng tiền DCA ${i + 1} cần có ngày kết thúc`
+    if (nextUntil && nextUntil <= until) return 'Các ngày kết thúc DCA phải tăng dần.'
+  }
+  return null
+}
+
 function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const nextIdRef = useRef(1)
 
@@ -188,14 +213,15 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const [initialAmount, setInitialAmount] = useState(
     urlParams?.initialAmount ?? readLocal('dca_initialAmount', 5_000_000)
   )
-  const [cashflowAmount, setCashflowAmount] = useState(
-    urlParams?.cashflowAmount ?? readLocal('dca_cashflowAmount', 0)
+  const [cashflowSchedule, setCashflowSchedule] = useState<DCAContributionPhase[]>(() =>
+    buildCashflowSchedule(
+      urlParams?.cashflowSchedule ?? readLocal<unknown>('dca_cashflowSchedule', null),
+      urlParams?.cashflowAmount ?? readLocal('dca_cashflowAmount', 0),
+      urlParams?.cashflowFreq ?? readLocal('dca_cashflowFreq', 'monthly'),
+    ),
   )
-  const [cashflowFreq, setCashflowFreq] = useState<DCAFrequency>(() => {
-    if (urlParams?.cashflowFreq) return urlParams.cashflowFreq
-    const saved = readLocal<unknown>('dca_cashflowFreq', 'monthly')
-    return isDCAFrequency(saved) ? saved : 'monthly'
-  })
+  const cashflowAmount = cashflowSchedule[0]?.amount ?? 0
+  const cashflowFreq = cashflowSchedule[0]?.freq ?? 'monthly'
   const [annualContributionIncreaseAmount, setAnnualContributionIncreaseAmount] = useState(() =>
     normalizeAnnualContributionIncreaseAmount(
       urlParams?.annualContributionIncreaseAmount ?? readLocal('dca_annualContributionIncreaseAmount', 0),
@@ -247,9 +273,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     setDateFrom(urlParams?.dateFrom ?? '')
     setDateTo(urlParams?.dateTo ?? '')
     setInitialAmount(urlParams?.initialAmount ?? (hasUrlPayload ? 5_000_000 : readLocal('dca_initialAmount', 5_000_000)))
-    setCashflowAmount(urlParams?.cashflowAmount ?? (hasUrlPayload ? 0 : readLocal('dca_cashflowAmount', 0)))
-    const savedFreq = readLocal<unknown>('dca_cashflowFreq', 'monthly')
-    setCashflowFreq(urlParams?.cashflowFreq ?? (hasUrlPayload ? 'monthly' : isDCAFrequency(savedFreq) ? savedFreq : 'monthly'))
+    setCashflowSchedule(buildCashflowSchedule(
+      urlParams?.cashflowSchedule ?? (hasUrlPayload ? null : readLocal<unknown>('dca_cashflowSchedule', null)),
+      urlParams?.cashflowAmount ?? (hasUrlPayload ? 0 : readLocal('dca_cashflowAmount', 0)),
+      urlParams?.cashflowFreq ?? (hasUrlPayload ? 'monthly' : readLocal('dca_cashflowFreq', 'monthly')),
+    ))
     setAnnualContributionIncreaseAmount(
       normalizeAnnualContributionIncreaseAmount(
         urlParams?.annualContributionIncreaseAmount ?? (hasUrlPayload ? 0 : readLocal('dca_annualContributionIncreaseAmount', 0)),
@@ -264,8 +292,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
   // ── Persist to localStorage ──
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_initialAmount', initialAmount) }, [initialAmount])
-  useEffect(() => { if (!skipUrlPersist) saveLS('dca_cashflowAmount', cashflowAmount) }, [cashflowAmount])
-  useEffect(() => { if (!skipUrlPersist) saveLS('dca_cashflowFreq', cashflowFreq) }, [cashflowFreq])
+  useEffect(() => {
+    if (!skipUrlPersist && !cashflowScheduleError(cashflowSchedule)) {
+      saveLS('dca_cashflowSchedule', cashflowSchedule)
+    }
+  }, [cashflowSchedule, skipUrlPersist])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_annualContributionIncreaseAmount', annualContributionIncreaseAmount) }, [annualContributionIncreaseAmount])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_dateMode', dateMode) }, [dateMode])
   useEffect(() => { if (!skipUrlPersist) saveLS('dca_yearsBack', yearsBack) }, [yearsBack])
@@ -380,6 +411,28 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     }))
   }
 
+  function updateCashflowPhase(index: number, update: Partial<DCAContributionPhase>) {
+    setCashflowSchedule(current => current.map((phase, phaseIndex) =>
+      phaseIndex === index ? { ...phase, ...update } : phase,
+    ))
+  }
+
+  function toggleCashflowUntil(index: number, enabled: boolean) {
+    setCashflowSchedule(current => {
+      if (!enabled) {
+        return current
+          .slice(0, index + 1)
+          .map((phase, phaseIndex) => phaseIndex === index ? { ...phase, until: null } : phase)
+      }
+
+      const updated = current.map((phase, phaseIndex) =>
+        phaseIndex === index ? { ...phase, until: '' } : phase,
+      )
+      if (index < current.length - 1) return updated
+      return [...updated, { amount: 0, freq: current[index]!.freq, until: null }]
+    })
+  }
+
   // ── Compute effective date range ──
   function getEffectiveDates(): { from: string; to: string } {
     if (dateMode === 'years') {
@@ -406,7 +459,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const canRun = portfolios.length > 0 && portfolios.every(p => {
     const total = p.slots.reduce((s, f) => s + f.weight, 0)
     return Math.abs(total - 100) < 0.01 && p.slots.every(s => s.fundId)
-  }) && (initialAmount > 0 || cashflowAmount > 0)
+  }) && !cashflowScheduleError(cashflowSchedule)
+    && (initialAmount > 0 || cashflowSchedule.some(phase => phase.amount > 0))
 
   const liveDates = getEffectiveDates()
   const liveParams: DcaParams = {
@@ -415,6 +469,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     cashflowAmount,
     cashflowFreq,
     annualContributionIncreaseAmount,
+    cashflowSchedule,
     dateFrom: liveDates.from,
     dateTo: liveDates.to,
   }
@@ -435,6 +490,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         cashflowAmount,
         cashflowFreq,
         annualContributionIncreaseAmount,
+        cashflowSchedule: cashflowSchedule.map(phase => ({ ...phase })),
         dateFrom: getEffectiveDates().from,
         dateTo: getEffectiveDates().to,
       },
@@ -848,8 +904,15 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     // vì cách đó lẫn cả "Số tiền đầu tiên" (nạp 1 lần) vào trung bình, khiến
     // con số cao hơn mức nạp định kỳ thực tế.
     const params = r.simulationInputs!.params
-    const currentContribution = r.lastCashflowAmount > 0 ? r.lastCashflowAmount : params.cashflowAmount
-    const monthlyContribution = monthlyEquivalentContribution(currentContribution, params.cashflowFreq)
+    const projectionStartDate = r.valueSeries[r.valueSeries.length - 1]?.date
+    const schedule = params.cashflowSchedule
+    const hasMultiplePhases = !!schedule && schedule.length > 1
+    const activePhase = hasMultiplePhases && projectionStartDate
+      ? dcaContributionPhaseAtDate(schedule, projectionStartDate)
+      : null
+    const currentContribution = activePhase?.amount ?? (r.lastCashflowAmount > 0 ? r.lastCashflowAmount : params.cashflowAmount)
+    const currentFrequency = activePhase?.freq ?? params.cashflowFreq
+    const monthlyContribution = monthlyEquivalentContribution(currentContribution, currentFrequency)
     return {
       id: r.id,
       name: r.name,
@@ -858,27 +921,38 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       finalValue: r.finalValue,
       cagr,
       monthlyContribution,
-      monthlyContributionIncrease: params.cashflowAmount > 0
+      monthlyContributionIncrease: !hasMultiplePhases && params.cashflowAmount > 0
         ? monthlyEquivalentContribution(params.annualContributionIncreaseAmount ?? 0, params.cashflowFreq)
         : 0,
+      cashflowSchedule: hasMultiplePhases ? schedule : undefined,
+      projectionStartDate,
     }
   }), [validResults])
 
   const monteCarloData = useMemo(() => validResults.map(r => {
     const params = r.simulationInputs!.params
-    const currentContribution = r.lastCashflowAmount > 0 ? r.lastCashflowAmount : params.cashflowAmount
-    const monthlyContribution = monthlyEquivalentContribution(currentContribution, params.cashflowFreq)
+    const projectionStartDate = r.valueSeries[r.valueSeries.length - 1]?.date
+    const schedule = params.cashflowSchedule
+    const hasMultiplePhases = !!schedule && schedule.length > 1
+    const activePhase = hasMultiplePhases && projectionStartDate
+      ? dcaContributionPhaseAtDate(schedule, projectionStartDate)
+      : null
+    const currentContribution = activePhase?.amount ?? (r.lastCashflowAmount > 0 ? r.lastCashflowAmount : params.cashflowAmount)
+    const currentFrequency = activePhase?.freq ?? params.cashflowFreq
+    const monthlyContribution = monthlyEquivalentContribution(currentContribution, currentFrequency)
     return {
       id: r.id,
       name: r.name,
       color: r.color,
       finalValue: r.finalValue,
       monthlyContribution,
-      monthlyContributionIncrease: params.cashflowAmount > 0
+      monthlyContributionIncrease: !hasMultiplePhases && params.cashflowAmount > 0
         ? monthlyEquivalentContribution(params.annualContributionIncreaseAmount ?? 0, params.cashflowFreq)
         : 0,
       cumulative: r.cumulative,
       cagr: dcaCagr(r.cumulative),
+      cashflowSchedule: hasMultiplePhases ? schedule : undefined,
+      projectionStartDate,
     }
   }), [validResults])
 
@@ -942,8 +1016,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     <div className="simulation-panel dca-panel">
       <div className="panel-header">
         <h2>Tích Lũy Định Kỳ (DCA)</h2>
-        <ShareButton getUrl={() => buildDcaUrl({
+        <ShareButton disabled={!!cashflowScheduleError(cashflowSchedule)} getUrl={() => buildDcaUrl({
           initialAmount, cashflowAmount, cashflowFreq, annualContributionIncreaseAmount,
+          cashflowSchedule,
           dateMode, yearsBack, dateFrom, dateTo,
           portfolios: portfolios.map(p => ({
             slots: p.slots, rebalFreq: p.rebalFreq,
@@ -1038,25 +1113,61 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               <span className="dca-currency">₫</span>
             </div>
           </div>
+          {cashflowSchedule.length > 1 && (
+            <p className="dca-annual-increase-note">
+              Khi có nhiều dòng tiền DCA thì mục tăng tiền DCA mỗi năm sẽ không được sử dụng để tính toán
+            </p>
+          )}
 
-          {/* Cashflow Amount */}
-          <div className="dca-param-row dca-cashflow-row">
-            <label className="dca-label">Số tiền đầu tư định kỳ</label>
-            <div className="dca-amount-input">
-              <MoneyInput value={cashflowAmount} onChange={setCashflowAmount} min={0} />
-              <span className="dca-currency">₫</span>
+          {cashflowSchedule.map((phase, index) => (
+            <div className="dca-param-row dca-cashflow-row" key={`cashflow-phase-${index}`}>
+              <label className="dca-label">
+                {index === 0 ? 'Số tiền đầu tư định kỳ' : `Dòng tiền DCA ${index + 1}`}
+              </label>
+              <div className="dca-amount-input">
+                <MoneyInput
+                  value={phase.amount}
+                  onChange={amount => updateCashflowPhase(index, { amount })}
+                  min={0}
+                />
+                <span className="dca-currency">₫</span>
+              </div>
+              <label className="dca-label dca-freq-label">
+                {index === 0 ? 'Tần suất đầu tư' : 'Tần suất'}
+              </label>
+              <select
+                className="dca-freq-select"
+                value={phase.freq}
+                onChange={e => updateCashflowPhase(index, { freq: e.target.value as DCAFrequency })}
+              >
+                {FREQ_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <div className="dca-until-control">
+                <label className="dca-until-toggle">
+                  <input
+                    type="checkbox"
+                    checked={phase.until !== null}
+                    onChange={e => toggleCashflowUntil(index, e.target.checked)}
+                  />
+                  <span>Cho đến</span>
+                </label>
+                {phase.until !== null && (
+                  <input
+                    className="dca-until-date"
+                    type="date"
+                    value={phase.until}
+                    aria-label={`Ngày kết thúc dòng tiền DCA ${index + 1}`}
+                    onChange={e => updateCashflowPhase(index, { until: e.target.value })}
+                  />
+                )}
+              </div>
             </div>
-            <label className="dca-label dca-freq-label">Tần suất đầu tư</label>
-            <select
-              className="dca-freq-select"
-              value={cashflowFreq}
-              onChange={e => setCashflowFreq(e.target.value as DCAFrequency)}
-            >
-              {FREQ_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
+          ))}
+          {cashflowScheduleError(cashflowSchedule) && (
+            <p className="dca-cashflow-error">{cashflowScheduleError(cashflowSchedule)}</p>
+          )}
         </div>
 
         <p className="dca-note">
@@ -1129,6 +1240,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         cashflowAmount={cashflowAmount}
         cashflowFreq={cashflowFreq}
         annualContributionIncreaseAmount={annualContributionIncreaseAmount}
+        cashflowSchedule={cashflowSchedule}
         funds={funds}
         purchasePriceData={purchasePriceData}
         dateFrom={effectiveDates.from}
