@@ -2,7 +2,7 @@
  * DcaJourneyBlock: hero narrative cho tab DCA.
  *
  * Single portfolio: 1 câu chuyện chi tiết với vndComparison trên lời ròng.
- * Multi portfolio: nêu winner + loser, gọi tên chênh lệch bằng ví dụ đời thường.
+ * Multi portfolio: xếp hạng các danh mục theo giá trị cuối kỳ.
  *
  * Mental model: retail VN không quen tách net profit khỏi total value. Hero
  * phải kể: "đã nạp X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
@@ -98,12 +98,8 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
     )
   }
 
-  // Multi portfolio → winner + loser framing
+  // Multi portfolio → xếp hạng theo giá trị cuối kỳ
   const sorted = [...portfolios].sort((a, b) => b.finalValue - a.finalValue)
-  const winner = sorted[0]!
-  const loser = sorted[sorted.length - 1]!
-  const gap = winner.finalValue - loser.finalValue
-  const gapComparison = gap > 0 ? vndComparison(gap) : null
 
   return (
       <DcaBlock>
@@ -135,19 +131,6 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
         })}
       </div>
 
-      {sorted.length >= 2 && gap > 0 && (
-        <div className="dca-journey-takeaway">
-          <span className="dca-journey-takeaway-icon">🎯</span>
-          <div>
-            Chênh lệch giữa <strong style={{ color: winner.color }}>{winner.name}</strong> và
-            {' '}<strong style={{ color: loser.color }}>{loser.name}</strong> là
-            {' '}<strong>{formatVND(gap)}</strong>
-            {gapComparison && <>, bằng <strong>{gapComparison}</strong></>}.
-            {' '}Cùng số tiền, cùng khoảng thời gian, nhưng chọn quỹ khác nhau thì
-            kết cục cũng khác nhau. Đó là lý do vì sao lựa chọn quỹ lại quan trọng đến vậy.
-          </div>
-        </div>
-      )}
     </DcaBlock>
   )
 }
