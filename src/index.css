@@ -3226,6 +3226,10 @@ textarea {
   flex: 1;
 }
 
+.dca-cashflow-row .dca-amount-input {
+  flex: 0 1 230px;
+}
+
 .dca-amount-input input {
   padding: 6px 10px;
   border: 1px solid var(--color-border);
@@ -3247,6 +3251,10 @@ textarea {
   border-radius: var(--radius);
   font-size: 0.85rem;
   min-width: 140px;
+}
+
+.dca-cashflow-row .dca-freq-label {
+  min-width: auto;
 }
 
 .dca-note {
@@ -4620,6 +4628,10 @@ textarea {
   .dca-amount-input input {
     max-width: none;
     min-height: 40px;
+  }
+
+  .dca-cashflow-row .dca-amount-input {
+    flex: 0 1 auto;
   }
 
   .dca-freq-select {

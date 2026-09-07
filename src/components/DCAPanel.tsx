@@ -1030,26 +1030,23 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
             Để 0 nếu chỉ muốn mô phỏng đầu tư 1 lần. Nhập số tiền nếu muốn lên kế hoạch DCA định kỳ.
           </p>
 
-          {/* Cashflow Amount */}
-          <div className="dca-param-row">
-            <label className="dca-label">Số tiền đầu tư định kỳ</label>
-            <div className="dca-amount-input">
-              <MoneyInput value={cashflowAmount} onChange={setCashflowAmount} min={0} />
-              <span className="dca-currency">₫</span>
-            </div>
-          </div>
-
           {/* Annual contribution growth */}
           <div className="dca-param-row">
-            <label className="dca-label">Tăng thêm mỗi năm</label>
+            <label className="dca-label">Mỗi năm tăng thêm tiền DCA</label>
             <div className="dca-amount-input">
               <MoneyInput value={annualContributionIncreaseAmount} onChange={setAnnualContributionIncreaseAmount} min={0} />
               <span className="dca-currency">₫</span>
             </div>
           </div>
-          {/* Cashflow Frequency */}
-          <div className="dca-param-row">
-            <label className="dca-label">Tần suất đầu tư</label>
+
+          {/* Cashflow Amount */}
+          <div className="dca-param-row dca-cashflow-row">
+            <label className="dca-label">Số tiền đầu tư định kỳ</label>
+            <div className="dca-amount-input">
+              <MoneyInput value={cashflowAmount} onChange={setCashflowAmount} min={0} />
+              <span className="dca-currency">₫</span>
+            </div>
+            <label className="dca-label dca-freq-label">Tần suất đầu tư</label>
             <select
               className="dca-freq-select"
               value={cashflowFreq}
