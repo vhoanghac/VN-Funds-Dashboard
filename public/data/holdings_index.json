@@ -41,7 +41,7 @@
   },
   {
     "id": "DCDE",
-    "update_at": "2026-07-01",
+    "update_at": "2026-08-01",
     "source": "digiinvest"
   },
   {
@@ -101,7 +101,7 @@
   },
   {
     "id": "MAGEF",
-    "update_at": "2026-07-01",
+    "update_at": "2026-08-01",
     "source": "fmarket"
   },
   {
@@ -156,12 +156,12 @@
   },
   {
     "id": "SSISCA",
-    "update_at": "2026-07-01",
+    "update_at": "2026-08-01",
     "source": "digiinvest"
   },
   {
     "id": "TBLF",
-    "update_at": "2026-07-01",
+    "update_at": "2026-08-01",
     "source": "fmarket"
   },
   {
@@ -181,7 +181,7 @@
   },
   {
     "id": "UVDIF",
-    "update_at": "2026-07-01",
+    "update_at": "2026-08-01",
     "source": "fmarket"
   },
   {
