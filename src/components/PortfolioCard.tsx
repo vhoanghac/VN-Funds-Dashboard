@@ -37,10 +37,14 @@ interface Props {
   onRemoveSlot: (idx: number) => void
   onUpdateSlot: (idx: number, update: Partial<DCASlot>) => void
   onSetEqualWeights: () => void
+  assetLabel?: string
+  maxSlots?: number
   showRebal?: boolean
   showRemove?: boolean
   transactionCostRates?: TransactionCostRates
   onTransactionCostRatesChange?: (rates: TransactionCostRates) => void
+  transactionCostFields?: ('buy' | 'sell' | 'tax')[]
+  transactionCostTitle?: string
 }
 
 export function PortfolioCard({
@@ -53,10 +57,14 @@ export function PortfolioCard({
   onRemoveSlot,
   onUpdateSlot,
   onSetEqualWeights,
+  assetLabel = 'quỹ',
+  maxSlots = MAX_FUNDS_PER_PORTFOLIO,
   showRebal = true,
   showRemove = true,
   transactionCostRates,
   onTransactionCostRatesChange,
+  transactionCostFields = ['buy', 'sell', 'tax'],
+  transactionCostTitle = 'Thuế phí',
 }: Props) {
   const totalWeight = portfolio.slots.reduce((s, f) => s + f.weight, 0)
   const isOverUnder = Math.abs(totalWeight - 100) > 0.01
@@ -100,22 +108,28 @@ export function PortfolioCard({
 
       {transactionCostRates && onTransactionCostRatesChange && (
         <div className="portfolio-transaction-costs">
-          <span className="portfolio-transaction-costs-label">Thuế phí</span>
-          <TransactionCostInput
-            label="Phí mua"
-            value={transactionCostRates.buyFeeRate}
-            onChange={buyFeeRate => onTransactionCostRatesChange({ ...transactionCostRates, buyFeeRate })}
-          />
-          <TransactionCostInput
-            label="Phí bán"
-            value={transactionCostRates.sellFeeRate}
-            onChange={sellFeeRate => onTransactionCostRatesChange({ ...transactionCostRates, sellFeeRate })}
-          />
-          <TransactionCostInput
-            label="Thuế bán"
-            value={transactionCostRates.sellTaxRate}
-            onChange={sellTaxRate => onTransactionCostRatesChange({ ...transactionCostRates, sellTaxRate })}
-          />
+          <span className="portfolio-transaction-costs-label">{transactionCostTitle}</span>
+          {transactionCostFields.includes('buy') && (
+            <TransactionCostInput
+              label="Phí mua"
+              value={transactionCostRates.buyFeeRate}
+              onChange={buyFeeRate => onTransactionCostRatesChange({ ...transactionCostRates, buyFeeRate })}
+            />
+          )}
+          {transactionCostFields.includes('sell') && (
+            <TransactionCostInput
+              label="Phí bán"
+              value={transactionCostRates.sellFeeRate}
+              onChange={sellFeeRate => onTransactionCostRatesChange({ ...transactionCostRates, sellFeeRate })}
+            />
+          )}
+          {transactionCostFields.includes('tax') && (
+            <TransactionCostInput
+              label="Thuế bán"
+              value={transactionCostRates.sellTaxRate}
+              onChange={sellTaxRate => onTransactionCostRatesChange({ ...transactionCostRates, sellTaxRate })}
+            />
+          )}
         </div>
       )}
 
@@ -123,8 +137,8 @@ export function PortfolioCard({
         <button
           className="portfolio-add-btn"
           onClick={onAddSlot}
-          disabled={portfolio.slots.length >= MAX_FUNDS_PER_PORTFOLIO}
-          title="Thêm quỹ"
+          disabled={portfolio.slots.length >= maxSlots}
+          title={`Thêm ${assetLabel}`}
         >
           +
         </button>
@@ -151,7 +165,7 @@ export function PortfolioCard({
               options={fundOptions}
               value={selectedOption}
               onChange={opt => onUpdateSlot(idx, { fundId: opt?.value || '' })}
-              placeholder="Tìm quỹ..."
+               placeholder={`Tìm ${assetLabel}...`}
               noOptionsMessage={() => 'Không tìm thấy'}
               isSearchable
               styles={portfolioSelectStyles}

@@ -1,5 +1,12 @@
 const ENTRIES = [
   {
+    version: 'v4.6',
+    date: '09/09/2026',
+    items: [
+      'Thêm tab DCA cổ phiếu: mô phỏng sổ tài khoản theo lô 100 cổ phiếu, tính phí giao dịch, cổ tức tiền mặt, cổ tức bằng cổ phiếu và quyền mua.',
+    ],
+  },
+  {
     version: 'v4.5',
     date: '28/08/2026',
     items: [

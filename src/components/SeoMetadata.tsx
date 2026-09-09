@@ -24,6 +24,12 @@ export const SEO_BY_TAB: Record<TabId, SeoMeta> = {
     heading: 'Mô Phỏng DCA Quỹ Đầu Tư Việt Nam',
     indexable: true,
   },
+  stockdca: {
+    title: 'Mô phỏng tích lũy cổ phiếu Việt Nam | Fund Dashboard',
+    description: 'Theo dõi sổ tài khoản khi đầu tư định kỳ vào cổ phiếu, gồm số cổ phiếu, tiền mặt, phí và cổ tức.',
+    heading: 'Mô Phỏng Tích Lũy Cổ Phiếu Việt Nam',
+    indexable: false,
+  },
   lsdca: {
     title: 'Lump Sum vs DCA tại Việt Nam | Fund Dashboard',
     description: 'So sánh đầu tư một lần với DCA trên lịch sử quỹ mở và ETF tại Việt Nam, kèm phân bố kết quả và các kịch bản percentile.',

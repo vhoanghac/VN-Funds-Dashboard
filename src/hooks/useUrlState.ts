@@ -8,12 +8,16 @@ import {
   clearSharePayload,
   getDcaShareKey,
   getLsDcaShareKey,
+  getStockDcaShareKey,
   hasDcaSharePayload,
   hasLsDcaSharePayload,
+  hasStockDcaSharePayload,
   parseDcaParams,
   parseLsDcaParams,
+  parseStockDcaParams,
   type DcaShareState,
   type LsDcaShareState,
+  type StockDcaShareState,
   type ShareTab,
   type ShareUrlState,
 } from '../utils/shareUrl'
@@ -21,7 +25,7 @@ import {
 const VALID_TABS = TAB_REGISTRY.map(t => t.id) as readonly TabId[]
 const VALID_PERIODS = [6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 function isShareTab(tab: string | null): tab is ShareTab {
-  return tab === 'dca' || tab === 'lsdca'
+  return tab === 'dca' || tab === 'lsdca' || tab === 'stockdca'
 }
 
 /**
@@ -91,6 +95,16 @@ export function useUrlState() {
     }
   }, [lsDcaShareKey])
 
+  const stockDcaShareKey = getStockDcaShareKey(searchParams)
+  const stockDcaUrlParams = useMemo<ShareUrlState<Partial<StockDcaShareState>>>(() => {
+    const hasExplicitPayload = hasStockDcaSharePayload(searchParams)
+    return {
+      key: stockDcaShareKey,
+      hasExplicitPayload,
+      parsedPayload: hasExplicitPayload ? parseStockDcaParams(searchParams) : null,
+    }
+  }, [stockDcaShareKey])
+
   const updateState = useCallback(
     (updates: Partial<DashboardState>) => {
       setSearchParams(prev => {
@@ -126,5 +140,5 @@ export function useUrlState() {
     [setSearchParams],
   )
 
-  return { state, updateState, dcaUrlParams, lsDcaUrlParams }
+  return { state, updateState, dcaUrlParams, lsDcaUrlParams, stockDcaUrlParams }
 }

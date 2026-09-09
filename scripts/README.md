@@ -200,13 +200,15 @@ File `.github/workflows/update_daily.yml` điều phối toàn bộ:
   (`workflow_dispatch`) trên GitHub.
 - **Môi trường:** Ubuntu, Node 24 + Python 3.12; `pip install vnstock` và đăng ký
   `VNSTOCK_API_KEY` (secret của repo — không bao giờ viết thẳng vào file).
-- **Thứ tự 5 bước** (mỗi bước một `run` riêng):
+- **Thứ tự 7 bước** (mỗi bước một `run` riêng):
   1. `update_nav.mjs` — NAV quỹ mở fmarket
   2. `update_vnstock.py` — ETF + BTC
   3. `fund_report/update_holdings.py` — holdings Overlap
   4. `update_TCEF_TCBF_digiinvest.mjs` — NAV TCBF/TCEF
   5. `update_gold.mjs` — vàng
-- **Commit + push:** sau 5 bước, kiểm tra `git diff`. Nếu có thay đổi → `git add
+  6. `stocks/update_cafef_stocks.mjs` — giá đóng cửa và giá điều chỉnh các mã trong `stocks/stock_symbols.txt` từ CafeF
+  7. `stocks/update_vnstock_divs.py` — corporate actions của các mã trong `stocks/div_symbols.txt` từ VCI qua vnstock
+- **Commit + push:** sau 7 bước, kiểm tra `git diff`. Nếu có thay đổi → `git add
   public/data/` rồi commit với message "Update fund NAV data YYYY-MM-DD" và push bởi
   `github-actions[bot]`. Không có thay đổi → không commit (tránh commit rỗng).
 
@@ -214,6 +216,16 @@ File `.github/workflows/update_daily.yml` điều phối toàn bộ:
 các quỹ khác, một loại vàng lỗi không chặn vàng khác. Ngoại lệ: `update_vnstock.py`
 `exit 1` nếu BTC fail hẳn (để workflow báo đỏ). Nhờ đó commit hàng ngày luôn diễn ra
 kể cả khi vài nguồn API ốm.
+
+Script `stocks/update_cafef_stocks.mjs` tải lại 90 ngày gần nhất cho từng mã trong
+`stocks/stock_symbols.txt`. Script chỉ nối thêm phiên mới vào file tương ứng trong
+`public/data/stocks/`. Nếu CafeF sửa giá của một ngày đã có, script dừng với lỗi và không
+ghi file, để người dùng kiểm tra trước khi dữ liệu đi vào repo.
+
+Script `stocks/update_vnstock_divs.py` chỉ cập nhật các mã đã ghi trong
+`stocks/div_symbols.txt`. Backfill chạy local bằng `--symbol` và `--backfill`; workflow
+không tạo file mới. Script lấy toàn bộ event `DIV,ISS`, lọc cổ tức tiền mặt, cổ tức bằng
+cổ phiếu và quyền mua, rồi dừng nếu VCI sửa một event đã có.
 
 ---
 
@@ -226,6 +238,11 @@ kể cả khi vài nguồn API ốm.
   (update_vnstock.py).
 - **Vàng:** thêm một entry vào `GOLD_ASSETS` trong `update_gold.mjs`, kèm `fetch` +
   `fallback`. Đơn vị phải khớp CSV (VND/lượng).
+- **Cổ phiếu:** xem workflow chi tiết trong [stocks/README.md](stocks/README.md). Chạy backfill giá bằng
+  `node scripts/stocks/scrape_cafef_stock.mjs` và
+  backfill corporate actions bằng `python scripts/stocks/update_vnstock_divs.py --symbol
+  ACB --backfill` trước. Sau đó thêm mã vào `stocks/div_symbols.txt` để workflow hằng ngày
+  cập nhật event mới.
 
 **Đổi nguồn API:** mỗi script cô lập nguồn của nó (một hàm `fetch` + một `fallback`).
 Đổi nguồn = sửa trong script đó, không lan sang script khác.

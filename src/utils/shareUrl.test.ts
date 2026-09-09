@@ -7,8 +7,12 @@ import {
   parseDcaParams,
   buildLsDcaUrl,
   parseLsDcaParams,
+  buildStockDcaUrl,
+  parseStockDcaParams,
+  hasStockDcaSharePayload,
   type DcaShareState,
   type LsDcaShareState,
+  type StockDcaShareState,
 } from './shareUrl'
 import { parseSavingsRate, savingsAssetId } from './savingsAsset'
 
@@ -255,6 +259,46 @@ describe('DCA share link', () => {
   it('defaults an invalid frequency in a legacy link', () => {
     visit('/?tab=dca&p1=DCDS:100&p1r=never')
     expect(parseDcaParams()!.portfolios![0]!.rebalFreq).toBe('quarterly')
+  })
+})
+
+describe('Stock DCA share link', () => {
+  const state: StockDcaShareState = {
+    portfolios: [
+      {
+        slots: [{ fundId: 'ACB', weight: 100 }],
+        rebalFreq: 'yearly',
+        name: 'ACB dài hạn',
+        transactionCostRates: { buyFeeRate: 0.001, sellFeeRate: 0.002, sellTaxRate: 0.001 },
+      },
+      {
+        slots: [{ fundId: 'ACB', weight: 100 }],
+        rebalFreq: 'yearly',
+        transactionCostRates: { buyFeeRate: 0.002, sellFeeRate: 0.003, sellTaxRate: 0.0015 },
+      },
+    ],
+    dateMode: 'years',
+    yearsBack: 10,
+    dateFrom: '',
+    dateTo: '',
+    initialAmount: 25_000_000,
+    cashflowSchedule: [
+      { amount: 5_000_000, freq: 'monthly', until: '2020-12-31' },
+      { amount: 8_000_000, freq: 'quarterly', until: null },
+    ],
+    annualContributionIncreaseAmount: 500_000,
+  }
+
+  it('survives a full round trip', () => {
+    visit(buildStockDcaUrl(state))
+    expect(parseStockDcaParams()).toEqual(state)
+    expect(hasStockDcaSharePayload()).toBe(true)
+  })
+
+  it('ignores the link when it belongs to another tab', () => {
+    visit(buildDcaUrl(dcaState))
+    expect(parseStockDcaParams()).toBeNull()
+    expect(hasStockDcaSharePayload()).toBe(false)
   })
 })
 

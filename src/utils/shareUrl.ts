@@ -35,7 +35,7 @@ function origin(): string {
 const DCA_LEGACY_KEYS = ['init', 'cashflow', 'freq', 'datemode', 'years', 'p1', 'p1r', 'p2', 'p2r', 'p3', 'p3r', 'p4', 'p4r']
 const LS_DCA_LEGACY_KEYS = ['capital', 'horizon', 'freq', 'cash', 'rate', 'cfund', 'cmp', 'lsfunds', 'rebal']
 
-export type ShareTab = 'dca' | 'lsdca'
+export type ShareTab = 'dca' | 'lsdca' | 'stockdca'
 
 export interface ShareUrlState<T> {
   key: string
@@ -52,12 +52,13 @@ function shareKey(
   tab: ShareTab,
   legacyKeys: string[],
   sharedKeys: string[] = [],
+  payloadKey = 's',
 ): string {
-  if (params.get('tab') !== tab || !(params.has('s') || legacyKeys.some(key => params.has(key)))) {
+  if (params.get('tab') !== tab || !(params.has(payloadKey) || legacyKeys.some(key => params.has(key)))) {
     return `${tab}:none`
   }
   return [
-    's',
+    payloadKey,
     ...legacyKeys,
     ...sharedKeys,
   ].map(key => `${key}=${params.getAll(key).join(',')}`).join('&')
@@ -69,6 +70,7 @@ export function clearSharePayload(params: URLSearchParams, ownerTab: ShareTab | 
     params.has('s') || DCA_LEGACY_KEYS.some(key => params.has(key))
   )
   params.delete('s')
+  params.delete('ss')
   for (const key of new Set([...DCA_LEGACY_KEYS, ...LS_DCA_LEGACY_KEYS])) params.delete(key)
   // DCA's pre-compression format shared these names with the dashboard filters.
   if (hadDcaPayload) {
@@ -85,6 +87,10 @@ export function getLsDcaShareKey(params: URLSearchParams): string {
   return shareKey(params, 'lsdca', LS_DCA_LEGACY_KEYS)
 }
 
+export function getStockDcaShareKey(params: URLSearchParams): string {
+  return shareKey(params, 'stockdca', [], [], 'ss')
+}
+
 export function hasDcaSharePayload(params: URLSearchParams = paramsFromWindow()): boolean {
   return params.get('tab') === 'dca' &&
     (params.has('s') || DCA_LEGACY_KEYS.some(key => params.has(key)))
@@ -93,6 +99,10 @@ export function hasDcaSharePayload(params: URLSearchParams = paramsFromWindow())
 export function hasLsDcaSharePayload(params: URLSearchParams = paramsFromWindow()): boolean {
   return params.get('tab') === 'lsdca' &&
     (params.has('s') || LS_DCA_LEGACY_KEYS.some(key => params.has(key)))
+}
+
+export function hasStockDcaSharePayload(params: URLSearchParams = paramsFromWindow()): boolean {
+  return params.get('tab') === 'stockdca' && params.has('ss')
 }
 
 // ─── DCA ──────────────────────────────────────────────────────────────────
@@ -257,6 +267,118 @@ function parseTransactionCostRates(value: Record<string, unknown>): TransactionC
 
 function hasTransactionCostRates(value: Record<string, unknown>): boolean {
   return 'bf' in value || 'sf' in value || 'st' in value
+}
+
+// ─── Stock DCA ─────────────────────────────────────────────────────────────
+
+export interface StockDcaShareState {
+  portfolios: Portfolio[]
+  dateMode: 'all' | 'years'
+  yearsBack: number
+  dateFrom: string
+  dateTo: string
+  initialAmount: number
+  cashflowSchedule: DCAContributionPhase[]
+  annualContributionIncreaseAmount: number
+}
+
+interface CompactStockDca {
+  dm?: 'all' | 'years'
+  y?: number
+  from?: string
+  to?: string
+  i?: number
+  cf?: { a?: number; f?: DCAFrequency; u?: string }[]
+  a?: number
+  // bf at the top level is kept only for reading older stock share links.
+  bf?: number
+  p?: { s: string; r?: RebalanceFrequency; n?: string; bf?: number; sf?: number; st?: number }[]
+}
+
+export function buildStockDcaUrl(state: StockDcaShareState): string {
+  const compact: CompactStockDca = {
+    dm: state.dateMode,
+    y: state.dateMode === 'years' ? state.yearsBack : undefined,
+    from: state.dateFrom || undefined,
+    to: state.dateTo || undefined,
+    i: state.initialAmount,
+    cf: state.cashflowSchedule.map(phase => ({
+      a: phase.amount,
+      f: phase.freq,
+      u: phase.until || undefined,
+    })),
+    a: state.annualContributionIncreaseAmount || undefined,
+     p: state.portfolios
+       .map(portfolio => ({
+         s: encodeSlots(portfolio.slots),
+         r: portfolio.rebalFreq,
+         n: portfolio.name || undefined,
+         bf: portfolio.transactionCostRates?.buyFeeRate,
+         sf: portfolio.transactionCostRates?.sellFeeRate,
+         st: portfolio.transactionCostRates?.sellTaxRate,
+       }))
+      .filter(portfolio => portfolio.s),
+  }
+  const encoded = compressToEncodedURIComponent(JSON.stringify(compact))
+  return `${origin()}?tab=stockdca&ss=${encoded}`
+}
+
+export function parseStockDcaParams(params: URLSearchParams = paramsFromWindow()): Partial<StockDcaShareState> | null {
+  if (params.get('tab') !== 'stockdca') return null
+  const compressed = params.get('ss')
+  if (!compressed) return null
+
+  try {
+    const json = decompressFromEncodedURIComponent(compressed)
+    if (!json) return null
+    const raw = JSON.parse(json) as unknown
+    if (!isRecord(raw)) return null
+    const result: Partial<StockDcaShareState> = {}
+    if (raw.dm === 'all' || raw.dm === 'years') result.dateMode = raw.dm
+    if (typeof raw.y === 'number' && raw.y > 0) result.yearsBack = raw.y
+    result.dateFrom = typeof raw.from === 'string' ? raw.from : ''
+    result.dateTo = typeof raw.to === 'string' ? raw.to : ''
+    if (typeof raw.i === 'number' && raw.i >= 0) result.initialAmount = raw.i
+    if (typeof raw.a === 'number' && raw.a >= 0) result.annualContributionIncreaseAmount = raw.a
+    const legacyBuyFeeRate = typeof raw.bf === 'number' && raw.bf >= 0 ? raw.bf : undefined
+    if (Array.isArray(raw.p)) {
+      const portfolios: Portfolio[] = []
+      for (const value of raw.p) {
+        if (!isRecord(value) || typeof value.s !== 'string') continue
+        const slots = decodeSlots(value.s)
+        if (slots.length === 0) continue
+        const portfolio = parsePortfolio({
+          slots,
+          rebalFreq: value.r,
+          name: value.n,
+          transactionCostRates: normalizeTransactionCostRates({
+            buyFeeRate: typeof value.bf === 'number' && value.bf >= 0 ? value.bf : legacyBuyFeeRate,
+            sellFeeRate: typeof value.sf === 'number' && value.sf >= 0 ? value.sf : undefined,
+            sellTaxRate: typeof value.st === 'number' && value.st >= 0 ? value.st : undefined,
+          }, { buyFeeRate: 0.001, sellFeeRate: 0, sellTaxRate: 0 }),
+        })
+        if (portfolio) {
+          if (portfolio.name === undefined) {
+            const { name: _name, ...withoutName } = portfolio
+            portfolios.push(withoutName)
+          } else {
+            portfolios.push(portfolio)
+          }
+        }
+      }
+      result.portfolios = portfolios
+    }
+    if (Array.isArray(raw.cf)) {
+      const schedule = normalizeDCAContributionSchedule(raw.cf.map(phase => {
+        if (!isRecord(phase)) return phase
+        return { amount: phase.a, freq: phase.f, until: phase.u ?? null }
+      }))
+      if (schedule.length > 0) result.cashflowSchedule = schedule
+    }
+    return result
+  } catch {
+    return null
+  }
 }
 
 // ─── LS vs DCA ────────────────────────────────────────────────────────────

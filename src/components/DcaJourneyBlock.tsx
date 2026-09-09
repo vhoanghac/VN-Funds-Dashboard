@@ -1,14 +1,14 @@
 /**
  * DcaJourneyBlock: hero narrative cho tab DCA.
  *
- * Single portfolio: 1 câu chuyện chi tiết với vndComparison trên lời ròng.
+ * Single portfolio: 1 câu chuyện chi tiết với số vốn, giá trị cuối kỳ và lời ròng.
  * Multi portfolio: xếp hạng các danh mục theo giá trị cuối kỳ.
  *
  * Mental model: retail VN không quen tách net profit khỏi total value. Hero
  * phải kể: "đã nạp X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
  */
-import { Fragment, memo } from 'react'
-import { formatVND, vndComparison } from '../utils/vndFormat'
+import { Fragment, memo, type ReactNode } from 'react'
+import { formatVND } from '../utils/vndFormat'
 import { dcaYearlyMWRR } from '../utils/dca'
 import { DcaBlock } from './DcaLayout'
 
@@ -28,9 +28,10 @@ interface Props {
   portfolios: JourneyPortfolio[]
   startDate: string  // YYYY-MM-DD
   endDate: string    // YYYY-MM-DD
+  details?: ReactNode
 }
 
-function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
+function DcaJourneyBlockImpl({ portfolios, startDate, endDate, details }: Props) {
   if (portfolios.length === 0) return null
 
   const period = describePeriod(startDate, endDate)
@@ -40,12 +41,10 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
     const p = portfolios[0]!
     const netProfit = p.finalValue - p.totalInvested
     const profitPct = p.totalInvested > 0 ? (netProfit / p.totalInvested) * 100 : 0
-    const comparison = netProfit > 0 ? vndComparison(netProfit) : null
-
     return (
       <DcaBlock>
         <div className="dca-journey-headline">
-          Trong suốt <strong>{period}</strong>, đều đặn mỗi tháng bạn để dành một
+          Trong suốt <strong>{period}</strong>, bạn đều đặn để dành một
           khoản tiền để mua <strong style={{ color: p.color }}>{p.name}</strong>.
           Tổng cộng đã đầu tư <strong>{formatVND(p.totalInvested)}</strong>.
         </div>
@@ -70,30 +69,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
           </div>
         </div>
 
-        {netProfit > 0 && comparison && (
-          <div className="dca-journey-takeaway">
-            <span className="dca-journey-takeaway-icon">💰</span>
-            <div>
-              <strong>Sau {period}, danh mục lời {profitPct.toFixed(1)}% tương đương
-              {' '}{formatVND(netProfit)}</strong>, bằng <strong>{comparison}</strong>.
-              Đó là khoản sinh ra nhờ bạn đầu tư đều đặn qua từng tháng, không cần
-              đoán đỉnh đoán đáy thị trường.
-            </div>
-          </div>
-        )}
-        {netProfit <= 0 && (
-          <div className="dca-journey-takeaway dca-journey-takeaway--neg">
-            <span className="dca-journey-takeaway-icon">📉</span>
-            <div>
-              Sau <strong>{period}</strong>, danh mục vẫn đang lỗ
-              {' '}<strong>{profitPct.toFixed(1)}%</strong>. Thị trường chứng khoán
-              Việt Nam là thị trường cận biên, từ bull sang bear diễn ra chóng vánh.
-              {' '}Giai đoạn đầu DCA không suôn sẻ là điều bình thường. Có thể bạn
-              đang rơi vào vùng trũng tương tự 2018-2019 hoặc sau COVID 3/2020. Thử
-              chọn khoảng thời gian dài hơn để thấy bức tranh đầy đủ hơn.
-            </div>
-          </div>
-        )}
+        {details}
       </DcaBlock>
     )
   }
@@ -102,7 +78,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
   const sorted = [...portfolios].sort((a, b) => b.finalValue - a.finalValue)
 
   return (
-      <DcaBlock>
+    <DcaBlock>
       <div className="dca-journey-headline">
         Cùng một lịch nạp tiền, cùng trải qua <strong>{period}</strong>, nhưng
         {' '}<strong>{portfolios.length} danh mục</strong> lại cho kết quả rất khác nhau.
@@ -130,6 +106,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate }: Props) {
           )
         })}
       </div>
+      {details}
 
     </DcaBlock>
   )

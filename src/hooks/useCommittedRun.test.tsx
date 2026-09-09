@@ -47,6 +47,27 @@ function price(value: number): Map<string, PricePoint[]> {
 }
 
 describe('useCommittedRun', () => {
+  it('does not compute before the first run', () => {
+    let computeCalls = 0
+    function CountingProbe() {
+      const state = useCommittedRun({
+        ready: true,
+        liveParams: { amount: 100 },
+        captureSnapshot: (): Snapshot => ({ params: { amount: 100 }, data: price(10) }),
+        compute: snapshot => {
+          computeCalls += 1
+          return snapshot.data.get('DCDS')?.[0]?.price ?? null
+        },
+      })
+      return <output data-testid="result">{state.result ?? 'null'}</output>
+    }
+
+    render(<CountingProbe />)
+
+    expect(screen.getByTestId('result')).toHaveTextContent('null')
+    expect(computeCalls).toBe(0)
+  })
+
   it('captures the live params and data when run is ready', async () => {
     render(<Probe ready amount={100} data={price(10)} />)
 

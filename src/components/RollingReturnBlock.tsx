@@ -26,11 +26,12 @@ export interface RollingPortfolio {
 
 interface Props {
   portfolios: RollingPortfolio[]
+  assetLabel?: string
 }
 
 const WINDOW_OPTIONS = [3, 5, 7, 10]
 
-function RollingReturnBlockImpl({ portfolios }: Props) {
+function RollingReturnBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   const [windowYears, setWindowYears] = useState<number>(5)
   const availableWindowYears = useMemo(
     () => WINDOW_OPTIONS.filter(years => portfolios.some(portfolio => hasEnoughRollingHistory(portfolio, years))),
@@ -45,7 +46,7 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
   return (
     <DcaBlock title="Nếu bạn bắt đầu ở thời điểm khác thì sao?" className="dca-rolling-block">
       <p className="dca-rolling-sub">
-        Giả sử có rất nhiều người cùng đầu tư vào quỹ này nhưng mỗi người bắt đầu ở một
+        Giả sử có rất nhiều người cùng đầu tư vào {assetLabel} này nhưng mỗi người bắt đầu ở một
         tháng khác nhau và giữ đúng <strong>{windowYears} năm</strong>. Kết quả của mỗi
         người sẽ khác nhau rất nhiều, có người trúng đỉnh, có người trúng đáy. Biểu đồ
         dưới đây cho thấy phân phối CAGR của tất cả các chu kỳ {windowYears} năm trong
@@ -66,8 +67,8 @@ function RollingReturnBlockImpl({ portfolios }: Props) {
         ))}
       </div>
 
-      {portfolios.map(p => (
-          <RollingForPortfolio key={p.id} portfolio={p} windowYears={activeWindowYears} />
+        {portfolios.map(p => (
+          <RollingForPortfolio key={p.id} portfolio={p} windowYears={activeWindowYears} assetLabel={assetLabel} />
         ))}
     </DcaBlock>
   )
@@ -82,9 +83,11 @@ function hasEnoughRollingHistory(portfolio: RollingPortfolio, windowYears: numbe
 function RollingForPortfolio({
   portfolio,
   windowYears,
+  assetLabel,
 }: {
   portfolio: RollingPortfolio
   windowYears: number
+  assetLabel: string
 }) {
   const { rolls, buckets, stats, userCagr } = useMemo(() => {
     const rolls = rollingCAGR(portfolio.cumulative, windowYears)
@@ -113,7 +116,7 @@ function RollingForPortfolio({
       <DcaBlock title={portfolio.name} className="dca-rolling-card">
         <div className="dca-rolling-insufficient">
           {span}, chưa đủ để tính chu kỳ {windowYears} năm (cần ít nhất {windowYears + 1} năm).
-          Không phải quỹ thiếu dữ liệu, mà là khoảng xem ngắn. Kéo rộng khoảng thời gian ở phần Thông số rồi thử lại.
+           Không phải {assetLabel} thiếu dữ liệu, mà là khoảng xem ngắn. Kéo rộng khoảng thời gian ở phần Thông số rồi thử lại.
         </div>
       </DcaBlock>
     )

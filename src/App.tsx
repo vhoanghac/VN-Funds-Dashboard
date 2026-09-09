@@ -1,12 +1,20 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useFundMetadata } from './hooks/useFundData'
 import { useUrlState } from './hooks/useUrlState'
-import { TAB_REGISTRY, type TabContext } from './tabRegistry'
+import { TAB_REGISTRY, type TabContext, type TabId } from './tabRegistry'
 import { SEO_BY_TAB, SeoMetadata } from './components/SeoMetadata'
 
 export function App() {
   const { metadata, metadataError, loading: metaLoading } = useFundMetadata()
-  const { state, updateState, dcaUrlParams, lsDcaUrlParams } = useUrlState()
+  const { state, updateState, dcaUrlParams, lsDcaUrlParams, stockDcaUrlParams } = useUrlState()
+  const [mountedTabs, setMountedTabs] = useState<Set<TabId>>(() => new Set([state.tab]))
+
+  useEffect(() => {
+    setMountedTabs(current => {
+      if (current.has(state.tab)) return current
+      return new Set(current).add(state.tab)
+    })
+  }, [state.tab])
 
   // Stable callback references (qua useCallback, dep chỉ là `updateState` vốn
   // đã ổn định) để CompareTab (React.memo) không bị coi là "props đổi" mỗi
@@ -25,6 +33,7 @@ export function App() {
       updateState,
       dcaUrlParams,
       lsDcaUrlParams,
+      stockDcaUrlParams,
       onChangeFunds,
       onChangeDateFrom,
       onChangeDateTo,
@@ -61,9 +70,9 @@ export function App() {
         ))}
       </div>
 
-      {/* Panel: keepMounted = ẩn bằng CSS để giữ state; ngược lại mount khi active */}
+      {/* Chỉ mount tab nặng khi người dùng ghé qua; sau đó giữ state bằng CSS. */}
       {TAB_REGISTRY.map(tab =>
-        tab.keepMounted ? (
+        tab.keepMounted && (mountedTabs.has(tab.id) || state.tab === tab.id) ? (
           <div
             key={tab.id}
             className={tab.wrapperClass ? `${tab.wrapperClass} ${state.tab === tab.id ? '' : 'tab-panel-hidden'}` : (state.tab === tab.id ? undefined : 'tab-panel-hidden')}

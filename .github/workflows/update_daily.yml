@@ -55,6 +55,14 @@ jobs:
       - name: Update gold price data
         run: node scripts/update_gold.mjs
 
+      - name: Update stock price data
+        run: node scripts/stocks/update_cafef_stocks.mjs --symbols-file scripts/stocks/stock_symbols.txt
+
+      - name: Update stock corporate actions
+        run: python -X utf8 scripts/stocks/update_vnstock_divs.py --symbols-file scripts/stocks/div_symbols.txt --require-existing
+        env:
+          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
       - name: Check for changes
         id: changes
         run: |

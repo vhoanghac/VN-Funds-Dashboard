@@ -19,10 +19,11 @@ interface StatsRow {
 
 interface Props {
   portfolios: StatsRow[]
+  assetLabel?: string
 }
 
 /** Bảng thống kê ngang: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh — bổ sung cho dca-summary-grid (dạng thẻ dọc) ở trên. */
-function DCAStatsTableImpl({ portfolios }: Props) {
+function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   if (portfolios.length === 0) return null
 
   return (
@@ -62,21 +63,21 @@ function DCAStatsTableImpl({ portfolios }: Props) {
                 MWRR
                 <span className="dca-info-icon" title="Money-Weighted Rate of Return: lợi nhuận thực tế của nhà đầu tư, tính đến thời điểm và số tiền từng lần nạp (IRR). Chỉ số chính để đánh giá hiệu quả chiến lược DCA. Thường cao hơn CAGR vì nhận ra rằng phần lớn vốn DCA chỉ hoạt động trong thời gian ngắn hơn toàn kỳ.">?</span>
               </th>
-              <th>
-                Sụt giảm tối đa
-                <span className="dca-info-icon" title="Mức sụt giảm tối đa CỦA CHÍNH QUỸ (TWRR, đã tách khỏi ảnh hưởng dòng tiền DCA): mức giảm lớn nhất tính từ đỉnh giá quỹ. Đây là 'bão thị trường thật', thường sâu hơn mức sụt giảm bạn thực sự trải nghiệm trên số dư tài khoản. Xem 'Kiên trì qua bão' bên dưới để so sánh 2 con số.">?</span>
-              </th>
+                <th>
+                 Sụt giảm tối đa
+                 <span className="dca-info-icon" title={`Mức sụt giảm tối đa của chính ${assetLabel} (TWRR, đã tách khỏi ảnh hưởng dòng tiền DCA): mức giảm lớn nhất tính từ đỉnh. Đây là 'bão thị trường thật', thường sâu hơn mức sụt giảm bạn thực sự trải nghiệm trên số dư tài khoản.`}>?</span>
+               </th>
               <th>
                 Sụt giảm TB
-                <span className="dca-info-icon" title="Trung bình mức sụt giảm CỦA CHÍNH QUỸ (TWRR) so với đỉnh, tính trên tất cả các ngày trong kỳ (ngày lập đỉnh mới tính là 0%). Đây là mức 'chìm dưới đỉnh' của quỹ, không phải của số dư tài khoản bạn.">?</span>
+                 <span className="dca-info-icon" title={`Trung bình mức sụt giảm của chính ${assetLabel} (TWRR) so với đỉnh, tính trên tất cả các ngày trong kỳ. Đây là mức 'chìm dưới đỉnh' của ${assetLabel}, không phải của số dư tài khoản bạn.`}>?</span>
               </th>
               <th>
                 Dưới đỉnh lâu nhất
-                <span className="dca-info-icon" title="Khoảng thời gian dài nhất GIÁ QUỸ (TWRR) nằm dưới đỉnh cũ, tính từ lúc lập đỉnh đến khi vượt lại đỉnh đó. Đây là khoảng thời gian thử thách sự kiên nhẫn nhất của nhà đầu tư.">?</span>
+                 <span className="dca-info-icon" title={`Khoảng thời gian dài nhất giá ${assetLabel} (TWRR) nằm dưới đỉnh cũ, tính từ lúc lập đỉnh đến khi vượt lại đỉnh đó.`}>?</span>
               </th>
               <th>
                 Biến động
-                <span className="dca-info-icon" title="Độ lệch chuẩn quy năm của lợi nhuận quỹ (TWRR). Con số càng cao, giá trị danh mục dao động càng mạnh, hành trình càng 'xóc'.">?</span>
+                 <span className="dca-info-icon" title={`Độ lệch chuẩn quy năm của lợi nhuận ${assetLabel} (TWRR). Con số càng cao, giá trị danh mục dao động càng mạnh.`}>?</span>
               </th>
               <th>
                 Profit Factor

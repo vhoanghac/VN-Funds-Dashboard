@@ -1589,6 +1589,35 @@ textarea {
 .dca-journey-stat--pos .dca-journey-stat-sub { color: #15803d; }
 .dca-journey-stat--neg .dca-journey-stat-sub { color: #991a1a; }
 
+.stock-account-details {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e6dc;
+}
+
+.stock-account-details-title {
+  margin-bottom: 10px;
+  color: #5e5d59;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stock-account-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.stock-account-detail {
+  padding: 10px 12px;
+}
+
+.stock-account-detail .dca-journey-stat-value {
+  font-size: 1.05rem;
+}
+
 .dca-journey-takeaway {
   display: flex;
   align-items: flex-start;
@@ -3121,6 +3150,43 @@ textarea {
   margin-bottom: 16px;
 }
 
+.stock-demo-warning {
+  border-left: 4px solid #c47a2c;
+  background: #fff7e8;
+  color: #6b471c;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.stock-demo-warning strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stock-demo-warning p,
+.stock-action-note {
+  margin: 0;
+}
+
+.stock-percent-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stock-percent-input input {
+  width: 100px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
 .dca-section-title {
   font-size: 1rem;
   font-weight: 600;
@@ -3647,6 +3713,193 @@ textarea {
   box-shadow: var(--shadow);
   padding: 16px;
   border-left: 4px solid var(--color-primary);
+}
+
+.stock-summary-grid .dca-summary-card--highlight {
+  border-left-color: #a8512f;
+  background: #fff8f3;
+}
+
+.stock-account-table-wrap {
+  max-height: min(28rem, 55vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.stock-account-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.stock-account-table th,
+.stock-account-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-account-table th:first-child,
+.stock-account-table td:first-child {
+  text-align: left;
+}
+
+.stock-account-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.stock-action-note {
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.stock-action-note-muted {
+  color: var(--color-text-muted);
+  margin-bottom: 0;
+}
+
+.stock-annual-dividends-note {
+  margin-bottom: 14px;
+}
+
+.stock-annual-dividends-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.stock-share-holdings-block .recharts-wrapper {
+  max-width: 100%;
+}
+
+.stock-annual-dividend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.stock-annual-dividend-chart {
+  min-width: 0;
+}
+
+.stock-annual-dividend-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+
+.stock-annual-dividend-chart-header h4 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.stock-annual-dividend-toggle {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stock-annual-dividend-chart-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stock-annual-dividend-toggle .dca-choice-btn {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 720px) {
+  .stock-annual-dividend-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-annual-dividend-chart-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stock-annual-dividend-toggle {
+    justify-content: flex-start;
+  }
+}
+
+.stock-action-groups {
+  display: grid;
+  gap: 8px;
+}
+
+.stock-action-group {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stock-action-group summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 10px 12px;
+  color: var(--color-text);
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+.stock-action-group summary span {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.stock-action-table-wrap {
+  max-height: 20rem;
+  overflow: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.stock-action-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.stock-action-table th,
+.stock-action-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-action-table th:first-child,
+.stock-action-table td:first-child {
+  text-align: left;
+}
+
+.stock-action-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 
 .dca-summary-name {

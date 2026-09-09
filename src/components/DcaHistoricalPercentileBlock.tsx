@@ -15,6 +15,7 @@ export interface HistoricalPercentilePortfolio {
 
 interface Props {
   portfolios: HistoricalPercentilePortfolio[]
+  assetLabel?: string
 }
 
 interface HistoricalWindow {
@@ -34,7 +35,7 @@ interface PortfolioWindows {
 const WINDOW_OPTIONS = [1, 2, 3, 4, 5]
 const PERCENTILES = [0.10, 0.25, 0.50, 0.75]
 
-function DcaHistoricalPercentileBlockImpl({ portfolios }: Props) {
+function DcaHistoricalPercentileBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   const [windowYears, setWindowYears] = useState(5)
   const availableWindowYears = useMemo(
     () => WINDOW_OPTIONS.filter(years => portfolios.some(portfolio => hasEnoughHistory(portfolio, years))),
@@ -107,7 +108,7 @@ function DcaHistoricalPercentileBlockImpl({ portfolios }: Props) {
         </table>
         </div>
 
-        <HistoricalNarrative results={results} windowYears={activeWindowYears} />
+        <HistoricalNarrative results={results} windowYears={activeWindowYears} assetLabel={assetLabel} />
 
         <div className="dca-historical-percentile-grid">
         {PERCENTILES.map(percentile => (
@@ -268,9 +269,11 @@ function formatMonthYear(date: string): string {
 function HistoricalNarrative({
   results,
   windowYears,
+  assetLabel,
 }: {
   results: PortfolioWindows[]
   windowYears: number
+  assetLabel: string
 }) {
   const rows = results
     .map(result => ({
@@ -303,7 +306,7 @@ function HistoricalNarrative({
 
       {rows.map(row => (
         <p key={row.name}>
-          Với quỹ <strong>{row.name}</strong>: {describeHistoricalOutcome(row)}
+           Với {assetLabel} <strong>{row.name}</strong>: {describeHistoricalOutcome(row)}
         </p>
       ))}
 

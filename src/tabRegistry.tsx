@@ -1,8 +1,9 @@
 import type { ReactElement } from 'react'
 import type { DashboardState, FundMeta } from './types'
-import type { DcaShareState, LsDcaShareState, ShareUrlState } from './utils/shareUrl'
+import type { DcaShareState, LsDcaShareState, ShareUrlState, StockDcaShareState } from './utils/shareUrl'
 import { CompareTab } from './components/CompareTab'
 import { DCAPanel } from './components/DCAPanel'
+import { StockDcaPanel } from './components/StockDcaPanel'
 import { LumpSumDCAPanel } from './components/LumpSumDCAPanel'
 import { FundAnalysisPanel } from './components/FundAnalysisPanel'
 import { OverlapPanel } from './components/OverlapPanel'
@@ -30,7 +31,7 @@ import { ChangelogPanel } from './components/ChangelogPanel'
 /** Kiểu id của tab. Khai báo tay ở đây (10 giá trị), registry và các file khác
  * đều suy từ nó — thêm tab phải thêm id vào union này VÀ một entry trong registry. */
 export type TabId =
-  | 'compare' | 'dca' | 'lsdca' | 'fundanalysis' | 'overlap'
+  | 'compare' | 'dca' | 'stockdca' | 'lsdca' | 'fundanalysis' | 'overlap'
   | 'rebalance' | 'bitcoin' | 'wallofworry'
   | 'methodology' | 'changelog'
 
@@ -52,6 +53,7 @@ export interface TabContext {
   updateState: (updates: Partial<DashboardState>) => void
   dcaUrlParams: ShareUrlState<Partial<DcaShareState>>
   lsDcaUrlParams: ShareUrlState<Partial<LsDcaShareState>>
+  stockDcaUrlParams: ShareUrlState<Partial<StockDcaShareState>>
   onChangeFunds: (funds: string[]) => void
   onChangeDateFrom: (v: string | null) => void
   onChangeDateTo: (v: string | null) => void
@@ -80,9 +82,15 @@ export const TAB_REGISTRY: TabManifest[] = [
   },
   {
     id: 'dca',
-    label: 'DCA',
+    label: 'DCA quỹ',
     keepMounted: true,
     render: ({ metadata, state, dcaUrlParams }: TabContext): ReactElement => <DCAPanel funds={metadata} active={state.tab === 'dca'} shareUrl={dcaUrlParams} />,
+  },
+  {
+    id: 'stockdca',
+    label: 'DCA Cổ phiếu',
+    keepMounted: true,
+    render: ({ state, stockDcaUrlParams }: TabContext): ReactElement => <StockDcaPanel active={state.tab === 'stockdca'} shareUrl={stockDcaUrlParams} />,
   },
   {
     id: 'lsdca',

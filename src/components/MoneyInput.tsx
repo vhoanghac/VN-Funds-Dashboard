@@ -5,6 +5,7 @@ interface MoneyInputProps {
   onChange: (value: number) => void
   min?: number
   className?: string
+  id?: string
 }
 
 function format(n: number): string {
@@ -34,7 +35,7 @@ function positionForDigitCount(s: string, count: number): number {
   return s.length
 }
 
-export function MoneyInput({ value, onChange, min = 0, className }: MoneyInputProps) {
+export function MoneyInput({ value, onChange, min = 0, className, id }: MoneyInputProps) {
   const [display, setDisplay] = useState(() => format(value))
   const inputRef = useRef<HTMLInputElement>(null)
   // Số chữ số cần đứng trước con trỏ sau khi format lại; null = không cần khôi phục
@@ -82,6 +83,7 @@ export function MoneyInput({ value, onChange, min = 0, className }: MoneyInputPr
   return (
     <input
       ref={inputRef}
+      id={id}
       type="text"
       inputMode="numeric"
       className={className}

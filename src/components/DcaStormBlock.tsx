@@ -38,6 +38,7 @@ export interface StormPortfolio {
 
 interface Props {
   portfolios: StormPortfolio[]
+  assetLabel?: string
 }
 
 const BEAR_LABEL: Record<NonNullable<DCAStormStats['inBearPeriod']>, string> = {
@@ -46,7 +47,7 @@ const BEAR_LABEL: Record<NonNullable<DCAStormStats['inBearPeriod']>, string> = {
   bear2022: 'bear market 2022',
 }
 
-function DcaStormBlockImpl({ portfolios }: Props) {
+function DcaStormBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   if (portfolios.length === 0) return null
 
   // Lọc portfolio có bão đáng kể (DD ≤ -10%)
@@ -117,8 +118,8 @@ function DcaStormBlockImpl({ portfolios }: Props) {
         </div>
       </div>
 
-      <MarketDrawdownChart portfolios={portfolios} />
-      <AccountDrawdownChart portfolios={portfolios} worstPortfolioId={worst.id} marketMaxDD={s.maxDrawdown} />
+       <MarketDrawdownChart portfolios={portfolios} assetLabel={assetLabel} />
+       <AccountDrawdownChart portfolios={portfolios} worstPortfolioId={worst.id} marketMaxDD={s.maxDrawdown} assetLabel={assetLabel} />
       <DcaRecoveryChart portfolios={portfolios} />
       <DrawdownSummaryTable episodes={singlePortfolioEpisodes} />
 
@@ -198,7 +199,7 @@ function formatSummaryDuration(days: number | null): string {
  * Phản ánh đúng "bão thị trường": giá quỹ sập bao nhiêu % từ đỉnh. Con số khớp
  * với stat "Drawdown tệ nhất -X%" trong storm stats.
  */
-function MarketDrawdownChart({ portfolios }: { portfolios: StormPortfolio[] }) {
+function MarketDrawdownChart({ portfolios, assetLabel }: { portfolios: StormPortfolio[]; assetLabel: string }) {
   // Với danh mục nhiều quỹ, không gọi drawdown của cả danh mục là "giá quỹ".
   if (portfolios.length !== 1 || portfolios[0]!.assetCount !== 1) return null
 
@@ -212,9 +213,9 @@ function MarketDrawdownChart({ portfolios }: { portfolios: StormPortfolio[] }) {
   const floorPct = Math.floor(minDD / 5) * 5
 
   return (
-    <DcaBlock title="Giá quỹ sập bao nhiêu?" className="dca-storm-chart">
+    <DcaBlock title={`Giá ${assetLabel} sập bao nhiêu?`} className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
-        Khoảng cách từ đỉnh giá quỹ. Đây là "bão thị trường thật", đo bằng TWRR
+        Khoảng cách từ đỉnh giá {assetLabel}. Đây là "bão thị trường thật", đo bằng TWRR
         nên đã loại ảnh hưởng của việc bạn nạp tiền đều đặn.
       </div>
       {renderUnderwaterChart(data, portfolios, floorPct, 'mkt')}
@@ -233,10 +234,12 @@ function AccountDrawdownChart({
   portfolios,
   worstPortfolioId,
   marketMaxDD,
+  assetLabel,
 }: {
   portfolios: StormPortfolio[]
   worstPortfolioId: string
   marketMaxDD: number
+  assetLabel: string
 }) {
   const { data, minDD, accountMaxDDByPortfolio } = useMemo(() => {
     const result = computeSeriesDD(portfolios, p => {
@@ -276,16 +279,16 @@ function AccountDrawdownChart({
   return (
     <DcaBlock title="Giá trị danh mục sụt giảm bao nhiêu?" className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
-        Khoảng cách từ đỉnh số dư tài khoản thực tế của bạn. Đây là thứ bạn thấy khi mở app quỹ.
+         Khoảng cách từ đỉnh số dư tài khoản thực tế của bạn. Đây là thứ bạn thấy khi mở app.
       </div>
       {renderUnderwaterChart(data, portfolios, floorPct, 'acc')}
       {softenedSignificant && (
         <div className="dca-storm-chart-note">
-          Giá quỹ sập <strong>-{marketDDPct.toFixed(1)}%</strong>, nhưng số dư tài khoản
+           Giá {assetLabel} sập <strong>-{marketDDPct.toFixed(1)}%</strong>, nhưng số dư tài khoản
           lúc tệ nhất chỉ <strong>-{accountDDPct.toFixed(1)}%</strong>. Khoảng chênh{' '}
           <strong>{softenedBy.toFixed(1)} điểm %</strong> là phần DCA cứu vớt: mỗi lần bạn
           nạp thêm tiền giữa bão, peak số dư được kéo lên chậm, đáy cũng không sập sâu như
-          giá quỹ.
+           giá {assetLabel}.
         </div>
       )}
     </DcaBlock>
