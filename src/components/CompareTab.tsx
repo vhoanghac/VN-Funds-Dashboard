@@ -180,22 +180,20 @@ function CompareTabImpl({
         <div className="error-banner">{comparison.error.message}</div>
       )}
 
+      <DataQualityBlock
+        fundIds={funds.filter(id => !isSavingsAssetId(id))}
+        fundData={fundData}
+        colors={FUND_COLORS}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        alignedStart={comparison.status === 'ready' ? comparison.data.startDate : undefined}
+        alignedEnd={comparison.status === 'ready' ? comparison.data.endDate : undefined}
+        loading={fundsLoading}
+      />
+
       {comparison.status === 'ready' && (
         <>
           <DividendNotice fundIds={funds} />
-
-          {/* Tiết kiệm ngân hàng không có nguồn dữ liệu nào để mà kiểm tra chất
-              lượng: chuỗi giá sinh tại chỗ nên luôn "đủ ngày, mới tinh". Đưa nó
-              vào bảng này chỉ tạo cảm giác an tâm giả, nên loại thẳng ra. */}
-          <DataQualityBlock
-            fundIds={funds.filter(id => !isSavingsAssetId(id))}
-            fundData={fundData}
-            colors={FUND_COLORS}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            alignedStart={comparison.data.startDate}
-            alignedEnd={comparison.data.endDate}
-          />
 
           <KPICards funds={kpiFunds} />
 

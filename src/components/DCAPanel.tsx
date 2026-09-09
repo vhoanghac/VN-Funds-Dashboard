@@ -1233,6 +1233,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         dateTo={effectiveDates.to || null}
         alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
         alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
+        loading={isLoading}
       />
 
       <GoldLotWarningBlock

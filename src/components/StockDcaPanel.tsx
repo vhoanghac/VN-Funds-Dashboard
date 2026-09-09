@@ -211,12 +211,22 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
     setLoadError(null)
     Promise.all(stockIds.map(async stockId => {
       const option = STOCK_OPTIONS.find(item => item.id === stockId)
-      if (!option) throw new Error(`Không tải được dữ liệu ${stockId}`)
-      return [stockId, await option.load()] as const
+      if (!option) return { stockId, error: new Error(`Không tải được dữ liệu ${stockId}`) }
+      try {
+        return { stockId, data: await option.load() }
+      } catch (error) {
+        return { stockId, error }
+      }
     }))
-      .then(entries => { if (active) setStockData(new Map(entries)) })
-      .catch(error => {
-        if (active) setLoadError(error instanceof Error ? error.message : 'Không tải được dữ liệu cổ phiếu')
+      .then(entries => {
+        if (!active) return
+        const loaded = entries.filter((entry): entry is { stockId: string; data: StockData } => 'data' in entry)
+        const failed = entries.filter((entry): entry is { stockId: string; error: unknown } => 'error' in entry)
+        setStockData(new Map(loaded.map(entry => [entry.stockId, entry.data])))
+        if (failed.length > 0) {
+          const messages = failed.map(entry => entry.error instanceof Error ? entry.error.message : `Không tải được dữ liệu ${entry.stockId}`)
+          setLoadError(messages.join('; '))
+        }
       })
     return () => { active = false }
   }, [stockIdsKey])
@@ -237,7 +247,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
   const dateRangeError = dateMode === 'all' && !!dateFrom && !!dateTo && dateFrom > dateTo
   const portfolioError = portfolios.some(portfolio => portfolio.slots.length !== 1 || portfolio.slots[0]?.weight !== 100)
   const committedRun = useCommittedRun<StockRunParams, StockSnapshot, StockView[]>({
-    ready: stockIds.length > 0 && stockIds.every(stockId => stockData.has(stockId)),
+    ready: stockIds.length > 0 && (stockIds.every(stockId => stockData.has(stockId)) || !!loadError),
     valid: portfolios.length > 0 && !portfolioError && !scheduleError && !dateRangeError,
     liveParams,
     captureSnapshot: () => ({
@@ -251,32 +261,37 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
     compute: snapshot => {
       const { params } = snapshot
       const allStockIds = Array.from(new Set(params.portfolios.flatMap(portfolio => portfolio.slots.map(slot => slot.fundId).filter(Boolean))))
-      let globalStart = params.dateFrom || ''
-      let globalEnd = params.dateTo || OPEN_ENDED_DATE
-
-      for (const stockId of allStockIds) {
-        const data = snapshot.data.get(stockId)
-        if (!data || data.prices.length === 0) return []
-        const dataStart = data.prices[0]!.date
-        const dataEnd = data.prices[data.prices.length - 1]!.date
-        if (dataStart > globalStart) globalStart = dataStart
-        if (dataEnd < globalEnd) globalEnd = dataEnd
-      }
-
-      if (globalStart > globalEnd) return []
+      const globalStart = params.dateFrom || ''
+      const globalEnd = params.dateTo || OPEN_ENDED_DATE
 
       const filteredPricesByStock = new Map<string, StockData['prices']>()
       for (const stockId of allStockIds) {
         const data = snapshot.data.get(stockId)
-        if (!data) return []
-        filteredPricesByStock.set(stockId, filterStockPrices(data.prices, globalStart, globalEnd))
+        filteredPricesByStock.set(stockId, data ? filterStockPrices(data.prices, globalStart, globalEnd) : [])
       }
       const alignedPricesByStock = alignFundsToCommonGridDaily(filteredPricesByStock, MAX_STALE_PRICE_DAYS)
+      const availableStockIds = allStockIds.filter(stockId => (alignedPricesByStock.get(stockId)?.length ?? 0) > 0)
+      if (availableStockIds.length === 0) return []
+
+      let commonDates = new Set(alignedPricesByStock.get(availableStockIds[0]!)!.map(point => point.date))
+      for (const stockId of availableStockIds.slice(1)) {
+        const dates = new Set(alignedPricesByStock.get(stockId)!.map(point => point.date))
+        commonDates = new Set(Array.from(commonDates).filter(date => dates.has(date)))
+      }
+      if (commonDates.size === 0) return []
+
+      const commonPricesByStock = new Map<string, StockData['prices']>()
+      for (const stockId of allStockIds) {
+        commonPricesByStock.set(
+          stockId,
+          (alignedPricesByStock.get(stockId) ?? []).filter(point => commonDates.has(point.date)),
+        )
+      }
       const views: StockView[] = []
       for (const [portfolioIndex, portfolio] of params.portfolios.entries()) {
         const stockId = portfolio.slots[0]?.fundId
         const data = stockId ? snapshot.data.get(stockId) : undefined
-        const prices = stockId ? alignedPricesByStock.get(stockId) : undefined
+        const prices = stockId ? commonPricesByStock.get(stockId) : undefined
         if (!data || !prices || portfolio.slots[0]?.weight !== 100) continue
         if (prices.length === 0) continue
         const firstDate = prices[0]!.date
@@ -321,13 +336,13 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
     run: runCommitted,
     reset: resetCommitted,
   } = committedRun
-  const stockDataLoading = stockIds.length > 0 && stockIds.some(stockId => !stockData.has(stockId))
+  const stockDataLoading = stockIds.length > 0 && stockIds.some(stockId => !stockData.has(stockId)) && !loadError
   const stockPriceData = useMemo(
     () => new Map<string, StockData['prices']>(Array.from(stockData, ([stockId, data]) => [stockId, data.prices])),
     [stockData],
   )
   const dataQualityAlignedRange = useMemo(() => {
-    if (!views || views.length === 0) return null
+    if (!views || views.length === 0 || views.length !== portfolios.length) return null
     const starts = views.map(view => view.prices[0]?.date).filter((date): date is string => !!date)
     const ends = views.map(view => view.prices[view.prices.length - 1]?.date).filter((date): date is string => !!date)
     if (starts.length === 0 || ends.length === 0) return null
@@ -549,6 +564,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         dateTo={liveDates.to || null}
         alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
         alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
+        loading={stockDataLoading}
       />
 
       {stockDataLoading && <div className="loading-indicator">Đang tải chuỗi giá cổ phiếu...</div>}

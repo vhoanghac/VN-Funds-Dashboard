@@ -4,6 +4,7 @@ import { isDCAFrequency, normalizeDCAContributionSchedule, normalizeTransactionC
 import { isCashMode, isLSvsDCAFreq, type CashMode, type LSvsDCAFreq } from './lsVsDca'
 import { parsePortfolio } from './portfolio'
 import { isValidYearsBack } from './dateRange'
+import { isIsoDate } from './priceSeries'
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
@@ -238,10 +239,12 @@ function parseLegacyDcaParams(p: URLSearchParams): Partial<DcaShareState> {
   if (datemode === 'all' || datemode === 'years') result.dateMode = datemode
 
   const years = parseInt(p.get('years') ?? '', 10)
-  if (!isNaN(years) && years > 0) result.yearsBack = years
+  if (isValidYearsBack(years)) result.yearsBack = years
 
-  result.dateFrom = p.get('from') ?? ''
-  result.dateTo = p.get('to') ?? ''
+  const dateFrom = p.get('from') ?? ''
+  const dateTo = p.get('to') ?? ''
+  result.dateFrom = isIsoDate(dateFrom) ? dateFrom : ''
+  result.dateTo = isIsoDate(dateTo) ? dateTo : ''
 
   // Parse portfolios p1, p2, p3...
   const portfolios: Portfolio[] = []
@@ -337,8 +340,8 @@ export function parseStockDcaParams(params: URLSearchParams = paramsFromWindow()
     const result: Partial<StockDcaShareState> = {}
     if (raw.dm === 'all' || raw.dm === 'years') result.dateMode = raw.dm
     if (isValidYearsBack(raw.y)) result.yearsBack = raw.y
-    result.dateFrom = typeof raw.from === 'string' ? raw.from : ''
-    result.dateTo = typeof raw.to === 'string' ? raw.to : ''
+    result.dateFrom = typeof raw.from === 'string' && isIsoDate(raw.from) ? raw.from : ''
+    result.dateTo = typeof raw.to === 'string' && isIsoDate(raw.to) ? raw.to : ''
     if (typeof raw.i === 'number' && raw.i >= 0) result.initialAmount = raw.i
     if (typeof raw.a === 'number' && raw.a >= 0) result.annualContributionIncreaseAmount = raw.a
     const legacyBuyFeeRate = typeof raw.bf === 'number' && raw.bf >= 0 ? raw.bf : undefined

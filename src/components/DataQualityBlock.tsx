@@ -35,6 +35,7 @@ interface Props {
   /** Start/end thực tế đã aligned; khi undefined có thể chưa ready */
   alignedStart?: string
   alignedEnd?: string
+  loading?: boolean
 }
 
 export function DataQualityBlock({
@@ -46,6 +47,7 @@ export function DataQualityBlock({
   assetLabel = 'quỹ',
   alignedStart,
   alignedEnd,
+  loading = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -60,7 +62,29 @@ export function DataQualityBlock({
     return out
   }, [fundIds, fundData, dateFrom, dateTo])
 
-  if (reports.length === 0) return null
+  const missingFundIds = fundIds.filter(id => {
+    const prices = fundData.get(id)
+    return !prices || prices.length === 0
+  })
+
+  if (loading) return null
+  if (reports.length === 0 && missingFundIds.length === 0) return null
+
+  if (reports.length === 0) {
+    return (
+      <div className="dq-block dq-block--warn">
+        <div className="dq-header">
+          <span className="dq-dot dq-dot--warn" />
+          <span className="dq-header-main">
+            <strong>Chất lượng dữ liệu: chưa đủ</strong>
+            <span className="dq-header-sub">
+              Không có chuỗi giá cho: {missingFundIds.join(', ')}.
+            </span>
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   // Quỹ có endDate muộn nhất — con số "Cập nhật tới" và "(N ngày trước)" phải
   // lấy từ CÙNG một quỹ. Trước đây lastUpdated lấy max endDate, còn stalestDays
@@ -75,13 +99,13 @@ export function DataQualityBlock({
   // nhưng không dùng để gắn vào con số "ngày trước".
   const stalestDays = Math.max(...reports.map(r => r.daysStale))
   const anyGaps = reports.some(r => r.gaps.length > 0)
-  const anyCoverageIssue = reports.some(
-    r => r.startsAfterRequested || r.endsBeforeRequested,
-  )
+  const anyMissing = missingFundIds.length > 0
+  const anyCoverageIssue = reports.some(r => r.startsAfterRequested || r.endsBeforeRequested)
+  const anyPointIssue = reports.some(r => r.insufficientPointsInRequestedRange)
   const reportsWithIssues = reports.filter(
-    r => r.gaps.length > 0 || r.startsAfterRequested || r.endsBeforeRequested,
+    r => r.gaps.length > 0 || r.startsAfterRequested || r.endsBeforeRequested || r.insufficientPointsInRequestedRange,
   )
-  const hasWarnings = anyGaps || anyCoverageIssue || stalestDays > STALE_DAYS_THRESHOLD
+  const hasWarnings = anyMissing || anyGaps || anyCoverageIssue || anyPointIssue || stalestDays > STALE_DAYS_THRESHOLD
 
   // Compute total span for bar chart
   const allStarts = reports.map(r => new Date(r.startDate).getTime())
@@ -107,6 +131,8 @@ export function DataQualityBlock({
                 {freshest.daysStale > 0 ? ` (${freshest.daysStale} ngày trước)` : ''}
                 {anyGaps ? '. Phát hiện khoảng thiếu giá.' : ''}
                 {anyCoverageIssue ? ` Có ${assetLabel} không phủ hết khoảng bạn chọn.` : ''}
+                {anyPointIssue ? ` Khoảng bạn chọn chưa có đủ hai điểm giá để so sánh.` : ''}
+                {anyMissing ? ` Không có chuỗi giá cho: ${missingFundIds.join(', ')}.` : ''}
               </span>
             </>
           ) : (
@@ -170,6 +196,14 @@ export function DataQualityBlock({
                   requestedTo={dateTo}
                 />
               ))}
+            </div>
+          )}
+          {anyMissing && (
+            <div className="dq-issues">
+              <h4 className="dq-issues-title">Dữ liệu chưa tải đủ</h4>
+              <div className="dq-issue-card">
+                Không có chuỗi giá cho: <strong>{missingFundIds.join(', ')}</strong>.
+              </div>
             </div>
           )}
         </div>
@@ -287,6 +321,11 @@ function FundIssueList({
             Dữ liệu chỉ tới <strong>{formatDate(report.endDate)}</strong>, sớm
             hơn ngày bạn chọn ({formatDate(requestedTo)}). Khoảng sau đó không
             có giá.
+          </li>
+        )}
+        {report.insufficientPointsInRequestedRange && (
+          <li>
+            Trong khoảng bạn chọn chưa có đủ hai điểm giá để so sánh.
           </li>
         )}
         {report.gaps.map((g, i) => (
