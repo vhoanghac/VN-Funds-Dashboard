@@ -91,6 +91,20 @@ describe('StockDcaPanel', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
     expect(screen.getByText('Tích Lũy Cổ Phiếu')).toBeInTheDocument()
+    expect(screen.getByTitle(/So sánh lợi nhuận các cổ phiếu/)).toBeInTheDocument()
+    expect(screen.getByText(/giá cổ phiếu cần tăng thêm/)).toBeInTheDocument()
+    expect(screen.getByText(/thay vì mua cổ phiếu/)).toBeInTheDocument()
+    expect(screen.getAllByText(/lịch sử cổ phiếu/).length).toBeGreaterThan(0)
+    await userEvent.setup().click(screen.getByRole('button', { name: /Giải Thích Khái Niệm/ }))
+    expect(screen.getByText(/CAGR thuần của cổ phiếu/)).toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+    const yearlyReturns = screen.getByRole('heading', { name: 'Hiệu suất danh mục của bạn từng năm' })
+    const bankComparison = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' })
+    expect(yearlyReturns.compareDocumentPosition(bankComparison) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
+    expect(screen.queryByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' })).not.toBeInTheDocument()
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Rủi ro & biến động' }))
     expect(screen.getAllByRole('button', { name: 'Tất cả' }).some(button => button.className.includes('dca-results-filter-btn'))).toBe(false)
@@ -126,6 +140,12 @@ describe('StockDcaPanel', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
     await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+    const bankComparisonBlock = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' }).closest('.dca-block')
+    expect(bankComparisonBlock).not.toBeNull()
+    expect(bankComparisonBlock).toHaveTextContent('ACB')
+    expect(bankComparisonBlock).toHaveTextContent('MBB')
+
     await userEvent.setup().click(screen.getByRole('button', { name: 'Rủi ro & biến động' }))
 
     expect(screen.getAllByRole('button', { name: 'Tất cả' }).some(button => button.className.includes('dca-results-filter-btn'))).toBe(true)

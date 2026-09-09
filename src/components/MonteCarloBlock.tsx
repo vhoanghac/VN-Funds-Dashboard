@@ -42,6 +42,7 @@ export interface MonteCarloPortfolio {
 
 interface Props {
   portfolios: MonteCarloPortfolio[]
+  assetLabel?: string
 }
 
 const YEAR_OPTIONS = [5, 10, 15, 20, 25, 30]
@@ -54,7 +55,7 @@ const PRESET_TARGETS = [
   { label: '3 tỷ', value: 3_000_000_000 },
 ]
 
-function MonteCarloBlockImpl({ portfolios }: Props) {
+function MonteCarloBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   const [target, setTarget] = useState<number>(1_000_000_000)
   const [years, setYears] = useState<number>(10)
   const [customInput, setCustomInput] = useState<string>('')
@@ -91,7 +92,7 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
     <DcaBlock title={`Dựa trên ${ITERATIONS.toLocaleString('vi-VN')} kịch bản trong quá khứ, khả năng bạn đạt mục tiêu là:`} className="dca-mc-block">
       <p className="dca-mc-sub">
         Thay vì 3 kịch bản Xấu/Base/Tốt cố định ở trên, cách này lấy nguyên các đoạn 12 tháng
-        đã từng xảy ra thật trong lịch sử quỹ — ví dụ đúng 12 tháng của một năm khủng hoảng,
+        đã từng xảy ra thật trong lịch sử {assetLabel} — ví dụ đúng 12 tháng của một năm khủng hoảng,
         hay 12 tháng của một năm tăng đều — rồi ghép ngẫu nhiên nhiều đoạn như vậy theo thứ tự
         khác nhau, tạo ra <strong>{ITERATIONS.toLocaleString('vi-VN')}</strong> kịch bản tương
         lai khác nhau. Diễn biến thật bên trong mỗi đoạn 12 tháng không đổi, chỉ có thứ tự các
@@ -200,8 +201,8 @@ function MonteCarloBlockImpl({ portfolios }: Props) {
       <div className="dca-mc-disclaimer">
         ⚠️ Đây KHÔNG phải dự báo. Thị trường không bao giờ đi thẳng như một đường kẻ — có những
         năm sập sâu, có những năm bùng mạnh. Mỗi kịch bản chỉ là một cách sắp xếp lại các giai
-        đoạn 12 tháng đã từng xảy ra trong lịch sử quỹ — tương lai thật có thể tệ hơn mọi kịch
-        bản đã thấy (khủng hoảng chưa từng có), hoặc tốt hơn. Quỹ có lịch sử càng ngắn, phân
+        đoạn 12 tháng đã từng xảy ra trong lịch sử {assetLabel} — tương lai thật có thể tệ hơn mọi kịch
+        bản đã thấy (khủng hoảng chưa từng có), hoặc tốt hơn. {assetLabel} có lịch sử càng ngắn, phân
         phối này càng kém tin cậy vì cùng vài giai đoạn bị lặp lại nhiều lần trong 1.000 kịch
         bản. Hãy xem đây là "nếu thì", không phải "sẽ là".
       </div>

@@ -34,9 +34,10 @@ export interface BankCompareResult {
 interface Props {
   results: BankCompareResult[]
   endDate: string  // YYYY-MM-DD
+  assetLabel?: string
 }
 
-function BankComparisonBlockImpl({ results, endDate }: Props) {
+function BankComparisonBlockImpl({ results, endDate, assetLabel = 'quỹ' }: Props) {
   const [bankRate, setBankRate] = useState<number>(DEFAULT_BANK_RATE)
 
   if (results.length === 0) return null
@@ -84,7 +85,7 @@ function BankComparisonBlockImpl({ results, endDate }: Props) {
       </div>
 
       <p className="dca-bank-compare-sub">
-        Giả sử cùng lịch nạp tiền đó, nhưng thay vì mua quỹ, bạn đem gửi tiết kiệm
+        Giả sử cùng lịch nạp tiền đó, nhưng thay vì mua {assetLabel}, bạn đem gửi tiết kiệm
         ngân hàng với lãi suất <strong>{(bankRate * 100).toFixed(1)}%/năm</strong>
         {' '}ghép lãi hàng năm. Kết quả sẽ như thế nào?
       </p>
@@ -117,7 +118,7 @@ function BankComparisonBlockImpl({ results, endDate }: Props) {
       </div>
 
       {comparisons.length > 0 && (
-        <BankTakeaway comparisons={comparisons} />
+        <BankTakeaway comparisons={comparisons} assetLabel={assetLabel} />
       )}
     </DcaBlock>
   )
@@ -129,9 +130,10 @@ interface TakeawayProps {
     diff: number
     diffPct: number
   }>
+  assetLabel: string
 }
 
-function BankTakeaway({ comparisons }: TakeawayProps) {
+function BankTakeaway({ comparisons, assetLabel }: TakeawayProps) {
   const winners = comparisons.filter(c => c.diff > 0)
   const losers  = comparisons.filter(c => c.diff <= 0)
   const best = [...comparisons].sort((a, b) => b.diff - a.diff)[0]!
@@ -145,7 +147,7 @@ function BankTakeaway({ comparisons }: TakeawayProps) {
           Tất cả <strong>{comparisons.length}</strong> danh mục đều cho kết quả tốt
           hơn gửi tiết kiệm. Dẫn đầu là <strong>{best.name}</strong>, hơn ngân hàng
           {' '}<strong>+{formatVND(best.diff)}</strong> ({best.diffPct >= 0 ? '+' : ''}{best.diffPct.toFixed(1)}%).
-          {' '}Trong giai đoạn này, việc chấp nhận rủi ro của quỹ đã được đền đáp xứng đáng.
+          {' '}Trong giai đoạn này, việc chấp nhận rủi ro của {assetLabel} đã được đền đáp xứng đáng.
         </div>
       </div>
     )
@@ -161,7 +163,7 @@ function BankTakeaway({ comparisons }: TakeawayProps) {
           kiệm trong giai đoạn này. Thị trường Việt Nam là thị trường cận biên, từ
           bull sang bear diễn ra chóng vánh, rất dễ rơi vào giai đoạn không thuận
           lợi như 2018-2019 hoặc sau COVID 3/2020. Gửi tiết kiệm đảm bảo lợi nhuận
-          như mong đợi, còn quỹ thì không. Thử chọn khoảng thời gian dài hơn để
+          như mong đợi, còn {assetLabel} thì không. Thử chọn khoảng thời gian dài hơn để
           xem bức tranh đầy đủ hơn.
         </div>
       </div>
@@ -176,7 +178,7 @@ function BankTakeaway({ comparisons }: TakeawayProps) {
         <strong>{winners.length}/{comparisons.length}</strong> danh mục có kết quả
         tốt hơn gửi tiết kiệm. <strong>{best.name}</strong> dẫn đầu với
         {' '}<strong>+{formatVND(best.diff)}</strong>. Những danh mục còn lại chưa
-        đủ bù đắp rủi ro mà bạn đã chấp nhận. Không phải quỹ nào cũng phù hợp,
+        đủ bù đắp rủi ro mà bạn đã chấp nhận. Không phải {assetLabel} nào cũng phù hợp,
         đó là lý do vì sao phải chọn kỹ.
       </div>
     </div>

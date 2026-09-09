@@ -125,7 +125,7 @@ export const DcaJourneyBlock = memo(DcaJourneyBlockImpl)
  * Đây là công thức chuẩn GIPS, không cần giải lặp nên luôn ổn định dù mỗi
  * năm chỉ có ~12 lần nạp tiền.
  */
-function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] }) {
+function EOYReturnsTableImpl({ portfolios, assetLabel = 'quỹ' }: { portfolios: JourneyPortfolio[]; assetLabel?: string }) {
   const perPortfolio = portfolios.map(p => ({
     id: p.id,
     name: p.name,
@@ -148,10 +148,10 @@ function EOYReturnsTableImpl({ portfolios }: { portfolios: JourneyPortfolio[] })
       <p className="dca-eoy-explainer">
         Bảng này tính hiệu suất <strong>có tính đến dòng tiền bạn thực sự nạp</strong>
         {' '}(Modified Dietz method), không phải hiệu suất "nếu đầu tư 1 lần từ đầu"
-        của bản thân quỹ. Tiền nạp càng sớm trong năm càng được tính trọng số cao
+        của bản thân {assetLabel}. Tiền nạp càng sớm trong năm càng được tính trọng số cao
         (có nhiều thời gian sinh lời hơn), tiền nạp cuối năm gần như chưa kịp sinh
         lời. Nhờ vậy con số này phản ánh đúng trải nghiệm DCA thực tế của bạn, thay
-        vì chỉ đo giá quỹ tăng/giảm bao nhiêu. Cột "Giá trị" là số dư danh mục tại
+        vì chỉ đo giá {assetLabel} tăng/giảm bao nhiêu. Cột "Giá trị" là số dư danh mục tại
         điểm cuối năm đó (đã gồm mọi lần nạp tính đến lúc đó).
       </p>
       <div className="dca-eoy-table-scroll">

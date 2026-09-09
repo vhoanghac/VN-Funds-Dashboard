@@ -517,7 +517,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const view = views.find(candidate => candidate.id === activePortfolioId) ?? views[0]!
   const riskPortfolioId = activeRiskPortfolioId || views[0]?.id
   const riskView = views.find(candidate => candidate.id === riskPortfolioId) ?? views[0]!
-  const { result, presentation: p } = view
+  const { result } = view
   const annualDividends = useMemo(() => annualStockDividends(result.points), [result.points])
   const shareHoldings = useMemo(() => stockShareHoldings(result.points), [result.points])
   const startDate = view.prices[0]!.date
@@ -557,7 +557,14 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const riskHistoricalPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, cumulative: candidate.presentation.cumulative })), [views])
   const drawdownPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, assetCount: 1, storm: candidate.presentation.storm, drawdown: candidate.presentation.drawdown, valueSeries: candidate.presentation.valueSeries })), [views])
   const riskRollingPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, cumulative: candidate.presentation.cumulative })), [views])
-  const bankComparisonResults = useMemo(() => [{ id: view.id, name: view.name, color: view.color, finalValue: result.finalValue, investedSeries: p.investedSeries }], [view, p.investedSeries, result.finalValue])
+  const bankComparisonResults = useMemo(() => views.map(candidate => ({
+    id: candidate.id,
+    name: candidate.name,
+    color: candidate.color,
+    finalValue: candidate.result.finalValue,
+    investedSeries: candidate.presentation.investedSeries,
+  })), [views])
+  const bankComparisonEndDate = views[0]!.prices[views[0]!.prices.length - 1]!.date
   const selectedJourney = useMemo(() => journey.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, journey])
    const selectedRiskReturnPainPortfolios = useMemo(() => riskReturnPainPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskReturnPainPortfolios])
    const selectedRiskHistoricalPortfolios = useMemo(() => riskHistoricalPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskHistoricalPortfolios])
@@ -616,15 +623,16 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
             <DCAStatsTable portfolios={stats} assetLabel="cổ phiếu" />
             <PortfolioValueChart portfolios={valueChart} />
             <MemoDrawdownChart series={drawdownChart} />
-            <DcaRecoveryChart portfolios={recoveryPortfolios} />
+            <DcaRecoveryChart portfolios={recoveryPortfolios} assetLabel="cổ phiếu" />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="perf" active={activeSection === 'perf'}>
             <div className="comparison-period" style={{ marginBottom: 16 }}>DCA từ {formatDate(startDate)} đến {formatDate(endDate)}</div>
             <DCAStatsTable portfolios={stats} assetLabel="cổ phiếu" />
             <PortfolioValueChart portfolios={valueChart} />
-            <MemoYearlyPerformanceChart series={yearly} title="Hiệu suất theo năm" />
-            <EOYReturnsTable portfolios={journey} />
+            <MemoYearlyPerformanceChart series={yearly} title="Hiệu suất theo năm" assetLabel="cổ phiếu" />
+            <EOYReturnsTable portfolios={journey} assetLabel="cổ phiếu" />
+            <BankComparisonBlock results={bankComparisonResults} endDate={bankComparisonEndDate} assetLabel="cổ phiếu" />
             <DcaReturnExplainer portfolios={returnExplainerPortfolios} />
           </DcaSectionPanel>
 
@@ -639,7 +647,6 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
             <StockShareHoldingsBlock points={shareHoldings} />
             <StockCorporateActions actions={view.actions} pendingActions={view.pendingActions} />
             <StockLedger result={result} />
-            <BankComparisonBlock results={bankComparisonResults} endDate={endDate} />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="risk" active={activeSection === 'risk'}>
@@ -666,11 +673,11 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
 
           <DcaSectionPanel id="endgame" active={activeSection === 'endgame'}>
             <ProjectionBlock portfolios={selectedProjection} />
-            <MonteCarloBlock portfolios={selectedMonteCarlo} />
+            <MonteCarloBlock portfolios={selectedMonteCarlo} assetLabel="cổ phiếu" />
           </DcaSectionPanel>
         </div>
       </div>
-      <DCAGlossary />
+      <DCAGlossary assetLabel="cổ phiếu" />
     </>
   )
 })

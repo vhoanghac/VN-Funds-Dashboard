@@ -19,6 +19,7 @@ export interface RecoveryPortfolio {
 
 interface Props {
   portfolios: RecoveryPortfolio[]
+  assetLabel?: string
 }
 
 /** Chuyển chuỗi drawdown thành hệ số tăng cần có để quay lại đỉnh cũ. */
@@ -33,7 +34,7 @@ export function buildRecoverySeries(portfolios: RecoveryPortfolio[]): ChartSerie
   }))
 }
 
-function DcaRecoveryChartImpl({ portfolios }: Props) {
+function DcaRecoveryChartImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   const series = buildRecoverySeries(portfolios)
   const data = mergeAllSeries(series)
   if (data.length === 0) return null
@@ -49,11 +50,11 @@ function DcaRecoveryChartImpl({ portfolios }: Props) {
       title="Hiệu suất để về lại đỉnh"
       actions={<span
           className="chart-tooltip-icon"
-          title="Từ mức drawdown hiện tại, giá quỹ cần tăng bao nhiêu lần để quay lại đỉnh cũ."
+          title={`Từ mức drawdown hiện tại, giá ${assetLabel} cần tăng bao nhiêu lần để quay lại đỉnh cũ.`}
         >?</span>}
     >
       <p className="dca-recovery-sub">
-        1,00× nghĩa là danh mục đang ở đỉnh. Khi đường lên 1,25×, giá quỹ cần tăng thêm
+        1,00× nghĩa là danh mục đang ở đỉnh. Khi đường lên 1,25×, giá {assetLabel} cần tăng thêm
         25% mới quay lại đỉnh cũ.
       </p>
       <ResponsiveContainer width="100%" height={350}>

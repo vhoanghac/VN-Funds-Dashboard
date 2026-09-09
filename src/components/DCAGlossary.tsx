@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export function DCAGlossary() {
+export function DCAGlossary({ assetLabel = 'quỹ' }: { assetLabel?: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -63,7 +63,7 @@ export function DCAGlossary() {
           <blockquote className="dca-glossary-note">
             <strong>Lưu ý:</strong> CAGR trong tab này tính theo góc nhìn của nhà đầu
             tư, tổng vốn đã đầu tư so với giá trị cuối kỳ. Đây <em>không phải</em> CAGR
-            thuần của quỹ (TWRR), vốn bỏ qua các lần nạp tiền DCA.
+             thuần của {assetLabel} (TWRR), vốn bỏ qua các lần nạp tiền DCA.
           </blockquote>
 
           <hr className="dca-glossary-divider" />

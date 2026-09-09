@@ -120,7 +120,7 @@ function DcaStormBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
 
        <MarketDrawdownChart portfolios={portfolios} assetLabel={assetLabel} />
        <AccountDrawdownChart portfolios={portfolios} worstPortfolioId={worst.id} marketMaxDD={s.maxDrawdown} assetLabel={assetLabel} />
-      <DcaRecoveryChart portfolios={portfolios} />
+      <DcaRecoveryChart portfolios={portfolios} assetLabel={assetLabel} />
       <DrawdownSummaryTable episodes={singlePortfolioEpisodes} />
 
       <DrawdownEpisodesSection portfolios={portfolios} />
