@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
+import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, buildDcaExecutionDates, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -30,6 +30,7 @@ import { DcaConsistencyBlock } from './DcaConsistencyBlock'
 import { DividendBlock } from './DividendBlock'
 import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import { DataQualityBlock } from './DataQualityBlock'
+import { yearsBackDateRange } from '../utils/dateRange'
 import { DrawdownChart } from './DrawdownChart'
 import { DcaRecoveryChart } from './DcaRecoveryChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
@@ -107,6 +108,7 @@ interface DCAPortfolioResult {
     /** Giá "bán ra" cho các slot là quỹ 2-giá (vàng) — xem simulateDCA's purchasePrices option. */
     purchasePrices: Map<string, PricePoint[]>
     transactionCostRates: TransactionCostRates
+    executionDates: string[]
   } | null
   /**
    * Shadow simulation cổ tức trên RAW NAV — số tiền thật, số ccq thật nhà
@@ -325,7 +327,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     const ids = new Set<string>()
     for (const p of portfolios) {
       for (const s of p.slots) {
-        if (s.fundId) ids.add(s.fundId)
+        if (s.fundId && s.weight > 0) ids.add(s.fundId)
       }
     }
     return ids
@@ -436,12 +438,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // ── Compute effective date range ──
   function getEffectiveDates(): { from: string; to: string } {
     if (dateMode === 'years') {
-      const now = new Date()
-      const from = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
-      return {
-        from: from.toISOString().substring(0, 10),
-        to: now.toISOString().substring(0, 10),
-      }
+      return yearsBackDateRange(yearsBack)
     }
     return { from: dateFrom, to: dateTo }
   }
@@ -458,7 +455,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
 
   const canRun = portfolios.length > 0 && portfolios.every(p => {
     const total = p.slots.reduce((s, f) => s + f.weight, 0)
-    return Math.abs(total - 100) < 0.01 && p.slots.every(s => s.fundId)
+    return Math.abs(total - 100) < 0.01
+      && p.slots.filter(s => s.weight > 0).every(s => s.fundId)
   }) && !cashflowScheduleError(cashflowSchedule)
     && (initialAmount > 0 || cashflowSchedule.some(phase => phase.amount > 0))
 
@@ -473,10 +471,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     dateFrom: liveDates.from,
     dateTo: liveDates.to,
   }
-  const dataReady = Array.from(neededIds).every(id => fundData.has(id))
-    && !loading
-    && errors.size === 0
-    && dividendsReady
+  const dataReady = !loading && dividendsReady
 
   // ── Compute results ──
   const committedRun = useCommittedRun({
@@ -513,23 +508,59 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       const dividendsByFund = snapshot.data.dividendsByFund
       if (committed.portfolios.length === 0) return null
 
+      const emptyPortfolioResult = (p: DCAPortfolioState, pIdx: number): DCAPortfolioResult => ({
+        id: p.id,
+        name: p.name,
+        color: PORTFOLIO_COLORS[pIdx % PORTFOLIO_COLORS.length]!,
+        cumulative: [],
+        drawdown: [],
+        totalInvested: 0,
+        finalValue: 0,
+        transactionCosts: 0,
+        lastCashflowAmount: 0,
+        mwrr: null,
+        storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
+        profitFactor: null,
+        investedSeries: [],
+        valueSeries: [],
+        assetValues: [],
+        cashflows: [],
+        simulationInputs: null,
+        dividendNarrative: [],
+      })
+
     // ── Step 1: Find the GLOBAL common start/end date across ALL portfolios ──
     // This ensures fair comparison, all portfolios start DCA on the same date
     let globalStart = committed.dateFrom || ''
     let globalEnd = committed.dateTo || '9999-12-31'
 
-    // Collect all unique fund IDs across all portfolios
+    // A failed fund invalidates only the portfolios that use it. Do not let a
+    // dead portfolio shrink the valuation universe of portfolios that can run.
+    const eligiblePortfolios = committed.portfolios.filter(p => {
+      const activeSlots = p.slots.filter(slot => slot.fundId && slot.weight > 0)
+      return activeSlots.length > 0 && activeSlots.every(slot => {
+        const prices = fundData.get(slot.fundId)
+        return !!prices && prices.length > 0
+      })
+    })
+    const eligiblePortfolioIds = new Set(eligiblePortfolios.map(p => p.id))
+
+    // Collect all unique fund IDs across eligible portfolios only.
     const allFundIds = new Set<string>()
-    for (const p of committed.portfolios) {
+    for (const p of eligiblePortfolios) {
       for (const s of p.slots) {
-        if (s.fundId) allFundIds.add(s.fundId)
+        if (s.fundId && s.weight > 0) allFundIds.add(s.fundId)
       }
+    }
+
+    if (allFundIds.size === 0) {
+      return committed.portfolios.map((p, pIdx) => emptyPortfolioResult(p, pIdx))
     }
 
     // Check all data is loaded & find date boundaries
     for (const fundId of allFundIds) {
       const prices = fundData.get(fundId)
-      if (!prices || prices.length === 0) return null // data not loaded yet
+      if (!prices || prices.length === 0) continue
       const fundStart = prices[0]!.date
       const fundEnd = prices[prices.length - 1]!.date
       // Global start = latest start among all funds (so all have data)
@@ -543,7 +574,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       }
     }
 
-    if (globalStart >= globalEnd) return null
+    if (globalStart >= globalEnd) {
+      return committed.portfolios.map((p, pIdx) => emptyPortfolioResult(p, pIdx))
+    }
 
     // Apply user date filters on top
     if (committed.dateFrom && committed.dateFrom > globalStart) globalStart = committed.dateFrom
@@ -558,7 +591,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     const allFilteredPurchasePrices = new Map<string, PricePoint[]>()
     for (const fundId of allFundIds) {
       const prices = fundData.get(fundId)
-      if (!prices) return null
+      if (!prices) continue
       allFilteredPrices.set(fundId, prices.filter(pt => pt.date >= globalStart && pt.date <= globalEnd))
       // Raw cho shadow dividend simulation; nếu chưa load thì skip narrative
       // bằng cách để map rỗng — trackDividendNarrative sẽ trả [] an toàn.
@@ -578,13 +611,33 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         slicePricesWithPredecessor(purchasePrices, globalStart, globalEnd),
       )
     }
-    const alignedPrices = alignFundsToCommonGridDaily(allFilteredPrices)
+    const alignedPrices = alignFundsToCommonGridDaily(allFilteredPrices, 30)
     const alignedRawPrices = allFilteredRawPrices.size > 0
-      ? alignFundsToCommonGridDaily(allFilteredRawPrices)
+      ? alignFundsToCommonGridDaily(allFilteredRawPrices, 30)
       : new Map<string, PricePoint[]>()
     const alignedPurchasePrices = allFilteredPurchasePrices.size > 0
-      ? alignFundsToCommonGridDaily(allFilteredPurchasePrices)
+      ? alignFundsToCommonGridDaily(allFilteredPurchasePrices, 30)
       : new Map<string, PricePoint[]>()
+
+    // One valuation calendar for every eligible portfolio. A stale or missing
+    // point in any participating fund removes that date for all results.
+    let commonDates = new Set<string>(
+      Array.from(alignedPrices.values())[0]?.map(point => point.date) ?? [],
+    )
+    for (const prices of alignedPrices.values()) {
+      const dates = new Set(prices.map(point => point.date))
+      commonDates = new Set(Array.from(commonDates).filter(date => dates.has(date)))
+    }
+    const trimToCommonDates = (source: Map<string, PricePoint[]>): Map<string, PricePoint[]> => {
+      const trimmed = new Map<string, PricePoint[]>()
+      for (const [fundId, prices] of source) {
+        trimmed.set(fundId, prices.filter(point => commonDates.has(point.date)))
+      }
+      return trimmed
+    }
+    const commonAlignedPrices = trimToCommonDates(alignedPrices)
+    const commonAlignedRawPrices = trimToCommonDates(alignedRawPrices)
+    const commonAlignedPurchasePrices = trimToCommonDates(alignedPurchasePrices)
 
     // ── Step 3: Run DCA for each portfolio with aligned dates ──
     const portfolioResults: DCAPortfolioResult[] = []
@@ -593,14 +646,21 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       const p = committed.portfolios[pIdx]!
       const color = PORTFOLIO_COLORS[pIdx % PORTFOLIO_COLORS.length]!
 
+      if (!eligiblePortfolioIds.has(p.id)) {
+        portfolioResults.push(emptyPortfolioResult(p, pIdx))
+        continue
+      }
+
+      const activeSlots = p.slots.filter(slot => slot.fundId && slot.weight > 0)
+
       // Pick this portfolio's fund prices from the aligned grid
       const filteredPrices = new Map<string, PricePoint[]>()
       const portfolioPurchasePrices = new Map<string, PricePoint[]>()
-      for (const slot of p.slots) {
-        const prices = alignedPrices.get(slot.fundId)
-        if (!prices) return null
+      for (const slot of activeSlots) {
+        const prices = commonAlignedPrices.get(slot.fundId)
+        if (!prices) continue
         filteredPrices.set(slot.fundId, prices)
-        const purchasePrices = alignedPurchasePrices.get(slot.fundId)
+        const purchasePrices = commonAlignedPurchasePrices.get(slot.fundId)
         // The main simulation needs only dual-price overrides. Passing adjusted
         // fund prices into the raw-NAV dividend shadow would corrupt its units.
         if (dualPriceFundIds.has(slot.fundId) && purchasePrices) {
@@ -608,26 +668,23 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         }
       }
 
+      const executionDates = buildDcaExecutionDates(allFilteredPrices, activeSlots)
+        .filter(date => commonDates.has(date))
       const dcaResult = simulateDCA(
         filteredPrices,
-        p.slots,
+        activeSlots,
         committed.params,
         p.rebalFreq,
         {
           purchasePrices: portfolioPurchasePrices,
           transactionCostRates: p.transactionCostRates,
+          executionDates,
         },
       )
 
       if (dcaResult.cumulative.length === 0) {
         portfolioResults.push({
-          id: p.id, name: p.name, color,
-          cumulative: [], drawdown: [],
-          totalInvested: 0, finalValue: 0, transactionCosts: 0, lastCashflowAmount: 0, mwrr: null, profitFactor: null,
-          storm: { maxDrawdown: 0, maxDDDate: '', maxDDPeakDate: '', recoveryMonths: null, stormsCount: 0, inBearPeriod: null },
-           investedSeries: [], valueSeries: [], assetValues: [], cashflows: [],
-          simulationInputs: null,
-          dividendNarrative: [],
+          ...emptyPortfolioResult(p, pIdx),
         })
         continue
       }
@@ -636,19 +693,20 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       // nhà đầu tư nhận. Chỉ chạy nếu portfolio có ít nhất 1 quỹ chia cổ tức
       // và raw prices đã sẵn sàng.
       const portfolioRawPrices = new Map<string, PricePoint[]>()
-      for (const slot of p.slots) {
-        const raw = alignedRawPrices.get(slot.fundId)
+      for (const slot of activeSlots) {
+        const raw = commonAlignedRawPrices.get(slot.fundId)
         if (raw) portfolioRawPrices.set(slot.fundId, raw)
       }
-      const dividendNarrative = portfolioRawPrices.size === p.slots.length
+      const dividendNarrative = portfolioRawPrices.size === activeSlots.length
         ? trackDividendNarrative(
             portfolioRawPrices,
-            p.slots,
+            activeSlots,
             committed.params,
             p.rebalFreq,
             dividendsByFund,
             portfolioPurchasePrices,
             p.transactionCostRates,
+            executionDates,
           )
         : []
 
@@ -669,11 +727,12 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         cashflows: dcaResult.cashflows,
         simulationInputs: {
           filteredPrices,
-          slots: p.slots,
+          slots: activeSlots,
           params: committed.params,
           rebalFreq: p.rebalFreq,
           purchasePrices: portfolioPurchasePrices,
           transactionCostRates: p.transactionCostRates,
+          executionDates,
         },
         dividendNarrative,
       })
@@ -690,7 +749,9 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     run: runCommitted,
     reset: resetCommitted,
   } = committedRun
-  const dataError = Array.from(errors.values())[0] ?? null
+  const dataError = errors.size > 0
+    ? Array.from(errors.entries()).map(([id, message]) => `${id}: ${message}`).join('; ')
+    : null
   const isLoading = loading || !dividendsReady
 
   // Memo hóa để giữ reference ổn định — nếu không, các block hiển thị kết quả
@@ -699,6 +760,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // sau khi bấm "Chạy DCA" — tức khi `results` đổi reference).
   const validResults = useMemo(
     () => results?.filter(r => r.cumulative.length > 0) ?? [],
+    [results],
+  )
+  const emptyResultNames = useMemo(
+    () => results?.filter(r => r.cumulative.length === 0).map(r => r.name) ?? [],
     [results],
   )
 
@@ -782,10 +847,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const yearlyPerformanceSeries = useMemo(() => journeyPortfolios.map(p => ({
     name: p.name,
     color: p.color,
-    data: dcaYearlyMWRR(p.valueSeries, p.cashflows).map(({ year, value, isPartial }) => ({
+    data: dcaYearlyMWRR(p.valueSeries, p.cashflows).map(({ year, value, isPartial, isOpeningYear }) => ({
       year,
       value,
       isPartial,
+      isOpeningYear,
     })),
   })), [journeyPortfolios])
 
@@ -798,14 +864,14 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   })), [validResults])
 
   const dividendFundIds = useMemo(() => Array.from(new Set(
-    committed?.params.portfolios.flatMap(p => p.slots.map(s => s.fundId)) ?? [],
+    committed?.params.portfolios.flatMap(p => p.slots.filter(s => s.weight > 0).map(s => s.fundId)) ?? [],
   )), [committed])
 
   // Fund IDs cho DataQualityBlock: lấy từ portfolios ĐANG NHẬP (live state), không
   // đợi committed — để cảnh báo chất lượng dữ liệu hiện ra ngay khi chọn quỹ, trước
   // cả khi bấm "Chạy DCA" (giống cách GoldLotWarningBlock đã làm ngay phía dưới).
   const dataQualityFundIds = useMemo(() => Array.from(new Set(
-    portfolios.flatMap(p => p.slots.map(s => s.fundId).filter(Boolean)),
+    portfolios.flatMap(p => p.slots.filter(s => s.weight > 0).map(s => s.fundId).filter(Boolean)),
   )), [portfolios])
 
   // Khoảng ngày thực tế đã dùng để backtest (giao của tất cả danh mục đã chạy) —
@@ -821,6 +887,18 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       end: ends.reduce((a, b) => (a < b ? a : b)),
     }
   }, [validResults])
+
+  const dataQualityAlignmentStatus = useMemo(() => {
+    if (isDirty || !results) return undefined
+    const validPointCount = validResults.length > 0
+      ? Math.min(...validResults.map(result => result.cumulative.length))
+      : 0
+    return {
+      hasCommonRange: validResults.length > 0,
+      validPointCount,
+      excludedPortfolioCount: emptyResultNames.length,
+    }
+  }, [emptyResultNames, isDirty, results, validResults])
 
   const dividendNarrativeData = useMemo(() => validResults.map(r => ({
     portfolioId: r.id,
@@ -1230,8 +1308,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         colors={FUND_COLORS}
         dateFrom={effectiveDates.from || null}
         dateTo={effectiveDates.to || null}
-        alignedStart={dataQualityAlignedRange?.start}
-        alignedEnd={dataQualityAlignedRange?.end}
+        alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
+        alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
+        alignmentStatus={dataQualityAlignmentStatus}
+        loading={isLoading}
       />
 
       <GoldLotWarningBlock
@@ -1253,8 +1333,14 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         <div className="error-banner">{dataError}</div>
       )}
 
+      {emptyResultNames.length > 0 && !isLoading && !dataError && (
+        <div className="error-banner">
+          Không đủ dữ liệu để tính toán cho: {emptyResultNames.join(', ')}. Các danh mục còn lại vẫn hiển thị để bạn kiểm tra riêng.
+        </div>
+      )}
+
       {/* Error when no results */}
-      {committed && committed.params.portfolios.length > 0 && validResults.length === 0 && !isLoading && !dataError && (
+      {committed && committed.params.portfolios.length > 0 && validResults.length === 0 && emptyResultNames.length === 0 && !isLoading && !dataError && (
         <div className="error-banner">
           Không đủ dữ liệu để tính toán. Hãy chọn khoảng thời gian dài hơn hoặc chọn "Tất cả".
         </div>

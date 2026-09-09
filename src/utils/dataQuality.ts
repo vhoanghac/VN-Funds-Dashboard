@@ -57,6 +57,8 @@ export interface FundQualityReport {
   startsAfterRequested: boolean
   /** Ngày quỹ có giá cuối so với dateTo user chọn */
   endsBeforeRequested: boolean
+  /** Kỳ đã chọn có đủ hai điểm giá để tính so sánh hay chưa */
+  insufficientPointsInRequestedRange: boolean
   /** Số ngày tính từ endDate tới hôm nay */
   daysStale: number
 }
@@ -80,9 +82,21 @@ export function buildFundQualityReport(
   const startDate = weekly[0]!.date
   const endDate = weekly[weekly.length - 1]!.date
   const gaps = detectGaps(weekly)
+    .filter(gap =>
+      (requestedFrom === null || gap.toDate > requestedFrom)
+      && (requestedTo === null || gap.fromDate < requestedTo),
+    )
+    .map(gap => clampGapToRange(gap, requestedFrom, requestedTo))
+    .filter((gap): gap is DataGap => gap !== null)
 
   const startsAfterRequested = requestedFrom !== null && startDate > requestedFrom
   const endsBeforeRequested = requestedTo !== null && endDate < requestedTo
+  const pointsInRequestedRange = weekly.filter(point =>
+    (requestedFrom === null || point.date >= requestedFrom)
+    && (requestedTo === null || point.date <= requestedTo),
+  )
+  const insufficientPointsInRequestedRange = (requestedFrom !== null || requestedTo !== null)
+    && pointsInRequestedRange.length < 2
 
   const MS_PER_DAY = 24 * 60 * 60 * 1000
   const daysStale = Math.floor(
@@ -96,6 +110,20 @@ export function buildFundQualityReport(
     gaps,
     startsAfterRequested,
     endsBeforeRequested,
+    insufficientPointsInRequestedRange,
     daysStale,
+  }
+}
+
+function clampGapToRange(gap: DataGap, requestedFrom: string | null, requestedTo: string | null): DataGap | null {
+  const fromDate = requestedFrom && requestedFrom > gap.fromDate ? requestedFrom : gap.fromDate
+  const toDate = requestedTo && requestedTo < gap.toDate ? requestedTo : gap.toDate
+  const days = Math.max(0, (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86_400_000)
+  if (days === 0) return null
+
+  return {
+    fromDate,
+    toDate,
+    weeksMissing: Math.max(1, Math.round(days / 7) - 1),
   }
 }

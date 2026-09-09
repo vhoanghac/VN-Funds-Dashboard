@@ -26,6 +26,7 @@ import { MonteCarloBlock } from './MonteCarloBlock'
 import { BankComparisonBlock } from './BankComparisonBlock'
 import { DCAGlossary } from './DCAGlossary'
 import { DcaBlock, DcaSectionPanel } from './DcaLayout'
+import { DataQualityBlock } from './DataQualityBlock'
 import { StockAnnualDividendsBlock } from './StockAnnualDividendsBlock'
 import { StockShareHoldingsBlock } from './StockShareHoldingsBlock'
 import { PortfolioCard, MAX_PORTFOLIOS, PORTFOLIO_COLORS } from './PortfolioCard'
@@ -54,6 +55,7 @@ import {
 } from '../utils/stockAccountDca'
 import { annualStockDividends, compactStockLedgerToMonthly, filterStockPrices, presentStockDcaResult, stockShareHoldings, type StockDcaPresentation } from '../utils/stockDcaPresentation'
 import { buildStockDcaUrl, type ShareUrlState, type StockDcaShareState } from '../utils/shareUrl'
+import { yearsBackDateRange } from '../utils/dateRange'
 
 interface StockOption {
   id: string
@@ -64,9 +66,12 @@ interface StockOption {
 const STOCK_OPTIONS: StockOption[] = [
   { id: 'ACB', label: 'ACB · Ngân hàng Á Châu', load: () => loadStockData('ACB') },
   { id: 'MBB', label: 'MBB · Ngân hàng Quân đội', load: () => loadStockData('MBB') },
+  { id: 'VNM', label: 'VNM · Vinamilk', load: () => loadStockData('VNM') },
+  { id: 'VEA', label: 'VEA · VEAM', load: () => loadStockData('VEA') },
 ]
 
 const STOCK_COLOR = '#a8512f'
+const OPEN_ENDED_DATE = '9999-12-31'
 const INITIAL_AMOUNT = 5_000_000
 const DEFAULT_PHASES: DCAContributionPhase[] = [{ amount: 5_000_000, freq: 'monthly', until: null }]
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
@@ -137,6 +142,11 @@ interface StockView {
   portfolio: StockPortfolioState
 }
 
+interface StockRunResult {
+  views: StockView[]
+  noCommonRange: boolean
+}
+
 function hydrateStockPortfolios(source: Portfolio[], nextIdRef: { current: number }): StockPortfolioState[] {
   const usedNames = new Set<string>()
   return source.map(portfolio => {
@@ -161,6 +171,13 @@ function uniquePortfolioName(baseName: string, usedNames: Set<string>): string {
   let suffix = 2
   while (usedNames.has(`${baseName} ${suffix}`)) suffix += 1
   return `${baseName} ${suffix}`
+}
+
+function getEffectiveDates(dateMode: DateRangeMode, yearsBack: number, dateFrom: string, dateTo: string): { from: string; to: string } {
+  if (dateMode === 'years') {
+    return yearsBackDateRange(yearsBack)
+  }
+  return { from: dateFrom, to: dateTo }
 }
 
 function StockDcaPanelImpl({ active, shareUrl }: Props) {
@@ -197,21 +214,32 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
     setLoadError(null)
     Promise.all(stockIds.map(async stockId => {
       const option = STOCK_OPTIONS.find(item => item.id === stockId)
-      if (!option) throw new Error(`Không tải được dữ liệu ${stockId}`)
-      return [stockId, await option.load()] as const
+      if (!option) return { stockId, error: new Error(`Không tải được dữ liệu ${stockId}`) }
+      try {
+        return { stockId, data: await option.load() }
+      } catch (error) {
+        return { stockId, error }
+      }
     }))
-      .then(entries => { if (active) setStockData(new Map(entries)) })
-      .catch(error => {
-        if (active) setLoadError(error instanceof Error ? error.message : 'Không tải được dữ liệu cổ phiếu')
+      .then(entries => {
+        if (!active) return
+        const loaded = entries.filter((entry): entry is { stockId: string; data: StockData } => 'data' in entry)
+        const failed = entries.filter((entry): entry is { stockId: string; error: unknown } => 'error' in entry)
+        setStockData(new Map(loaded.map(entry => [entry.stockId, entry.data])))
+        if (failed.length > 0) {
+          const messages = failed.map(entry => entry.error instanceof Error ? entry.error.message : `Không tải được dữ liệu ${entry.stockId}`)
+          setLoadError(messages.join('; '))
+        }
       })
     return () => { active = false }
   }, [stockIdsKey])
 
+  const liveDates = getEffectiveDates(dateMode, yearsBack, dateFrom, dateTo)
   const liveParams: StockRunParams = {
     dateMode,
     yearsBack,
-    dateFrom,
-    dateTo,
+    dateFrom: liveDates.from,
+    dateTo: liveDates.to,
     initialAmount: Math.max(0, initialAmount),
     phases: clonePhases(phases),
     annualContributionIncreaseAmount: normalizeAnnualContributionIncreaseAmount(annualContributionIncreaseAmount),
@@ -221,8 +249,8 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
   const scheduleError = cashflowScheduleError(phases)
   const dateRangeError = dateMode === 'all' && !!dateFrom && !!dateTo && dateFrom > dateTo
   const portfolioError = portfolios.some(portfolio => portfolio.slots.length !== 1 || portfolio.slots[0]?.weight !== 100)
-  const committedRun = useCommittedRun<StockRunParams, StockSnapshot, StockView[]>({
-    ready: stockIds.length > 0 && stockIds.every(stockId => stockData.has(stockId)),
+  const committedRun = useCommittedRun<StockRunParams, StockSnapshot, StockRunResult>({
+    ready: stockIds.length > 0 && (stockIds.every(stockId => stockData.has(stockId)) || !!loadError),
     valid: portfolios.length > 0 && !portfolioError && !scheduleError && !dateRangeError,
     liveParams,
     captureSnapshot: () => ({
@@ -235,15 +263,37 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
     }),
     compute: snapshot => {
       const { params } = snapshot
+      const allStockIds = Array.from(new Set(params.portfolios.flatMap(portfolio => portfolio.slots.map(slot => slot.fundId).filter(Boolean))))
+      const globalStart = params.dateFrom || ''
+      const globalEnd = params.dateTo || OPEN_ENDED_DATE
+
+      const filteredPricesByStock = new Map<string, StockData['prices']>()
+      for (const stockId of allStockIds) {
+        const data = snapshot.data.get(stockId)
+        filteredPricesByStock.set(stockId, data ? filterStockPrices(data.prices, globalStart, globalEnd) : [])
+      }
+      const availableStockIds = allStockIds.filter(stockId => (filteredPricesByStock.get(stockId)?.length ?? 0) > 0)
+      if (availableStockIds.length === 0) return { views: [], noCommonRange: false }
+
+      const commonStart = availableStockIds
+        .map(stockId => filteredPricesByStock.get(stockId)![0]!.date)
+        .reduce((latest, date) => latest > date ? latest : date)
+      const commonEnd = availableStockIds
+        .map(stockId => {
+          const prices = filteredPricesByStock.get(stockId)!
+          return prices[prices.length - 1]!.date
+        })
+        .reduce((earliest, date) => earliest < date ? earliest : date)
+      if (commonStart > commonEnd) return { views: [], noCommonRange: true }
+
       const views: StockView[] = []
       for (const [portfolioIndex, portfolio] of params.portfolios.entries()) {
         const stockId = portfolio.slots[0]?.fundId
         const data = stockId ? snapshot.data.get(stockId) : undefined
-        if (!data || portfolio.slots[0]?.weight !== 100) continue
-        const range = params.dateMode === 'years'
-          ? { from: subtractYears(data.asOf, params.yearsBack), to: data.asOf }
-          : { from: params.dateFrom, to: params.dateTo }
-        const prices = filterStockPrices(data.prices, range.from, range.to)
+        const prices = stockId
+          ? (filteredPricesByStock.get(stockId) ?? []).filter(point => point.date >= commonStart && point.date <= commonEnd)
+          : undefined
+        if (!data || !prices || portfolio.slots[0]?.weight !== 100) continue
         if (prices.length === 0) continue
         const firstDate = prices[0]!.date
         const lastDate = prices[prices.length - 1]!.date
@@ -276,18 +326,46 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
             portfolio,
           })
       }
-      return views
+      return { views, noCommonRange: false }
     },
   })
 
   const {
     committed,
-    result: views,
+    result: stockRun,
     dirty: isDirty,
     run: runCommitted,
     reset: resetCommitted,
   } = committedRun
-  const stockDataLoading = stockIds.length > 0 && stockIds.some(stockId => !stockData.has(stockId))
+  const views = stockRun?.views
+  const noCommonRange = stockRun?.noCommonRange ?? false
+  const stockDataLoading = stockIds.length > 0 && stockIds.some(stockId => !stockData.has(stockId)) && !loadError
+  const stockPriceData = useMemo(
+    () => new Map<string, StockData['prices']>(Array.from(stockData, ([stockId, data]) => [stockId, data.prices])),
+    [stockData],
+  )
+  const dataQualityAlignedRange = useMemo(() => {
+    if (!views || views.length === 0 || views.length !== portfolios.length) return null
+    const starts = views.map(view => view.prices[0]?.date).filter((date): date is string => !!date)
+    const ends = views.map(view => view.prices[view.prices.length - 1]?.date).filter((date): date is string => !!date)
+    if (starts.length === 0 || ends.length === 0) return null
+    return {
+      start: starts.reduce((a, b) => (a > b ? a : b)),
+      end: ends.reduce((a, b) => (a < b ? a : b)),
+    }
+  }, [views])
+  const missingPortfolioNames = committed && views
+    ? committed.params.portfolios
+      .filter(portfolio => !views.some(view => view.id === portfolio.id))
+      .map(portfolio => portfolio.name)
+    : []
+  const dataQualityAlignmentStatus = committed && !isDirty
+    ? {
+        hasCommonRange: !noCommonRange && !!views && views.length > 0,
+        validPointCount: views && views.length > 0 ? Math.min(...views.map(view => view.prices.length)) : 0,
+        excludedPortfolioCount: missingPortfolioNames.length,
+      }
+    : undefined
 
   const lastShareKeyRef = useRef(shareUrl.key)
   useEffect(() => {
@@ -487,11 +565,31 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         </div>
       )}
 
+      <DataQualityBlock
+        fundIds={stockIds}
+        fundData={stockPriceData}
+        colors={PORTFOLIO_COLORS}
+        assetLabel="cổ phiếu"
+        dateFrom={liveDates.from || null}
+        dateTo={liveDates.to || null}
+        alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
+        alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
+        alignmentStatus={dataQualityAlignmentStatus}
+        loading={stockDataLoading}
+      />
+
       {stockDataLoading && <div className="loading-indicator">Đang tải chuỗi giá cổ phiếu...</div>}
       {loadError && <div className="error-banner">{loadError}</div>}
 
-      {views && views.length > 0 ? <StockResults views={views} /> : committed ? (
-        <div className="error-banner">Khoảng thời gian đang chọn chưa có dữ liệu giá.</div>
+      {noCommonRange ? (
+        <div className="error-banner">Các danh mục có dữ liệu, nhưng không cùng một khoảng ngày để so sánh.</div>
+      ) : missingPortfolioNames.length > 0 && (
+        <div className="error-banner">
+          Không đủ dữ liệu giá trong khoảng đang chọn cho: {missingPortfolioNames.join(', ')}. Các danh mục còn lại vẫn hiển thị để bạn kiểm tra riêng.
+        </div>
+      )}
+      {views && views.length > 0 ? <StockResults views={views} /> : committed && missingPortfolioNames.length === 0 ? (
+        <div className="error-banner">Khoảng thời gian đang chọn chưa có dữ liệu giá cho danh mục nào.</div>
       ) : null}
     </PanelShell>
   )
@@ -544,7 +642,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const valueChart = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, values: candidate.presentation.valueSeries, invested: candidate.presentation.investedSeries })), [views])
   const drawdownChart = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, data: candidate.presentation.drawdown })), [views])
   const journey = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, totalInvested: candidate.result.totalContributed, finalValue: candidate.result.finalValue, valueSeries: candidate.presentation.valueSeries, cashflows: candidate.result.cashflows })), [views])
-  const yearly = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, data: dcaYearlyMWRR(candidate.presentation.valueSeries, candidate.result.cashflows).map(row => ({ year: row.year, value: row.value, isPartial: row.isPartial })) })), [views])
+  const yearly = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, data: dcaYearlyMWRR(candidate.presentation.valueSeries, candidate.result.cashflows).map(row => ({ year: row.year, value: row.value, isPartial: row.isPartial, isOpeningYear: row.isOpeningYear })) })), [views])
   const projection = useMemo(() => views.map(candidate => {
     const candidateCagr = dcaCagr(candidate.presentation.cumulative)
     const monthlyContribution = monthlyEquivalentContribution(candidate.params.phases[0]?.amount ?? 0, candidate.params.phases[0]?.freq ?? 'monthly')
@@ -814,7 +912,7 @@ const StockEntryPointBlock = memo(function StockEntryPointBlock({ view }: { view
           </tbody>
         </table>
       </div>
-      <div className="dca-eoy-footnote">Khoản đầu tư nào bắt đầu trước khi ACB có dữ liệu thì không được nội suy.</div>
+      <div className="dca-eoy-footnote">Khoản đầu tư nào bắt đầu trước khi mã này có dữ liệu thì không được nội suy.</div>
     </DcaBlock>
   )
 })
@@ -915,13 +1013,6 @@ function cashflowScheduleError(phases: readonly DCAContributionPhase[]): string 
     if (nextUntil && nextUntil <= until) return 'Các ngày kết thúc DCA phải tăng dần.'
   }
   return null
-}
-
-function subtractYears(date: string, years: number): string {
-  const [year, month, day] = date.split('-').map(Number)
-  const targetYear = year! - years
-  const daysInMonth = new Date(Date.UTC(targetYear, month!, 0)).getUTCDate()
-  return `${targetYear}-${String(month).padStart(2, '0')}-${String(Math.min(day!, daysInMonth)).padStart(2, '0')}`
 }
 
 function subtractMonths(date: string, months: number): string {

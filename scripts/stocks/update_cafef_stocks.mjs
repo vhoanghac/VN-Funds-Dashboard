@@ -13,7 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { addDays, fetchQuarter, todayIso } from './scrape_cafef_stock.mjs'
+import { addDays, fetchQuarter, normalizeExchange, todayIso } from './scrape_cafef_stock.mjs'
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.join(SCRIPT_DIR, '..', '..')
@@ -32,12 +32,13 @@ async function main() {
     throw new Error('--output can only be used with one symbol')
   }
 
-  for (const symbol of symbols) {
-    await updateSymbol(symbol, args)
+  for (const spec of symbols) {
+    await updateSymbol(spec, args)
   }
 }
 
-async function updateSymbol(symbol, args) {
+async function updateSymbol(spec, args) {
+  const { symbol, exchange } = spec
   const outputPath = path.resolve(args.output || path.join(STOCK_DATA_DIR, `${symbol}.csv`))
   const to = args.to || todayIso()
   assertIsoDate(to, '--to')
@@ -45,7 +46,7 @@ async function updateSymbol(symbol, args) {
   const existingRows = readCsv(outputPath)
   const lastDate = existingRows[existingRows.length - 1].date
   const fetchStart = addDays(lastDate, -90)
-  const fetchedRows = await fetchQuarter(symbol, fetchStart, to)
+  const fetchedRows = await fetchQuarter(symbol, fetchStart, to, exchange)
   const existingByDate = new Map(existingRows.map(row => [row.date, row]))
   const corrections = []
 
@@ -87,12 +88,12 @@ async function updateSymbol(symbol, args) {
 }
 
 function loadSymbols(args) {
-  const symbols = []
-  if (args.symbol) symbols.push(...parseSymbolList(args.symbol))
-  if (args['symbols-file']) symbols.push(...readSymbolsFile(args['symbols-file']))
-  const uniqueSymbols = [...new Set(symbols)]
-  if (uniqueSymbols.length === 0) throw new Error('Provide --symbol or --symbols-file')
-  return uniqueSymbols
+  const specs = []
+  if (args.symbol) specs.push(...parseSymbolList(args.symbol).map(symbol => ({ symbol, exchange: normalizeExchange(args.exchange || 'HOSE') })))
+  if (args['symbols-file']) specs.push(...readSymbolsFile(args['symbols-file'], args.exchange))
+  const uniqueSpecs = [...new Map(specs.map(spec => [`${spec.symbol}:${spec.exchange}`, spec])).values()]
+  if (uniqueSpecs.length === 0) throw new Error('Provide --symbol or --symbols-file')
+  return uniqueSpecs
 }
 
 function parseSymbolList(value) {
@@ -103,14 +104,21 @@ function parseSymbolList(value) {
   return symbols
 }
 
-function readSymbolsFile(fileName) {
+function readSymbolsFile(fileName, defaultExchange) {
   const filePath = path.resolve(fileName)
   if (!fs.existsSync(filePath)) throw new Error(`Symbols file not found: ${filePath}`)
   return fs.readFileSync(filePath, 'utf8')
     .split(/\r?\n/)
     .map(line => line.split('#', 1)[0].trim())
     .filter(Boolean)
-    .flatMap(parseSymbolList)
+    .flatMap(line => parseSymbolSpecs(line, defaultExchange))
+}
+
+function parseSymbolSpecs(value, defaultExchange) {
+  const [symbolList, exchangeValue, ...extra] = value.split('|').map(item => item.trim())
+  if (extra.length > 0 || !symbolList) throw new Error(`Invalid stock manifest entry: ${value}`)
+  const exchange = normalizeExchange(exchangeValue || defaultExchange || 'HOSE')
+  return parseSymbolList(symbolList).map(symbol => ({ symbol, exchange }))
 }
 
 function parseArgs(argv) {
@@ -141,6 +149,7 @@ function printUsage() {
     'Options:',
     '  --symbol ACB             Stock symbol (comma-separated values allowed)',
     '  --symbols-file PATH      File containing one symbol per line',
+    '  --exchange HOSE          CafeF exchange type (default: HOSE)',
     '  --output PATH            Existing CSV path',
     '  --to YYYY-MM-DD          Last date to request (default: today)',
     '  --dry-run                Check and report without writing',

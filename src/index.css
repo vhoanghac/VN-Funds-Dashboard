@@ -477,6 +477,11 @@ textarea {
   margin-left: 6px;
 }
 
+.chart-tooltip-icon:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Chi phí trung vị của việc rải tiền, theo từng mốc nắm giữ */
 .holdcost-intro,
 .holdcost-example {

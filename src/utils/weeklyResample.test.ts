@@ -183,4 +183,15 @@ describe('alignFundsToCommonGridDaily', () => {
     expect(dcdsDates).toEqual(dcbfDates)
     expect(dcdsDates).toEqual(['2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05'])
   })
+
+  it('does not forward-fill a stock price beyond the configured stale limit', () => {
+    const active = [
+      { date: '2024-01-02', price: 100 },
+      { date: '2024-02-01', price: 101 },
+    ]
+    const halted = [{ date: '2024-01-02', price: 10 }]
+    const result = alignFundsToCommonGridDaily(new Map([['active', active], ['halted', halted]]), 14)
+
+    expect(result.get('halted')).toEqual([{ date: '2024-01-02', price: 10 }])
+  })
 })

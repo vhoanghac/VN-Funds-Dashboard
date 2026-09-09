@@ -1,12 +1,12 @@
 /**
  * DataQualityBlock: minh bạch giới hạn của data trước khi user ra quyết định.
  *
- * Vị trí: đầu tab Compare, ngay sau DateRangePicker, trước mọi chart và số liệu.
+ * Vị trí: đầu các tab có dữ liệu chuỗi giá, trước mọi chart và số liệu.
  *
  * Block này trả lời 3 câu hỏi retail VN nên hỏi trước khi tin vào "CAGR 13.6%":
  *   1. Data cập nhật tới ngày nào? (freshness)
- *   2. Các quỹ có cùng khoảng thời gian không, hay có quỹ mới hơn? (coverage)
- *   3. Có tuần nào bị thiếu giá không? (gaps)
+ *   2. Các tài sản có cùng khoảng thời gian không, hay có tài sản mới hơn? (coverage)
+ *   3. Có khoảng nào bị thiếu giá trong kỳ đang chọn không? (gaps)
  *
  * Nếu tất cả đều sạch: block hiển thị ngắn gọn một dòng "xanh" và thu gọn.
  * Nếu có vấn đề: hiển thị warning chi tiết, từng quỹ có gì.
@@ -31,9 +31,16 @@ interface Props {
   colors: string[]
   dateFrom: string | null
   dateTo: string | null
+  assetLabel?: string
   /** Start/end thực tế đã aligned; khi undefined có thể chưa ready */
   alignedStart?: string
   alignedEnd?: string
+  alignmentStatus?: {
+    hasCommonRange: boolean
+    validPointCount: number
+    excludedPortfolioCount?: number
+  }
+  loading?: boolean
 }
 
 export function DataQualityBlock({
@@ -42,8 +49,11 @@ export function DataQualityBlock({
   colors,
   dateFrom,
   dateTo,
+  assetLabel = 'quỹ',
   alignedStart,
   alignedEnd,
+  alignmentStatus,
+  loading = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -58,7 +68,29 @@ export function DataQualityBlock({
     return out
   }, [fundIds, fundData, dateFrom, dateTo])
 
-  if (reports.length === 0) return null
+  const missingFundIds = fundIds.filter(id => {
+    const prices = fundData.get(id)
+    return !prices || prices.length === 0
+  })
+
+  if (loading) return null
+  if (reports.length === 0 && missingFundIds.length === 0) return null
+
+  if (reports.length === 0) {
+    return (
+      <div className="dq-block dq-block--warn">
+        <div className="dq-header">
+          <span className="dq-dot dq-dot--warn" />
+          <span className="dq-header-main">
+            <strong>Chất lượng dữ liệu: chưa đủ</strong>
+            <span className="dq-header-sub">
+              Không có chuỗi giá cho: {missingFundIds.join(', ')}.
+            </span>
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   // Quỹ có endDate muộn nhất — con số "Cập nhật tới" và "(N ngày trước)" phải
   // lấy từ CÙNG một quỹ. Trước đây lastUpdated lấy max endDate, còn stalestDays
@@ -73,13 +105,18 @@ export function DataQualityBlock({
   // nhưng không dùng để gắn vào con số "ngày trước".
   const stalestDays = Math.max(...reports.map(r => r.daysStale))
   const anyGaps = reports.some(r => r.gaps.length > 0)
-  const anyCoverageIssue = reports.some(
-    r => r.startsAfterRequested || r.endsBeforeRequested,
+  const anyMissing = missingFundIds.length > 0
+  const anyCoverageIssue = reports.some(r => r.startsAfterRequested || r.endsBeforeRequested)
+  const anyPointIssue = reports.some(r => r.insufficientPointsInRequestedRange)
+  const anyAlignmentIssue = alignmentStatus !== undefined && (
+    !alignmentStatus.hasCommonRange
+    || alignmentStatus.validPointCount < 2
+    || (alignmentStatus.excludedPortfolioCount ?? 0) > 0
   )
   const reportsWithIssues = reports.filter(
-    r => r.gaps.length > 0 || r.startsAfterRequested || r.endsBeforeRequested,
+    r => r.gaps.length > 0 || r.startsAfterRequested || r.endsBeforeRequested || r.insufficientPointsInRequestedRange,
   )
-  const hasWarnings = anyGaps || anyCoverageIssue || stalestDays > STALE_DAYS_THRESHOLD
+  const hasWarnings = anyMissing || anyGaps || anyCoverageIssue || anyPointIssue || anyAlignmentIssue || stalestDays > STALE_DAYS_THRESHOLD
 
   // Compute total span for bar chart
   const allStarts = reports.map(r => new Date(r.startDate).getTime())
@@ -104,7 +141,14 @@ export function DataQualityBlock({
                 Cập nhật tới {formatDate(lastUpdated)}
                 {freshest.daysStale > 0 ? ` (${freshest.daysStale} ngày trước)` : ''}
                 {anyGaps ? '. Phát hiện khoảng thiếu giá.' : ''}
-                {anyCoverageIssue ? ' Có quỹ không phủ hết khoảng bạn chọn.' : ''}
+                {anyCoverageIssue ? ` Có ${assetLabel} không phủ hết khoảng bạn chọn.` : ''}
+                {anyPointIssue ? ` Khoảng bạn chọn chưa có đủ hai điểm giá để so sánh.` : ''}
+                {anyMissing ? ` Không có chuỗi giá cho: ${missingFundIds.join(', ')}.` : ''}
+                {alignmentStatus && !alignmentStatus.hasCommonRange ? ' Các chuỗi không có ngày giao nhau để mô phỏng.' : ''}
+                {alignmentStatus && alignmentStatus.validPointCount < 2 ? ' Sau khi lọc dữ liệu, kỳ mô phỏng còn dưới hai điểm giá.' : ''}
+                {alignmentStatus && (alignmentStatus.excludedPortfolioCount ?? 0) > 0
+                  ? ` Có ${alignmentStatus.excludedPortfolioCount} danh mục bị loại khỏi kết quả.`
+                  : ''}
               </span>
             </>
           ) : (
@@ -124,8 +168,8 @@ export function DataQualityBlock({
       {expanded && (
         <div className="dq-body">
           <p className="dq-intro">
-            Mỗi quỹ có lịch sử dữ liệu khác nhau. Một số quỹ mới lập chỉ có vài
-            năm, một số quỹ cũ có thể bị thiếu giá trong các đợt đặc biệt như
+            Mỗi {assetLabel} có lịch sử dữ liệu khác nhau. Một số {assetLabel} mới lập chỉ có vài
+            năm, một số {assetLabel} cũ có thể bị thiếu giá trong các đợt đặc biệt như
             COVID. Dashboard này công khai những giới hạn đó để bạn cẩn thận
             hơn khi đọc các con số bên dưới.
           </p>
@@ -150,9 +194,19 @@ export function DataQualityBlock({
           {alignedStart && alignedEnd && (
             <p className="dq-aligned">
               Khoảng so sánh thực tế đã được căn chỉnh theo giao điểm của tất
-              cả các quỹ: <strong>{formatDate(alignedStart)}</strong> tới{' '}
+              cả các {assetLabel}: <strong>{formatDate(alignedStart)}</strong> tới{' '}
               <strong>{formatDate(alignedEnd)}</strong>. Mọi con số trong các
               block bên dưới đều tính trên khoảng này.
+            </p>
+          )}
+
+          {alignmentStatus && (
+            <p className="dq-aligned">
+              Sau khi căn chỉnh, còn <strong>{alignmentStatus.validPointCount}</strong> điểm giá dùng được
+              cho mô phỏng.
+              {(alignmentStatus.excludedPortfolioCount ?? 0) > 0
+                ? ` ${alignmentStatus.excludedPortfolioCount} danh mục không đủ dữ liệu nên đã bị loại.`
+                : ''}
             </p>
           )}
 
@@ -163,10 +217,19 @@ export function DataQualityBlock({
                 <FundIssueList
                   key={r.id}
                   report={r}
+                  assetLabel={assetLabel}
                   requestedFrom={dateFrom}
                   requestedTo={dateTo}
                 />
               ))}
+            </div>
+          )}
+          {anyMissing && (
+            <div className="dq-issues">
+              <h4 className="dq-issues-title">Dữ liệu chưa tải đủ</h4>
+              <div className="dq-issue-card">
+                Không có chuỗi giá cho: <strong>{missingFundIds.join(', ')}</strong>.
+              </div>
             </div>
           )}
         </div>
@@ -259,10 +322,12 @@ function FundTimeline({
 
 function FundIssueList({
   report,
+  assetLabel,
   requestedFrom,
   requestedTo,
 }: {
   report: FundQualityReport
+  assetLabel: string
   requestedFrom: string | null
   requestedTo: string | null
 }) {
@@ -272,7 +337,7 @@ function FundIssueList({
       <ul className="dq-issue-list">
         {report.startsAfterRequested && requestedFrom && (
           <li>
-            Quỹ bắt đầu từ <strong>{formatDate(report.startDate)}</strong>,
+            {capitalize(assetLabel)} bắt đầu từ <strong>{formatDate(report.startDate)}</strong>,
             muộn hơn ngày bạn chọn ({formatDate(requestedFrom)}). Khoảng trước
             đó không tính vào phép so sánh.
           </li>
@@ -282,6 +347,11 @@ function FundIssueList({
             Dữ liệu chỉ tới <strong>{formatDate(report.endDate)}</strong>, sớm
             hơn ngày bạn chọn ({formatDate(requestedTo)}). Khoảng sau đó không
             có giá.
+          </li>
+        )}
+        {report.insufficientPointsInRequestedRange && (
+          <li>
+            Trong khoảng bạn chọn chưa có đủ hai điểm giá để so sánh.
           </li>
         )}
         {report.gaps.map((g, i) => (
@@ -302,4 +372,8 @@ function formatDate(d: string): string {
   const parts = d.split('-')
   if (parts.length !== 3) return d
   return `${parts[2]}/${parts[1]}/${parts[0]}`
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }

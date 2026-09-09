@@ -12,7 +12,7 @@
  */
 import { useMemo, memo } from 'react'
 import type { PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { simulateDCA, slicePricesWithPredecessor, type DCASlot } from '../utils/dca'
+import { simulateDCA, buildDcaExecutionDates, slicePricesWithPredecessor, type DCASlot } from '../utils/dca'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { DcaBlock } from './DcaLayout'
 
@@ -74,8 +74,9 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
     return ENTRY_POINTS.map(ep => {
       const entryDate = subtractMonths(globalNow, ep.months)
       const cells: EntryCell[] = portfolios.map(p => {
+        const activeSlots = p.slots.filter(slot => slot.fundId && slot.weight > 0)
         // Trung thực: mọi quỹ trong danh mục phải có dữ liệu TẠI thời điểm vào
-        for (const s of p.slots) {
+        for (const s of activeSlots) {
           const prices = fundData.get(s.fundId)
           if (!prices || prices.length === 0 || prices[0]!.date > entryDate) {
             return { portfolio: p, value: null }
@@ -83,7 +84,7 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
         }
         const filtered = new Map<string, PricePoint[]>()
         const filteredPurchase = new Map<string, PricePoint[]>()
-        for (const s of p.slots) {
+        for (const s of activeSlots) {
           const prices = fundData.get(s.fundId)!.filter(pt => pt.date >= entryDate)
           filtered.set(s.fundId, prices)
           // Phải có entry cho MỌI fundId trong danh mục (fallback về `prices`
@@ -97,14 +98,15 @@ function DcaEntryPointBlockImpl({ portfolios, fundData, purchasePriceData }: Pro
             purchase ? slicePricesWithPredecessor(purchase, entryDate, '9999-12-31') : prices,
           )
         }
-        const aligned = alignFundsToCommonGridDaily(filtered)
-        const alignedPurchase = alignFundsToCommonGridDaily(filteredPurchase)
+        const aligned = alignFundsToCommonGridDaily(filtered, 30)
+        const alignedPurchase = alignFundsToCommonGridDaily(filteredPurchase, 30)
+        const executionDates = buildDcaExecutionDates(filtered, activeSlots)
         const sim = simulateDCA(
           aligned,
-          p.slots,
+          activeSlots,
           { initialAmount: AMOUNT, cashflowAmount: 0, cashflowFreq: 'monthly' },
           p.rebalFreq,
-          { purchasePrices: alignedPurchase, transactionCostRates: p.transactionCostRates },
+          { purchasePrices: alignedPurchase, transactionCostRates: p.transactionCostRates, executionDates },
         )
         return { portfolio: p, value: sim.cumulative.length > 0 ? sim.finalValue : null }
       })

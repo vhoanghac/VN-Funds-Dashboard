@@ -52,6 +52,7 @@ export async function loadStockData(stockId: string, fetchImpl: typeof fetch = f
     ? ''
     : pendingActionsResponseText
   const prices = parseStockPriceCsv(pricesCsv, symbol)
+  if (prices.length === 0) throw new Error(`Không có dữ liệu giá cho ${symbol}`)
   return {
     prices,
     corporateActions: parseStockCorporateActionsCsv(actionsCsv, symbol),

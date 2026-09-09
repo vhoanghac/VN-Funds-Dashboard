@@ -97,6 +97,37 @@ describe('buildFundQualityReport', () => {
     expect(report.gaps[0]!.weeksMissing).toBe(3)
   })
 
+  it('ignores gaps outside the requested comparison period', () => {
+    const gappy = weekly('2024-01-05', '2024-02-04', '2024-02-11', '2024-02-18')
+    const report = buildFundQualityReport('DCDS', gappy, '2024-02-11', '2024-02-18', new Date('2024-02-18'))!
+
+    expect(report.gaps).toEqual([])
+  })
+
+  it('keeps a gap that crosses the requested range boundary and clamps it', () => {
+    const gappy = weekly('2024-01-05', '2024-02-04', '2024-02-11')
+    const report = buildFundQualityReport('DCDS', gappy, '2024-01-20', null, new Date('2024-02-11'))!
+
+    expect(report.gaps).toEqual([
+      { fromDate: '2024-01-20', toDate: '2024-02-04', weeksMissing: 1 },
+    ])
+  })
+
+  it('does not report a gap that only touches the requested boundary', () => {
+    const gappy = weekly('2024-01-05', '2024-02-04')
+    const report = buildFundQualityReport('DCDS', gappy, '2024-02-04', null, new Date('2024-02-04'))!
+
+    expect(report.gaps).toEqual([])
+  })
+
+  it('flags a selected range with fewer than two price points', () => {
+    const noPointRange = buildFundQualityReport('DCDS', series, '2024-01-20', '2024-01-30')!
+    const onePointRange = buildFundQualityReport('DCDS', series, '2024-01-12', '2024-01-18')!
+
+    expect(noPointRange.insufficientPointsInRequestedRange).toBe(true)
+    expect(onePointRange.insufficientPointsInRequestedRange).toBe(true)
+  })
+
   // Regression: ISSUE-003 — banner gắn "N ngày trước" của quỹ này vào "Cập nhật
   // tới" của quỹ kia. Mỗi quỹ phải tự mang con số daysStale của chính nó.
   // Found by /qa on 2026-08-14

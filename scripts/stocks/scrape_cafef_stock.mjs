@@ -7,7 +7,7 @@
  * prices in VND.
  *
  * Usage:
- *   node scripts/stocks/scrape_cafef_stock.mjs --symbol ACB --from 2007-01-01 --to 2026-09-08
+ *   node scripts/stocks/scrape_cafef_stock.mjs --symbol ACB --exchange HOSE --from 2007-01-01 --to 2026-09-08
  */
 
 import fs from 'node:fs'
@@ -31,6 +31,7 @@ async function main() {
   }
 
   const symbol = (args.symbol || 'ACB').toUpperCase()
+  const exchange = normalizeExchange(args.exchange || 'HOSE')
   const from = args.from || '2007-01-01'
   const to = args.to || todayIso()
   const outputPath = path.resolve(args.output || path.join(STOCK_DATA_DIR, `${symbol}.csv`))
@@ -51,7 +52,7 @@ async function main() {
     const chunkEnd = naturalChunkEnd < to ? naturalChunkEnd : to
     chunkCount++
 
-    const rows = await fetchQuarter(symbol, chunkStart, chunkEnd)
+    const rows = await fetchQuarter(symbol, chunkStart, chunkEnd, exchange)
     for (const row of rows) {
       if (row.date < chunkStart || row.date > chunkEnd) {
         throw new Error(`${symbol}: CafeF returned ${row.date} outside ${chunkStart}..${chunkEnd}`)
@@ -107,6 +108,7 @@ function printUsage() {
     '',
     'Options:',
     '  --symbol ACB             Stock symbol (default: ACB)',
+    '  --exchange HOSE          CafeF exchange type (default: HOSE)',
     '  --from YYYY-MM-DD        First date (default: 2007-01-01)',
     '  --to YYYY-MM-DD          Last date (default: today)',
     '  --output PATH            Output CSV path',
@@ -115,10 +117,10 @@ function printUsage() {
   ].join('\n'))
 }
 
-async function fetchQuarter(stockSymbol, startDate, endDate) {
+async function fetchQuarter(stockSymbol, startDate, endDate, exchange = 'HOSE') {
   const url = new URL(ENDPOINT)
   url.searchParams.set('Type', 'EXPORT')
-  url.searchParams.set('ExchangeType', 'HOSE')
+  url.searchParams.set('ExchangeType', exchange)
   url.searchParams.set('Symbol', stockSymbol)
   url.searchParams.set('StartDate', toCafeFDate(startDate))
   url.searchParams.set('EndDate', toCafeFDate(endDate))
@@ -300,6 +302,12 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function normalizeExchange(value) {
+  const exchange = String(value).trim().toUpperCase()
+  if (!/^[A-Z]+$/.test(exchange)) throw new Error(`Invalid CafeF exchange: ${value}`)
+  return exchange
+}
+
 function decodeXml(value) {
   return value
     .replace(/&amp;/g, '&')
@@ -322,4 +330,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   })
 }
 
-export { addDays, fetchQuarter, todayIso }
+export { addDays, fetchQuarter, normalizeExchange, todayIso }
