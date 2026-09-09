@@ -120,6 +120,7 @@ export function alignFundsToCommonGrid(
  */
 export function alignFundsToCommonGridDaily(
   fundPrices: Map<string, PricePoint[]>,
+  maxForwardFillDays?: number,
 ): Map<string, PricePoint[]> {
   if (fundPrices.size <= 1) return fundPrices
 
@@ -137,12 +138,17 @@ export function alignFundsToCommonGridDaily(
 
     const aligned: PricePoint[] = []
     let lastKnownPrice: number | null = null
+    let lastKnownDate: string | null = null
     for (const date of sortedDates) {
       const price = priceByDate.get(date)
       if (price !== undefined) {
         lastKnownPrice = price
+        lastKnownDate = date
         aligned.push({ date, price })
-      } else if (lastKnownPrice !== null) {
+      } else if (
+        lastKnownPrice !== null
+        && (maxForwardFillDays === undefined || daysBetween(lastKnownDate!, date) <= maxForwardFillDays)
+      ) {
         aligned.push({ date, price: lastKnownPrice })
       }
       // lastKnownPrice vẫn null: quỹ chưa ra đời tại thời điểm này, không thêm điểm.
@@ -152,6 +158,10 @@ export function alignFundsToCommonGridDaily(
   }
 
   return result
+}
+
+function daysBetween(from: string, to: string): number {
+  return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000
 }
 
 export function getISOWeekKey(dateStr: string): string {

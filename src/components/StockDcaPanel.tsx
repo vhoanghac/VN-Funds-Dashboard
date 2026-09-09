@@ -56,6 +56,7 @@ import {
 import { annualStockDividends, compactStockLedgerToMonthly, filterStockPrices, presentStockDcaResult, stockShareHoldings, type StockDcaPresentation } from '../utils/stockDcaPresentation'
 import { buildStockDcaUrl, type ShareUrlState, type StockDcaShareState } from '../utils/shareUrl'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
+import { yearsBackDateRange } from '../utils/dateRange'
 
 interface StockOption {
   id: string
@@ -71,6 +72,8 @@ const STOCK_OPTIONS: StockOption[] = [
 ]
 
 const STOCK_COLOR = '#a8512f'
+const OPEN_ENDED_DATE = '9999-12-31'
+const MAX_STALE_PRICE_DAYS = 14
 const INITIAL_AMOUNT = 5_000_000
 const DEFAULT_PHASES: DCAContributionPhase[] = [{ amount: 5_000_000, freq: 'monthly', until: null }]
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
@@ -169,12 +172,7 @@ function uniquePortfolioName(baseName: string, usedNames: Set<string>): string {
 
 function getEffectiveDates(dateMode: DateRangeMode, yearsBack: number, dateFrom: string, dateTo: string): { from: string; to: string } {
   if (dateMode === 'years') {
-    const now = new Date()
-    const from = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
-    return {
-      from: from.toISOString().slice(0, 10),
-      to: now.toISOString().slice(0, 10),
-    }
+    return yearsBackDateRange(yearsBack)
   }
   return { from: dateFrom, to: dateTo }
 }
@@ -254,7 +252,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
       const { params } = snapshot
       const allStockIds = Array.from(new Set(params.portfolios.flatMap(portfolio => portfolio.slots.map(slot => slot.fundId).filter(Boolean))))
       let globalStart = params.dateFrom || ''
-      let globalEnd = params.dateTo || '9999-12-31'
+      let globalEnd = params.dateTo || OPEN_ENDED_DATE
 
       for (const stockId of allStockIds) {
         const data = snapshot.data.get(stockId)
@@ -265,7 +263,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         if (dataEnd < globalEnd) globalEnd = dataEnd
       }
 
-      if (globalStart >= globalEnd) return []
+      if (globalStart > globalEnd) return []
 
       const filteredPricesByStock = new Map<string, StockData['prices']>()
       for (const stockId of allStockIds) {
@@ -273,7 +271,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         if (!data) return []
         filteredPricesByStock.set(stockId, filterStockPrices(data.prices, globalStart, globalEnd))
       }
-      const alignedPricesByStock = alignFundsToCommonGridDaily(filteredPricesByStock)
+      const alignedPricesByStock = alignFundsToCommonGridDaily(filteredPricesByStock, MAX_STALE_PRICE_DAYS)
       const views: StockView[] = []
       for (const [portfolioIndex, portfolio] of params.portfolios.entries()) {
         const stockId = portfolio.slots[0]?.fundId
@@ -338,6 +336,11 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
       end: ends.reduce((a, b) => (a < b ? a : b)),
     }
   }, [views])
+  const missingPortfolioNames = committed && views
+    ? committed.params.portfolios
+      .filter(portfolio => !views.some(view => view.id === portfolio.id))
+      .map(portfolio => portfolio.name)
+    : []
 
   const lastShareKeyRef = useRef(shareUrl.key)
   useEffect(() => {
@@ -544,15 +547,20 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         assetLabel="cổ phiếu"
         dateFrom={liveDates.from || null}
         dateTo={liveDates.to || null}
-        alignedStart={dataQualityAlignedRange?.start}
-        alignedEnd={dataQualityAlignedRange?.end}
+        alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
+        alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
       />
 
       {stockDataLoading && <div className="loading-indicator">Đang tải chuỗi giá cổ phiếu...</div>}
       {loadError && <div className="error-banner">{loadError}</div>}
 
-      {views && views.length > 0 ? <StockResults views={views} /> : committed ? (
-        <div className="error-banner">Khoảng thời gian đang chọn chưa có dữ liệu giá.</div>
+      {missingPortfolioNames.length > 0 && (
+        <div className="error-banner">
+          Không đủ dữ liệu giá trong khoảng đang chọn cho: {missingPortfolioNames.join(', ')}. Các danh mục còn lại vẫn hiển thị để bạn kiểm tra riêng.
+        </div>
+      )}
+      {views && views.length > 0 ? <StockResults views={views} /> : committed && missingPortfolioNames.length === 0 ? (
+        <div className="error-banner">Khoảng thời gian đang chọn chưa có dữ liệu giá cho danh mục nào.</div>
       ) : null}
     </PanelShell>
   )

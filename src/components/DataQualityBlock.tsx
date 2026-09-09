@@ -1,12 +1,12 @@
 /**
  * DataQualityBlock: minh bạch giới hạn của data trước khi user ra quyết định.
  *
- * Vị trí: đầu tab Compare, ngay sau DateRangePicker, trước mọi chart và số liệu.
+ * Vị trí: đầu các tab có dữ liệu chuỗi giá, trước mọi chart và số liệu.
  *
  * Block này trả lời 3 câu hỏi retail VN nên hỏi trước khi tin vào "CAGR 13.6%":
  *   1. Data cập nhật tới ngày nào? (freshness)
- *   2. Các quỹ có cùng khoảng thời gian không, hay có quỹ mới hơn? (coverage)
- *   3. Có tuần nào bị thiếu giá không? (gaps)
+ *   2. Các tài sản có cùng khoảng thời gian không, hay có tài sản mới hơn? (coverage)
+ *   3. Có khoảng nào bị thiếu giá trong kỳ đang chọn không? (gaps)
  *
  * Nếu tất cả đều sạch: block hiển thị ngắn gọn một dòng "xanh" và thu gọn.
  * Nếu có vấn đề: hiển thị warning chi tiết, từng quỹ có gì.

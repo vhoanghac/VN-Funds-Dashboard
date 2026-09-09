@@ -79,7 +79,11 @@ export function buildFundQualityReport(
 
   const startDate = weekly[0]!.date
   const endDate = weekly[weekly.length - 1]!.date
-  const gaps = detectGaps(weekly)
+  const inRequestedRange = weekly.filter(point =>
+    (requestedFrom === null || point.date >= requestedFrom)
+    && (requestedTo === null || point.date <= requestedTo),
+  )
+  const gaps = detectGaps(inRequestedRange)
 
   const startsAfterRequested = requestedFrom !== null && startDate > requestedFrom
   const endsBeforeRequested = requestedTo !== null && endDate < requestedTo

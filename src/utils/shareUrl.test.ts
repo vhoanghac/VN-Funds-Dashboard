@@ -300,6 +300,13 @@ describe('Stock DCA share link', () => {
     expect(parseStockDcaParams()).toBeNull()
     expect(hasStockDcaSharePayload()).toBe(false)
   })
+
+  it('ignores an unsupported yearsBack value from a crafted stock link', () => {
+    const encoded = buildStockDcaUrl({ ...state, yearsBack: Number.MAX_VALUE })
+    visit(encoded)
+
+    expect(parseStockDcaParams()!.yearsBack).toBeUndefined()
+  })
 })
 
 describe('LS vs DCA share link', () => {

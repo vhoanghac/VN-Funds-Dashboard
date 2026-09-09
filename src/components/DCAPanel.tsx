@@ -30,6 +30,7 @@ import { DcaConsistencyBlock } from './DcaConsistencyBlock'
 import { DividendBlock } from './DividendBlock'
 import { GoldLotWarningBlock } from './GoldLotWarningBlock'
 import { DataQualityBlock } from './DataQualityBlock'
+import { yearsBackDateRange } from '../utils/dateRange'
 import { DrawdownChart } from './DrawdownChart'
 import { DcaRecoveryChart } from './DcaRecoveryChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
@@ -436,12 +437,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // ── Compute effective date range ──
   function getEffectiveDates(): { from: string; to: string } {
     if (dateMode === 'years') {
-      const now = new Date()
-      const from = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
-      return {
-        from: from.toISOString().substring(0, 10),
-        to: now.toISOString().substring(0, 10),
-      }
+      return yearsBackDateRange(yearsBack)
     }
     return { from: dateFrom, to: dateTo }
   }
@@ -699,6 +695,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   // sau khi bấm "Chạy DCA" — tức khi `results` đổi reference).
   const validResults = useMemo(
     () => results?.filter(r => r.cumulative.length > 0) ?? [],
+    [results],
+  )
+  const emptyResultNames = useMemo(
+    () => results?.filter(r => r.cumulative.length === 0).map(r => r.name) ?? [],
     [results],
   )
 
@@ -1231,8 +1231,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         colors={FUND_COLORS}
         dateFrom={effectiveDates.from || null}
         dateTo={effectiveDates.to || null}
-        alignedStart={dataQualityAlignedRange?.start}
-        alignedEnd={dataQualityAlignedRange?.end}
+        alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
+        alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
       />
 
       <GoldLotWarningBlock
@@ -1254,8 +1254,14 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         <div className="error-banner">{dataError}</div>
       )}
 
+      {emptyResultNames.length > 0 && !isLoading && !dataError && (
+        <div className="error-banner">
+          Không đủ dữ liệu để tính toán cho: {emptyResultNames.join(', ')}. Các danh mục còn lại vẫn hiển thị để bạn kiểm tra riêng.
+        </div>
+      )}
+
       {/* Error when no results */}
-      {committed && committed.params.portfolios.length > 0 && validResults.length === 0 && !isLoading && !dataError && (
+      {committed && committed.params.portfolios.length > 0 && validResults.length === 0 && emptyResultNames.length === 0 && !isLoading && !dataError && (
         <div className="error-banner">
           Không đủ dữ liệu để tính toán. Hãy chọn khoảng thời gian dài hơn hoặc chọn "Tất cả".
         </div>

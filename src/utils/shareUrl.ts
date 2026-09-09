@@ -3,6 +3,7 @@ import type { Portfolio, PortfolioSlot, RebalanceFrequency, TransactionCostRates
 import { isDCAFrequency, normalizeDCAContributionSchedule, normalizeTransactionCostRates, type DCAContributionPhase, type DCAFrequency } from './dca'
 import { isCashMode, isLSvsDCAFreq, type CashMode, type LSvsDCAFreq } from './lsVsDca'
 import { parsePortfolio } from './portfolio'
+import { isValidYearsBack } from './dateRange'
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ function parseCompactDca(compressed: string): Partial<DcaShareState> | null {
       if (schedule.length > 0) result.cashflowSchedule = schedule
     }
     if (c.dm === 'all' || c.dm === 'years') result.dateMode = c.dm
-    if (typeof c.y === 'number' && c.y > 0) result.yearsBack = c.y
+    if (isValidYearsBack(c.y)) result.yearsBack = c.y
     result.dateFrom = typeof c.from === 'string' ? c.from : ''
     result.dateTo = typeof c.to === 'string' ? c.to : ''
 
@@ -335,7 +336,7 @@ export function parseStockDcaParams(params: URLSearchParams = paramsFromWindow()
     if (!isRecord(raw)) return null
     const result: Partial<StockDcaShareState> = {}
     if (raw.dm === 'all' || raw.dm === 'years') result.dateMode = raw.dm
-    if (typeof raw.y === 'number' && raw.y > 0) result.yearsBack = raw.y
+    if (isValidYearsBack(raw.y)) result.yearsBack = raw.y
     result.dateFrom = typeof raw.from === 'string' ? raw.from : ''
     result.dateTo = typeof raw.to === 'string' ? raw.to : ''
     if (typeof raw.i === 'number' && raw.i >= 0) result.initialAmount = raw.i
