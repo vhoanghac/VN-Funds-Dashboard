@@ -15,6 +15,8 @@ Hai manifest kiểm soát phạm vi tự động:
 - `stock_symbols.txt`: mã có file giá và được updater CafeF cập nhật hằng ngày.
 - `div_symbols.txt`: mã có file corporate actions và được updater VCI cập nhật hằng ngày.
 
+Manifest giá mặc định dùng sàn `HOSE`. Mã ở sàn khác ghi theo dạng `SYMBOL|EXCHANGE`, ví dụ `VEA|UPCOM`.
+
 Một mã chỉ nên có trong manifest sau khi đã backfill và kiểm tra đủ cả hai cặp file.
 
 ## Cấu trúc file
@@ -27,7 +29,8 @@ public/data/stocks/
 ├── ACB_div.csv
 ├── MBB.csv
 ├── MBB_div.csv
-└── MBB_pending.csv
+├── MBB_pending.csv
+└── VEA.csv (UPCOM)
 ```
 
 `<SYMBOL>.csv` có ba cột:
@@ -70,6 +73,16 @@ Chạy từ thư mục gốc repository:
 
 ```bash
 node scripts/stocks/scrape_cafef_stock.mjs --symbol ACB --from 2007-01-01 --to 2026-09-08
+```
+
+VEA giao dịch trên UPCOM, nên backfill phải truyền đúng sàn:
+
+```bash
+node scripts/stocks/scrape_cafef_stock.mjs \
+  --symbol VEA \
+  --exchange UPCOM \
+  --from 2007-01-01 \
+  --to 2026-09-09
 ```
 
 Script ghi vào `public/data/stocks/ACB.csv`. Nếu file đã tồn tại, script dừng để tránh ghi đè nhầm. Chỉ dùng `--force`
@@ -148,7 +161,7 @@ Phần liên quan tới cổ phiếu chạy theo thứ tự sau:
 
 ```text
 1. update_cafef_stocks.mjs
-   Đọc từng mã trong stock_symbols.txt.
+    Đọc từng mã và sàn trong stock_symbols.txt.
    Tải lại khoảng 90 ngày gần nhất của từng mã.
    Kiểm tra dữ liệu cũ rồi nối phiên mới vào <SYMBOL>.csv.
 

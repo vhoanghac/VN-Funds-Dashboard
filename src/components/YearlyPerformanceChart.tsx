@@ -9,7 +9,7 @@ import { useDimLegend } from '../hooks/useDimLegend'
 interface YearlySeries {
   name: string
   color: string
-  data: Array<Pick<YearlyReturn, 'year' | 'isPartial'> & { value: number | null }>
+  data: Array<Pick<YearlyReturn, 'year' | 'isPartial'> & { value: number | null; isOpeningYear?: boolean }>
 }
 
 interface Props {
@@ -33,14 +33,16 @@ export function YearlyPerformanceChart({ series, title = 'Hiệu suất theo t�
     .map(year => {
       const point: Record<string, unknown> = {}
       let isPartial = false
+      let openingYear = false
 
       for (const s of series) {
         const y = s.data.find(yr => yr.year === year)
         point[s.name] = y ? y.value : null
         if (y?.isPartial) isPartial = true
+        if (y?.isOpeningYear) openingYear = true
       }
 
-      point.year = isPartial ? `${year}*` : String(year)
+      point.year = `${isPartial ? `${year}*` : year}${openingYear ? '†' : ''}`
       return point
     })
 
@@ -48,7 +50,7 @@ export function YearlyPerformanceChart({ series, title = 'Hiệu suất theo t�
     <div className="chart-container">
       <div className="chart-header">
         <h3>{title}</h3>
-        <span className="chart-tooltip-icon" title={`So sánh lợi nhuận các ${assetLabel} trong mỗi năm. Năm có dấu * là năm chưa đầy đủ dữ liệu. Bấm vào legend để làm mờ/hiện cột.`}>?</span>
+        <span className="chart-tooltip-icon" title={`So sánh lợi nhuận các ${assetLabel} trong mỗi năm. Năm có dấu * là năm chưa đầy đủ dữ liệu, dấu † là năm đầu chưa có số dư đầu năm. Bấm vào legend để làm mờ/hiện cột.`}>?</span>
       </div>
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>

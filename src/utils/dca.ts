@@ -1054,6 +1054,8 @@ export interface YearlyMWRR {
   /** decimal; null nếu không tính được (mẫu số bằng 0, vd danh mục rỗng suốt năm) */
   value: number | null
   isPartial: boolean
+  /** Năm đầu không có số dư đầu năm để làm mốc so sánh. */
+  isOpeningYear: boolean
   /** Giá trị danh mục (đã gồm cashflow) tại điểm cuối cùng của năm này */
   endValue: number
 }
@@ -1119,6 +1121,7 @@ export function dcaYearlyMWRR(
     const isPartial =
       (year === firstYear && daysBetween(yearStartStr, periodStartDate) > 20) ||
       (year === lastYear && daysBetween(periodEndDate, yearEndStr) > 20)
+    const isOpeningYear = year === firstYear && bvPoint === null
 
     const yearContribs = contributions
       .filter(cf => cf.date >= periodStartDate && cf.date <= periodEndDate)
@@ -1133,7 +1136,7 @@ export function dcaYearlyMWRR(
     const denominator = BV + weightedContrib
     const value = denominator !== 0 ? (EV - BV - netContrib) / denominator : null
 
-    results.push({ year, value, isPartial, endValue: EV })
+    results.push({ year, value, isPartial, isOpeningYear, endValue: EV })
   }
 
   return results

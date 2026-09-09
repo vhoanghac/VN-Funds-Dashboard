@@ -782,10 +782,11 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const yearlyPerformanceSeries = useMemo(() => journeyPortfolios.map(p => ({
     name: p.name,
     color: p.color,
-    data: dcaYearlyMWRR(p.valueSeries, p.cashflows).map(({ year, value, isPartial }) => ({
+    data: dcaYearlyMWRR(p.valueSeries, p.cashflows).map(({ year, value, isPartial, isOpeningYear }) => ({
       year,
       value,
       isPartial,
+      isOpeningYear,
     })),
   })), [journeyPortfolios])
 

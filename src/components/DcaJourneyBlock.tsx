@@ -199,6 +199,7 @@ function EOYReturnsTableImpl({ portfolios, assetLabel = 'quỹ' }: { portfolios:
                         <td className={`dca-eoy-cell dca-eoy-group-start ${pct >= 0 ? 'dca-eoy-cell--pos' : 'dca-eoy-cell--neg'}`}>
                           {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
                           {r.isPartial && <sup className="dca-eoy-partial">*</sup>}
+                          {r.isOpeningYear && <sup className="dca-eoy-partial">†</sup>}
                         </td>
                         <td className="dca-eoy-cell dca-eoy-cell--balance">
                           {formatVND(r.endValue)}
@@ -221,6 +222,7 @@ function EOYReturnsTableImpl({ portfolios, assetLabel = 'quỹ' }: { portfolios:
       </div>
       <div className="dca-eoy-footnote">
         * Năm chưa đủ dữ liệu trọn năm (năm đầu hoặc năm cuối của khoảng so sánh).
+        {' '}† Năm đầu của tài khoản, chưa có số dư đầu năm để làm mốc so sánh trực tiếp với các năm sau.
         {showDiff && ' "Chênh lệch" = lợi nhuận danh mục thứ 2 trừ danh mục thứ 1, tính bằng điểm phần trăm.'}
       </div>
     </DcaBlock>

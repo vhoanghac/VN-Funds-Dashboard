@@ -19,6 +19,19 @@ const PENDING_ACTIONS_CSV = `kind,ex_date,record_date,ratio,subscription_price,s
 stock_dividend,2026-01-20,2026-01-21,0.15,,VCI event pending-stock
 `
 
+const DIFFERENT_START_PRICES: Record<string, string> = {
+  ACB: `date,adjusted_price,unadjusted_price
+2026-01-05,100,100
+2026-01-06,100,100
+2026-02-05,100,100
+`,
+  MBB: `date,adjusted_price,unadjusted_price
+2026-01-06,100,100
+2026-01-07,100,100
+2026-02-05,100,100
+`,
+}
+
 function stockShareUrl(stockIds: string[] = ['ACB']): ShareUrlState<Partial<StockDcaShareState>> {
   const portfolios: Portfolio[] = stockIds.map(stockId => ({
     name: stockId,
@@ -149,6 +162,71 @@ describe('StockDcaPanel', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Rủi ro & biến động' }))
 
     expect(screen.getAllByRole('button', { name: 'Tất cả' }).some(button => button.className.includes('dca-results-filter-btn'))).toBe(true)
+  })
+
+  it('starts multiple stock portfolios on their common first date', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      const symbol = path.match(/\/stocks\/([A-Z]+)(?:_div|_pending)?\.csv/)?.[1] ?? ''
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : DIFFERENT_START_PRICES[symbol] ?? PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    const shareUrl = stockShareUrl(['ACB', 'MBB'])
+    shareUrl.parsedPayload = { ...shareUrl.parsedPayload, dateFrom: '', dateTo: '' }
+    render(<StockDcaPanel active shareUrl={shareUrl} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+
+    expect(screen.getByText('DCA từ 06/01/2026 đến 05/02/2026')).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Rủi ro & biến động' }))
+    const mbbFilter = screen.getAllByRole('button', { name: 'MBB' }).find(button => button.className.includes('dca-results-filter-btn'))
+    expect(mbbFilter).toBeDefined()
+    await userEvent.setup().click(mbbFilter!)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+    expect(screen.getByText('DCA từ 06/01/2026 đến 05/02/2026')).toBeInTheDocument()
+  })
+
+  it('shows stock data quality before and after running DCA', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    const shareUrl = stockShareUrl(['ACB'])
+    shareUrl.parsedPayload = { ...shareUrl.parsedPayload, dateFrom: '2026-01-01' }
+    render(<StockDcaPanel active shareUrl={shareUrl} />)
+    const qualityButton = await screen.findByRole('button', { name: /Chất lượng dữ liệu:|Dữ liệu đầy đủ/ })
+
+    await userEvent.setup().click(qualityButton)
+    expect(screen.getByText(/Mỗi cổ phiếu có lịch sử dữ liệu khác nhau/)).toBeInTheDocument()
+    expect(screen.getByText(/Cổ phiếu bắt đầu từ/)).toBeInTheDocument()
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    expect(screen.getByText(/Khoảng so sánh thực tế đã được căn chỉnh/)).toBeInTheDocument()
   })
 
   it('keeps the setup form mounted while a newly added stock loads', async () => {

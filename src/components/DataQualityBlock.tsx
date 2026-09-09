@@ -31,6 +31,7 @@ interface Props {
   colors: string[]
   dateFrom: string | null
   dateTo: string | null
+  assetLabel?: string
   /** Start/end thực tế đã aligned; khi undefined có thể chưa ready */
   alignedStart?: string
   alignedEnd?: string
@@ -42,6 +43,7 @@ export function DataQualityBlock({
   colors,
   dateFrom,
   dateTo,
+  assetLabel = 'quỹ',
   alignedStart,
   alignedEnd,
 }: Props) {
@@ -104,7 +106,7 @@ export function DataQualityBlock({
                 Cập nhật tới {formatDate(lastUpdated)}
                 {freshest.daysStale > 0 ? ` (${freshest.daysStale} ngày trước)` : ''}
                 {anyGaps ? '. Phát hiện khoảng thiếu giá.' : ''}
-                {anyCoverageIssue ? ' Có quỹ không phủ hết khoảng bạn chọn.' : ''}
+                {anyCoverageIssue ? ` Có ${assetLabel} không phủ hết khoảng bạn chọn.` : ''}
               </span>
             </>
           ) : (
@@ -124,8 +126,8 @@ export function DataQualityBlock({
       {expanded && (
         <div className="dq-body">
           <p className="dq-intro">
-            Mỗi quỹ có lịch sử dữ liệu khác nhau. Một số quỹ mới lập chỉ có vài
-            năm, một số quỹ cũ có thể bị thiếu giá trong các đợt đặc biệt như
+            Mỗi {assetLabel} có lịch sử dữ liệu khác nhau. Một số {assetLabel} mới lập chỉ có vài
+            năm, một số {assetLabel} cũ có thể bị thiếu giá trong các đợt đặc biệt như
             COVID. Dashboard này công khai những giới hạn đó để bạn cẩn thận
             hơn khi đọc các con số bên dưới.
           </p>
@@ -150,7 +152,7 @@ export function DataQualityBlock({
           {alignedStart && alignedEnd && (
             <p className="dq-aligned">
               Khoảng so sánh thực tế đã được căn chỉnh theo giao điểm của tất
-              cả các quỹ: <strong>{formatDate(alignedStart)}</strong> tới{' '}
+              cả các {assetLabel}: <strong>{formatDate(alignedStart)}</strong> tới{' '}
               <strong>{formatDate(alignedEnd)}</strong>. Mọi con số trong các
               block bên dưới đều tính trên khoảng này.
             </p>
@@ -163,6 +165,7 @@ export function DataQualityBlock({
                 <FundIssueList
                   key={r.id}
                   report={r}
+                  assetLabel={assetLabel}
                   requestedFrom={dateFrom}
                   requestedTo={dateTo}
                 />
@@ -259,10 +262,12 @@ function FundTimeline({
 
 function FundIssueList({
   report,
+  assetLabel,
   requestedFrom,
   requestedTo,
 }: {
   report: FundQualityReport
+  assetLabel: string
   requestedFrom: string | null
   requestedTo: string | null
 }) {
@@ -272,7 +277,7 @@ function FundIssueList({
       <ul className="dq-issue-list">
         {report.startsAfterRequested && requestedFrom && (
           <li>
-            Quỹ bắt đầu từ <strong>{formatDate(report.startDate)}</strong>,
+            {capitalize(assetLabel)} bắt đầu từ <strong>{formatDate(report.startDate)}</strong>,
             muộn hơn ngày bạn chọn ({formatDate(requestedFrom)}). Khoảng trước
             đó không tính vào phép so sánh.
           </li>
@@ -302,4 +307,8 @@ function formatDate(d: string): string {
   const parts = d.split('-')
   if (parts.length !== 3) return d
   return `${parts[2]}/${parts[1]}/${parts[0]}`
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }

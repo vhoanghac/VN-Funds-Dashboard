@@ -350,7 +350,7 @@ function refDcaYearlyReturns(cumulative: ReturnPoint[]): YearlyReturn[] {
 function refDcaYearlyMWRR(
   valueSeries: { date: string; value: number }[],
   cashflows: { date: string; amount: number }[],
-): { year: number; value: number | null; isPartial: boolean; endValue: number }[] {
+): { year: number; value: number | null; isPartial: boolean; isOpeningYear: boolean; endValue: number }[] {
   if (valueSeries.length < 2) return []
   const years = Array.from(new Set(valueSeries.map(p => +p.date.slice(0, 4)))).sort((a, b) => a - b)
   if (years.length === 0) return []
@@ -374,7 +374,7 @@ function refDcaYearlyMWRR(
     contribByYear.set(y, arr)
   }
 
-  const results: { year: number; value: number | null; isPartial: boolean; endValue: number }[] = []
+  const results: { year: number; value: number | null; isPartial: boolean; isOpeningYear: boolean; endValue: number }[] = []
   for (const year of years) {
     const yearStartStr = `${year}-01-01`, yearEndStr = `${year}-12-31`
     const bvPoint = year > years[0]! ? lastInYear.get(year - 1) ?? null : null
@@ -389,6 +389,7 @@ function refDcaYearlyMWRR(
     const isPartial =
       (year === firstYear && daysBetween(yearStartStr, periodStartDate) > 20) ||
       (year === lastYear && daysBetween(periodEndDate, yearEndStr) > 20)
+    const isOpeningYear = year === firstYear && bvPoint === null
 
     const yearContribs = (contribByYear.get(year) ?? [])
       .filter(c => c.date >= periodStartDate && c.date <= periodEndDate)
@@ -396,7 +397,7 @@ function refDcaYearlyMWRR(
     const weightedContrib = yearContribs.reduce((s, c) => s + c.amount * (1 - daysBetween(periodStartDate, c.date) / totalDays), 0)
     const denominator = BV + weightedContrib
     const value = denominator !== 0 ? (EV - BV - netContrib) / denominator : null
-    results.push({ year, value, isPartial, endValue: EV })
+    results.push({ year, value, isPartial, isOpeningYear, endValue: EV })
   }
   return results
 }
@@ -1192,6 +1193,7 @@ describe('differential: dcaYearlyMWRR (single-pass reference)', () => {
       if (ref[i]!.value === null) expect(prod[i]!.value).toBeNull()
       else expect(prod[i]!.value!).toBeCloseTo(ref[i]!.value!, 9)
       expect(prod[i]!.isPartial).toBe(ref[i]!.isPartial)
+      expect(prod[i]!.isOpeningYear).toBe(ref[i]!.isOpeningYear)
       expect(prod[i]!.endValue).toBeCloseTo(ref[i]!.endValue, 6)
     }
   })
@@ -1208,6 +1210,7 @@ describe('differential: dcaYearlyMWRR (single-pass reference)', () => {
     expect(prod).toHaveLength(ref.length)
     expect(prod[0]!.year).toBe(ref[0]!.year)
     expect(prod[0]!.isPartial).toBe(true)
+    expect(prod[0]!.isOpeningYear).toBe(true)
     expect(prod[0]!.value!).toBeCloseTo(ref[0]!.value!, 9)
   })
 })

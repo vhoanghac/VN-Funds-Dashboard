@@ -54,6 +54,7 @@ describe('dcaYearlyMWRR (Modified Dietz)', () => {
     expect(result).toHaveLength(1)
     expect(result[0]!.year).toBe(2024)
     expect(result[0]!.value).toBeCloseTo(0, 6)
+    expect(result[0]!.isOpeningYear).toBe(true)
   })
 
   it('returns exactly the growth rate for a single day-0 contribution (BV=0)', () => {
@@ -93,6 +94,8 @@ describe('dcaYearlyMWRR (Modified Dietz)', () => {
     expect(result).toHaveLength(2)
     expect(result[0]!.value).toBeCloseTo(0.10, 6)
     expect(result[1]!.value).toBeCloseTo(0.10, 6)
+    expect(result[0]!.isOpeningYear).toBe(true)
+    expect(result[1]!.isOpeningYear).toBe(false)
   })
 
   it('flags the first year as partial when data starts mid-year', () => {
