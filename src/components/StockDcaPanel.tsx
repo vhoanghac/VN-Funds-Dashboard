@@ -55,7 +55,6 @@ import {
 } from '../utils/stockAccountDca'
 import { annualStockDividends, compactStockLedgerToMonthly, filterStockPrices, presentStockDcaResult, stockShareHoldings, type StockDcaPresentation } from '../utils/stockDcaPresentation'
 import { buildStockDcaUrl, type ShareUrlState, type StockDcaShareState } from '../utils/shareUrl'
-import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { yearsBackDateRange } from '../utils/dateRange'
 
 interface StockOption {
@@ -73,7 +72,6 @@ const STOCK_OPTIONS: StockOption[] = [
 
 const STOCK_COLOR = '#a8512f'
 const OPEN_ENDED_DATE = '9999-12-31'
-const MAX_STALE_PRICE_DAYS = 14
 const INITIAL_AMOUNT = 5_000_000
 const DEFAULT_PHASES: DCAContributionPhase[] = [{ amount: 5_000_000, freq: 'monthly', until: null }]
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
@@ -142,6 +140,11 @@ interface StockView {
   allActions: CorporateAction[]
   params: StockRunParams
   portfolio: StockPortfolioState
+}
+
+interface StockRunResult {
+  views: StockView[]
+  noCommonRange: boolean
 }
 
 function hydrateStockPortfolios(source: Portfolio[], nextIdRef: { current: number }): StockPortfolioState[] {
@@ -246,7 +249,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
   const scheduleError = cashflowScheduleError(phases)
   const dateRangeError = dateMode === 'all' && !!dateFrom && !!dateTo && dateFrom > dateTo
   const portfolioError = portfolios.some(portfolio => portfolio.slots.length !== 1 || portfolio.slots[0]?.weight !== 100)
-  const committedRun = useCommittedRun<StockRunParams, StockSnapshot, StockView[]>({
+  const committedRun = useCommittedRun<StockRunParams, StockSnapshot, StockRunResult>({
     ready: stockIds.length > 0 && (stockIds.every(stockId => stockData.has(stockId)) || !!loadError),
     valid: portfolios.length > 0 && !portfolioError && !scheduleError && !dateRangeError,
     liveParams,
@@ -269,29 +272,27 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         const data = snapshot.data.get(stockId)
         filteredPricesByStock.set(stockId, data ? filterStockPrices(data.prices, globalStart, globalEnd) : [])
       }
-      const alignedPricesByStock = alignFundsToCommonGridDaily(filteredPricesByStock, MAX_STALE_PRICE_DAYS)
-      const availableStockIds = allStockIds.filter(stockId => (alignedPricesByStock.get(stockId)?.length ?? 0) > 0)
-      if (availableStockIds.length === 0) return []
+      const availableStockIds = allStockIds.filter(stockId => (filteredPricesByStock.get(stockId)?.length ?? 0) > 0)
+      if (availableStockIds.length === 0) return { views: [], noCommonRange: false }
 
-      let commonDates = new Set(alignedPricesByStock.get(availableStockIds[0]!)!.map(point => point.date))
-      for (const stockId of availableStockIds.slice(1)) {
-        const dates = new Set(alignedPricesByStock.get(stockId)!.map(point => point.date))
-        commonDates = new Set(Array.from(commonDates).filter(date => dates.has(date)))
-      }
-      if (commonDates.size === 0) return []
+      const commonStart = availableStockIds
+        .map(stockId => filteredPricesByStock.get(stockId)![0]!.date)
+        .reduce((latest, date) => latest > date ? latest : date)
+      const commonEnd = availableStockIds
+        .map(stockId => {
+          const prices = filteredPricesByStock.get(stockId)!
+          return prices[prices.length - 1]!.date
+        })
+        .reduce((earliest, date) => earliest < date ? earliest : date)
+      if (commonStart > commonEnd) return { views: [], noCommonRange: true }
 
-      const commonPricesByStock = new Map<string, StockData['prices']>()
-      for (const stockId of allStockIds) {
-        commonPricesByStock.set(
-          stockId,
-          (alignedPricesByStock.get(stockId) ?? []).filter(point => commonDates.has(point.date)),
-        )
-      }
       const views: StockView[] = []
       for (const [portfolioIndex, portfolio] of params.portfolios.entries()) {
         const stockId = portfolio.slots[0]?.fundId
         const data = stockId ? snapshot.data.get(stockId) : undefined
-        const prices = stockId ? commonPricesByStock.get(stockId) : undefined
+        const prices = stockId
+          ? (filteredPricesByStock.get(stockId) ?? []).filter(point => point.date >= commonStart && point.date <= commonEnd)
+          : undefined
         if (!data || !prices || portfolio.slots[0]?.weight !== 100) continue
         if (prices.length === 0) continue
         const firstDate = prices[0]!.date
@@ -325,17 +326,19 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
             portfolio,
           })
       }
-      return views
+      return { views, noCommonRange: false }
     },
   })
 
   const {
     committed,
-    result: views,
+    result: stockRun,
     dirty: isDirty,
     run: runCommitted,
     reset: resetCommitted,
   } = committedRun
+  const views = stockRun?.views
+  const noCommonRange = stockRun?.noCommonRange ?? false
   const stockDataLoading = stockIds.length > 0 && stockIds.some(stockId => !stockData.has(stockId)) && !loadError
   const stockPriceData = useMemo(
     () => new Map<string, StockData['prices']>(Array.from(stockData, ([stockId, data]) => [stockId, data.prices])),
@@ -356,6 +359,13 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
       .filter(portfolio => !views.some(view => view.id === portfolio.id))
       .map(portfolio => portfolio.name)
     : []
+  const dataQualityAlignmentStatus = committed && !isDirty
+    ? {
+        hasCommonRange: !noCommonRange && !!views && views.length > 0,
+        validPointCount: views && views.length > 0 ? Math.min(...views.map(view => view.prices.length)) : 0,
+        excludedPortfolioCount: missingPortfolioNames.length,
+      }
+    : undefined
 
   const lastShareKeyRef = useRef(shareUrl.key)
   useEffect(() => {
@@ -564,13 +574,16 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
         dateTo={liveDates.to || null}
         alignedStart={!isDirty ? dataQualityAlignedRange?.start : undefined}
         alignedEnd={!isDirty ? dataQualityAlignedRange?.end : undefined}
+        alignmentStatus={dataQualityAlignmentStatus}
         loading={stockDataLoading}
       />
 
       {stockDataLoading && <div className="loading-indicator">Đang tải chuỗi giá cổ phiếu...</div>}
       {loadError && <div className="error-banner">{loadError}</div>}
 
-      {missingPortfolioNames.length > 0 && (
+      {noCommonRange ? (
+        <div className="error-banner">Các danh mục có dữ liệu, nhưng không cùng một khoảng ngày để so sánh.</div>
+      ) : missingPortfolioNames.length > 0 && (
         <div className="error-banner">
           Không đủ dữ liệu giá trong khoảng đang chọn cho: {missingPortfolioNames.join(', ')}. Các danh mục còn lại vẫn hiển thị để bạn kiểm tra riêng.
         </div>

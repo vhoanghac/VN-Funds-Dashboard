@@ -3,7 +3,7 @@ import type { DividendEvent, DividendNarrativeStats } from './dividendAdjust'
 import { daysBetween } from './dateMath'
 import { rollingWindowStarts } from './dateWindow'
 import { isIsoDate } from './priceSeries'
-import { assetDisplayName } from './savingsAsset'
+import { assetDisplayName, isSavingsAssetId } from './savingsAsset'
 import { percentileSorted } from './stats'
 
 /**
@@ -352,14 +352,13 @@ function shouldInvest(
       return true
 
     case 'weekly': {
-      // Different ISO week
       const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
-      return diffDays >= 5 // at least 5 days apart (weekly data points)
+      return diffDays >= 7
     }
 
     case 'biweekly': {
       const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
-      return diffDays >= 12
+      return diffDays >= 14
     }
 
     case 'monthly': {
@@ -624,6 +623,50 @@ export interface DCASimulateOptions {
   purchasePrices?: Map<string, PricePoint[]>
   /** Phí mua/bán và thuế bán. Bỏ trống thì engine giữ hành vi cũ: cả ba bằng 0%. */
   transactionCostRates?: TransactionCostRates
+  /**
+   * Dates where a contribution or rebalance may execute. This is separate
+   * from the valuation grid, which may contain forward-filled or synthetic
+   * daily points such as savings weekends.
+   */
+  executionDates?: readonly string[]
+}
+
+/**
+ * Build the execution calendar from source quote dates, not an aligned
+ * valuation grid. Synthetic savings can contribute on every calendar day;
+ * when a market-priced asset is present, its quote dates anchor execution.
+ */
+export function buildDcaExecutionDates(
+  priceData: Map<string, PricePoint[]>,
+  slots: readonly DCASlot[],
+): string[] {
+  const activeIds = Array.from(new Set(
+    slots.filter(slot => slot.fundId && slot.weight > 0).map(slot => slot.fundId),
+  ))
+  const marketIds = activeIds.filter(id => !isSavingsAssetId(id))
+  const sourceIds = marketIds.length > 0 ? marketIds : activeIds
+  if (sourceIds.length === 0) return []
+
+  const dateSets = sourceIds.map(id => new Set((priceData.get(id) ?? []).map(point => point.date)))
+  if (dateSets.some(dates => dates.size === 0)) return []
+
+  if (marketIds.length === 0) {
+    const dates = new Set<string>()
+    for (const dateSet of dateSets) {
+      for (const date of dateSet) dates.add(date)
+    }
+    return Array.from(dates).sort()
+  }
+
+  return Array.from(dateSets[0]!).filter(date => dateSets.every(dateSet => dateSet.has(date))).sort()
+}
+
+function normalizeExecutionDates(
+  executionDates: readonly string[],
+  valuationDates: readonly string[],
+): string[] {
+  const valuationDateSet = new Set(valuationDates)
+  return Array.from(new Set(executionDates.filter(date => isIsoDate(date) && valuationDateSet.has(date)))).sort()
 }
 
 /**
@@ -656,7 +699,7 @@ export function simulateDCA(
   const weights = validSlots.map(s => s.weight / totalWeight)
   const fundIds = validSlots.map(s => s.fundId)
 
-  // Get all weekly price arrays
+  // Get all valuation price arrays
   const priceArrays = fundIds.map(id => dailyPrices.get(id) || [])
 
   const commonGrid = buildCommonPriceGrid(priceArrays)
@@ -674,6 +717,11 @@ export function simulateDCA(
   }
   const { dates: allDates, priceLookups: purchaseLookups } = purchaseGrid
   const priceLookups = commonGrid.priceLookups
+  const executionDates = normalizeExecutionDates(options?.executionDates ?? allDates, allDates)
+  const executionDateSet = new Set(executionDates)
+  if (executionDates.length === 0) {
+    return { values: [], invested: [], cashflows: [], cumulative: [], drawdown: [], returns: [], totalInvested: 0, finalValue: 0, transactionCosts: { buyFees: 0, sellFees: 0, sellTaxes: 0, total: 0 } }
+  }
   const cashflowSchedule = resolveDCAContributionSchedule(params)
 
   // ── Run DCA simulation ──
@@ -692,7 +740,9 @@ export function simulateDCA(
   let lastInvestDate = ''
   let firstCashflowDate: string | null = null
   let lastCashflowAmount = 0
-  let activeCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, allDates[0]!)
+  const firstExecutionDate = executionDates[0]!
+  const firstExecutionIndex = allDates.indexOf(firstExecutionDate)
+  let activeCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, firstExecutionDate)
   let phaseJustStarted = false
 
   // MWRR series (portfolio value includes cashflows)
@@ -729,28 +779,17 @@ export function simulateDCA(
     }
   }
 
-  // Initial investment on first date
-  if (params.initialAmount > 0) {
-    buyFunds(params.initialAmount, 0)
-    cashflows.push({ date: allDates[0]!, amount: -params.initialAmount })
-  }
-
-  // Track for rebalancing & TWRR
-  let prevDateForRebal = allDates[0]!
+  // Track for rebalancing & TWRR. The valuation grid can start before the
+  // first executable quote, so the TWRR clock starts lazily below.
+  let prevDateForRebal = firstExecutionDate
   let twrrGrowth = 1.0  // chain-linked TWRR growth factor
   let twrrPeak = 1.0    // for TWRR-based drawdown
-  // prevEndValue: portfolio value at end of previous day (AFTER any cashflow on that day)
-  let prevEndValue = totalInvested > 0 ? valueUnits(units, priceLookups, allDates[0]!) : 0
+  let prevEndValue = 0
+  let twrrStarted = false
 
-  // Record day 0
-  values.push({ date: allDates[0]!, value: prevEndValue })
-  recordAssetValues(allDates[0]!)
-  invested.push({ date: allDates[0]!, value: totalInvested })
-  cumulative.push({ date: allDates[0]!, value: 0 })  // 0% return on day 0
-  drawdown.push({ date: allDates[0]!, value: 0 })
-
-  for (let i = 1; i < allDates.length; i++) {
+  for (let i = 0; i < allDates.length; i++) {
     const date = allDates[i]!
+    const isExecutionDate = executionDateSet.has(date)
 
     // ── TWRR Step 1: compute value BEFORE any cashflow today ──
     // This reflects pure market movement since yesterday's close
@@ -758,21 +797,32 @@ export function simulateDCA(
 
     // Daily TWRR return = market movement only (before adding new money)
     let marketReturn = 0
-    if (prevEndValue > 0) {
+    if (twrrStarted && prevEndValue > 0) {
       marketReturn = valueBeforeCashflow / prevEndValue - 1
     }
     const growthAfterMarket = twrrGrowth * (1 + marketReturn)
 
     // ── Step 2: DCA cashflow (add new money AFTER computing return) ──
-    const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
-    if (nextCashflowPhase !== activeCashflowPhase) {
-      activeCashflowPhase = nextCashflowPhase
-      phaseJustStarted = true
+    let investedToday = false
+    if (date >= firstExecutionDate) {
+      const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
+      if (nextCashflowPhase !== activeCashflowPhase) {
+        activeCashflowPhase = nextCashflowPhase
+        phaseJustStarted = true
+      }
+
+      // Initial capital enters on the first executable quote, not on a
+      // forward-filled valuation point before that quote.
+      if (i === firstExecutionIndex && params.initialAmount > 0) {
+        buyFunds(params.initialAmount, i)
+        cashflows.push({ date, amount: -params.initialAmount })
+        investedToday = true
+      }
     }
     const cashflowPhase = cashflowSchedule[activeCashflowPhase]
       ?? { amount: 0, freq: 'monthly' as const, until: null }
-    if (cashflowPhase.amount > 0) {
-      const investDate = lastInvestDate || allDates[0]!
+    if (isExecutionDate && date !== firstExecutionDate && cashflowPhase.amount > 0) {
+      const investDate = lastInvestDate || firstExecutionDate
       if (phaseJustStarted || shouldInvest(investDate, date, cashflowPhase.freq)) {
         firstCashflowDate ??= date
         const scheduledAmount = dcaContributionAmountAtDate(params, date, firstCashflowDate)
@@ -786,6 +836,7 @@ export function simulateDCA(
           buyFunds(amount, i)
           cashflows.push({ date, amount: -amount })
           lastCashflowAmount = amount
+          investedToday = amount > 0
         } else {
           // Vẫn phải dời mốc "kỳ nạp gần nhất" tới ngày hôm nay dù bỏ qua lần
           // này — nếu không, investDate ở trên cứ đứng yên tại lần nạp thành
@@ -801,7 +852,7 @@ export function simulateDCA(
     // ── Step 3: Rebalance check ──
     let portfolioValue = totalInvested > 0 ? valueUnits(units, priceLookups, date) : 0
     let rebalanceFactor = 1
-    if (totalInvested > 0) {
+    if (totalInvested > 0 && isExecutionDate) {
       if (shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
         const valueBeforeRebalance = portfolioValue
         const rebalanceCosts = rebalanceUnits(
@@ -814,7 +865,7 @@ export function simulateDCA(
         if (valueBeforeRebalance > 0) rebalanceFactor = portfolioValue / valueBeforeRebalance
       }
     }
-    prevDateForRebal = date
+    if (isExecutionDate) prevDateForRebal = date
 
     // ── Record MWRR portfolio value (AFTER cashflow) ──
     values.push({ date, value: portfolioValue })
@@ -822,17 +873,25 @@ export function simulateDCA(
     invested.push({ date, value: totalInvested })
 
     // ── Record TWRR cumulative return ──
-    const dailyReturn = (1 + marketReturn) * rebalanceFactor - 1
-    twrrDailyReturns.push({ date, value: dailyReturn })
-    twrrGrowth *= 1 + dailyReturn
-    cumulative.push({ date, value: twrrGrowth - 1 })
+    if (investedToday && !twrrStarted) {
+      twrrStarted = true
+      twrrGrowth = 1
+      twrrPeak = 1
+      cumulative.push({ date, value: 0 })
+      drawdown.push({ date, value: 0 })
+    } else if (twrrStarted) {
+      const dailyReturn = (1 + marketReturn) * rebalanceFactor - 1
+      twrrDailyReturns.push({ date, value: dailyReturn })
+      twrrGrowth *= 1 + dailyReturn
+      cumulative.push({ date, value: twrrGrowth - 1 })
 
-    // ── Record TWRR drawdown ──
-    if (twrrGrowth > twrrPeak) twrrPeak = twrrGrowth
-    drawdown.push({ date, value: twrrGrowth / twrrPeak - 1 })
+      // ── Record TWRR drawdown ──
+      if (twrrGrowth > twrrPeak) twrrPeak = twrrGrowth
+      drawdown.push({ date, value: twrrGrowth / twrrPeak - 1 })
+    }
 
     // Update prevEndValue for next day's TWRR calculation
-    prevEndValue = portfolioValue
+    prevEndValue = twrrStarted ? portfolioValue : 0
   }
 
   // Dữ liệu đã ở dạng chuỗi TWRR daily returns, dùng trực tiếp (không cần resample gì thêm)
@@ -1304,7 +1363,7 @@ function shouldRebalForDCA(
 
   switch (freq) {
     case 'weekly':
-      return daysBetween(prevDate, nextDate) >= 5
+      return daysBetween(prevDate, nextDate) >= 7
     case 'monthly':
       return prev.getMonth() !== next.getMonth() || prev.getFullYear() !== next.getFullYear()
     case 'quarterly': {
@@ -1691,6 +1750,7 @@ export function trackDividendNarrative(
   dividends: Map<string, DividendEvent[]>,
   purchasePrices?: Map<string, PricePoint[]>,
   transactionCostRates?: TransactionCostRates,
+  executionDatesOption?: readonly string[],
 ): DividendNarrativeStats[] {
   const validSlots = slots.filter(s => s.fundId && s.weight > 0)
   if (validSlots.length === 0) return []
@@ -1716,6 +1776,11 @@ export function trackDividendNarrative(
   if (!purchaseGrid) return []
   const { dates: allDates, priceLookups: purchaseLookups } = purchaseGrid
   const priceLookups = commonGrid.priceLookups
+  const executionDates = normalizeExecutionDates(executionDatesOption ?? allDates, allDates)
+  const executionDateSet = new Set(executionDates)
+  if (executionDates.length === 0) return []
+  const firstExecutionDate = executionDates[0]!
+  const firstExecutionIndex = allDates.indexOf(firstExecutionDate)
 
   // Schedule dividend events trên weekly grid
   interface ScheduleEntry {
@@ -1759,7 +1824,7 @@ export function trackDividendNarrative(
   let lastInvestDate = ''
   let firstCashflowDate: string | null = null
   const cashflowSchedule = resolveDCAContributionSchedule(params)
-  let activeCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, allDates[0]!)
+  let activeCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, firstExecutionDate)
   let phaseJustStarted = false
   const normalizedTransactionCostRates = normalizeTransactionCostRates(transactionCostRates, {
     buyFeeRate: 0,
@@ -1773,10 +1838,9 @@ export function trackDividendNarrative(
     totalInvested += amount
     lastInvestDate = date
   }
-  if (params.initialAmount > 0) buy(params.initialAmount, 0)
-  let prevDateForRebal = allDates[0]!
+  let prevDateForRebal = firstExecutionDate
 
-  for (let i = 1; i < allDates.length; i++) {
+  for (let i = 0; i < allDates.length; i++) {
     const date = allDates[i]!
 
     // Ex-date: snapshot units (ghi nhận units đúng đợt này để hiển thị per-event)
@@ -1819,15 +1883,20 @@ export function trackDividendNarrative(
     }
 
     // Cashflow
-    const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
-    if (nextCashflowPhase !== activeCashflowPhase) {
-      activeCashflowPhase = nextCashflowPhase
-      phaseJustStarted = true
+    if (date >= firstExecutionDate) {
+      const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
+      if (nextCashflowPhase !== activeCashflowPhase) {
+        activeCashflowPhase = nextCashflowPhase
+        phaseJustStarted = true
+      }
+      if (i === firstExecutionIndex && params.initialAmount > 0) {
+        buy(params.initialAmount, i)
+      }
     }
     const cashflowPhase = cashflowSchedule[activeCashflowPhase]
       ?? { amount: 0, freq: 'monthly' as const, until: null }
-    if (cashflowPhase.amount > 0) {
-      const investDate = lastInvestDate || allDates[0]!
+    if (executionDateSet.has(date) && date !== firstExecutionDate && cashflowPhase.amount > 0) {
+      const investDate = lastInvestDate || firstExecutionDate
       if (phaseJustStarted || shouldInvest(investDate, date, cashflowPhase.freq)) {
         firstCashflowDate ??= date
         buy(dcaContributionAmountAtDate(params, date, firstCashflowDate), i)
@@ -1836,10 +1905,10 @@ export function trackDividendNarrative(
     }
 
     // Rebalance
-    if (totalInvested > 0 && shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
+    if (totalInvested > 0 && date !== firstExecutionDate && executionDateSet.has(date) && shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
       rebalanceUnits(units, weights, priceLookups, date, purchaseLookups, normalizedTransactionCostRates)
     }
-    prevDateForRebal = date
+    if (executionDateSet.has(date)) prevDateForRebal = date
   }
 
   return Array.from(stats.values())

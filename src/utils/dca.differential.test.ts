@@ -71,8 +71,8 @@ function periodKey(date: string, freq: DCAFrequency): number {
 function refShouldInvest(prevDate: string, currDate: string, freq: DCAFrequency): boolean {
   switch (freq) {
     case 'daily': return true
-    case 'weekly': return daysBetween(prevDate, currDate) >= 5
-    case 'biweekly': return daysBetween(prevDate, currDate) >= 12
+    case 'weekly': return daysBetween(prevDate, currDate) >= 7
+    case 'biweekly': return daysBetween(prevDate, currDate) >= 14
     default: return periodKey(currDate, freq) > periodKey(prevDate, freq)
   }
 }
@@ -81,7 +81,7 @@ function refShouldRebal(prevDate: string, nextDate: string, freq: RebalanceFrequ
   const py = +prevDate.slice(0, 4), pm = +prevDate.slice(5, 7)
   const ny = +nextDate.slice(0, 4), nm = +nextDate.slice(5, 7)
   switch (freq) {
-    case 'weekly': return daysBetween(prevDate, nextDate) >= 5
+    case 'weekly': return daysBetween(prevDate, nextDate) >= 7
     case 'monthly': return py !== ny || pm !== nm
     case 'quarterly': return py !== ny || Math.ceil(pm / 3) !== Math.ceil(nm / 3)
     case 'yearly': return py !== ny
@@ -150,6 +150,7 @@ function refSimulateDCA(
   let twrrPeak = 1
   let prevEndValue = 0
   let prevDateForRebal = allDates[0]!
+  let twrrStarted = false
 
   const values: { date: string; value: number }[] = []
   const invested: { date: string; value: number }[] = []
@@ -170,19 +171,22 @@ function refSimulateDCA(
     totalInvested += params.initialAmount
     lastInvestDate = date
     cashflows.push({ date, amount: -params.initialAmount })
+    twrrStarted = true
   }
-  prevEndValue = totalInvested > 0 ? valueOf(allDates[0]!) : 0
+  prevEndValue = twrrStarted ? valueOf(allDates[0]!) : 0
   values.push({ date: allDates[0]!, value: prevEndValue })
   invested.push({ date: allDates[0]!, value: totalInvested })
-  cumulative.push({ date: allDates[0]!, value: 0 })
-  drawdown.push({ date: allDates[0]!, value: 0 })
+  if (twrrStarted) {
+    cumulative.push({ date: allDates[0]!, value: 0 })
+    drawdown.push({ date: allDates[0]!, value: 0 })
+  }
 
   for (let i = 1; i < allDates.length; i++) {
     const date = allDates[i]!
     const prevDate = allDates[i - 1]!
 
     let dailyReturn = 0
-    if (prevEndValue > 0) {
+    if (twrrStarted && prevEndValue > 0) {
       let wsum = 0
       for (let j = 0; j < fundIds.length; j++) {
         const pPrev = priceLookups[j]!.get(prevDate)!
@@ -192,13 +196,13 @@ function refSimulateDCA(
       }
       dailyReturn = wsum
     }
-    returns.push({ date, value: dailyReturn })
-    twrrGrowth *= 1 + dailyReturn
+    const growthAfterMarket = twrrGrowth * (1 + dailyReturn)
+    let investedToday = false
 
     if (params.cashflowAmount > 0) {
       const investDate = lastInvestDate || allDates[0]!
       if (refShouldInvest(investDate, date, params.cashflowFreq)) {
-        const currentDD = twrrPeak > 0 ? twrrGrowth / twrrPeak - 1 : 0
+        const currentDD = twrrPeak > 0 ? growthAfterMarket / twrrPeak - 1 : 0
         const shouldSkip = options?.skipContributionWhen?.(date, currentDD) ?? false
         if (!shouldSkip) {
           const amount = options?.contributionAmountOverride?.(date, currentDD) ?? params.cashflowAmount
@@ -206,6 +210,7 @@ function refSimulateDCA(
           totalInvested += amount
           lastInvestDate = date
           cashflows.push({ date, amount: -amount })
+          investedToday = amount > 0
         } else {
           lastInvestDate = date
         }
@@ -221,10 +226,20 @@ function refSimulateDCA(
     const portfolioValue = totalInvested > 0 ? valueOf(date) : 0
     values.push({ date, value: portfolioValue })
     invested.push({ date, value: totalInvested })
-    cumulative.push({ date, value: twrrGrowth - 1 })
-    if (twrrGrowth > twrrPeak) twrrPeak = twrrGrowth
-    drawdown.push({ date, value: twrrGrowth / twrrPeak - 1 })
-    prevEndValue = portfolioValue
+    if (investedToday && !twrrStarted) {
+      twrrStarted = true
+      twrrGrowth = 1
+      twrrPeak = 1
+      cumulative.push({ date, value: 0 })
+      drawdown.push({ date, value: 0 })
+    } else if (twrrStarted) {
+      returns.push({ date, value: dailyReturn })
+      twrrGrowth *= 1 + dailyReturn
+      cumulative.push({ date, value: twrrGrowth - 1 })
+      if (twrrGrowth > twrrPeak) twrrPeak = twrrGrowth
+      drawdown.push({ date, value: twrrGrowth / twrrPeak - 1 })
+    }
+    prevEndValue = twrrStarted ? portfolioValue : 0
   }
 
   const finalValue = values.length > 0 ? values[values.length - 1]!.value : 0

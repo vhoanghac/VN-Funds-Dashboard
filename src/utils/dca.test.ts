@@ -4,6 +4,7 @@ import {
   trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
   contributionAmountAtDate, firstScheduledContributionDate, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates,
   dcaMonthlyContributionSchedule, normalizeDCAContributionSchedule, slicePricesWithPredecessor, trailingWindowCagr,
+  buildDcaExecutionDates,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -40,6 +41,82 @@ describe('derivePortfolioName', () => {
       .toBe('Tiết kiệm 6%/năm')
     expect(derivePortfolioName([{ fundId: 'SAVINGS:7.5', weight: 100 }], 'Portfolio 1'))
       .toBe('Tiết kiệm 7.5%/năm')
+  })
+})
+
+describe('DCA execution calendar', () => {
+  it('uses market quote dates for mixed portfolios and calendar dates for savings-only portfolios', () => {
+    const savingsDates = [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 100 },
+      { date: '2024-01-03', price: 100 },
+    ]
+    const marketDates = [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-03', price: 101 },
+    ]
+    const prices = new Map([
+      ['SAVINGS:6', savingsDates],
+      ['FUND', marketDates],
+    ])
+
+    expect(buildDcaExecutionDates(prices, [
+      { fundId: 'SAVINGS:6', weight: 50 },
+      { fundId: 'FUND', weight: 50 },
+    ])).toEqual(['2024-01-01', '2024-01-03'])
+    expect(buildDcaExecutionDates(prices, [
+      { fundId: 'SAVINGS:6', weight: 100 },
+    ])).toEqual(['2024-01-01', '2024-01-02', '2024-01-03'])
+  })
+
+  it('requires a real quote for every market asset and normalizes supplied execution dates', () => {
+    const prices = new Map([
+      ['A', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-01-08', price: 110 },
+      ]],
+      ['B', [
+        { date: '2024-01-01', price: 200 },
+        { date: '2024-01-03', price: 205 },
+        { date: '2024-01-08', price: 220 },
+      ]],
+    ])
+
+    expect(buildDcaExecutionDates(prices, [
+      { fundId: 'A', weight: 50 },
+      { fundId: 'B', weight: 50 },
+    ])).toEqual(['2024-01-01', '2024-01-08'])
+
+    const result = simulateDCA(
+      new Map([['A', prices.get('A')!]]),
+      [{ fundId: 'A', weight: 100 }],
+      { initialAmount: 1_000, cashflowAmount: 1_000, cashflowFreq: 'weekly' },
+      'monthly',
+      { executionDates: ['2024-01-08', 'not-a-date', '2024-01-01', '2024-01-08'] },
+    )
+
+    expect(result.totalInvested).toBe(2_000)
+    expect(result.cashflows.slice(0, -1).map(cashflow => cashflow.date)).toEqual(['2024-01-01', '2024-01-08'])
+  })
+
+  it('starts TWRR at the first executable cashflow instead of the valuation start', () => {
+    const prices = new Map([['FUND', [
+      { date: '2024-01-01', price: 100 },
+      { date: '2024-01-02', price: 100 },
+      { date: '2024-01-09', price: 110 },
+    ]]])
+    const result = simulateDCA(
+      prices,
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 1_000, cashflowAmount: 1_000, cashflowFreq: 'weekly' },
+      'monthly',
+      { executionDates: ['2024-01-02', '2024-01-09'] },
+    )
+
+    expect(result.totalInvested).toBe(2_000)
+    expect(result.cumulative.map(point => point.date)).toEqual(['2024-01-02', '2024-01-09'])
+    expect(result.cumulative[0]!.value).toBe(0)
+    expect(result.cumulative[1]!.value).toBeCloseTo(0.1)
   })
 })
 
@@ -419,15 +496,15 @@ describe('simulateDCA + applyDividendAdjustment (integration)', () => {
     // để chuỗi ADJUSTED phẳng tuyệt đối xuyên ngày chốt quyền — cô lập hoàn
     // toàn hiệu ứng cổ tức khỏi biến động thị trường thật trong bài test này.
     const events: DividendEvent[] = [
-      { exDate: '2024-01-08', payDate: '2024-01-24', amountPerCert: 20, taxRate: 0.05 },
+      { exDate: '2024-01-10', payDate: '2024-01-24', amountPerCert: 20, taxRate: 0.05 },
     ]
     const { adjusted, result } = runWithDividend([
       ['2024-01-01', 100],  // day 0, chưa nạp tiền nào
-      ['2024-01-06', 100],  // cách day0 5 ngày → NẠP LẦN 1 (trước ex-date)
-      ['2024-01-07', 100],  // closePreEx
-      ['2024-01-08', 81],   // ex-date (chọn 81 để adjusted phẳng, xem comment trên)
-      ['2024-01-13', 81],   // cách lần nạp 1 đúng 7 ngày → NẠP LẦN 2 (sau ex-date)
-      ['2024-01-14', 89.1], // +10% từ 81, ngày kiểm tra cuối
+      ['2024-01-08', 100],  // cách day0 đúng 7 ngày → NẠP LẦN 1 (trước ex-date)
+      ['2024-01-09', 100],  // closePreEx
+      ['2024-01-10', 81],   // ex-date (chọn 81 để adjusted phẳng, xem comment trên)
+      ['2024-01-15', 81],   // cách lần nạp 1 đúng 7 ngày → NẠP LẦN 2 (sau ex-date)
+      ['2024-01-16', 89.1], // +10% từ 81, ngày kiểm tra cuối
     ], events)
 
     // Sanity: chuỗi đã adjusted đúng như thiết kế (factor 0.81 áp cho 3 điểm đầu)
@@ -456,11 +533,11 @@ describe('simulateDCA + applyDividendAdjustment (integration)', () => {
     // raw NAV (chưa adjusted) vào simulateDCA, kết quả sẽ SAI theo 2 cách.
     const rawPairs: Array<[string, number]> = [
       ['2024-01-01', 100],
-      ['2024-01-06', 100],  // NẠP LẦN 1 — giá thô 100 (chưa trừ cổ tức)
-      ['2024-01-07', 100],
-      ['2024-01-08', 81],   // ex-date: NAV rớt "thật" (không được bù lại)
-      ['2024-01-13', 81],   // NẠP LẦN 2
-      ['2024-01-14', 89.1],
+      ['2024-01-08', 100],  // NẠP LẦN 1 — giá thô 100 (chưa trừ cổ tức)
+      ['2024-01-09', 100],
+      ['2024-01-10', 81],   // ex-date: NAV rớt "thật" (không được bù lại)
+      ['2024-01-15', 81],   // NẠP LẦN 2
+      ['2024-01-16', 89.1],
     ]
     const prices = new Map([[FUND, mkRaw(rawPairs)]]) // <-- raw, KHÔNG adjusted
     const buggy = simulateDCA(
@@ -485,15 +562,15 @@ describe('simulateDCA + applyDividendAdjustment (integration)', () => {
     // gross-vs-net như bài test 5% thuế ở trên — dùng để cô lập việc tính
     // factor tách biệt khỏi việc tái đầu tư nói chung.
     const events: DividendEvent[] = [
-      { exDate: '2024-01-08', payDate: '2024-01-24', amountPerCert: 10, taxRate: 0 },
+      { exDate: '2024-01-10', payDate: '2024-01-24', amountPerCert: 10, taxRate: 0 },
     ]
     const { result } = runWithDividend([
       ['2024-01-01', 100],
-      ['2024-01-06', 100],  // NẠP LẦN 1
-      ['2024-01-07', 100],
-      ['2024-01-08', 90],   // ex-date, factor 0.9 → adjusted closePreEx cũng = 90
-      ['2024-01-13', 90],   // NẠP LẦN 2
-      ['2024-01-14', 99],   // +10%
+      ['2024-01-08', 100],  // NẠP LẦN 1
+      ['2024-01-09', 100],
+      ['2024-01-10', 90],   // ex-date, factor 0.9 → adjusted closePreEx cũng = 90
+      ['2024-01-15', 90],   // NẠP LẦN 2
+      ['2024-01-16', 99],   // +10%
     ], events)
 
     const expectedUnitsPerContribution = 1000 / 90
@@ -612,6 +689,32 @@ describe('common price grid characterization', () => {
 
     expect(narrative[0]!.events[0]!.unitsAtEx).toBe(13.5)
     expect(narrative[0]!.events[0]!.gross).toBe(135)
+  })
+
+  it('does not grant a dividend to an initial purchase made after its ex-date', () => {
+    const dates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05', '2024-01-06']
+    const narrative = trackDividendNarrative(
+      new Map([['FUND', dates.map(date => ({ date, price: 100 }))]]),
+      [{ fundId: 'FUND', weight: 100 }],
+      { initialAmount: 1_000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'quarterly',
+      new Map([['FUND', [
+        { exDate: '2024-01-02', payDate: '2024-01-04', amountPerCert: 10, taxRate: 0 },
+        { exDate: '2024-01-05', payDate: '2024-01-06', amountPerCert: 10, taxRate: 0 },
+      ]]]),
+      undefined,
+      undefined,
+      ['2024-01-06', '2024-01-03', '2024-01-03'],
+    )
+
+    expect(narrative).toHaveLength(1)
+    expect(narrative[0]!.events).toHaveLength(1)
+    expect(narrative[0]!.events[0]).toMatchObject({
+      exDate: '2024-01-05',
+      payDate: '2024-01-06',
+      unitsAtEx: 10,
+      gross: 100,
+    })
   })
 })
 

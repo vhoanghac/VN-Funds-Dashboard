@@ -35,6 +35,11 @@ interface Props {
   /** Start/end thực tế đã aligned; khi undefined có thể chưa ready */
   alignedStart?: string
   alignedEnd?: string
+  alignmentStatus?: {
+    hasCommonRange: boolean
+    validPointCount: number
+    excludedPortfolioCount?: number
+  }
   loading?: boolean
 }
 
@@ -47,6 +52,7 @@ export function DataQualityBlock({
   assetLabel = 'quỹ',
   alignedStart,
   alignedEnd,
+  alignmentStatus,
   loading = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
@@ -102,10 +108,15 @@ export function DataQualityBlock({
   const anyMissing = missingFundIds.length > 0
   const anyCoverageIssue = reports.some(r => r.startsAfterRequested || r.endsBeforeRequested)
   const anyPointIssue = reports.some(r => r.insufficientPointsInRequestedRange)
+  const anyAlignmentIssue = alignmentStatus !== undefined && (
+    !alignmentStatus.hasCommonRange
+    || alignmentStatus.validPointCount < 2
+    || (alignmentStatus.excludedPortfolioCount ?? 0) > 0
+  )
   const reportsWithIssues = reports.filter(
     r => r.gaps.length > 0 || r.startsAfterRequested || r.endsBeforeRequested || r.insufficientPointsInRequestedRange,
   )
-  const hasWarnings = anyMissing || anyGaps || anyCoverageIssue || anyPointIssue || stalestDays > STALE_DAYS_THRESHOLD
+  const hasWarnings = anyMissing || anyGaps || anyCoverageIssue || anyPointIssue || anyAlignmentIssue || stalestDays > STALE_DAYS_THRESHOLD
 
   // Compute total span for bar chart
   const allStarts = reports.map(r => new Date(r.startDate).getTime())
@@ -133,6 +144,11 @@ export function DataQualityBlock({
                 {anyCoverageIssue ? ` Có ${assetLabel} không phủ hết khoảng bạn chọn.` : ''}
                 {anyPointIssue ? ` Khoảng bạn chọn chưa có đủ hai điểm giá để so sánh.` : ''}
                 {anyMissing ? ` Không có chuỗi giá cho: ${missingFundIds.join(', ')}.` : ''}
+                {alignmentStatus && !alignmentStatus.hasCommonRange ? ' Các chuỗi không có ngày giao nhau để mô phỏng.' : ''}
+                {alignmentStatus && alignmentStatus.validPointCount < 2 ? ' Sau khi lọc dữ liệu, kỳ mô phỏng còn dưới hai điểm giá.' : ''}
+                {alignmentStatus && (alignmentStatus.excludedPortfolioCount ?? 0) > 0
+                  ? ` Có ${alignmentStatus.excludedPortfolioCount} danh mục bị loại khỏi kết quả.`
+                  : ''}
               </span>
             </>
           ) : (
@@ -181,6 +197,16 @@ export function DataQualityBlock({
               cả các {assetLabel}: <strong>{formatDate(alignedStart)}</strong> tới{' '}
               <strong>{formatDate(alignedEnd)}</strong>. Mọi con số trong các
               block bên dưới đều tính trên khoảng này.
+            </p>
+          )}
+
+          {alignmentStatus && (
+            <p className="dq-aligned">
+              Sau khi căn chỉnh, còn <strong>{alignmentStatus.validPointCount}</strong> điểm giá dùng được
+              cho mô phỏng.
+              {(alignmentStatus.excludedPortfolioCount ?? 0) > 0
+                ? ` ${alignmentStatus.excludedPortfolioCount} danh mục không đủ dữ liệu nên đã bị loại.`
+                : ''}
             </p>
           )}
 

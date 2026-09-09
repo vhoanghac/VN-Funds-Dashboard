@@ -239,6 +239,7 @@ export function simulateStockAccountDca(input: StockAccountDcaInput): StockAccou
   let stockDividendShares = 0
   let previousValue = 0
   let twrrGrowth = 1
+  let twrrStarted = false
 
   const cashflows: StockAccountCashflow[] = []
   const twrrCumulative: ReturnPoint[] = []
@@ -349,12 +350,14 @@ export function simulateStockAccountDca(input: StockAccountDcaInput): StockAccou
     }
 
     const value = accountValue(shares, cash, cashReceivables, pendingShares, pendingSubscriptionPayable, price)
-    if (previousValue > 0) {
+    if (twrrStarted && previousValue > 0) {
       twrrGrowth *= (value - externalFlow) / previousValue
     } else if (externalFlow > 0) {
+      twrrStarted = true
+      twrrGrowth = 1
       twrrGrowth *= value / externalFlow
     }
-    twrrCumulative.push({ date, value: twrrGrowth - 1 })
+    if (twrrStarted) twrrCumulative.push({ date, value: twrrGrowth - 1 })
     previousValue = value
 
     points.push({
@@ -454,8 +457,8 @@ function shouldInvestStock(previousDate: string, currentDate: string, frequency:
 
   switch (frequency) {
     case 'daily': return true
-    case 'weekly': return days >= 5
-    case 'biweekly': return days >= 12
+    case 'weekly': return days >= 7
+    case 'biweekly': return days >= 14
     case 'monthly': return previous.getMonth() !== current.getMonth() || previous.getFullYear() !== current.getFullYear()
     case 'quarterly': return Math.floor(previous.getMonth() / 3) !== Math.floor(current.getMonth() / 3) || previous.getFullYear() !== current.getFullYear()
     case 'semiannual': return Math.floor(previous.getMonth() / 6) !== Math.floor(current.getMonth() / 6) || previous.getFullYear() !== current.getFullYear()

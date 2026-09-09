@@ -300,6 +300,78 @@ describe('StockDcaPanel', () => {
     expect(screen.getAllByText('DCA từ 05/01/2026 đến 06/01/2026').length).toBeGreaterThan(0)
   })
 
+  it('keeps each stock ledger on its own raw quote dates inside the shared period', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      const symbol = path.match(/\/stocks\/([A-Z]+)(?:_div|_pending)?\.csv/)?.[1] ?? ''
+      const prices = symbol === 'MBB'
+        ? `date,adjusted_price,unadjusted_price
+2026-01-05,100,100
+2026-01-06,100,100
+2026-02-05,100,100
+`
+        : `date,adjusted_price,unadjusted_price
+2026-01-05,100,100
+2026-01-25,100,100
+2026-02-05,100,100
+`
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : prices,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    const shareUrl = stockShareUrl(['ACB', 'MBB'])
+    shareUrl.parsedPayload = {
+      ...shareUrl.parsedPayload,
+      dateFrom: '',
+      dateTo: '',
+      cashflowSchedule: [{ amount: 1_000_000, freq: 'weekly', until: null }],
+    }
+    render(<StockDcaPanel active shareUrl={shareUrl} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+
+    expect(screen.getAllByText('3.000.000 đ').length).toBeGreaterThan(0)
+  })
+
+  it('reports when portfolios have data but no shared period', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      const symbol = path.match(/\/stocks\/([A-Z]+)(?:_div|_pending)?\.csv/)?.[1] ?? ''
+      const prices = symbol === 'MBB'
+        ? 'date,adjusted_price,unadjusted_price\n2026-02-05,100,100\n2026-02-06,100,100\n'
+        : 'date,adjusted_price,unadjusted_price\n2026-01-05,100,100\n2026-01-06,100,100\n'
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : prices,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    const shareUrl = stockShareUrl(['ACB', 'MBB'])
+    shareUrl.parsedPayload = { ...shareUrl.parsedPayload, dateFrom: '', dateTo: '' }
+    render(<StockDcaPanel active shareUrl={shareUrl} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+
+    await waitFor(() => expect(screen.getByText('Các danh mục có dữ liệu, nhưng không cùng một khoảng ngày để so sánh.')).toBeInTheDocument())
+  })
+
   it('keeps a valid portfolio visible when another stock fails to load', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const path = String(input)

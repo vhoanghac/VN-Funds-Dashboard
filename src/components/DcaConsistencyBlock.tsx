@@ -35,6 +35,7 @@ export interface ConsistencyPortfolio {
     rebalFreq: RebalanceFrequency
     purchasePrices: Map<string, PricePoint[]>
     transactionCostRates: TransactionCostRates
+    executionDates: string[]
   } | null
 }
 
@@ -57,9 +58,8 @@ function DcaConsistencyBlockImpl({ portfolios }: Props) {
     const portfolio = valid[0]
     const inputs = portfolio?.simulationInputs
     const endDate = portfolio?.valueSeries[portfolio.valueSeries.length - 1]?.date
-    const firstSeries = inputs ? Array.from(inputs.filteredPrices.values())[0] : undefined
-    const firstContributionDate = inputs && firstSeries
-      ? firstScheduledContributionDate(firstSeries.map(point => point.date), inputs.params.cashflowFreq) ?? ''
+    const firstContributionDate = inputs
+      ? firstScheduledContributionDate(inputs.executionDates, inputs.params.cashflowFreq) ?? ''
       : ''
     return inputs && endDate
       ? dcaContributionAmountAtDate(inputs.params, endDate, firstContributionDate)
@@ -632,7 +632,11 @@ function runBaseline(inputs: NonNullable<ConsistencyPortfolio['simulationInputs'
     inputs.slots,
     inputs.params,
     inputs.rebalFreq,
-    { purchasePrices: inputs.purchasePrices, transactionCostRates: inputs.transactionCostRates },
+    {
+      purchasePrices: inputs.purchasePrices,
+      transactionCostRates: inputs.transactionCostRates,
+      executionDates: inputs.executionDates,
+    },
   )
   return {
     totalInvested: result.totalInvested,
@@ -677,6 +681,7 @@ function runPanicStop(
       },
       purchasePrices: inputs.purchasePrices,
       transactionCostRates: inputs.transactionCostRates,
+      executionDates: inputs.executionDates,
     },
   )
   return {
@@ -721,6 +726,7 @@ function runBoostBuy(
       },
       purchasePrices: inputs.purchasePrices,
       transactionCostRates: inputs.transactionCostRates,
+      executionDates: inputs.executionDates,
     },
   )
   return {

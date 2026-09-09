@@ -20,7 +20,7 @@
  * đó theo tín hiệu", không tự tính lại rebalance nội bộ của từng allocation.
  */
 import type { PricePoint, ReturnPoint, RebalanceFrequency } from '../types'
-import { simulateDCA, type DCASlot } from './dca'
+import { simulateDCA, buildDcaExecutionDates, type DCASlot } from './dca'
 import { alignFundsToCommonGridDaily } from './weeklyResample'
 
 // ─── SMA ─────────────────────────────────────────────────────────
@@ -376,11 +376,13 @@ export function runTacticalBacktest(input: TacticalBacktestInput): TacticalBackt
     dailyAligned, validA,
     { initialAmount: 1, cashflowAmount: 0, cashflowFreq: 'monthly' },
     input.allocationARebalFreq,
+    { executionDates: buildDcaExecutionDates(input.rawPrices, validA) },
   )
   const dcaResultB = simulateDCA(
     dailyAligned, validB,
     { initialAmount: 1, cashflowAmount: 0, cashflowFreq: 'monthly' },
     input.allocationBRebalFreq,
+    { executionDates: buildDcaExecutionDates(input.rawPrices, validB) },
   )
   if (dcaResultA.cumulative.length === 0 || dcaResultB.cumulative.length === 0) return null
 
