@@ -68,6 +68,12 @@ class UpdateVnstockDivsTests(unittest.TestCase):
 
         self.assertEqual(rows, [])
 
+    def test_ignores_unsupported_issuance_without_ratio(self):
+        raw_event = event("e00001", "ISS", "Phát hành cổ phiếu - Chuyển từ trái phiếu chuyển đổi", "", "")
+
+        self.assertEqual(normalize_events([raw_event], rights_price=10_000), [])
+        self.assertEqual(normalize_pending_events([raw_event], rights_price=10_000), [])
+
     def test_tracks_incomplete_current_events_without_applying_them(self):
         rows = normalize_pending_events([
             event("d00001", "ISS", "Trả Cổ tức bằng Cổ phiếu", "2026-08-11", "2026-08-12", exerciseRatio=0.15),

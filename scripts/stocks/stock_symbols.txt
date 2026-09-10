@@ -1,5 +1,9 @@
 # Price files that GitHub Actions is allowed to update.
 ACB
+CHP
+GEE
 MBB
+PC1
+REE
 VNM
 VEA|UPCOM

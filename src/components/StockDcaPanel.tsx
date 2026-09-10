@@ -31,6 +31,7 @@ import { StockAnnualDividendsBlock } from './StockAnnualDividendsBlock'
 import { StockShareHoldingsBlock } from './StockShareHoldingsBlock'
 import { PortfolioCard, MAX_PORTFOLIOS, PORTFOLIO_COLORS } from './PortfolioCard'
 import { useCommittedRun } from '../hooks/useCommittedRun'
+import { useSharePersistence } from '../hooks/useSharePersistence'
 import { loadStockData, type PendingCorporateAction, type StockData } from '../data/stockData'
 import {
   dcaCagr,
@@ -41,11 +42,14 @@ import {
   derivePortfolioName,
   DEFAULT_TRANSACTION_COST_RATES,
   normalizeAnnualContributionIncreaseAmount,
+  normalizeDCAContributionSchedule,
   normalizeTransactionCostRates,
   type DCAContributionPhase,
   type DCAFrequency,
 } from '../utils/dca'
 import type { Portfolio, PortfolioCardState, TransactionCostRates } from '../types'
+import { parsePortfolios } from '../utils/portfolio'
+import { saveLS } from '../utils/localStorage'
 import { avgDrawdown, annualizedStdevFromCumulative, longestDrawdownDays } from '../utils/drawdownStats'
 import {
   generateStockContributions,
@@ -65,7 +69,11 @@ interface StockOption {
 
 const STOCK_OPTIONS: StockOption[] = [
   { id: 'ACB', label: 'ACB · Ngân hàng Á Châu', load: () => loadStockData('ACB') },
+  { id: 'CHP', label: 'CHP · Thủy điện miền Trung', load: () => loadStockData('CHP') },
+  { id: 'GEE', label: 'GEE · GELEX Electric', load: () => loadStockData('GEE') },
   { id: 'MBB', label: 'MBB · Ngân hàng Quân đội', load: () => loadStockData('MBB') },
+  { id: 'PC1', label: 'PC1 · Tập đoàn PC1', load: () => loadStockData('PC1') },
+  { id: 'REE', label: 'REE · Cơ điện lạnh', load: () => loadStockData('REE') },
   { id: 'VNM', label: 'VNM · Vinamilk', load: () => loadStockData('VNM') },
   { id: 'VEA', label: 'VEA · VEAM', load: () => loadStockData('VEA') },
 ]
@@ -173,6 +181,11 @@ function uniquePortfolioName(baseName: string, usedNames: Set<string>): string {
   return `${baseName} ${suffix}`
 }
 
+function hydrateStockPhases(source: unknown): DCAContributionPhase[] {
+  const phases = normalizeDCAContributionSchedule(source)
+  return phases.length > 0 ? clonePhases(phases) : clonePhases(DEFAULT_PHASES)
+}
+
 function getEffectiveDates(dateMode: DateRangeMode, yearsBack: number, dateFrom: string, dateTo: string): { from: string; to: string } {
   if (dateMode === 'years') {
     return yearsBackDateRange(yearsBack)
@@ -181,21 +194,32 @@ function getEffectiveDates(dateMode: DateRangeMode, yearsBack: number, dateFrom:
 }
 
 function StockDcaPanelImpl({ active, shareUrl }: Props) {
-  const initialUrlParams = shareUrl.parsedPayload
+  const {
+    parsedPayload: initialUrlParams,
+    hasExplicitPayload,
+    skipUrlPersist,
+    readLocal,
+  } = useSharePersistence({ source: shareUrl })
   const nextIdRef = useRef(1)
-  const initialPhases = initialUrlParams?.cashflowSchedule?.length
-    ? clonePhases(initialUrlParams.cashflowSchedule)
-    : DEFAULT_PHASES
-  const [portfolios, setPortfolios] = useState<StockPortfolioState[]>(() => hydrateStockPortfolios(initialUrlParams?.portfolios ?? [], nextIdRef))
+  const [portfolios, setPortfolios] = useState<StockPortfolioState[]>(() => {
+    const source = initialUrlParams?.portfolios !== undefined
+      ? initialUrlParams.portfolios
+      : hasExplicitPayload ? [] : parsePortfolios(readLocal<unknown>('stockdca_portfolios', null))
+    return hydrateStockPortfolios(source, nextIdRef)
+  })
   const [stockData, setStockData] = useState<Map<string, StockData>>(new Map())
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [dateMode, setDateMode] = useState<DateRangeMode>(initialUrlParams?.dateMode ?? 'all')
-  const [yearsBack, setYearsBack] = useState(initialUrlParams?.yearsBack ?? 5)
-  const [dateFrom, setDateFrom] = useState(initialUrlParams?.dateFrom ?? '')
-  const [dateTo, setDateTo] = useState(initialUrlParams?.dateTo ?? '')
-  const [initialAmount, setInitialAmount] = useState(initialUrlParams?.initialAmount ?? INITIAL_AMOUNT)
-  const [phases, setPhases] = useState<DCAContributionPhase[]>(initialPhases)
-  const [annualContributionIncreaseAmount, setAnnualContributionIncreaseAmount] = useState(initialUrlParams?.annualContributionIncreaseAmount ?? 0)
+  const [dateMode, setDateMode] = useState<DateRangeMode>(initialUrlParams?.dateMode ?? (hasExplicitPayload ? 'all' : readLocal('stockdca_dateMode', 'all' as DateRangeMode)))
+  const [yearsBack, setYearsBack] = useState(initialUrlParams?.yearsBack ?? (hasExplicitPayload ? 5 : readLocal('stockdca_yearsBack', 5)))
+  const [dateFrom, setDateFrom] = useState(initialUrlParams?.dateFrom ?? (hasExplicitPayload ? '' : readLocal('stockdca_dateFrom', '')))
+  const [dateTo, setDateTo] = useState(initialUrlParams?.dateTo ?? (hasExplicitPayload ? '' : readLocal('stockdca_dateTo', '')))
+  const [initialAmount, setInitialAmount] = useState(initialUrlParams?.initialAmount ?? (hasExplicitPayload ? INITIAL_AMOUNT : readLocal('stockdca_initialAmount', INITIAL_AMOUNT)))
+  const [phases, setPhases] = useState<DCAContributionPhase[]>(() => hydrateStockPhases(
+    initialUrlParams?.cashflowSchedule ?? (hasExplicitPayload ? null : readLocal<unknown>('stockdca_cashflowSchedule', null)),
+  ))
+  const [annualContributionIncreaseAmount, setAnnualContributionIncreaseAmount] = useState(() => normalizeAnnualContributionIncreaseAmount(
+    initialUrlParams?.annualContributionIncreaseAmount ?? (hasExplicitPayload ? 0 : readLocal('stockdca_annualContributionIncreaseAmount', 0)),
+  ))
 
   const stockIds = useMemo(
     () => Array.from(new Set(portfolios.flatMap(portfolio => portfolio.slots.map(slot => slot.fundId).filter(Boolean)))),
@@ -371,19 +395,43 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
   useEffect(() => {
     if (shareUrl.key === lastShareKeyRef.current) return
     lastShareKeyRef.current = shareUrl.key
-    if (!shareUrl.hasExplicitPayload && !active) return
+    if (!hasExplicitPayload && !active) return
 
     const params = shareUrl.parsedPayload
-    setPortfolios(hydrateStockPortfolios(params?.portfolios ?? [], nextIdRef))
-    setDateMode(params?.dateMode ?? 'all')
-    setYearsBack(params?.yearsBack ?? 5)
-    setDateFrom(params?.dateFrom ?? '')
-    setDateTo(params?.dateTo ?? '')
-    setInitialAmount(params?.initialAmount ?? INITIAL_AMOUNT)
-    setPhases(params?.cashflowSchedule?.length ? clonePhases(params.cashflowSchedule) : clonePhases(DEFAULT_PHASES))
-    setAnnualContributionIncreaseAmount(params?.annualContributionIncreaseAmount ?? 0)
+    nextIdRef.current = 1
+    const localPortfolios = parsePortfolios(readLocal<unknown>('stockdca_portfolios', null))
+    setPortfolios(hydrateStockPortfolios(params?.portfolios ?? (hasExplicitPayload ? [] : localPortfolios), nextIdRef))
+    setDateMode(params?.dateMode ?? (hasExplicitPayload ? 'all' : readLocal('stockdca_dateMode', 'all' as DateRangeMode)))
+    setYearsBack(params?.yearsBack ?? (hasExplicitPayload ? 5 : readLocal('stockdca_yearsBack', 5)))
+    setDateFrom(params?.dateFrom ?? (hasExplicitPayload ? '' : readLocal('stockdca_dateFrom', '')))
+    setDateTo(params?.dateTo ?? (hasExplicitPayload ? '' : readLocal('stockdca_dateTo', '')))
+    setInitialAmount(params?.initialAmount ?? (hasExplicitPayload ? INITIAL_AMOUNT : readLocal('stockdca_initialAmount', INITIAL_AMOUNT)))
+    setPhases(hydrateStockPhases(params?.cashflowSchedule ?? (hasExplicitPayload ? null : readLocal<unknown>('stockdca_cashflowSchedule', null))))
+    setAnnualContributionIncreaseAmount(normalizeAnnualContributionIncreaseAmount(
+      params?.annualContributionIncreaseAmount ?? (hasExplicitPayload ? 0 : readLocal('stockdca_annualContributionIncreaseAmount', 0)),
+    ))
     resetCommitted()
   }, [shareUrl.key, active]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (!skipUrlPersist) saveLS('stockdca_dateMode', dateMode) }, [dateMode, skipUrlPersist])
+  useEffect(() => { if (!skipUrlPersist) saveLS('stockdca_yearsBack', yearsBack) }, [yearsBack, skipUrlPersist])
+  useEffect(() => { if (!skipUrlPersist) saveLS('stockdca_dateFrom', dateFrom) }, [dateFrom, skipUrlPersist])
+  useEffect(() => { if (!skipUrlPersist) saveLS('stockdca_dateTo', dateTo) }, [dateTo, skipUrlPersist])
+  useEffect(() => { if (!skipUrlPersist) saveLS('stockdca_initialAmount', initialAmount) }, [initialAmount, skipUrlPersist])
+  useEffect(() => {
+    if (!skipUrlPersist) saveLS('stockdca_cashflowSchedule', phases)
+  }, [phases, skipUrlPersist])
+  useEffect(() => {
+    if (!skipUrlPersist) saveLS('stockdca_annualContributionIncreaseAmount', annualContributionIncreaseAmount)
+  }, [annualContributionIncreaseAmount, skipUrlPersist])
+  useEffect(() => {
+    if (!skipUrlPersist) saveLS('stockdca_portfolios', portfolios.map(portfolio => ({
+      slots: portfolio.slots,
+      rebalFreq: portfolio.rebalFreq,
+      name: portfolio.isNameCustom ? portfolio.name : undefined,
+      transactionCostRates: portfolio.transactionCostRates,
+    })))
+  }, [portfolios, skipUrlPersist])
 
   function addPortfolio() {
     if (portfolios.length >= MAX_PORTFOLIOS) return
@@ -672,7 +720,6 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const selectedMonteCarlo = useMemo(() => monteCarlo.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, monteCarlo])
   const needsPortfolioFilter = activeSection === 'journey'
     || activeSection === 'risk'
-    || activeSection === 'allocation'
     || activeSection === 'drawdowns'
     || activeSection === 'endgame'
   const activeSectionLabel = STOCK_SECTIONS.find(section => section.id === activeSection)?.label ?? ''
@@ -762,7 +809,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
           </DcaSectionPanel>
 
           <DcaSectionPanel id="allocation" active={activeSection === 'allocation'}>
-            <StockAllocationBlock view={view} />
+            <StockAllocationBlock views={views} />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="drawdowns" active={activeSection === 'drawdowns'}>
@@ -798,12 +845,18 @@ function AccountDetail({ label, value }: { label: string; value: string }) {
   return <div className="dca-journey-stat stock-account-detail"><div className="dca-journey-stat-label">{label}</div><div className="dca-journey-stat-value">{value}</div></div>
 }
 
-const StockAllocationBlock = memo(function StockAllocationBlock({ view }: { view: StockView }) {
-  const stockId = view.portfolio.slots[0]?.fundId ?? view.name
+const StockAllocationBlock = memo(function StockAllocationBlock({ views }: { views: readonly StockView[] }) {
   return (
-    <DcaBlock title={view.name} className="dca-allocation-block">
-      <p className="dca-allocation-single">100% {stockId}</p>
-    </DcaBlock>
+    <>
+      {views.map(view => {
+        const stockId = view.portfolio.slots[0]?.fundId ?? view.name
+        return (
+          <DcaBlock key={view.id} title={view.name} className="dca-allocation-block">
+            <p className="dca-allocation-single">100% {stockId}</p>
+          </DcaBlock>
+        )
+      })}
+    </>
   )
 })
 

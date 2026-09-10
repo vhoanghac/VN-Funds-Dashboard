@@ -1,0 +1,16 @@
+kind,ex_date,record_date,pay_date,last_date,settlement_date,amount_per_share,tax_rate,shares_per_share,rights_per_share,subscription_price,choice,funding,source
+cash_dividend,2021-12-31,2021-12-31,2021-12-31,,,400,0.05,,,,,,VCI event 6708f3e80ec61045ab7fd518
+cash_dividend,2022-06-07,2022-06-08,2022-06-28,,,600,0.05,,,,,,VCI event 6708f3e90ec61045ab7fd645
+cash_dividend,2022-12-07,2022-12-08,2022-12-28,,,1000,0.05,,,,,,VCI event 6708f3e90ec61045ab7fd8a9
+cash_dividend,2023-03-29,2023-03-30,2023-04-28,,,500,0.05,,,,,,VCI event 6708f3ea0ec61045ab7fd94b
+cash_dividend,2023-07-21,2023-07-24,2023-08-10,,,500,0.05,,,,,,VCI event 6708f3ea0ec61045ab7fdb07
+cash_dividend,2023-09-14,2023-09-15,2023-10-04,,,1000,0.05,,,,,,VCI event 6708f3ea0ec61045ab7fdbc8
+cash_dividend,2024-01-12,2024-01-15,2024-02-02,,,500,0.05,,,,,,VCI event 6708f3eb0ec61045ab7fdd06
+cash_dividend,2024-06-10,2024-06-11,2024-06-28,,,500,0.05,,,,,,VCI event 6708f3eb0ec61045ab7fde68
+cash_dividend,2024-12-27,2024-12-30,2025-01-17,,,1000,0.05,,,,,,VCI event 6763640616bfba1b8a97e90a
+cash_dividend,2025-04-23,2025-04-24,2025-05-14,,,2000,0.05,,,,,,VCI event 67f9b2c9d2606e49d1da57ba
+stock_dividend,2025-04-28,2025-04-29,2025-06-12,,,,,0.2,,,,,VCI event 67e49abe7fc0a0169126ebac
+cash_dividend,2025-08-20,2025-08-21,2025-09-10,,,3000,0.05,,,,,,VCI event 6895440d51f0af4f42d6dc6d
+cash_dividend,2026-03-19,2026-03-20,2026-04-08,,,2500,0.05,,,,,,VCI event 69b0b643f2d24c49e82103f1
+stock_dividend,2026-05-05,2026-05-06,2026-06-09,,,,,0.75,,,,,VCI event 69bc9334e334da549cefbf9e
+cash_dividend,2026-06-09,2026-06-10,2026-06-30,,,500,0.05,,,,,,VCI event 6a1a2e236c972745c9ee88be

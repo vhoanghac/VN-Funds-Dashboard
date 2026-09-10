@@ -68,8 +68,17 @@ function emptyStockShareUrl(): ShareUrlState<Partial<StockDcaShareState>> {
   }
 }
 
+function localStockShareUrl(): ShareUrlState<Partial<StockDcaShareState>> {
+  return {
+    key: 'stockdca:local',
+    hasExplicitPayload: false,
+    parsedPayload: null,
+  }
+}
+
 afterEach(() => {
   cleanup()
+  localStorage.clear()
   vi.unstubAllGlobals()
 })
 
@@ -138,6 +147,36 @@ describe('StockDcaPanel', () => {
     expect(screen.getByText('VCI đã công bố các sự kiện này, nhưng chưa có ngày cổ phiếu về. Dashboard chỉ hiển thị để theo dõi, chưa cộng vào sổ tài khoản.')).toBeInTheDocument()
   })
 
+  it('hydrates saved portfolios after reload without running DCA', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+    localStorage.setItem('stockdca_portfolios', JSON.stringify([{
+      name: 'ACB đã lưu',
+      slots: [{ fundId: 'ACB', weight: 100 }],
+      rebalFreq: 'monthly',
+      transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 },
+    }]))
+
+    render(<StockDcaPanel active shareUrl={localStockShareUrl()} />)
+
+    await waitFor(() => expect(screen.getByText('ACB · Ngân hàng Á Châu')).toBeInTheDocument())
+    expect(screen.getByDisplayValue('ACB đã lưu')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Đã cập nhật' })).not.toBeInTheDocument()
+  })
+
   it('shows the all-portfolios risk filter when multiple portfolios are available', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const path = String(input)
@@ -167,6 +206,12 @@ describe('StockDcaPanel', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Rủi ro & biến động' }))
 
     expect(screen.getAllByRole('button', { name: 'Tất cả' }).some(button => button.className.includes('dca-results-filter-btn'))).toBe(true)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Phân bổ' }))
+
+    expect(screen.queryByLabelText('Chọn danh mục trong Phân bổ')).not.toBeInTheDocument()
+    expect(screen.getByText('100% ACB')).toBeInTheDocument()
+    expect(screen.getByText('100% MBB')).toBeInTheDocument()
   })
 
   it('starts multiple stock portfolios on their common first date', async () => {

@@ -226,10 +226,10 @@ def normalize_event(row: dict[str, Any], rights_price: int) -> dict[str, str] | 
     if event_code != "ISS":
         return None
 
-    ratio = positive_number(value(row, "exerciseRatio", "exercise_ratio"), "exerciseRatio", event_id)
-    if ratio <= 0:
-        return None
     if "quyền mua" in title or "rights issue" in title:
+        ratio = positive_number(value(row, "exerciseRatio", "exercise_ratio"), "exerciseRatio", event_id)
+        if ratio <= 0:
+            return None
         if not ex_date or not record_date or not listing_date:
             raise IncompleteCorporateAction(f"rights issue {event_id} is missing ex-date, record date, or listing date")
         return make_row(
@@ -246,6 +246,9 @@ def normalize_event(row: dict[str, Any], rights_price: int) -> dict[str, str] | 
         )
 
     if "cổ tức bằng cổ phiếu" in title or "cổ phiếu thưởng" in title or "stock dividend" in title:
+        ratio = positive_number(value(row, "exerciseRatio", "exercise_ratio"), "exerciseRatio", event_id)
+        if ratio <= 0:
+            return None
         if not ex_date or not record_date or not listing_date:
             raise IncompleteCorporateAction(f"stock dividend {event_id} is missing ex-date, record date, or listing date")
         return make_row(
@@ -278,13 +281,12 @@ def normalize_pending_event(row: dict[str, Any], rights_price: int) -> dict[str,
     if event_code != "ISS":
         return None
 
-    ratio = positive_number(value(row, "exerciseRatio", "exercise_ratio"), "exerciseRatio", event_id)
-    if ratio <= 0 or listing_date:
-        return None
-    if not ex_date or not record_date:
-        raise IncompleteCorporateAction(f"issuance {event_id} is missing ex-date or record date")
-
     if "quyền mua" in title or "rights issue" in title:
+        ratio = positive_number(value(row, "exerciseRatio", "exercise_ratio"), "exerciseRatio", event_id)
+        if ratio <= 0 or listing_date:
+            return None
+        if not ex_date or not record_date:
+            raise IncompleteCorporateAction(f"issuance {event_id} is missing ex-date or record date")
         return make_pending_row(
             kind="rights_issue",
             ex_date=ex_date,
@@ -295,6 +297,11 @@ def normalize_pending_event(row: dict[str, Any], rights_price: int) -> dict[str,
         )
 
     if "cổ tức bằng cổ phiếu" in title or "cổ phiếu thưởng" in title or "stock dividend" in title:
+        ratio = positive_number(value(row, "exerciseRatio", "exercise_ratio"), "exerciseRatio", event_id)
+        if ratio <= 0 or listing_date:
+            return None
+        if not ex_date or not record_date:
+            raise IncompleteCorporateAction(f"issuance {event_id} is missing ex-date or record date")
         return make_pending_row(
             kind="stock_dividend",
             ex_date=ex_date,
