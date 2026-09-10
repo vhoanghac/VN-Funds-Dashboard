@@ -3998,6 +3998,11 @@ textarea {
   color: #141413;
 }
 
+/* Khi nhúng vào DcaReturnExplainer: bỏ padding để không bị lồng hai lớp đệm. */
+.dca-glossary-content--plain {
+  padding: 0;
+}
+
 .dca-glossary-content h3 {
   font-size: 1.05rem;
   color: #141413;
@@ -5459,7 +5464,7 @@ textarea {
 
 .dca-explainer-compare {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
   gap: 12px;
   align-items: stretch;
   margin-bottom: 20px;

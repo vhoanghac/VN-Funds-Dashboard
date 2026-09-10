@@ -432,9 +432,11 @@ function annualizeTWRR(cumulative: ReturnPoint[]): number | null {
   if (cumulative.length < 2) return null
   const start = Date.parse(`${cumulative[0]!.date}T00:00:00Z`)
   const end = Date.parse(`${cumulative[cumulative.length - 1]!.date}T00:00:00Z`)
-  const years = (end - start) / (365.25 * 24 * 60 * 60 * 1000)
+  const days = (end - start) / (24 * 60 * 60 * 1000)
   const growth = 1 + cumulative[cumulative.length - 1]!.value
-  if (years <= 0 || growth < 0) return null
+  // Kỳ chưa đủ 365 ngày thì không annualize, khớp dcaCagr của tab DCA quỹ.
+  if (days < 365 || !Number.isFinite(growth) || growth < 0) return null
+  const years = days / 365.25
   return Math.pow(growth, 1 / years) - 1
 }
 

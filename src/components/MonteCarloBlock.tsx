@@ -414,7 +414,7 @@ function MonteCarloDetails({
       <div className="dca-mc-distribution-grid">
         <div className="dca-mc-distribution-card dca-mc-distribution-card--wide">
           <h5>Giá trị tài khoản cuối kỳ theo percentile</h5>
-          <p>Số dư sau {years} năm, đã tính khoản nạp đều mỗi tháng.</p>
+          <p>Số dư sau {years} năm, đã tính khoản đầu tư đều mỗi tháng.</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={terminalWealthData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />

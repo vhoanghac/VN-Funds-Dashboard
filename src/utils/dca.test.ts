@@ -886,6 +886,41 @@ describe('simulateDCA transaction costs', () => {
     expect(result.transactionCosts.sellTaxes).toBeCloseTo(expectedSellValue * sellTaxRate, 8)
   })
 
+  it('đưa phí mua vào TWRR ngay ngày nạp đầu', () => {
+    const result = simulateDCA(
+      new Map([['A', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-01-02', price: 100 },
+      ]]]),
+      [{ fundId: 'A', weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 0, cashflowFreq: 'monthly' },
+      'yearly',
+      { transactionCostRates: { buyFeeRate: 0.01, sellFeeRate: 0, sellTaxRate: 0 } },
+    )
+
+    // Ngày đầu V_begin = 0: TWRR = V_end / C − 1 = 1/1,01 − 1. Giá đứng yên nên
+    // phần phí là toàn bộ mức âm, không bị neutralize.
+    expect(result.cumulative[0]!.value).toBeCloseTo(1 / 1.01 - 1, 10)
+    expect(result.cumulative[result.cumulative.length - 1]!.value).toBeCloseTo(1 / 1.01 - 1, 10)
+  })
+
+  it('đưa phí mua vào TWRR ở mỗi lần nạp sau', () => {
+    const result = simulateDCA(
+      new Map([['A', [
+        { date: '2024-01-01', price: 100 },
+        { date: '2024-01-08', price: 100 },
+      ]]]),
+      [{ fundId: 'A', weight: 100 }],
+      { initialAmount: 1000, cashflowAmount: 1000, cashflowFreq: 'weekly' },
+      'yearly',
+      { transactionCostRates: { buyFeeRate: 0.01, sellFeeRate: 0, sellTaxRate: 0 } },
+    )
+
+    // Ngày 2: prevEnd = 1000/1,01; nạp 1000 mất phí 1000 − 1000/1,01. Return =
+    // −phí/prevEnd = −1%, vì giá không đổi.
+    expect(result.returns[0]!.value).toBeCloseTo(-0.01, 10)
+  })
+
   it('does not charge sell fee or sell tax without a sale', () => {
     const result = simulateDCA(
       new Map([['A', [
@@ -965,10 +1000,12 @@ describe('simulateDCA purchasePrices option (gold buy/sell spread)', () => {
     expect(result.finalValue).toBeCloseTo(expectedUnits * 110, 4)
     expect(result.finalValue).toBeCloseTo(1000, 1)
 
-    // TWRR đo đúng biến động thị trường thuần túy của chuỗi ĐỊNH GIÁ (100→110,
-    // +10%), không lẫn khoản "lỗ" do spread lúc mua — 2 khái niệm tách bạch.
+    // TWRR giờ gồm cả chi phí giao dịch. Ngày mua, spread mua-bán làm âm ngay
+    // (mua ở 110, định giá ở 100 → −1/11). Khi giá lên 110, khoản lỗ spread
+    // được bù hết nên TWRR cả kỳ về 0, khớp với việc tài khoản hoà vốn.
+    expect(result.cumulative[0]!.value).toBeCloseTo(-1 / 11, 8)
     const finalTWRR = result.cumulative[result.cumulative.length - 1]!.value
-    expect(finalTWRR).toBeCloseTo(0.10, 4)
+    expect(finalTWRR).toBeCloseTo(0, 8)
   })
 
   it('REGRESSION GUARD: without purchasePrices, buying at the (lower) valuation price overstates both day-0 value and final return', () => {

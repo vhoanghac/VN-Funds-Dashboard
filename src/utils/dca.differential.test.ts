@@ -177,7 +177,10 @@ function refSimulateDCA(
   values.push({ date: allDates[0]!, value: prevEndValue })
   invested.push({ date: allDates[0]!, value: totalInvested })
   if (twrrStarted) {
-    cumulative.push({ date: allDates[0]!, value: 0 })
+    // Ngày đầu V_begin = 0 nên TWRR = V_end / C − 1; phí và spread hiện ra âm.
+    twrrGrowth = prevEndValue / params.initialAmount
+    twrrPeak = twrrGrowth
+    cumulative.push({ date: allDates[0]!, value: twrrGrowth - 1 })
     drawdown.push({ date: allDates[0]!, value: 0 })
   }
 
@@ -185,7 +188,8 @@ function refSimulateDCA(
     const date = allDates[i]!
     const prevDate = allDates[i - 1]!
 
-    let dailyReturn = 0
+    // marketReturn chỉ dùng cho hook panic-stop (currentDD).
+    let marketReturn = 0
     if (twrrStarted && prevEndValue > 0) {
       let wsum = 0
       for (let j = 0; j < fundIds.length; j++) {
@@ -194,10 +198,10 @@ function refSimulateDCA(
         const w = (shares[j]! * pPrev) / prevEndValue
         wsum += w * (pNow / pPrev - 1)
       }
-      dailyReturn = wsum
+      marketReturn = wsum
     }
-    const growthAfterMarket = twrrGrowth * (1 + dailyReturn)
-    let investedToday = false
+    const growthAfterMarket = twrrGrowth * (1 + marketReturn)
+    let flowToday = 0
 
     if (params.cashflowAmount > 0) {
       const investDate = lastInvestDate || allDates[0]!
@@ -210,7 +214,7 @@ function refSimulateDCA(
           totalInvested += amount
           lastInvestDate = date
           cashflows.push({ date, amount: -amount })
-          investedToday = amount > 0
+          flowToday += amount
         } else {
           lastInvestDate = date
         }
@@ -226,13 +230,14 @@ function refSimulateDCA(
     const portfolioValue = totalInvested > 0 ? valueOf(date) : 0
     values.push({ date, value: portfolioValue })
     invested.push({ date, value: totalInvested })
-    if (investedToday && !twrrStarted) {
+    if (!twrrStarted && flowToday > 0) {
       twrrStarted = true
-      twrrGrowth = 1
-      twrrPeak = 1
-      cumulative.push({ date, value: 0 })
+      twrrGrowth = portfolioValue / flowToday
+      twrrPeak = twrrGrowth
+      cumulative.push({ date, value: twrrGrowth - 1 })
       drawdown.push({ date, value: 0 })
     } else if (twrrStarted) {
+      const dailyReturn = prevEndValue > 0 ? (portfolioValue - flowToday) / prevEndValue - 1 : 0
       returns.push({ date, value: dailyReturn })
       twrrGrowth *= 1 + dailyReturn
       cumulative.push({ date, value: twrrGrowth - 1 })
@@ -255,6 +260,9 @@ function refDcaMWRR(cashflows: { date: string; amount: number }[]): number | nul
   if (cashflows.length < 2) return null
   const t0 = Date.parse(cashflows[0]!.date + 'T00:00:00Z')
   const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+  // Không annualize kỳ chưa đủ 365 ngày.
+  const spanDays = (Date.parse(cashflows[cashflows.length - 1]!.date + 'T00:00:00Z') - t0) / (24 * 60 * 60 * 1000)
+  if (spanDays < 365) return null
   const cfs = cashflows.map(cf => ({
     amount: cf.amount,
     years: (Date.parse(cf.date + 'T00:00:00Z') - t0) / msPerYear,
@@ -298,17 +306,21 @@ function refDcaMWRR(cashflows: { date: string; amount: number }[]): number | nul
 
 function refDcaCagr(cumulative: ReturnPoint[]): number | null {
   if (cumulative.length < 2) return null
-  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-  const years = (Date.parse(cumulative[cumulative.length - 1]!.date + 'T00:00:00Z') - Date.parse(cumulative[0]!.date + 'T00:00:00Z')) / msPerYear
-  if (years <= 0) return null
-  return Math.pow(1 + cumulative[cumulative.length - 1]!.value, 1 / years) - 1
+  const days = (Date.parse(cumulative[cumulative.length - 1]!.date + 'T00:00:00Z') - Date.parse(cumulative[0]!.date + 'T00:00:00Z')) / (24 * 60 * 60 * 1000)
+  // Không annualize kỳ chưa đủ 365 ngày.
+  if (days < 365) return null
+  const years = days / 365.25
+  const growth = 1 + cumulative[cumulative.length - 1]!.value
+  if (!Number.isFinite(growth) || growth < 0) return null
+  return Math.pow(growth, 1 / years) - 1
 }
 
 function refInvestorCagr(cumulative: ReturnPoint[], totalInvested: number, finalValue: number): number | null {
   if (cumulative.length < 2 || totalInvested <= 0 || finalValue <= 0) return null
-  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-  const years = (Date.parse(cumulative[cumulative.length - 1]!.date + 'T00:00:00Z') - Date.parse(cumulative[0]!.date + 'T00:00:00Z')) / msPerYear
-  if (years <= 0) return null
+  const days = (Date.parse(cumulative[cumulative.length - 1]!.date + 'T00:00:00Z') - Date.parse(cumulative[0]!.date + 'T00:00:00Z')) / (24 * 60 * 60 * 1000)
+  // Không annualize kỳ chưa đủ 365 ngày.
+  if (days < 365) return null
+  const years = days / 365.25
   return Math.pow(finalValue / totalInvested, 1 / years) - 1
 }
 
@@ -1112,7 +1124,7 @@ describe('differential: dcaMWRR (bisection reference)', () => {
     expect(prod!).toBeCloseTo(ref!, 4)
   })
 
-  it('khớp trên MWRR từ chính kết quả simulateDCA (dữ liệu thật)', () => {
+  it('REAL_FUND chỉ khoảng 1 tháng → MWRR null vì chưa đủ 1 năm', () => {
     const prices = new Map([['E1VFVN30', REAL_FUND]])
     const result = simulateDCA(
       prices,
@@ -1120,10 +1132,9 @@ describe('differential: dcaMWRR (bisection reference)', () => {
       { initialAmount: 0, cashflowAmount: 200_000, cashflowFreq: 'weekly' },
       'yearly',
     )
-    const prod = dcaMWRR(result.cashflows)
-    const ref = refDcaMWRR(result.cashflows)
-    expect(prod).not.toBeNull()
-    expect(prod!).toBeCloseTo(ref!, 4)
+    expect(result.cashflows.length).toBeGreaterThan(1)
+    expect(dcaMWRR(result.cashflows)).toBeNull()
+    expect(refDcaMWRR(result.cashflows)).toBeNull()
   })
 
   it('IRR âm (mua đắt, kết thúc ít hơn vốn) khớp', () => {
@@ -1143,6 +1154,15 @@ describe('differential: dcaMWRR (bisection reference)', () => {
     expect(dcaMWRR([{ date: '2020-01-01', amount: -100 }])).toBeNull()
     expect(refDcaMWRR([{ date: '2020-01-01', amount: -100 }])).toBeNull()
   })
+
+  it('kỳ dưới 365 ngày → null, không annualize MWRR', () => {
+    const cfs = [
+      { date: '2024-01-01', amount: -1_000_000 },
+      { date: '2024-06-30', amount: 1_100_000 },
+    ]
+    expect(dcaMWRR(cfs)).toBeNull()
+    expect(refDcaMWRR(cfs)).toBeNull()
+  })
 })
 
 // ============================================================================
@@ -1157,6 +1177,18 @@ describe('differential: CAGR / maxDrawdown / profitFactor / investorCagr', () =>
     const final = 15_000_000
     expect(investorCagr(CUM_WK, total, final)).toBeCloseTo(refInvestorCagr(CUM_WK, total, final)!, 9)
     expect(investorCagr(CUM_WK, 0, final)).toBeNull()
+  })
+
+  it('ngưỡng 365 ngày: 364 ngày null, đúng 365 ngày vẫn quy năm', () => {
+    const span = (start: string, end: string) => [{ date: start, value: 0 }, { date: end, value: 0.2 }]
+    expect(dcaCagr(span('2023-01-01', '2023-12-31'))).toBeNull() // 364 ngày
+    expect(dcaCagr(span('2023-01-01', '2024-01-01'))).not.toBeNull() // 365 ngày
+    expect(investorCagr(span('2023-01-01', '2023-12-31'), 1_000, 1_200)).toBeNull()
+    expect(investorCagr(span('2023-01-01', '2024-01-01'), 1_000, 1_200)).not.toBeNull()
+  })
+
+  it('growth âm hơn 100% → null thay vì NaN', () => {
+    expect(dcaCagr([{ date: '2020-01-01', value: 0 }, { date: '2022-01-01', value: -2 }])).toBeNull()
   })
 
   it('dcaMaxDrawdown khớp reference', () => {

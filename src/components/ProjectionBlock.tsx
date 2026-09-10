@@ -1,7 +1,7 @@
 /**
  * ProjectionBlock: "Nếu bạn tiếp tục DCA thêm X năm nữa?"
  *
- * Chiếu về tương lai dựa trên CAGR lịch sử + lịch nạp tiền hiện tại.
+ * Chiếu về tương lai dựa trên CAGR lịch sử + lịch đầu tư hiện tại.
  * 3 scenario: pessimistic (CAGR − 3%), base (CAGR), optimistic (CAGR + 3%).
  *
  * Đây KHÔNG phải dự báo. Là thought experiment để user thấy magnitude của
@@ -27,7 +27,7 @@ export interface ProjectionPortfolio {
   finalValue: number
   /** CAGR đã quy năm từ backtest, dùng làm base rate cho projection */
   cagr: number | null
-  /** Số tiền nạp mỗi tháng (ước lượng từ lịch nạp thực tế) */
+  /** Số tiền đầu tư mỗi tháng (ước lượng từ lịch đầu tư thực tế) */
   monthlyContribution: number
   /** Số tiền tăng thêm mỗi tháng sau mỗi năm, đã quy đổi theo tần suất DCA. */
   monthlyContributionIncrease: number
@@ -253,10 +253,10 @@ function ProjectionForPortfolio({
         <strong>{(cagr * 100).toFixed(1)}%/năm</strong> và
         {cashflowSchedule && cashflowSchedule.length > 1
           ? ' bạn vẫn duy trì lịch DCA hiện tại'
-          : <> bạn vẫn đều đặn nạp <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>
+          : <> bạn vẫn đều đặn đầu tư <strong>{formatVND(Math.round(monthlyContribution))}/tháng</strong>
               {monthlyContributionIncrease > 0 && <> và tăng thêm <strong>{formatVND(Math.round(monthlyContributionIncrease))}/tháng</strong> mỗi năm</>}</>},
         sau <strong>{years} năm nữa</strong> danh mục có thể chạm{' '}
-        <strong>{formatVND(Math.round(finalBase))}</strong>. Trong đó bạn chỉ nạp thêm{' '}
+        <strong>{formatVND(Math.round(finalBase))}</strong>. Trong đó bạn chỉ đầu tư thêm{' '}
         {formatVND(Math.round(futureContributions))}, phần còn lại{' '}
         {formatVND(Math.round(growthBase))} là tiền đẻ tiền nhờ lãi kép. Đó là lý do vì
         sao đầu tư là cuộc chơi của thời gian, không phải của canh đỉnh canh đáy.

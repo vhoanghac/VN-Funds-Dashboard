@@ -1,15 +1,15 @@
 /**
- * DcaConsistencyBlock: "Nếu bạn hoảng loạn dừng nạp khi thấy đỏ?"
+ * DcaConsistencyBlock: "Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?"
  *
- * Re-simulates DCA với biến thể hành vi: dừng nạp khi TWRR drawdown sụt sâu quá ngưỡng.
- * So sánh 3 kịch bản: (i) nạp đều đặn bất chấp, (ii) dừng khi DD < -15%, (iii) dừng khi DD < -25%.
+ * Re-simulates DCA với biến thể hành vi: dừng đầu tư khi TWRR drawdown sụt sâu quá ngưỡng.
+ * So sánh 3 kịch bản: (i) đầu tư đều đặn bất chấp, (ii) dừng khi DD < -15%, (iii) dừng khi DD < -25%.
  *
- * Mental model: retail VN điển hình không miss tháng ngẫu nhiên. Họ đóng băng lệnh nạp
- * đúng lúc thị trường giảm sâu, rồi chần chừ không dám nạp lại cho đến khi hồi phục.
+ * Mental model: retail VN điển hình không miss tháng ngẫu nhiên. Họ đóng băng lệnh đầu tư
+ * đúng lúc thị trường giảm sâu, rồi chần chừ không dám đầu tư lại cho đến khi hồi phục.
  * Block này đo đạc cái giá thực của tâm lý đó, bằng chính dữ liệu lịch sử quỹ của user.
  *
  * Lưu ý: TWRR drawdown invariant với cashflow schedule, nên việc tính DD dựa trên giá
- * quỹ mà không phụ thuộc kịch bản nạp là hợp lệ.
+ * quỹ mà không phụ thuộc kịch bản đầu tư là hợp lệ.
  */
 import { useState, useMemo, memo } from 'react'
 import {
@@ -170,9 +170,9 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
   const p15Profit = scenarios.panic15.finalValue - scenarios.panic15.totalInvested
   const p25Profit = scenarios.panic25.finalValue - scenarios.panic25.totalInvested
 
-  // "Chi phí cơ hội" — KHÔNG phải so trực tiếp giá trị cuối, vì panic bỏ nạp
+  // "Chi phí cơ hội" — KHÔNG phải so trực tiếp giá trị cuối, vì panic dừng đầu tư
   // nên vốn ít hơn hẳn, làm chênh lệch bị thổi phồng bởi phần "chưa đầu tư"
-  // chứ không phải do đầu tư kém. Giả định số tiền bị bỏ nạp vẫn nằm trong
+  // chứ không phải do đầu tư kém. Giả định số tiền không được đầu tư vẫn nằm trong
   // túi bạn dưới dạng tiền mặt (không sinh lời, không mất) — cộng nó lại vào
   // giá trị cuối của kịch bản panic rồi mới so với baseline, để ra đúng phần
   // thiệt hại do mua sai thời điểm + mất lãi kép, tách khỏi việc có ít vốn hơn.
@@ -197,7 +197,7 @@ function ConsistencyForPortfolio({ portfolio, extraAmount, onExtraAmountChange, 
 
   // MWRR (IRR theo dòng tiền) — khác % Lợi nhuận ở chỗ tính đúng số năm
   // mỗi đồng đã có để sinh lời, không để "tiền vào sớm hay muộn" làm lệch kết
-  // quả khi các kịch bản có tổng vốn và lịch nạp khác nhau.
+  // quả khi các kịch bản có tổng vốn và lịch đầu tư khác nhau.
   const baseMWRR = scenarios.baseline.mwrr
   const p15MWRR = scenarios.panic15.mwrr
   const p25MWRR = scenarios.panic25.mwrr
@@ -477,7 +477,7 @@ function ConsistencyTakeaway({
   skippedCash15: number
 }) {
   // Case 1: Panic không skip lần nào, có thể do thị trường êm ả, hoặc do quỹ vẫn giảm sâu
-  // nhưng gọn trong khoảng ngắn giữa 2 lần nạp, không lần kiểm tra hàng tháng nào rơi đúng
+  // nhưng gọn trong khoảng ngắn giữa 2 lần đầu tư, không lần kiểm tra hàng tháng nào rơi đúng
   // lúc (hook skipContributionWhen chỉ check tại contribution date, không phải mỗi ngày).
   if (skipped15 === 0 && skipped25 === 0) {
     return (
@@ -647,7 +647,7 @@ function runBaseline(inputs: NonNullable<ConsistencyPortfolio['simulationInputs'
 }
 
 /**
- * Re-run DCA với skip predicate: bỏ nạp khi TWRR drawdown hiện tại <= threshold.
+ * Re-run DCA với skip predicate: dừng đầu tư khi TWRR drawdown hiện tại <= threshold.
  * Returns summary stats + value series + count of skipped contributions.
  */
 function runPanicStop(
@@ -658,7 +658,7 @@ function runPanicStop(
   finalValue: number
   valueSeries: { date: string; value: number }[]
   skippedCount: number
-  /** Tiền bị bỏ nạp, giả định vẫn giữ làm tiền mặt (không sinh lời) — dùng để
+  /** Tiền không được đầu tư, giả định vẫn giữ làm tiền mặt (không sinh lời) — dùng để
    * tính "chi phí cơ hội" công bằng thay vì so thẳng giá trị cuối. */
   skippedCash: number
   mwrr: number | null
@@ -695,7 +695,7 @@ function runPanicStop(
 }
 
 /**
- * Ngược với runPanicStop: KHÔNG bỏ nạp, mà TĂNG THÊM tiền nạp khi TWRR
+ * Ngược với runPanicStop: KHÔNG dừng đầu tư, mà TĂNG THÊM tiền đầu tư khi TWRR
  * drawdown hiện tại <= threshold (mua thêm khi giảm sâu, "buy the dip").
  */
 function runBoostBuy(

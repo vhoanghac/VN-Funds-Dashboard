@@ -10,6 +10,8 @@ interface StatsRow {
   transactionCosts: number
   cagr: number | null
   mwrr: number | null
+  twrrNet: number | null
+  twrrGross: number | null
   maxDrawdown: number | null
   avgDrawdown: number | null
   longestDrawdownDays: number | null
@@ -45,7 +47,7 @@ function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
               </th>
               <th>
                 Tổng đầu tư
-                <span className="dca-info-icon" title="Tổng số tiền đã nạp vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
+                <span className="dca-info-icon" title="Tổng số tiền đã đầu tư vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
               </th>
               <th>
                 Thuế phí
@@ -57,11 +59,19 @@ function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
               </th>
               <th>
                 CAGR
-                <span className="dca-info-icon" title="Lợi nhuận tích lũy quy năm: (Giá trị cuối ÷ Tổng đầu tư)^(1/số năm) − 1. Cho biết nếu danh mục tăng đều mỗi năm thì mỗi năm lãi bao nhiêu %. Lưu ý: chỉ số này thường thấp hơn MWRR trong DCA vì giả định toàn bộ vốn đã hoạt động từ đầu.">?</span>
+                <span className="dca-info-icon" title="Lợi nhuận tích lũy quy năm: (Giá trị cuối ÷ Tổng đầu tư)^(1/số năm) − 1. Cho biết nếu danh mục tăng đều mỗi năm thì mỗi năm lãi bao nhiêu %. Lưu ý: chỉ số này thường thấp hơn MWRR trong DCA vì giả định toàn bộ vốn đã hoạt động từ đầu. Chỉ quy năm khi kỳ từ 1 năm trở lên; kỳ ngắn hơn để trống vì không annualize.">?</span>
               </th>
               <th>
                 MWRR
-                <span className="dca-info-icon" title="Money-Weighted Rate of Return: lợi nhuận thực tế của nhà đầu tư, tính đến thời điểm và số tiền từng lần nạp (IRR). Chỉ số chính để đánh giá hiệu quả chiến lược DCA. Thường cao hơn CAGR vì nhận ra rằng phần lớn vốn DCA chỉ hoạt động trong thời gian ngắn hơn toàn kỳ.">?</span>
+                <span className="dca-info-icon" title="Money-Weighted Rate of Return: lợi nhuận thực tế của nhà đầu tư, tính đến thời điểm và số tiền từng lần đầu tư (IRR). Chỉ số chính để đánh giá hiệu quả chiến lược DCA. Thường cao hơn CAGR vì nhận ra rằng phần lớn vốn DCA chỉ hoạt động trong thời gian ngắn hơn toàn kỳ. Chỉ quy năm khi kỳ từ 1 năm trở lên.">?</span>
+              </th>
+              <th>
+                TWRR sau phí
+                <span className="dca-info-icon" title={`Lợi nhuận của chính ${assetLabel} sau khi trừ phí mua, phí bán và thuế bán mô phỏng. Đã tách khỏi thời điểm đầu tư. Không quy năm khi kỳ dưới 1 năm.`}>?</span>
+              </th>
+              <th>
+                TWRR trước phí
+                <span className="dca-info-icon" title={`Lợi nhuận của chính ${assetLabel} khi bỏ phí mua, phí bán và thuế bán mô phỏng. Với tài sản hai giá như vàng, chênh lệch giá mua-bán vẫn được giữ ở cả hai cột nên phần ăn mòn hiển thị chỉ là phí theo biểu phí.`}>?</span>
               </th>
                 <th>
                  Sụt giảm tối đa
@@ -100,6 +110,8 @@ function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
                   <td className={signClass(cumReturn)}>{formatSignedPercent(cumReturn)}</td>
                   <td className={signClass(p.cagr)}>{formatSignedPercent(p.cagr)}</td>
                   <td className={signClass(p.mwrr)}>{formatSignedPercent(p.mwrr)}</td>
+                  <td className={signClass(p.twrrNet)}>{formatSignedPercent(p.twrrNet)}</td>
+                  <td className={signClass(p.twrrGross)}>{formatSignedPercent(p.twrrGross)}</td>
                   <td className={p.maxDrawdown !== null && p.maxDrawdown < 0 ? 'dca-loss' : ''}>
                     {p.maxDrawdown !== null ? (p.maxDrawdown * 100).toFixed(2) + '%' : '—'}
                   </td>

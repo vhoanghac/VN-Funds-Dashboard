@@ -266,7 +266,7 @@ describe('Stock DCA share link', () => {
   const state: StockDcaShareState = {
     portfolios: [
       {
-        slots: [{ fundId: 'ACB', weight: 100 }],
+        slots: [{ fundId: 'ACB', weight: 60 }, { fundId: 'MBB', weight: 40 }],
         rebalFreq: 'yearly',
         name: 'ACB dài hạn',
         transactionCostRates: { buyFeeRate: 0.001, sellFeeRate: 0.002, sellTaxRate: 0.001 },

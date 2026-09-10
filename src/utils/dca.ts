@@ -803,7 +803,9 @@ export function simulateDCA(
     const growthAfterMarket = twrrGrowth * (1 + marketReturn)
 
     // ── Step 2: DCA cashflow (add new money AFTER computing return) ──
-    let investedToday = false
+    // externalFlowToday = vốn ngoài ròng trong phiên (dương = tiền nạp vào).
+    // Chỉ tiền nạp/rút được neutralize khỏi TWRR; phí giao dịch thì không.
+    let externalFlowToday = 0
     if (date >= firstExecutionDate) {
       const nextCashflowPhase = dcaContributionPhaseIndexAtDate(cashflowSchedule, date)
       if (nextCashflowPhase !== activeCashflowPhase) {
@@ -816,7 +818,7 @@ export function simulateDCA(
       if (i === firstExecutionIndex && params.initialAmount > 0) {
         buyFunds(params.initialAmount, i)
         cashflows.push({ date, amount: -params.initialAmount })
-        investedToday = true
+        externalFlowToday += params.initialAmount
       }
     }
     const cashflowPhase = cashflowSchedule[activeCashflowPhase]
@@ -836,7 +838,7 @@ export function simulateDCA(
           buyFunds(amount, i)
           cashflows.push({ date, amount: -amount })
           lastCashflowAmount = amount
-          investedToday = amount > 0
+          if (amount > 0) externalFlowToday += amount
         } else {
           // Vẫn phải dời mốc "kỳ nạp gần nhất" tới ngày hôm nay dù bỏ qua lần
           // này — nếu không, investDate ở trên cứ đứng yên tại lần nạp thành
@@ -851,10 +853,8 @@ export function simulateDCA(
 
     // ── Step 3: Rebalance check ──
     let portfolioValue = totalInvested > 0 ? valueUnits(units, priceLookups, date) : 0
-    let rebalanceFactor = 1
     if (totalInvested > 0 && isExecutionDate) {
       if (shouldRebalForDCA(prevDateForRebal, date, rebalFreq)) {
-        const valueBeforeRebalance = portfolioValue
         const rebalanceCosts = rebalanceUnits(
           units, weights, priceLookups, date, purchaseLookups, transactionCostRates,
         )
@@ -862,7 +862,6 @@ export function simulateDCA(
         transactionCosts.sellFees += rebalanceCosts.sellFees
         transactionCosts.sellTaxes += rebalanceCosts.sellTaxes
         portfolioValue = valueUnits(units, priceLookups, date)
-        if (valueBeforeRebalance > 0) rebalanceFactor = portfolioValue / valueBeforeRebalance
       }
     }
     if (isExecutionDate) prevDateForRebal = date
@@ -873,14 +872,19 @@ export function simulateDCA(
     invested.push({ date, value: totalInvested })
 
     // ── Record TWRR cumulative return ──
-    if (investedToday && !twrrStarted) {
+    // Vốn ngoài (C) được neutralize: (V_end − C) / V_begin. Phí giao dịch, thuế
+    // và chênh lệch giá mua-bán nằm trong V_end nên vẫn làm giảm return. Ngày
+    // đầu chưa có V_begin thì dùng V_end / C − 1, nhờ vậy phí mua ngày đầu âm.
+    if (!twrrStarted && externalFlowToday > 0) {
       twrrStarted = true
-      twrrGrowth = 1
-      twrrPeak = 1
-      cumulative.push({ date, value: 0 })
+      twrrGrowth = portfolioValue / externalFlowToday
+      twrrPeak = twrrGrowth
+      cumulative.push({ date, value: twrrGrowth - 1 })
       drawdown.push({ date, value: 0 })
     } else if (twrrStarted) {
-      const dailyReturn = (1 + marketReturn) * rebalanceFactor - 1
+      const dailyReturn = prevEndValue > 0
+        ? (portfolioValue - externalFlowToday) / prevEndValue - 1
+        : 0
       twrrDailyReturns.push({ date, value: dailyReturn })
       twrrGrowth *= 1 + dailyReturn
       cumulative.push({ date, value: twrrGrowth - 1 })
@@ -962,6 +966,10 @@ export function dcaMWRR(cashflows: { date: string; amount: number }[]): number |
   const t0 = new Date(cashflows[0]!.date).getTime()
   const msPerYear = 365.25 * 24 * 60 * 60 * 1000
 
+  // Không annualize MWRR khi kỳ chưa đủ 365 ngày (khớp dcaCagr/investorCagr).
+  const spanDays = (new Date(cashflows[cashflows.length - 1]!.date).getTime() - t0) / (24 * 60 * 60 * 1000)
+  if (spanDays < 365) return null
+
   // Convert to { amount, years } pairs
   const cfs = cashflows.map(cf => ({
     amount: cf.amount,
@@ -1005,18 +1013,25 @@ export function dcaMWRR(cashflows: { date: string; amount: number }[]): number |
  * giá trị điểm cuối (1 + growth) là tính được.
  *
  * Công thức: (twrrGrowth)^(1/years) - 1
+ *
+ * Kỳ dưới 1 năm trả null (chuẩn GIPS: không annualize return dưới một năm).
+ * Nơi gọi nên hiển thị lợi nhuận thực của kỳ thay vì số quy năm.
  */
 export function dcaCagr(cumulative: ReturnPoint[]): number | null {
   if (cumulative.length < 2) return null
 
   const startDate = new Date(cumulative[0]!.date)
   const endDate = new Date(cumulative[cumulative.length - 1]!.date)
-  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-  const years = (endDate.getTime() - startDate.getTime()) / msPerYear
+  const msPerDay = 24 * 60 * 60 * 1000
+  const days = (endDate.getTime() - startDate.getTime()) / msPerDay
 
-  if (years <= 0) return null
+  // Kỳ chưa đủ 365 ngày thì không quy năm.
+  if (days < 365) return null
 
+  const years = days / 365.25
   const twrrGrowth = 1 + cumulative[cumulative.length - 1]!.value
+  // Growth âm nghĩa là chuỗi đã mất hơn 100%, không lấy căn bậc được.
+  if (!Number.isFinite(twrrGrowth) || twrrGrowth < 0) return null
   return Math.pow(twrrGrowth, 1 / years) - 1
 }
 
@@ -1033,11 +1048,13 @@ export function investorCagr(
 ): number | null {
   if (cumulative.length < 2 || totalInvested <= 0 || finalValue <= 0) return null
 
-  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
-  const years = (new Date(cumulative[cumulative.length - 1]!.date).getTime() -
-    new Date(cumulative[0]!.date).getTime()) / msPerYear
-  if (years <= 0) return null
+  const msPerDay = 24 * 60 * 60 * 1000
+  const days = (new Date(cumulative[cumulative.length - 1]!.date).getTime() -
+    new Date(cumulative[0]!.date).getTime()) / msPerDay
+  // Kỳ chưa đủ 365 ngày thì không quy năm.
+  if (days < 365) return null
 
+  const years = days / 365.25
   return Math.pow(finalValue / totalInvested, 1 / years) - 1
 }
 

@@ -43,6 +43,7 @@ interface AllocationAssetMeta {
 
 interface Props {
   portfolios: AllocationPortfolio[]
+  assetLabel?: string
 }
 
 export function buildAllocationData(assets: AllocationAssetSeries[]): AllocationPoint[] {
@@ -74,28 +75,28 @@ export function buildAllocationData(assets: AllocationAssetSeries[]): Allocation
   })
 }
 
-function allocationLabel(fundId: string): string {
+function allocationLabel(fundId: string, assetLabel: string): string {
   const label = assetDisplayName(fundId)
-  return fundId.startsWith('SAVINGS:') ? label : `quỹ ${label}`
+  return fundId.startsWith('SAVINGS:') ? label : `${assetLabel} ${label}`
 }
 
 function formatAllocation(value: number): string {
   return `${value.toFixed(1)}%`
 }
 
-function DcaAllocationBlockImpl({ portfolios }: Props) {
+function DcaAllocationBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   if (portfolios.length === 0) return null
 
   return (
     <>
       {portfolios.map(portfolio => (
-        <AllocationPortfolioBlock key={portfolio.id} portfolio={portfolio} />
+        <AllocationPortfolioBlock key={portfolio.id} portfolio={portfolio} assetLabel={assetLabel} />
       ))}
     </>
   )
 }
 
-function AllocationPortfolioBlock({ portfolio }: { portfolio: AllocationPortfolio }) {
+function AllocationPortfolioBlock({ portfolio, assetLabel }: { portfolio: AllocationPortfolio; assetLabel: string }) {
   const assetIds = Array.from(new Set(portfolio.assetValues.map(asset => asset.fundId)))
   const assets = assetIds.map((fundId, index) => ({
     fundId,
@@ -106,7 +107,7 @@ function AllocationPortfolioBlock({ portfolio }: { portfolio: AllocationPortfoli
   if (assets.length === 1) {
     return (
       <DcaBlock title={portfolio.name} className="dca-allocation-block">
-        <p className="dca-allocation-single">100% {allocationLabel(assets[0]!.fundId)}</p>
+          <p className="dca-allocation-single">100% {allocationLabel(assets[0]!.fundId, assetLabel)}</p>
       </DcaBlock>
     )
   }

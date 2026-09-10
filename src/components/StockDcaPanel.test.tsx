@@ -122,13 +122,13 @@ describe('StockDcaPanel', () => {
     expect(screen.getByText(/giá cổ phiếu cần tăng thêm/)).toBeInTheDocument()
     expect(screen.getByText(/thay vì mua cổ phiếu/)).toBeInTheDocument()
     expect(screen.getAllByText(/lịch sử cổ phiếu/).length).toBeGreaterThan(0)
-    await userEvent.setup().click(screen.getByRole('button', { name: /Giải Thích Khái Niệm/ }))
-    expect(screen.getByText(/CAGR thuần của cổ phiếu/)).toBeInTheDocument()
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
     const yearlyReturns = screen.getByRole('heading', { name: 'Hiệu suất danh mục của bạn từng năm' })
     const bankComparison = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' })
     expect(yearlyReturns.compareDocumentPosition(bankComparison) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.setup().click(screen.getByRole('button', { name: /Vì sao có 3 con số/ }))
+    expect(screen.getByText(/CAGR thuần của cổ phiếu/)).toBeInTheDocument()
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
     expect(screen.queryByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' })).not.toBeInTheDocument()
@@ -210,8 +210,8 @@ describe('StockDcaPanel', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Phân bổ' }))
 
     expect(screen.queryByLabelText('Chọn danh mục trong Phân bổ')).not.toBeInTheDocument()
-    expect(screen.getByText('100% ACB')).toBeInTheDocument()
-    expect(screen.getByText('100% MBB')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tỷ trọng tài sản của ACB')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tỷ trọng tài sản của MBB')).toBeInTheDocument()
   })
 
   it('starts multiple stock portfolios on their common first date', async () => {
@@ -496,5 +496,36 @@ describe('StockDcaPanel', () => {
     expect(screen.getByRole('heading', { name: 'Danh mục' })).toBeInTheDocument()
     expect(screen.getByText('ACB · Ngân hàng Á Châu')).toBeInTheDocument()
     expect(resolvers).toHaveLength(3)
+  })
+
+  it('adds a second stock slot to the same portfolio and can equalize its weights', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB'])} />)
+    await waitFor(() => expect(screen.getByTitle('Thêm cổ phiếu')).toBeEnabled())
+
+    await userEvent.setup().click(screen.getByTitle('Thêm cổ phiếu'))
+
+    expect(screen.getByText('CHP · Thủy điện miền Trung')).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByTitle('Chia đều tỷ trọng'))
+    expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Phân bổ' }))
+    expect(screen.getAllByText('ACB').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('CHP').length).toBeGreaterThan(0)
   })
 })

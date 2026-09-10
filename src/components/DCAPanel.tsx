@@ -18,7 +18,6 @@ import { DcaRatioChart } from './DcaRatioChart'
 import { DcaReturnPainChart } from './DcaReturnPainChart'
 import { DcaEntryPointBlock } from './DcaEntryPointBlock'
 import { DCAStatsTable } from './DCAStatsTable'
-import { DCAGlossary } from './DCAGlossary'
 import { DcaJourneyBlock, EOYReturnsTable } from './DcaJourneyBlock'
 import { BankComparisonBlock } from './BankComparisonBlock'
 import { DcaStormBlock } from './DcaStormBlock'
@@ -83,6 +82,8 @@ interface DCAPortfolioResult {
   name: string
   color: string
   cumulative: ReturnPoint[]
+  /** TWRR khi bỏ toàn bộ phí giao dịch mô phỏng — dùng để tách phần phí ăn mòn. */
+  cumulativeGross: ReturnPoint[]
   drawdown: ReturnPoint[]
   totalInvested: number
   finalValue: number
@@ -94,7 +95,7 @@ interface DCAPortfolioResult {
   investedSeries: { date: string; value: number }[]
   valueSeries: { date: string; value: number }[]
   assetValues: DCAAssetValueSeries[]
-  /** Toàn bộ cashflows (âm = nạp tiền, dòng cuối dương = finalValue) — dùng để tính MWRR theo từng năm */
+  /** Toàn bộ cashflows (âm = đầu tư, dòng cuối dương = finalValue) — dùng để tính MWRR theo từng năm */
   cashflows: { date: string; amount: number }[]
   /**
    * Inputs để re-run simulation cho các biến thể hành vi (panic-stop, skip months...).
@@ -513,6 +514,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         name: p.name,
         color: PORTFOLIO_COLORS[pIdx % PORTFOLIO_COLORS.length]!,
         cumulative: [],
+        cumulativeGross: [],
         drawdown: [],
         totalInvested: 0,
         finalValue: 0,
@@ -681,6 +683,19 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
           executionDates,
         },
       )
+      // Chạy lại với phí bằng 0 để có TWRR trước phí giao dịch (gross), nhờ đó
+      // bảng thống kê tách được phần phí ăn mòn so với TWRR sau phí (net).
+      const grossResult = simulateDCA(
+        filteredPrices,
+        activeSlots,
+        committed.params,
+        p.rebalFreq,
+        {
+          purchasePrices: portfolioPurchasePrices,
+          transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 },
+          executionDates,
+        },
+      )
 
       if (dcaResult.cumulative.length === 0) {
         portfolioResults.push({
@@ -713,6 +728,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
       portfolioResults.push({
         id: p.id, name: p.name, color,
         cumulative: dcaResult.cumulative,
+        cumulativeGross: grossResult.cumulative,
         drawdown: dcaResult.drawdown,
         totalInvested: dcaResult.totalInvested,
         finalValue: dcaResult.finalValue,
@@ -820,6 +836,8 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     transactionCosts: r.transactionCosts,
     cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
     mwrr: r.mwrr,
+    twrrNet: dcaCagr(r.cumulative),
+    twrrGross: dcaCagr(r.cumulativeGross),
     maxDrawdown: r.storm.maxDrawdown,
     avgDrawdown: avgDrawdown(r.drawdown),
     longestDrawdownDays: longestDrawdownDays(r.drawdown),
@@ -860,6 +878,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     name: r.name,
     color: r.color,
     cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
+    twrr: dcaCagr(r.cumulative),
     mwrr: r.mwrr,
   })), [validResults])
 
@@ -975,12 +994,12 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const projectionData = useMemo(() => validResults.map(r => {
     // CAGR của danh mục (TWRR, tách khỏi thời điểm dòng tiền) — dùng làm base
     // rate chiếu tương lai, KHÔNG dùng finalValue/totalInvested (bị kéo thấp
-    // vì phần lớn vốn DCA chỉ mới nạp gần đây, chưa kịp sinh lời).
+    // vì phần lớn vốn DCA chỉ mới đầu tư gần đây, chưa kịp sinh lời).
     const cagr = dcaCagr(r.cumulative)
-    // Số tiền nạp mỗi tháng: quy đổi trực tiếp từ cashflowAmount/cashflowFreq
+    // Số tiền đầu tư mỗi tháng: quy đổi trực tiếp từ cashflowAmount/cashflowFreq
     // NGƯỜI DÙNG ĐÃ NHẬP — không suy ra từ totalInvested/số tháng backtest,
-    // vì cách đó lẫn cả "Số tiền đầu tiên" (nạp 1 lần) vào trung bình, khiến
-    // con số cao hơn mức nạp định kỳ thực tế.
+    // vì cách đó lẫn cả "Số tiền đầu tiên" (đầu tư 1 lần) vào trung bình, khiến
+    // con số cao hơn mức đầu tư định kỳ thực tế.
     const params = r.simulationInputs!.params
     const projectionStartDate = r.valueSeries[r.valueSeries.length - 1]?.date
     const schedule = params.cashflowSchedule
@@ -1474,7 +1493,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                   portfolios={journeyPortfolios}
                 />
 
-                {/* Giải thích CAGR vs MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về 2 con số */}
+                {/* Giải thích CAGR, TWRR, MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về các con số lợi nhuận */}
                 <DcaReturnExplainer
                   portfolios={dcaReturnExplainerData}
                 />
@@ -1569,8 +1588,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         </div>
       )}
 
-      {/* Giải Thích Khái Niệm */}
-      <DCAGlossary />
     </div>
   )
 }

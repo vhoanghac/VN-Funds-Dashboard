@@ -4,8 +4,8 @@
  * Retail VN luôn so với tiết kiệm. Dashboard này trả lời thẳng:
  * "Cùng số tiền đó, gửi ngân hàng thì có bao nhiêu?"
  *
- * Cách tính: lấy từng khoản nạp thực tế (từ investedSeries delta), compound
- * mỗi khoản tại lãi suất ngân hàng từ ngày nạp đến ngày kết thúc. Chính xác
+ * Cách tính: lấy từng khoản đầu tư thực tế (từ investedSeries delta), compound
+ * mỗi khoản tại lãi suất ngân hàng từ ngày đầu tư đến ngày kết thúc. Chính xác
  * hơn FV annuity formula (vốn giả định dòng tiền đều).
  *
  * Lãi suất mặc định 6.5%/năm, gần trung bình tiết kiệm kỳ hạn 12 tháng
@@ -85,7 +85,7 @@ function BankComparisonBlockImpl({ results, endDate, assetLabel = 'quỹ' }: Pro
       </div>
 
       <p className="dca-bank-compare-sub">
-        Giả sử cùng lịch nạp tiền đó, nhưng thay vì mua {assetLabel}, bạn đem gửi tiết kiệm
+        Giả sử cùng lịch đầu tư đó, nhưng thay vì mua {assetLabel}, bạn đem gửi tiết kiệm
         ngân hàng với lãi suất <strong>{(bankRate * 100).toFixed(1)}%/năm</strong>
         {' '}ghép lãi hàng năm. Kết quả sẽ như thế nào?
       </p>

@@ -31,4 +31,14 @@ describe('buildAllocationData', () => {
 
     expect(point).toMatchObject({ A: 0, B: 0 })
   })
+
+  it('includes uninvested cash when the portfolio passes it as an asset', () => {
+    const [point] = buildAllocationData([
+      { fundId: 'ACB', values: [{ date: '2020-01-31', value: 2_300_000 }] },
+      { fundId: 'REE', values: [{ date: '2020-01-31', value: 0 }] },
+      { fundId: 'Tiền mặt', values: [{ date: '2020-01-31', value: 2_700_000 }] },
+    ])
+
+    expect(point).toMatchObject({ ACB: 46, REE: 0, 'Tiền mặt': 54 })
+  })
 })

@@ -5,6 +5,7 @@ import {
   type DCAStormStats,
 } from './dca'
 import { type StockAccountDcaResult, type StockAccountValuePoint } from './stockAccountDca'
+import type { StockPortfolioDcaResult, StockPortfolioPositionPoint } from './stockPortfolioDca'
 
 export interface StockDcaPresentation {
   cumulative: ReturnPoint[]
@@ -56,8 +57,29 @@ export function presentStockDcaResult(result: StockAccountDcaResult): StockDcaPr
   }
 }
 
+/** Convert a shared-cash stock portfolio ledger into the chart view models. */
+export function presentStockPortfolioDcaResult(result: StockPortfolioDcaResult): StockDcaPresentation {
+  const cumulative = result.twrrCumulative
+  const drawdown = buildDrawdownSeries(cumulative)
+  const returns = buildReturnSeries(cumulative)
+  return {
+    cumulative,
+    drawdown,
+    returns,
+    valueSeries: result.points.map(point => ({ date: point.date, value: point.value })),
+    investedSeries: result.points.map(point => ({ date: point.date, value: point.contributed })),
+    assetValueSeries: result.points.map(point => ({ date: point.date, value: point.value - point.cash })),
+    cashSeries: result.points.map(point => ({ date: point.date, value: point.cash })),
+    receivableSeries: result.points.map(point => ({ date: point.date, value: point.cashReceivables })),
+    pendingSharesSeries: result.points.map(point => ({ date: point.date, value: point.value - point.cash - point.cashReceivables })),
+    pendingPayableSeries: result.points.map(point => ({ date: point.date, value: 0 })),
+    storm: dcaStormStats(drawdown, cumulative),
+    profitFactor: dcaProfitFactor(returns),
+  }
+}
+
 /** Group settled dividends by the ledger year in which the account received them. */
-export function annualStockDividends(points: readonly StockAccountValuePoint[]): StockAnnualDividendPoint[] {
+export function annualStockDividends(points: readonly (StockAccountValuePoint | StockPortfolioPositionPoint)[]): StockAnnualDividendPoint[] {
   if (points.length === 0) return []
 
   const firstYear = Number(points[0]!.date.slice(0, 4))
@@ -85,7 +107,7 @@ export function annualStockDividends(points: readonly StockAccountValuePoint[]):
 }
 
 /** Split account holdings by purchase source for the time-series chart. */
-export function stockShareHoldings(points: readonly StockAccountValuePoint[]): StockShareHoldingPoint[] {
+export function stockShareHoldings(points: readonly (StockAccountValuePoint | StockPortfolioPositionPoint)[]): StockShareHoldingPoint[] {
   return points.map(point => ({
     date: point.date,
     purchasedShares: point.purchasedShares,

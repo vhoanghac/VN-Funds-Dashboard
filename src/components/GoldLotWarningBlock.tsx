@@ -7,7 +7,7 @@
  * vàng miếng/nhẫn SJC ngoài đời chỉ bán theo lô cố định — nhỏ nhất là 0,5 chỉ
  * (1 lượng = 10 chỉ). Engine DCA hiện tại vẫn giả định vàng chia nhỏ được y
  * hệt quỹ mở (đơn giản hoá cần thiết để tái dùng chung logic mô phỏng), nên
- * nếu số tiền nạp mỗi kỳ/ban đầu thấp hơn giá 1 lô, kết quả mô phỏng sẽ lạc
+ * nếu số tiền đầu tư mỗi kỳ/ban đầu thấp hơn giá 1 lô, kết quả mô phỏng sẽ lạc
  * quan hơn thực tế — nhà đầu tư ngoài đời phải gộp nhiều kỳ mới đủ tiền mua.
  *
  * Giá vàng tăng theo thời gian, nên "không đủ tiền mua 1 lô" là một mốc thời
@@ -191,7 +191,7 @@ export function GoldLotWarningBlock({
             <>
               <strong>Mỗi kỳ đều đủ tiền mua vàng ngay</strong>
               <span className="dq-header-sub">
-                Số tiền nạp mỗi kỳ (và ban đầu, nếu có) vào phần vàng đều đủ mua ít nhất 1 lô 0,5 chỉ ngay trong kỳ đó.
+                Số tiền đầu tư mỗi kỳ (và ban đầu, nếu có) vào phần vàng đều đủ mua ít nhất 1 lô 0,5 chỉ ngay trong kỳ đó.
               </span>
             </>
           )}
@@ -227,7 +227,7 @@ export function GoldLotWarningBlock({
                   <ul className="dq-issue-list">
                     <li>
                       {iss.kind === 'periodic' ? (
-                        <>Mỗi kỳ nạp vào phần vàng của danh mục này là <strong>{formatVND(iss.contribution)}</strong>, thấp
+                        <>Mỗi kỳ đầu tư vào phần vàng của danh mục này là <strong>{formatVND(iss.contribution)}</strong>, thấp
                         hơn giá 1 lô 0,5 chỉ tại {fmtDate(iss.rangeEnd)} (khoảng{' '}
                         <strong>{formatVND(iss.lotPrice)}</strong>) — nghĩa là kỳ đó bạn chưa mua được vàng ngay.</>
                       ) : (

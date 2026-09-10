@@ -24,12 +24,12 @@ import { RollingReturnBlock } from './RollingReturnBlock'
 import { ProjectionBlock } from './ProjectionBlock'
 import { MonteCarloBlock } from './MonteCarloBlock'
 import { BankComparisonBlock } from './BankComparisonBlock'
-import { DCAGlossary } from './DCAGlossary'
 import { DcaBlock, DcaSectionPanel } from './DcaLayout'
+import { DcaAllocationBlock } from './DcaAllocationBlock'
 import { DataQualityBlock } from './DataQualityBlock'
 import { StockAnnualDividendsBlock } from './StockAnnualDividendsBlock'
 import { StockShareHoldingsBlock } from './StockShareHoldingsBlock'
-import { PortfolioCard, MAX_PORTFOLIOS, PORTFOLIO_COLORS } from './PortfolioCard'
+import { PortfolioCard, MAX_FUNDS_PER_PORTFOLIO, MAX_PORTFOLIOS, PORTFOLIO_COLORS } from './PortfolioCard'
 import { useCommittedRun } from '../hooks/useCommittedRun'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import { loadStockData, type PendingCorporateAction, type StockData } from '../data/stockData'
@@ -47,17 +47,13 @@ import {
   type DCAContributionPhase,
   type DCAFrequency,
 } from '../utils/dca'
-import type { Portfolio, PortfolioCardState, TransactionCostRates } from '../types'
+import type { Portfolio, PortfolioCardState, ReturnPoint, TransactionCostRates } from '../types'
 import { parsePortfolios } from '../utils/portfolio'
 import { saveLS } from '../utils/localStorage'
 import { avgDrawdown, annualizedStdevFromCumulative, longestDrawdownDays } from '../utils/drawdownStats'
-import {
-  generateStockContributions,
-  simulateStockAccountDca,
-  type CorporateAction,
-  type StockAccountDcaResult,
-} from '../utils/stockAccountDca'
-import { annualStockDividends, compactStockLedgerToMonthly, filterStockPrices, presentStockDcaResult, stockShareHoldings, type StockDcaPresentation } from '../utils/stockDcaPresentation'
+import { generateStockContributions, type CorporateAction } from '../utils/stockAccountDca'
+import { simulateStockPortfolioDca, type StockPortfolioDcaResult } from '../utils/stockPortfolioDca'
+import { annualStockDividends, filterStockPrices, presentStockPortfolioDcaResult, stockShareHoldings, type StockDcaPresentation } from '../utils/stockDcaPresentation'
 import { buildStockDcaUrl, type ShareUrlState, type StockDcaShareState } from '../utils/shareUrl'
 import { yearsBackDateRange } from '../utils/dateRange'
 
@@ -139,13 +135,16 @@ interface StockView {
   id: string
   name: string
   color: string
-  result: StockAccountDcaResult
+  result: StockPortfolioDcaResult
   presentation: StockDcaPresentation
+  /** TWRR khi bỏ toàn bộ phí giao dịch mô phỏng — dùng tách phần phí ăn mòn. */
+  grossCumulative: ReturnPoint[]
   prices: StockData['prices']
-  actions: CorporateAction[]
-  pendingActions: PendingCorporateAction[]
-  allPrices: StockData['prices']
-  allActions: CorporateAction[]
+  pricesByStock: Map<string, StockData['prices']>
+  actionsByStock: Map<string, CorporateAction[]>
+  pendingActionsByStock: Map<string, PendingCorporateAction[]>
+  allPricesByStock: Map<string, StockData['prices']>
+  allActionsByStock: Map<string, CorporateAction[]>
   params: StockRunParams
   portfolio: StockPortfolioState
 }
@@ -272,7 +271,11 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
 
   const scheduleError = cashflowScheduleError(phases)
   const dateRangeError = dateMode === 'all' && !!dateFrom && !!dateTo && dateFrom > dateTo
-  const portfolioError = portfolios.some(portfolio => portfolio.slots.length !== 1 || portfolio.slots[0]?.weight !== 100)
+  const portfolioError = portfolios.some(portfolio => {
+    const activeSlots = portfolio.slots.filter(slot => slot.fundId && slot.weight > 0)
+    const totalWeight = activeSlots.reduce((sum, slot) => sum + slot.weight, 0)
+    return activeSlots.length === 0 || Math.abs(totalWeight - 100) > 0.01 || new Set(activeSlots.map(slot => slot.fundId)).size !== activeSlots.length
+  })
   const committedRun = useCommittedRun<StockRunParams, StockSnapshot, StockRunResult>({
     ready: stockIds.length > 0 && (stockIds.every(stockId => stockData.has(stockId)) || !!loadError),
     valid: portfolios.length > 0 && !portfolioError && !scheduleError && !dateRangeError,
@@ -312,27 +315,45 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
 
       const views: StockView[] = []
       for (const [portfolioIndex, portfolio] of params.portfolios.entries()) {
-        const stockId = portfolio.slots[0]?.fundId
-        const data = stockId ? snapshot.data.get(stockId) : undefined
-        const prices = stockId
-          ? (filteredPricesByStock.get(stockId) ?? []).filter(point => point.date >= commonStart && point.date <= commonEnd)
-          : undefined
-        if (!data || !prices || portfolio.slots[0]?.weight !== 100) continue
+        const activeSlots = portfolio.slots.filter(slot => slot.fundId && slot.weight > 0)
+        if (activeSlots.length === 0) continue
+        const pricesByStock = new Map<string, StockData['prices']>()
+        const actionsByStock = new Map<string, CorporateAction[]>()
+        const pendingActionsByStock = new Map<string, PendingCorporateAction[]>()
+        for (const slot of activeSlots) {
+          const data = snapshot.data.get(slot.fundId)
+          const prices = filteredPricesByStock.get(slot.fundId)?.filter(point => point.date >= commonStart && point.date <= commonEnd)
+          if (!data || !prices || prices.length === 0) continue
+          pricesByStock.set(slot.fundId, prices)
+          const firstDate = prices[0]!.date
+          const lastDate = prices[prices.length - 1]!.date
+          actionsByStock.set(slot.fundId, data.corporateActions.filter(action => action.exDate >= firstDate && action.exDate <= lastDate))
+          pendingActionsByStock.set(slot.fundId, data.pendingCorporateActions.filter(action => action.exDate >= firstDate && action.exDate <= lastDate))
+        }
+        if (pricesByStock.size !== activeSlots.length) continue
+        const prices = commonStockPrices(pricesByStock)
         if (prices.length === 0) continue
-        const firstDate = prices[0]!.date
-        const lastDate = prices[prices.length - 1]!.date
-        const actions = data.corporateActions.filter(action => action.exDate >= firstDate && action.exDate <= lastDate)
-        const pendingActions = data.pendingCorporateActions.filter(action => action.exDate >= firstDate && action.exDate <= lastDate)
         const contributions = generateStockContributions(prices, {
           initialAmount: params.initialAmount,
           phases: params.phases,
           annualContributionIncreaseAmount: params.annualContributionIncreaseAmount,
         })
-        const result = simulateStockAccountDca({
-          prices,
+        const result = simulateStockPortfolioDca({
+          pricesByStock,
+          slots: activeSlots,
           contributions,
-          corporateActions: actions,
+          corporateActionsByStock: actionsByStock,
+          rebalFreq: portfolio.rebalFreq,
           transactionCostRates: portfolio.transactionCostRates,
+          lotSize: 100,
+        })
+        const grossResult = simulateStockPortfolioDca({
+          pricesByStock,
+          slots: activeSlots,
+          contributions,
+          corporateActionsByStock: actionsByStock,
+          rebalFreq: portfolio.rebalFreq,
+          transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 },
           lotSize: 100,
         })
         views.push({
@@ -340,12 +361,14 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
           name: portfolio.name,
           color: PORTFOLIO_COLORS[portfolioIndex % PORTFOLIO_COLORS.length] ?? STOCK_COLOR,
           result,
-          presentation: presentStockDcaResult(result),
+          presentation: presentStockPortfolioDcaResult(result),
+          grossCumulative: grossResult.twrrCumulative,
           prices,
-          actions,
-          pendingActions,
-          allPrices: data.prices,
-          allActions: data.corporateActions,
+          pricesByStock,
+          actionsByStock,
+          pendingActionsByStock,
+          allPricesByStock: new Map(activeSlots.map(slot => [slot.fundId, snapshot.data.get(slot.fundId)!.prices])),
+          allActionsByStock: new Map(activeSlots.map(slot => [slot.fundId, snapshot.data.get(slot.fundId)!.corporateActions])),
             params,
             portfolio,
           })
@@ -459,6 +482,24 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
     setPortfolios(current => current.map(portfolio => portfolio.id === id ? { ...portfolio, ...update } : portfolio))
   }
 
+  function addSlot(portfolioId: string) {
+    setPortfolios(current => current.map(portfolio => {
+      if (portfolio.id !== portfolioId || portfolio.slots.length >= MAX_FUNDS_PER_PORTFOLIO) return portfolio
+      const used = new Set(portfolio.slots.map(slot => slot.fundId))
+      const available = STOCK_OPTIONS.find(option => !used.has(option.id))
+      const slots = [...portfolio.slots, { fundId: available?.id ?? '', weight: 0 }]
+      return portfolio.isNameCustom ? { ...portfolio, slots } : { ...portfolio, slots, name: derivePortfolioName(slots, `Portfolio ${portfolio.num}`) }
+    }))
+  }
+
+  function removeSlot(portfolioId: string, index: number) {
+    setPortfolios(current => current.map(portfolio => {
+      if (portfolio.id !== portfolioId || portfolio.slots.length <= 1) return portfolio
+      const slots = portfolio.slots.filter((_, slotIndex) => slotIndex !== index)
+      return portfolio.isNameCustom ? { ...portfolio, slots } : { ...portfolio, slots, name: derivePortfolioName(slots, `Portfolio ${portfolio.num}`) }
+    }))
+  }
+
   function updateSlot(portfolioId: string, index: number, update: Partial<StockPortfolioState['slots'][number]>) {
     setPortfolios(current => current.map(portfolio => {
       if (portfolio.id !== portfolioId) return portfolio
@@ -469,7 +510,10 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
 
   function setEqualWeights(portfolioId: string) {
     setPortfolios(current => current.map(portfolio => portfolio.id === portfolioId
-      ? { ...portfolio, slots: portfolio.slots.map(slot => ({ ...slot, weight: 100 })) }
+      ? { ...portfolio, slots: portfolio.slots.map((slot, index, slots) => {
+        const baseWeight = Math.floor(100 / slots.length)
+        return { ...slot, weight: baseWeight + (index < 100 - baseWeight * slots.length ? 1 : 0) }
+      }) }
       : portfolio,
     ))
   }
@@ -589,14 +633,14 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
               funds={[]}
               fundOptions={STOCK_OPTIONS.map(option => ({ value: option.id, label: option.label }))}
               assetLabel="cổ phiếu"
-              maxSlots={STOCK_OPTIONS.length}
+              maxSlots={Math.min(STOCK_OPTIONS.length, MAX_FUNDS_PER_PORTFOLIO)}
                showRebal
                transactionCostRates={portfolio.transactionCostRates}
                onTransactionCostRatesChange={transactionCostRates => updatePortfolio(portfolio.id, { transactionCostRates })}
               onUpdate={update => updatePortfolio(portfolio.id, update)}
               onRemove={() => removePortfolio(portfolio.id)}
-              onAddSlot={() => undefined}
-              onRemoveSlot={() => undefined}
+              onAddSlot={() => addSlot(portfolio.id)}
+              onRemoveSlot={index => removeSlot(portfolio.id, index)}
               onUpdateSlot={(idx, update) => updateSlot(portfolio.id, idx, update)}
               onSetEqualWeights={() => setEqualWeights(portfolio.id)}
             />
@@ -651,6 +695,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const [activeSection, setActiveSection] = useState<StockSectionId>('summary')
   const [activePortfolioId, setActivePortfolioId] = useState(views[0]!.id)
   const [activeRiskPortfolioId, setActiveRiskPortfolioId] = useState('')
+  const [activeStockId, setActiveStockId] = useState('')
   useEffect(() => {
     setActivePortfolioId(current => views.some(view => view.id === current) ? current : views[0]!.id)
   }, [views])
@@ -664,8 +709,12 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const riskPortfolioId = activeRiskPortfolioId || views[0]?.id
   const riskView = views.find(candidate => candidate.id === riskPortfolioId) ?? views[0]!
   const { result } = view
-  const annualDividends = useMemo(() => annualStockDividends(result.points), [result.points])
-  const shareHoldings = useMemo(() => stockShareHoldings(result.points), [result.points])
+  const selectedPosition = result.positions.find(position => position.stockId === activeStockId) ?? result.positions[0]
+  useEffect(() => {
+    setActiveStockId(current => result.positions.some(position => position.stockId === current) ? current : result.positions[0]?.stockId ?? '')
+  }, [result.positions])
+  const annualDividends = useMemo(() => annualStockDividends(selectedPosition?.points ?? []), [selectedPosition])
+  const shareHoldings = useMemo(() => stockShareHoldings(selectedPosition?.points ?? []), [selectedPosition])
   const startDate = view.prices[0]!.date
   const endDate = view.prices[view.prices.length - 1]!.date
   const stats = useMemo(() => views.map(candidate => {
@@ -680,6 +729,8 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
        transactionCosts: candidateResult.totalTransactionCosts,
       cagr: investorCagr(candidatePresentation.cumulative, candidateResult.totalContributed, candidateResult.finalValue),
       mwrr: dcaMWRR(candidateResult.cashflows),
+      twrrNet: dcaCagr(candidatePresentation.cumulative),
+      twrrGross: dcaCagr(candidate.grossCumulative),
       maxDrawdown: candidatePresentation.storm.maxDrawdown,
       avgDrawdown: avgDrawdown(candidatePresentation.drawdown),
       longestDrawdownDays: longestDrawdownDays(candidatePresentation.drawdown),
@@ -698,10 +749,10 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   }), [views, endDate])
   const monteCarlo = useMemo(() => views.map((candidate, index) => ({ ...projection[index]!, cumulative: candidate.presentation.cumulative })), [views, projection])
   const recoveryPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, drawdown: candidate.presentation.drawdown })), [views])
-  const returnExplainerPortfolios = useMemo(() => stats.map(row => ({ id: row.id, name: row.name, color: row.color, cagr: row.cagr, mwrr: row.mwrr })), [stats])
+  const returnExplainerPortfolios = useMemo(() => stats.map(row => ({ id: row.id, name: row.name, color: row.color, cagr: row.cagr, twrr: row.twrrNet, mwrr: row.mwrr })), [stats])
   const riskReturnPainPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, finalValue: candidate.result.finalValue, totalInvested: candidate.result.totalContributed, maxDrawdown: candidate.presentation.storm.maxDrawdown * 100 })), [views])
   const riskHistoricalPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, cumulative: candidate.presentation.cumulative })), [views])
-  const drawdownPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, assetCount: 1, storm: candidate.presentation.storm, drawdown: candidate.presentation.drawdown, valueSeries: candidate.presentation.valueSeries })), [views])
+  const drawdownPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, assetCount: candidate.portfolio.slots.filter(slot => slot.weight > 0).length, storm: candidate.presentation.storm, drawdown: candidate.presentation.drawdown, valueSeries: candidate.presentation.valueSeries })), [views])
   const riskRollingPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, cumulative: candidate.presentation.cumulative })), [views])
   const bankComparisonResults = useMemo(() => views.map(candidate => ({
     id: candidate.id,
@@ -778,7 +829,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
             <MemoYearlyPerformanceChart series={yearly} title="Hiệu suất theo năm" assetLabel="cổ phiếu" />
             <EOYReturnsTable portfolios={journey} assetLabel="cổ phiếu" />
             <BankComparisonBlock results={bankComparisonResults} endDate={bankComparisonEndDate} assetLabel="cổ phiếu" />
-            <DcaReturnExplainer portfolios={returnExplainerPortfolios} />
+            <DcaReturnExplainer portfolios={returnExplainerPortfolios} assetLabel="cổ phiếu" />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="journey" active={activeSection === 'journey'}>
@@ -786,11 +837,28 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
               portfolios={selectedJourney}
               startDate={startDate}
               endDate={endDate}
-              details={<StockAccountDetails result={result} />}
+              details={<StockAccountDetails result={result} position={selectedPosition} />}
             />
+            {result.positions.length > 1 && (
+              <div className="dca-results-filter-toolbar" aria-label="Chọn cổ phiếu trong danh mục">
+                {result.positions.map(position => (
+                  <button
+                    key={position.stockId}
+                    className={`dca-results-filter-btn${selectedPosition?.stockId === position.stockId ? ' dca-results-filter-btn--active' : ''}`}
+                    aria-pressed={selectedPosition?.stockId === position.stockId}
+                    onClick={() => setActiveStockId(position.stockId)}
+                  >
+                    {position.stockId}
+                  </button>
+                ))}
+              </div>
+            )}
             <StockAnnualDividendsBlock data={annualDividends} />
             <StockShareHoldingsBlock points={shareHoldings} />
-            <StockCorporateActions actions={view.actions} pendingActions={view.pendingActions} />
+            <StockCorporateActions
+              actions={selectedPosition ? view.actionsByStock.get(selectedPosition.stockId) ?? [] : []}
+              pendingActions={selectedPosition ? view.pendingActionsByStock.get(selectedPosition.stockId) ?? [] : []}
+            />
             <StockLedger result={result} />
           </DcaSectionPanel>
 
@@ -822,20 +890,22 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
           </DcaSectionPanel>
         </div>
       </div>
-      <DCAGlossary assetLabel="cổ phiếu" />
     </>
   )
 })
 
-const StockAccountDetails = memo(function StockAccountDetails({ result }: { result: StockAccountDcaResult }) {
+const StockAccountDetails = memo(function StockAccountDetails({ result, position }: {
+  result: StockPortfolioDcaResult
+  position: StockPortfolioDcaResult['positions'][number] | undefined
+}) {
   return (
     <div className="stock-account-details">
       <div className="stock-account-details-title">Chi tiết tài khoản cuối kỳ</div>
       <div className="stock-account-details-grid">
-        <AccountDetail label="Số cổ phiếu cuối kỳ" value={formatShares(result.finalShares)} />
+        <AccountDetail label={position ? `Cổ phiếu ${position.stockId} cuối kỳ` : 'Số mã đang nắm giữ'} value={position ? formatShares(position.points[position.points.length - 1]?.shares ?? 0) : String(result.positions.length)} />
         <AccountDetail label="Tiền mặt còn lại" value={formatVND(result.finalCash)} />
-        <AccountDetail label="Cổ tức tiền mặt đã nhận (đã tái đầu tư)" value={formatVND(result.totalCashDividends)} />
-        <AccountDetail label="Cổ tức cổ phiếu" value={formatShares(result.totalStockDividendShares)} />
+        <AccountDetail label="Cổ tức tiền mặt đã nhận" value={formatVND(position?.totalCashDividends ?? result.totalCashDividends)} />
+        <AccountDetail label="Cổ tức bằng cổ phiếu" value={formatShares(position?.totalStockDividendShares ?? result.totalStockDividendShares)} />
       </div>
     </div>
   )
@@ -846,18 +916,18 @@ function AccountDetail({ label, value }: { label: string; value: string }) {
 }
 
 const StockAllocationBlock = memo(function StockAllocationBlock({ views }: { views: readonly StockView[] }) {
-  return (
-    <>
-      {views.map(view => {
-        const stockId = view.portfolio.slots[0]?.fundId ?? view.name
-        return (
-          <DcaBlock key={view.id} title={view.name} className="dca-allocation-block">
-            <p className="dca-allocation-single">100% {stockId}</p>
-          </DcaBlock>
-        )
-      })}
-    </>
-  )
+  return <DcaAllocationBlock assetLabel="cổ phiếu" portfolios={views.map(view => ({
+    id: view.id,
+    name: view.name,
+    assetValues: [
+      ...view.result.positions.map(position => ({
+        fundId: position.stockId,
+        values: position.points.map(point => ({ date: point.date, value: point.value })),
+      })),
+      { fundId: 'Tiền mặt', values: view.result.points.map(point => ({ date: point.date, value: point.cash })) },
+      { fundId: 'Tiền chờ nhận', values: view.result.points.map(point => ({ date: point.date, value: point.cashReceivables })) },
+    ],
+  }))} />
 })
 
 const StockCorporateActions = memo(function StockCorporateActions({ actions, pendingActions }: { actions: readonly CorporateAction[]; pendingActions: readonly PendingCorporateAction[] }) {
@@ -893,10 +963,14 @@ const StockCorporateActions = memo(function StockCorporateActions({ actions, pen
   )
 })
 
-const StockLedger = memo(function StockLedger({ result }: { result: StockAccountDcaResult }) {
+const StockLedger = memo(function StockLedger({ result }: { result: StockPortfolioDcaResult }) {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(0)
-  const monthlyPoints = useMemo(() => compactStockLedgerToMonthly(result.points), [result.points])
+  const monthlyPoints = useMemo(() => {
+    const lastPointByMonth = new Map<string, StockPortfolioDcaResult['points'][number]>()
+    for (const point of result.points) lastPointByMonth.set(point.date.slice(0, 7), point)
+    return Array.from(lastPointByMonth.values())
+  }, [result.points])
   const pageSize = 100
   const pageCount = Math.max(1, Math.ceil(monthlyPoints.length / pageSize))
   const visiblePoints = monthlyPoints.slice(page * pageSize, (page + 1) * pageSize)
@@ -912,7 +986,7 @@ const StockLedger = memo(function StockLedger({ result }: { result: StockAccount
         {open && (
           <>
             <div className="stock-account-table-wrap">
-              <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Giá</th><th>Cổ phiếu</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Giá trị tài khoản</th></tr></thead><tbody>{visiblePoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.price)}</td><td>{formatShares(point.shares)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables + point.pendingShares * point.price)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
+              <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Đã đầu tư</th><th>Giá trị danh mục</th></tr></thead><tbody>{visiblePoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables)}</td><td>{formatVND(point.contributed)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
             </div>
             {pageCount > 1 && (
               <div className="stock-ledger-pagination">
@@ -930,15 +1004,15 @@ const StockLedger = memo(function StockLedger({ result }: { result: StockAccount
 
 const StockEntryPointBlock = memo(function StockEntryPointBlock({ view }: { view: StockView }) {
   const rows = useMemo(() => {
-    const latest = view.allPrices[view.allPrices.length - 1]?.date
+    const latest = view.prices[view.prices.length - 1]?.date
     if (!latest) return []
     return [120, 60, 36, 12, 6].map(months => {
       const entryDate = subtractMonths(latest, months)
-      const prices = view.allPrices.filter(point => point.date >= entryDate)
-      if (prices.length === 0) return null
-      const actions = view.allActions.filter(action => action.exDate >= prices[0]!.date && action.exDate <= prices[prices.length - 1]!.date)
-      const sim = simulateStockAccountDca({ prices, contributions: [{ date: prices[0]!.date, amount: 100_000_000 }], corporateActions: actions, transactionCostRates: view.portfolio.transactionCostRates, lotSize: 100 })
-      return { months, entryDate: prices[0]!.date, value: sim.finalValue }
+      const pricesByStock = new Map(Array.from(view.allPricesByStock, ([stockId, prices]) => [stockId, prices.filter(point => point.date >= entryDate)]))
+      const startDate = firstCommonStockDate(pricesByStock)
+      if (!startDate) return null
+      const sim = simulateStockPortfolioVariant(view, pricesByStock, [{ date: startDate, amount: 100_000_000 }])
+      return { months, entryDate: startDate, value: sim.finalValue }
     }).filter((row): row is { months: number; entryDate: string; value: number } => row !== null)
   }, [view])
   if (rows.length === 0) return null
@@ -984,17 +1058,17 @@ const StockBehaviorBlock = memo(function StockBehaviorBlock({ view }: { view: St
           if (mode === 'stop' && isRed) { skippedCash += contribution.amount; return [] }
           return [{ ...contribution, amount: contribution.amount + (mode === 'boost' && isRed ? extraAmount : 0) }]
         })
-      return { result: simulateStockAccountDca({ prices: view.prices, contributions, corporateActions: view.actions, transactionCostRates: view.portfolio.transactionCostRates, lotSize: 100 }), skippedCash }
+      return { result: simulateStockPortfolioVariant(view, view.pricesByStock, contributions), skippedCash }
     }
     return { stop15: run(-0.15, 'stop'), stop25: run(-0.25, 'stop'), boost15: run(-0.15, 'boost'), boost25: run(-0.25, 'boost') }
   }, [extraAmount, view])
   const chartData = mergeScenarioPoints(baseline, scenarios.stop15.result, scenarios.stop25.result)
   const boostData = mergeScenarioPoints(baseline, scenarios.boost15.result, scenarios.boost25.result)
   const formatVND = formatStockAxisVND
-  return <DcaBlock title="Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?" className="dca-consist-block"><p className="dca-consist-sub">Đây là phép đối chứng bằng chính chuỗi giá cổ phiếu: so sánh đầu tư đều đặn với việc dừng nạp khi cổ phiếu nằm dưới đỉnh 15% hoặc 25%. Phí, lô mua, tiền mặt và corporate actions vẫn chạy qua engine sổ tài khoản.</p><ResponsiveContainer width="100%" height={240}><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} /><XAxis dataKey="date" tickFormatter={value => value.slice(0, 7)} minTickGap={40} /><YAxis tickFormatter={value => formatVND(value)} width={70} /><Tooltip labelFormatter={value => formatDate(String(value))} formatter={(value: number, key: string) => [formatVND(value), scenarioLabel(key)]} /><Line dataKey="base" name="base" stroke="#111827" strokeWidth={2} dot={false} isAnimationActive={false} /><Line dataKey="stop15" name="stop15" stroke="#f97316" strokeDasharray="4 2" dot={false} isAnimationActive={false} /><Line dataKey="stop25" name="stop25" stroke="#dc2626" strokeDasharray="2 2" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer><ScenarioTable rows={[['Đầu tư đều đặn', baseline, 0], ['Dừng khi -15%', scenarios.stop15.result, scenarios.stop15.skippedCash], ['Dừng khi -25%', scenarios.stop25.result, scenarios.stop25.skippedCash]]} /><h4 className="dca-consist-subtitle">Ngược lại, nếu bạn tăng tiền khi thấy đỏ?</h4><div className="dca-consist-boost-control"><label>Tăng thêm mỗi lần đầu tư khi giảm sâu</label><div className="dca-amount-input"><MoneyInput value={extraAmount} onChange={setExtraAmount} min={0} /><span className="dca-currency">₫</span></div></div><ResponsiveContainer width="100%" height={240}><LineChart data={boostData}><CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} /><XAxis dataKey="date" tickFormatter={value => value.slice(0, 7)} minTickGap={40} /><YAxis tickFormatter={value => formatVND(value)} width={70} /><Tooltip labelFormatter={value => formatDate(String(value))} formatter={(value: number, key: string) => [formatVND(value), scenarioLabel(key)]} /><Line dataKey="base" name="base" stroke="#111827" strokeWidth={2} dot={false} isAnimationActive={false} /><Line dataKey="boost15" name="boost15" stroke="#0891b2" strokeDasharray="4 2" dot={false} isAnimationActive={false} /><Line dataKey="boost25" name="boost25" stroke="#7c3aed" strokeDasharray="2 2" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer><ScenarioTable rows={[['Đầu tư đều đặn', baseline, 0], ['Tăng thêm khi -15%', scenarios.boost15.result, 0], ['Tăng thêm khi -25%', scenarios.boost25.result, 0]]} /></DcaBlock>
+  return <DcaBlock title="Nếu bạn hoảng loạn dừng đầu tư khi thấy đỏ?" className="dca-consist-block"><p className="dca-consist-sub">Đây là phép đối chứng bằng chính chuỗi giá cổ phiếu: so sánh đầu tư đều đặn với việc dừng đầu tư khi cổ phiếu nằm dưới đỉnh 15% hoặc 25%. Phí, lô mua, tiền mặt và corporate actions vẫn chạy qua engine sổ tài khoản.</p><ResponsiveContainer width="100%" height={240}><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} /><XAxis dataKey="date" tickFormatter={value => value.slice(0, 7)} minTickGap={40} /><YAxis tickFormatter={value => formatVND(value)} width={70} /><Tooltip labelFormatter={value => formatDate(String(value))} formatter={(value: number, key: string) => [formatVND(value), scenarioLabel(key)]} /><Line dataKey="base" name="base" stroke="#111827" strokeWidth={2} dot={false} isAnimationActive={false} /><Line dataKey="stop15" name="stop15" stroke="#f97316" strokeDasharray="4 2" dot={false} isAnimationActive={false} /><Line dataKey="stop25" name="stop25" stroke="#dc2626" strokeDasharray="2 2" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer><ScenarioTable rows={[['Đầu tư đều đặn', baseline, 0], ['Dừng khi -15%', scenarios.stop15.result, scenarios.stop15.skippedCash], ['Dừng khi -25%', scenarios.stop25.result, scenarios.stop25.skippedCash]]} /><h4 className="dca-consist-subtitle">Ngược lại, nếu bạn tăng tiền khi thấy đỏ?</h4><div className="dca-consist-boost-control"><label>Tăng thêm mỗi lần đầu tư khi giảm sâu</label><div className="dca-amount-input"><MoneyInput value={extraAmount} onChange={setExtraAmount} min={0} /><span className="dca-currency">₫</span></div></div><ResponsiveContainer width="100%" height={240}><LineChart data={boostData}><CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} /><XAxis dataKey="date" tickFormatter={value => value.slice(0, 7)} minTickGap={40} /><YAxis tickFormatter={value => formatVND(value)} width={70} /><Tooltip labelFormatter={value => formatDate(String(value))} formatter={(value: number, key: string) => [formatVND(value), scenarioLabel(key)]} /><Line dataKey="base" name="base" stroke="#111827" strokeWidth={2} dot={false} isAnimationActive={false} /><Line dataKey="boost15" name="boost15" stroke="#0891b2" strokeDasharray="4 2" dot={false} isAnimationActive={false} /><Line dataKey="boost25" name="boost25" stroke="#7c3aed" strokeDasharray="2 2" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer><ScenarioTable rows={[['Đầu tư đều đặn', baseline, 0], ['Tăng thêm khi -15%', scenarios.boost15.result, 0], ['Tăng thêm khi -25%', scenarios.boost25.result, 0]]} /></DcaBlock>
 })
 
-function ScenarioTable({ rows }: { rows: [string, StockAccountDcaResult, number][] }) {
+function ScenarioTable({ rows }: { rows: [string, StockPortfolioDcaResult, number][] }) {
   const baseline = rows[0]?.[1]
   const isBoost = rows.some(([label]) => label.startsWith('Tăng'))
   return (
@@ -1014,7 +1088,7 @@ function ScenarioTable({ rows }: { rows: [string, StockAccountDcaResult, number]
           <thead>
             <tr>
               <th>Kịch bản</th><th>Đã đầu tư</th><th>Giá trị cuối</th><th>Lời ròng</th><th>% Lợi nhuận</th><th>MWRR</th>
-              {!isBoost && <><th>Tiền chưa nạp</th><th>Chi phí cơ hội</th></>}
+              {!isBoost && <><th>Tiền chưa đầu tư</th><th>Chi phí cơ hội</th></>}
             </tr>
           </thead>
           <tbody>
@@ -1044,10 +1118,56 @@ function StockLegendItem({ color, dash, label }: { color: string; dash?: string;
   return <div className="dca-consist-legend-item"><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke={color} strokeWidth="2" strokeDasharray={dash || undefined} /></svg><span>{label}</span></div>
 }
 
-function mergeScenarioPoints(base: StockAccountDcaResult, first: StockAccountDcaResult, second: StockAccountDcaResult) {
+function mergeScenarioPoints(base: StockPortfolioDcaResult, first: StockPortfolioDcaResult, second: StockPortfolioDcaResult) {
   const firstMap = new Map(first.points.map(point => [point.date, point.value]))
   const secondMap = new Map(second.points.map(point => [point.date, point.value]))
   return base.points.map(point => ({ date: point.date, base: point.value, stop15: firstMap.get(point.date), stop25: secondMap.get(point.date), boost15: firstMap.get(point.date), boost25: secondMap.get(point.date) }))
+}
+
+function firstCommonStockDate(pricesByStock: ReadonlyMap<string, readonly { date: string }[]>): string | null {
+  const sources = Array.from(pricesByStock.values())
+  if (sources.length === 0 || sources.some(prices => prices.length === 0)) return null
+  const common = new Set(sources[0]!.map(point => point.date))
+  for (const prices of sources.slice(1)) {
+    const dates = new Set(prices.map(point => point.date))
+    for (const date of Array.from(common)) if (!dates.has(date)) common.delete(date)
+  }
+  return Array.from(common).sort()[0] ?? null
+}
+
+function commonStockPrices(pricesByStock: ReadonlyMap<string, StockData['prices']>): StockData['prices'] {
+  const sources = Array.from(pricesByStock.values())
+  const first = sources[0]
+  if (!first || sources.some(prices => prices.length === 0)) return []
+  const commonDates = new Set(first.map(point => point.date))
+  for (const prices of sources.slice(1)) {
+    const dates = new Set(prices.map(point => point.date))
+    for (const date of Array.from(commonDates)) if (!dates.has(date)) commonDates.delete(date)
+  }
+  return first.filter(point => commonDates.has(point.date))
+}
+
+function simulateStockPortfolioVariant(
+  view: StockView,
+  pricesByStock: Map<string, StockData['prices']>,
+  contributions: { date: string; amount: number }[],
+): StockPortfolioDcaResult {
+  const actionsByStock = new Map<string, CorporateAction[]>()
+  for (const [stockId, prices] of pricesByStock) {
+    const firstDate = prices[0]?.date
+    const lastDate = prices[prices.length - 1]?.date
+    if (!firstDate || !lastDate) continue
+    actionsByStock.set(stockId, (view.allActionsByStock.get(stockId) ?? []).filter(action => action.exDate >= firstDate && action.exDate <= lastDate))
+  }
+  return simulateStockPortfolioDca({
+    pricesByStock,
+    slots: view.portfolio.slots.filter(slot => slot.fundId && slot.weight > 0),
+    contributions,
+    corporateActionsByStock: actionsByStock,
+    rebalFreq: view.portfolio.rebalFreq,
+    transactionCostRates: view.portfolio.transactionCostRates,
+    lotSize: 100,
+  })
 }
 
 function scenarioLabel(key: string): string {

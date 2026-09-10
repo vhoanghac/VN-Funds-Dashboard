@@ -6,7 +6,7 @@
  * theo thời gian. Đường đi lên = A đang tăng nhanh hơn (hoặc giảm chậm
  * hơn) B trong giai đoạn đó, kể cả khi cả hai cùng tăng hay cùng giảm.
  *
- * Tỷ số này so sánh công bằng vì mọi danh mục trong tab DCA đều nạp
+ * Tỷ số này so sánh công bằng vì mọi danh mục trong tab DCA đều đầu tư
  * cùng dòng tiền vào cùng ngày trên cùng lưới ngày giao dịch.
  */
 import { useState, useMemo, useRef, memo } from 'react'

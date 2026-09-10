@@ -216,7 +216,7 @@ function MarketDrawdownChart({ portfolios, assetLabel }: { portfolios: StormPort
     <DcaBlock title={`Giá ${assetLabel} sập bao nhiêu?`} className="dca-storm-chart">
       <div className="dca-storm-chart-sub">
         Khoảng cách từ đỉnh giá {assetLabel}. Đây là "bão thị trường thật", đo bằng TWRR
-        nên đã loại ảnh hưởng của việc bạn nạp tiền đều đặn.
+        nên đã loại ảnh hưởng của việc bạn đầu tư đều đặn.
       </div>
       {renderUnderwaterChart(data, portfolios, floorPct, 'mkt')}
     </DcaBlock>
@@ -227,7 +227,7 @@ function MarketDrawdownChart({ portfolios, assetLabel }: { portfolios: StormPort
  * AccountDrawdownChart: DD của số dư tài khoản (value/peak).
  *
  * Đây là thứ user nhìn thấy thực tế: "số dư có lúc nào thấp hơn đỉnh bao nhiêu".
- * Con số này thường NÔNG hơn DD giá quỹ vì khi giá sập bạn vẫn nạp tiền, kéo peak
+ * Con số này thường NÔNG hơn DD giá quỹ vì khi giá sập bạn vẫn đầu tư, kéo peak
  * của số dư lên chậm hơn. Khoảng chênh = phần DCA "cứu vớt" được.
  */
 function AccountDrawdownChart({
@@ -287,7 +287,7 @@ function AccountDrawdownChart({
            Giá {assetLabel} sập <strong>-{marketDDPct.toFixed(1)}%</strong>, nhưng số dư tài khoản
           lúc tệ nhất chỉ <strong>-{accountDDPct.toFixed(1)}%</strong>. Khoảng chênh{' '}
           <strong>{softenedBy.toFixed(1)} điểm %</strong> là phần DCA cứu vớt: mỗi lần bạn
-          nạp thêm tiền giữa bão, peak số dư được kéo lên chậm, đáy cũng không sập sâu như
+          đầu tư thêm tiền giữa bão, peak số dư được kéo lên chậm, đáy cũng không sập sâu như
            giá {assetLabel}.
         </div>
       )}

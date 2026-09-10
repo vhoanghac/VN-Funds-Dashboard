@@ -1,5 +1,15 @@
 const ENTRIES = [
   {
+    version: 'v4.7',
+    date: '10/09/2026',
+    items: [
+      'Đưa tab DCA quỹ và DCA cổ phiếu về cùng một cách tính TWRR: tiền nạp và tiền rút tách khỏi lợi nhuận, còn phí mua, phí bán, thuế và chênh lệch giá mua-bán trừ thẳng vào lợi nhuận ngay khi phát sinh.',
+      'Không quy lợi nhuận ra %/năm khi kỳ mô phỏng chưa đủ 1 năm. Bảng thống kê để trống ô đó thay vì nội suy từ vài tháng.',
+      'Bảng thống kê tách "TWRR sau phí" và "TWRR trước phí" để thấy phần phí ăn mòn theo thời gian.',
+      'Gộp mục "Giải Thích Khái Niệm" vào mục "Vì sao có 3 con số lợi nhuận khác nhau" ở tab DCA quỹ và DCA cổ phiếu. Một khối duy nhất nói cả CAGR, TWRR, MWRR, kèm định nghĩa, công thức và ví dụ cây giống.',
+    ],
+  },
+  {
     version: 'v4.6',
     date: '09/09/2026',
     items: [

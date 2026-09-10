@@ -5,7 +5,7 @@
  * Multi portfolio: xếp hạng các danh mục theo giá trị cuối kỳ.
  *
  * Mental model: retail VN không quen tách net profit khỏi total value. Hero
- * phải kể: "đã nạp X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
+ * phải kể: "đã đầu tư X, giờ có Y, lời ròng Z, đó bằng cái gì trong đời thực".
  */
 import { Fragment, memo, type ReactNode } from 'react'
 import { formatVND } from '../utils/vndFormat'
@@ -20,7 +20,7 @@ export interface JourneyPortfolio {
   finalValue: number
   /** Giá trị danh mục theo thời gian (đã gồm cashflow) — dùng để tính MWRR từng năm */
   valueSeries: { date: string; value: number }[]
-  /** Toàn bộ cashflows (âm = nạp tiền) — dùng để tính MWRR từng năm */
+  /** Toàn bộ cashflows (âm = đầu tư) — dùng để tính MWRR từng năm */
   cashflows: { date: string; amount: number }[]
 }
 
@@ -80,7 +80,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate, details }: Props)
   return (
     <DcaBlock>
       <div className="dca-journey-headline">
-        Cùng một lịch nạp tiền, cùng trải qua <strong>{period}</strong>, nhưng
+        Cùng một lịch đầu tư, cùng trải qua <strong>{period}</strong>, nhưng
         {' '}<strong>{portfolios.length} danh mục</strong> lại cho kết quả rất khác nhau.
       </div>
 
@@ -97,7 +97,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate, details }: Props)
               </div>
               <div className="dca-journey-card-value">{formatVND(p.finalValue)}</div>
               <div className="dca-journey-card-sub">
-                Nạp {formatVND(p.totalInvested)}, lời
+                Đầu tư {formatVND(p.totalInvested)}, lời
                 {' '}<span className={netProfit >= 0 ? 'dca-journey-pos' : 'dca-journey-neg'}>
                   {netProfit >= 0 ? '+' : ''}{formatVND(netProfit)} ({netProfit >= 0 ? '+' : ''}{profitPct.toFixed(1)}%)
                 </span>
@@ -116,14 +116,14 @@ export const DcaJourneyBlock = memo(DcaJourneyBlockImpl)
 
 /**
  * EOYReturnsTable: hiệu suất DANH MỤC CỦA NHÀ ĐẦU TƯ từng năm (End-of-Year Returns),
- * tính bằng Modified Dietz method (money-weighted, có tính dòng tiền nạp).
+ * tính bằng Modified Dietz method (money-weighted, có tính dòng tiền đầu tư).
  *
  * Khác với TWRR (dcaYearlyReturns, đo hiệu suất bản thân quỹ như thể đầu tư
- * 1 lần từ đầu, bất kể bạn nạp bao nhiêu/khi nào), Modified Dietz đo đúng
- * trải nghiệm DCA thực tế: tiền nạp sớm trong năm được tính trọng số cao hơn
- * (nhiều thời gian sinh lời), tiền nạp cuối năm gần như chưa kịp sinh lời.
+ * 1 lần từ đầu, bất kể bạn đầu tư bao nhiêu/khi nào), Modified Dietz đo đúng
+ * trải nghiệm DCA thực tế: tiền đầu tư sớm trong năm được tính trọng số cao hơn
+ * (nhiều thời gian sinh lời), tiền đầu tư cuối năm gần như chưa kịp sinh lời.
  * Đây là công thức chuẩn GIPS, không cần giải lặp nên luôn ổn định dù mỗi
- * năm chỉ có ~12 lần nạp tiền.
+ * năm chỉ có ~12 lần đầu tư.
  */
 function EOYReturnsTableImpl({ portfolios, assetLabel = 'quỹ' }: { portfolios: JourneyPortfolio[]; assetLabel?: string }) {
   const perPortfolio = portfolios.map(p => ({
@@ -146,13 +146,13 @@ function EOYReturnsTableImpl({ portfolios, assetLabel = 'quỹ' }: { portfolios:
   return (
     <DcaBlock title="Hiệu suất danh mục của bạn từng năm" className="dca-eoy-block">
       <p className="dca-eoy-explainer">
-        Bảng này tính hiệu suất <strong>có tính đến dòng tiền bạn thực sự nạp</strong>
+        Bảng này tính hiệu suất <strong>có tính đến dòng tiền bạn thực sự đầu tư</strong>
         {' '}(Modified Dietz method), không phải hiệu suất "nếu đầu tư 1 lần từ đầu"
-        của bản thân {assetLabel}. Tiền nạp càng sớm trong năm càng được tính trọng số cao
-        (có nhiều thời gian sinh lời hơn), tiền nạp cuối năm gần như chưa kịp sinh
+        của bản thân {assetLabel}. Tiền đầu tư càng sớm trong năm càng được tính trọng số cao
+        (có nhiều thời gian sinh lời hơn), tiền đầu tư cuối năm gần như chưa kịp sinh
         lời. Nhờ vậy con số này phản ánh đúng trải nghiệm DCA thực tế của bạn, thay
         vì chỉ đo giá {assetLabel} tăng/giảm bao nhiêu. Cột "Giá trị" là số dư danh mục tại
-        điểm cuối năm đó (đã gồm mọi lần nạp tính đến lúc đó).
+        điểm cuối năm đó (đã gồm mọi lần đầu tư tính đến lúc đó).
       </p>
       <div className="dca-eoy-table-scroll">
         <table className="dca-eoy-table">
