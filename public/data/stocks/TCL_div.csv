@@ -1,0 +1,26 @@
+kind,ex_date,record_date,pay_date,last_date,settlement_date,amount_per_share,tax_rate,shares_per_share,rights_per_share,subscription_price,choice,funding,source
+cash_dividend,2007-12-31,2007-12-31,2007-12-31,,,2200,0.05,,,,,,VCI event 6708f3db0ec61045ab7fa491
+cash_dividend,2008-12-31,2008-12-31,2008-12-31,,,2500,0.05,,,,,,VCI event 6708f3db0ec61045ab7fa492
+cash_dividend,2010-01-18,2010-01-20,2010-02-04,,,2500,0.05,,,,,,VCI event 6708f3db0ec61045ab7fa4a4
+stock_dividend,2010-11-18,2010-11-22,2011-01-12,,,,,0.1,,,,,VCI event 6708f3ed0ec61045ab7fe56a
+cash_dividend,2011-01-06,2011-01-10,2011-01-24,,,2000,0.05,,,,,,VCI event 6708f3dc0ec61045ab7fa74f
+rights_issue,2011-08-10,2011-08-12,,2011-12-26,2011-12-26,,,,0.12,10000,exercise,external,VCI event 6708f3ee0ec61045ab7fe93c; price assumption
+cash_dividend,2012-02-24,2012-02-28,2012-03-21,,,1800,0.05,,,,,,VCI event 6708f3dd0ec61045ab7faac9
+cash_dividend,2012-11-30,2012-12-04,2012-12-18,,,1800,0.05,,,,,,VCI event 6708f3de0ec61045ab7fad3f
+cash_dividend,2014-02-26,2014-02-28,2014-03-20,,,1800,0.05,,,,,,VCI event 6708f3df0ec61045ab7fb0e3
+cash_dividend,2015-03-18,2015-03-20,2015-04-10,,,1800,0.05,,,,,,VCI event 6708f3df0ec61045ab7fb3ec
+cash_dividend,2016-03-09,2016-03-10,2016-04-20,,,1500,0.05,,,,,,VCI event 6708f3e10ec61045ab7fb7fc
+cash_dividend,2017-03-27,2017-03-28,2017-04-20,,,1500,0.05,,,,,,VCI event 6708f3e20ec61045ab7fbce2
+cash_dividend,2018-05-14,2018-05-15,2018-05-25,,,1800,0.05,,,,,,VCI event 6708f3e30ec61045ab7fc2c8
+cash_dividend,2019-03-15,2019-03-18,2019-04-05,,,1800,0.05,,,,,,VCI event 6708f3e50ec61045ab7fc74f
+cash_dividend,2019-09-30,2019-10-01,2019-10-10,,,200,0.05,,,,,,VCI event 6708f3e60ec61045ab7fca8f
+stock_dividend,2019-12-30,2019-12-31,2020-02-14,,,,,0.44,,,,,VCI event 6708f3f40ec61045ab7ffd2e
+cash_dividend,2020-03-24,2020-03-25,2020-04-29,,,2000,0.05,,,,,,VCI event 6708f3e60ec61045ab7fcc1f
+cash_dividend,2020-06-26,2020-06-29,2020-07-24,,,2000,0.05,,,,,,VCI event 6708f3e60ec61045ab7fcd25
+cash_dividend,2020-10-27,2020-10-28,2020-11-12,,,3000,0.05,,,,,,VCI event 6708f3e70ec61045ab7fcf41
+cash_dividend,2021-07-15,2021-07-16,2021-08-10,,,5000,0.05,,,,,,VCI event 6708f3e80ec61045ab7fd299
+cash_dividend,2022-08-29,2022-08-30,2022-09-20,,,4200,0.05,,,,,,VCI event 6708f3e90ec61045ab7fd773
+cash_dividend,2023-08-14,2023-08-15,2023-10-25,,,2231,0.05,,,,,,VCI event 6708f3ea0ec61045ab7fdb49
+cash_dividend,2024-06-19,2024-06-20,2024-07-25,,,2326,0.05,,,,,,VCI event 6708f3eb0ec61045ab7fde9a
+cash_dividend,2025-04-21,2025-04-22,2025-05-22,,,2364,0.05,,,,,,VCI event 67fda753d2606e49d1e15fa5
+cash_dividend,2026-05-19,2026-05-20,2026-07-17,,,2500,0.05,,,,,,VCI event 69fa8a04db487120c698f1f1
