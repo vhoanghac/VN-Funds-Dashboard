@@ -7,8 +7,6 @@ const ENTRIES = [
       'Không quy lợi nhuận ra %/năm khi kỳ mô phỏng chưa đủ 1 năm. Bảng thống kê để trống ô đó thay vì nội suy từ vài tháng.',
       'Bảng thống kê tách "TWRR sau phí" và "TWRR trước phí" để thấy phần phí ăn mòn theo thời gian.',
       'Gộp mục "Giải Thích Khái Niệm" vào mục "Vì sao có 3 con số lợi nhuận khác nhau" ở tab DCA quỹ và DCA cổ phiếu. Một khối duy nhất nói cả CAGR, TWRR, MWRR, kèm định nghĩa, công thức và ví dụ cây giống.',
-      'Tab DCA cổ phiếu: cổ tức tiền và tiền bán quyền của mã nào giờ ở lại mã đó, tái đầu tư vào chính mã. Trước đây dashboard chia cổ tức cho mọi mã theo tỷ trọng. Tiền nạp vẫn chia theo tỷ trọng danh mục. Tiền thực hiện quyền mua tính là vốn bạn bỏ thêm từ ngoài, nên kết quả mô phỏng sẽ khác trước.',
-      'Tab DCA cổ phiếu: khối "Chi tiết khoản đầu tư" của từng mã tạm ẩn Lợi nhuận và %. Mẫu số cũ còn gộp cổ tức tái đầu tư nên con số dễ gây hiểu nhầm. Khối này sẽ có lại khi dashboard tách được vốn bạn bỏ vào riêng từng mã.',
     ],
   },
   {
