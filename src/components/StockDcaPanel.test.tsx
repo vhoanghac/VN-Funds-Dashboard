@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { formatStockAxisVND, StockDcaPanel } from './StockDcaPanel'
 import type { Portfolio } from '../types'
@@ -527,5 +527,117 @@ describe('StockDcaPanel', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Phân bổ' }))
     expect(screen.getAllByText('ACB').length).toBeGreaterThan(0)
     expect(screen.getAllByText('BID').length).toBeGreaterThan(0)
+  })
+
+  it('defaults the dividend section to "Tất cả" and hides per-stock blocks until a stock is picked', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB'])} />)
+    await waitFor(() => expect(screen.getByTitle('Thêm cổ phiếu')).toBeEnabled())
+    await userEvent.setup().click(screen.getByTitle('Thêm cổ phiếu'))
+    await userEvent.setup().click(screen.getByTitle('Chia đều tỷ trọng'))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
+    const stockToolbar = screen.getByLabelText('Chọn cổ phiếu trong danh mục')
+    expect(within(stockToolbar).getByRole('button', { name: 'Tất cả' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { name: 'Cổ tức hằng năm' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Số lượng cổ phiếu nắm giữ theo thời gian' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Chi tiết khoản đầu tư' })).not.toBeInTheDocument()
+    expect(document.querySelector('.stock-position-dividends-block')).toBeNull()
+    // Chi tiết tài khoản cuối kỳ luôn là bản tổng của cả danh mục.
+    expect(screen.getByText('Số mã đang nắm giữ')).toBeInTheDocument()
+    // Sổ tài khoản ở "Tất cả" là sổ chung của danh mục.
+    await userEvent.setup().click(screen.getByText(/Hiện theo tháng/))
+    expect(screen.getByRole('columnheader', { name: 'Tiền mặt' })).toBeInTheDocument()
+
+    await userEvent.setup().click(within(stockToolbar).getByRole('button', { name: 'ACB' }))
+    expect(within(stockToolbar).getByRole('button', { name: 'ACB' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { name: 'Số lượng cổ phiếu nắm giữ theo thời gian' })).toBeInTheDocument()
+    const dividendsBlock = screen.getByRole('heading', { name: 'Chi tiết khoản đầu tư' }).closest('.stock-position-dividends-block') as HTMLElement
+    expect(within(dividendsBlock).getByText('Giá trị hiện tại')).toBeInTheDocument()
+    expect(within(dividendsBlock).getByText('Số cổ phiếu')).toBeInTheDocument()
+    expect(within(dividendsBlock).getByText('Tổng tiền đã giải ngân')).toBeInTheDocument()
+    const investedStat = within(dividendsBlock).getByText('Tổng tiền đã giải ngân').closest('.dca-journey-stat') as HTMLElement
+    expect(investedStat.querySelector('.chart-tooltip-icon')?.getAttribute('title')).toMatch(/tái cân bằng/i)
+    // Lợi nhuận/% tạm ẩn tới khi có externalCapital + TWRR theo mã.
+    expect(within(dividendsBlock).queryByText('Lợi nhuận')).not.toBeInTheDocument()
+    expect(within(dividendsBlock).getByText('Cổ tức tiền mặt đã nhận')).toBeInTheDocument()
+    expect(within(dividendsBlock).getByText('Cổ tức bằng cổ phiếu đã nhận')).toBeInTheDocument()
+    expect(screen.getByText('Số mã đang nắm giữ')).toBeInTheDocument()
+    expect(screen.queryByText('Cổ phiếu ACB cuối kỳ')).not.toBeInTheDocument()
+    // Sổ tài khoản đổi sang sổ riêng của mã.
+    expect(screen.queryByRole('columnheader', { name: 'Tiền mặt' })).not.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Tổng cổ phiếu' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Đã đầu tư' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Giá trị cổ phiếu' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Cổ tức tiền đã nhận' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Cổ tức cổ phiếu đã nhận' })).toBeInTheDocument()
+  })
+
+  it('resets the stock-dividend unit per scope and blocks share mode for "Tất cả"', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB'])} />)
+    await waitFor(() => expect(screen.getByTitle('Thêm cổ phiếu')).toBeEnabled())
+    await userEvent.setup().click(screen.getByTitle('Thêm cổ phiếu'))
+    await userEvent.setup().click(screen.getByTitle('Chia đều tỷ trọng'))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
+    const stockToolbar = screen.getByLabelText('Chọn cổ phiếu trong danh mục')
+    const unitToggle = screen.getByRole('group', { name: 'Đơn vị chart cổ tức bằng cổ phiếu' })
+    const sharesBtn = within(unitToggle).getByRole('button', { name: 'Số cổ phiếu' })
+    const valueBtn = within(unitToggle).getByRole('button', { name: 'Giá trị tham chiếu' })
+
+    // "Tất cả" mặc định "Giá trị tham chiếu", nút "Số cổ phiếu" bị khoá.
+    expect(valueBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(sharesBtn).toHaveAttribute('aria-pressed', 'false')
+    expect(sharesBtn).toBeDisabled()
+
+    // Chọn một mã thì bật lại "Số cổ phiếu" và tự chuyển về shares.
+    await userEvent.setup().click(within(stockToolbar).getByRole('button', { name: 'BID' }))
+    expect(sharesBtn).toBeEnabled()
+    expect(sharesBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(valueBtn).toHaveAttribute('aria-pressed', 'false')
+
+    // Đổi tay sang value rồi đổi scope phải reset về default của scope mới.
+    await userEvent.setup().click(valueBtn)
+    expect(valueBtn).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.setup().click(within(stockToolbar).getByRole('button', { name: 'Tất cả' }))
+    expect(valueBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(sharesBtn).toBeDisabled()
+    await userEvent.setup().click(within(stockToolbar).getByRole('button', { name: 'ACB' }))
+    expect(sharesBtn).toBeEnabled()
+    expect(sharesBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(valueBtn).toHaveAttribute('aria-pressed', 'false')
   })
 })

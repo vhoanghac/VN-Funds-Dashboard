@@ -12,6 +12,10 @@ export interface StockPortfolioPositionPoint {
   pendingSubscriptionPayable: number
   cashDividends: number
   stockDividendShares: number
+  /** Tiền mặt ròng đã bỏ vào mã: cộng tiền mua và quyền mua, trừ tiền thu về khi bán. */
+  investedCash: number
+  /** Tiền đã chia cho mã theo tỷ trọng nhưng chưa mua được lô nào, còn để dành cho mã. */
+  reservedCash: number
   value: number
 }
 
@@ -72,6 +76,8 @@ interface Position {
   cashReceivables: number
   cashDividends: number
   stockDividendShares: number
+  investedCash: number
+  reserved: number
   actions: ActionState[]
   points: StockPortfolioPositionPoint[]
 }
@@ -89,18 +95,19 @@ interface Settlement {
   cash: number
   cashDividend: number
   stockDividendShares: number
-  accountRightsPayable: number
   externalRightsPayable: number
 }
 
 /**
- * Account DCA for a stock portfolio. Cash belongs to the portfolio, while every
- * stock retains its own share balance and corporate-action entitlement history.
+ * Account DCA for a stock portfolio. New cash is split across stocks by target
+ * weight into per-stock reserves. Each stock buys lots from its own reserve and
+ * keeps the unspent part; only a rebalance pulls weights back to target.
  */
 export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockPortfolioDcaResult {
   const slots = normalizeSlots(input.slots)
   const rates = normalizeTransactionCostRates(input.transactionCostRates, { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 })
-  const lotSize = input.lotSize ?? 100
+  // Thị trường VN cho mua lô lẻ nên mặc định mua từng cổ phiếu, đầu tư hết tiền.
+  const lotSize = input.lotSize ?? 1
   if (!Number.isInteger(lotSize) || lotSize <= 0) throw new Error(`Invalid lotSize: ${lotSize}`)
   if (slots.length === 0) return emptyResult()
 
@@ -116,6 +123,7 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
   }
 
   const positions = slots.map(slot => makePosition(slot.fundId, input.corporateActionsByStock?.get(slot.fundId) ?? []))
+  const weights = slots.map(slot => slot.weight)
   let cash = 0
   let contributed = 0
   let buyFees = 0
@@ -138,26 +146,23 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
     // Entitlements are fixed before new DCA money reaches the account on ex-date.
     for (const position of positions) captureActions(position, date)
     const settlements = positions.map(position => settleActions(position, date))
-    for (const settlement of settlements) {
-      cash += settlement.cash
+    let settledCash = 0
+    for (const [index, settlement] of settlements.entries()) {
+      settledCash += settlement.cash
       cashDividends += settlement.cashDividend
       stockDividendShares += settlement.stockDividendShares
+      // Cổ tức tiền và tiền bán quyền ở lại mã phát sinh, tái đầu tư vào chính mã đó.
+      positions[index]!.reserved += settlement.cash
     }
+    cash += settledCash
 
-    const accountRightsPayable = settlements.reduce((sum, settlement) => sum + settlement.accountRightsPayable, 0)
-    if (cash < accountRightsPayable - 1e-8) {
-      throw new Error(`Insufficient shared cash to exercise rights issue settling on ${date}`)
-    }
-    cash -= accountRightsPayable
-
+    // Quyền mua luôn tài trợ bằng tiền ngoài; giả định nhà đầu tư luôn có sẵn tiền mặt.
+    // Khoản tiền này là vốn ngoài thật: tính vào contributed, vào external flow và MWRR.
     const externalRightsPayable = settlements.reduce((sum, settlement) => sum + settlement.externalRightsPayable, 0)
-    const cashUsedForExternalRights = Math.min(cash, externalRightsPayable)
-    cash -= cashUsedForExternalRights
-    const externalFunding = externalRightsPayable - cashUsedForExternalRights
-    if (externalFunding > 0) {
-      contributed += externalFunding
-      externalFlow += externalFunding
-      cashflows.push({ date, amount: -externalFunding })
+    if (externalRightsPayable > 0) {
+      contributed += externalRightsPayable
+      externalFlow += externalRightsPayable
+      cashflows.push({ date, amount: -externalRightsPayable })
     }
 
     const contribution = contributionByDate.get(date) ?? 0
@@ -166,23 +171,27 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
       contributed += contribution
       externalFlow += contribution
       cashflows.push({ date, amount: -contribution })
+      allocateReserves(positions, contribution, weights)
     }
 
-    // Reinvest every settled cash credit when whole lots and target weights allow it.
+    // Mỗi mã chỉ mua trong phần tiền để dành của chính nó. Chưa đủ một lô thì để dành tiếp,
+    // không dồn sang mã khác. Chỉ kỳ tái cân bằng mới kéo về tỷ trọng mục tiêu.
     if (cash > 0) {
-      const spent = buyTowardWeights(positions, prices, slots.map(slot => slot.weight), cash, rates.buyFeeRate, lotSize)
+      const spent = buyFromReserves(positions, prices, rates.buyFeeRate, lotSize)
       cash -= spent.cashSpent
       buyFees += spent.fee
     }
 
     if (contributed > 0 && shouldRebalance(previousRebalanceDate, date, input.rebalFreq)) {
-      const sold = sellTowardWeights(positions, prices, slots.map(slot => slot.weight), cash, rates, lotSize)
+      const sold = sellTowardWeights(positions, prices, weights, cash, rates, lotSize)
       cash += sold.cashReceived
       sellFees += sold.fee
       sellTaxes += sold.tax
-      const bought = buyTowardWeights(positions, prices, slots.map(slot => slot.weight), cash, rates.buyFeeRate, lotSize)
+      const bought = buyTowardWeights(positions, prices, weights, cash, rates.buyFeeRate, lotSize)
       cash -= bought.cashSpent
       buyFees += bought.fee
+      // Tái cân bằng xong thì chia lại phần tiền còn lại theo tỷ trọng.
+      retagReserves(positions, cash, weights)
       previousRebalanceDate = date
     }
 
@@ -206,6 +215,8 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
         pendingSubscriptionPayable: position.pendingSubscriptionPayable,
         cashDividends: position.cashDividends,
         stockDividendShares: position.stockDividendShares,
+        investedCash: position.investedCash,
+        reservedCash: position.reserved,
         value: position.shares * price + position.pendingShares * price - position.pendingSubscriptionPayable,
       })
     }
@@ -266,6 +277,7 @@ function makePosition(stockId: string, actions: readonly CorporateAction[]): Pos
   return {
     stockId, shares: 0, purchasedShares: 0, stockDividendHoldings: 0, pendingShares: 0,
     pendingSubscriptionPayable: 0, cashReceivables: 0, cashDividends: 0, stockDividendShares: 0,
+    investedCash: 0, reserved: 0,
     actions: actions.map(action => ({ action, captured: false, settled: false, cashReceivable: 0, pendingShares: 0, pendingSubscriptionPayable: 0 })),
     points: [],
   }
@@ -298,7 +310,6 @@ function settleActions(position: Position, date: string): Settlement {
   let cash = 0
   let cashDividend = 0
   let stockDividendShares = 0
-  let accountRightsPayable = 0
   let externalRightsPayable = 0
   for (const state of position.actions) {
     if (state.settled) continue
@@ -328,8 +339,9 @@ function settleActions(position: Position, date: string): Settlement {
         position.purchasedShares += state.pendingShares
         position.pendingShares -= state.pendingShares
         position.pendingSubscriptionPayable -= state.pendingSubscriptionPayable
-        if (action.funding === 'external') externalRightsPayable += state.pendingSubscriptionPayable
-        else accountRightsPayable += state.pendingSubscriptionPayable
+        // Tiền thực hiện quyền mua luôn lấy từ ngoài sổ; field `funding` bị bỏ qua.
+        position.investedCash += state.pendingSubscriptionPayable
+        externalRightsPayable += state.pendingSubscriptionPayable
       } else if (action.choice === 'sell') {
         cash += state.cashReceivable
         position.cashReceivables -= state.cashReceivable
@@ -337,11 +349,43 @@ function settleActions(position: Position, date: string): Settlement {
       state.settled = true
     }
   }
-  return { cash, cashDividend, stockDividendShares, accountRightsPayable, externalRightsPayable }
+  return { cash, cashDividend, stockDividendShares, externalRightsPayable }
 }
 
 function portfolioValue(positions: readonly Position[], prices: readonly number[], cash: number): number {
   return cash + positions.reduce((sum, position, index) => sum + position.shares * prices[index]! + position.pendingShares * prices[index]! - position.pendingSubscriptionPayable + position.cashReceivables, 0)
+}
+
+/** Chia một khoản tiền mặt cho từng mã theo tỷ trọng mục tiêu. */
+function allocateReserves(positions: readonly Position[], amount: number, weights: readonly number[]): void {
+  if (amount === 0) return
+  for (const [index, position] of positions.entries()) position.reserved += amount * weights[index]!
+}
+
+/** Chia lại tiền còn lại theo tỷ trọng, dùng sau tái cân bằng. */
+function retagReserves(positions: readonly Position[], cash: number, weights: readonly number[]): void {
+  for (const [index, position] of positions.entries()) position.reserved = cash * weights[index]!
+}
+
+/** Mỗi mã mua trong phần tiền để dành của chính nó; chưa đủ một lô thì để lại. */
+function buyFromReserves(positions: readonly Position[], prices: readonly number[], feeRate: number, lotSize: number): { cashSpent: number; fee: number } {
+  let cashSpent = 0
+  let fee = 0
+  for (const [index, position] of positions.entries()) {
+    const lotCost = lotSize * prices[index]! * (1 + feeRate)
+    const lots = Math.floor(position.reserved / lotCost)
+    if (lots <= 0) continue
+    const shares = lots * lotSize
+    const tradeValue = shares * prices[index]!
+    const tradeFee = tradeValue * feeRate
+    position.shares += shares
+    position.purchasedShares += shares
+    position.investedCash += tradeValue + tradeFee
+    position.reserved -= tradeValue + tradeFee
+    cashSpent += tradeValue + tradeFee
+    fee += tradeFee
+  }
+  return { cashSpent, fee }
 }
 
 function buyTowardWeights(positions: readonly Position[], prices: readonly number[], weights: readonly number[], cash: number, feeRate: number, lotSize: number): { cashSpent: number; fee: number } {
@@ -361,6 +405,7 @@ function buyTowardWeights(positions: readonly Position[], prices: readonly numbe
     const tradeFee = tradeValue * feeRate
     position.shares += shares
     position.purchasedShares += shares
+    position.investedCash += tradeValue + tradeFee
     cashSpent += tradeValue + tradeFee
     fee += tradeFee
   }
@@ -382,6 +427,7 @@ function sellTowardWeights(positions: readonly Position[], prices: readonly numb
     const tradeTax = tradeValue * rates.sellTaxRate
     position.shares -= shares
     position.purchasedShares = Math.max(0, position.purchasedShares - shares)
+    position.investedCash -= tradeValue - tradeFee - tradeTax
     cashReceived += tradeValue - tradeFee - tradeTax
     fee += tradeFee
     tax += tradeTax

@@ -3647,6 +3647,13 @@ textarea {
   border-top: 1px solid #eceae3;
 }
 
+/* Thanh lọc cổ phiếu nằm trong nội dung section Cổ tức: tách đều khỏi block
+   hành trình phía trên và block Cổ tức hằng năm phía dưới. */
+.dca-results-filter-toolbar--inline {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
 .dca-results-filter-btn {
   padding: 5px 12px;
   border: 1px solid var(--color-border);

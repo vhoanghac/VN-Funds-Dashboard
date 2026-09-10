@@ -51,7 +51,7 @@ function DcaJourneyBlockImpl({ portfolios, startDate, endDate, details }: Props)
 
         <div className="dca-journey-grid">
           <div className="dca-journey-stat">
-            <div className="dca-journey-stat-label">Tổng tiền đã đầu tư</div>
+            <div className="dca-journey-stat-label">Tiền Đầu Tư (không tính cổ tức)</div>
             <div className="dca-journey-stat-value">{formatVND(p.totalInvested)}</div>
           </div>
           <div className="dca-journey-stat dca-journey-stat--highlight">

@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -16,6 +16,10 @@ type StockDividendMode = 'shares' | 'value'
 
 interface Props {
   data: readonly StockAnnualDividendPoint[]
+  /** Đơn vị mặc định cho chart cổ tức bằng cổ phiếu. "Tất cả" dùng "value" vì cộng số cổ phiếu khác mã không có nghĩa. */
+  defaultStockMode?: StockDividendMode
+  /** View "Tất cả" (cộng nhiều mã) thì không cho chọn đơn vị "Số cổ phiếu". */
+  aggregate?: boolean
 }
 
 interface TooltipProps {
@@ -47,8 +51,14 @@ function DividendTooltip({ active, payload, mode }: TooltipProps) {
   )
 }
 
-function StockAnnualDividendsBlockImpl({ data }: Props) {
-  const [stockDividendMode, setStockDividendMode] = useState<StockDividendMode>('shares')
+function StockAnnualDividendsBlockImpl({ data, defaultStockMode = 'shares', aggregate = false }: Props) {
+  const [stockDividendMode, setStockDividendMode] = useState<StockDividendMode>(defaultStockMode)
+  // defaultStockMode chỉ có tác dụng ở mount đầu; đồng bộ lại mỗi khi đổi scope ("Tất cả" ↔ một mã).
+  useEffect(() => {
+    setStockDividendMode(defaultStockMode)
+  }, [defaultStockMode])
+  // Guard: view "Tất cả" cộng nhiều mã nên không bao giờ dùng "shares", kể cả khi state bị lệch.
+  const effectiveMode: StockDividendMode = aggregate && stockDividendMode === 'shares' ? 'value' : stockDividendMode
   const hasDividends = data.some(point => point.cashVnd > 0 || point.stockShares > 0)
 
   return (
@@ -71,8 +81,8 @@ function StockAnnualDividendsBlockImpl({ data }: Props) {
               <h4>Cổ tức bằng cổ phiếu</h4>
               <div className="stock-annual-dividend-chart-tools">
                 <div className="stock-annual-dividend-toggle" role="group" aria-label="Đơn vị chart cổ tức bằng cổ phiếu">
-                  <button className={`dca-choice-btn${stockDividendMode === 'shares' ? ' dca-choice-btn--active' : ''}`} aria-pressed={stockDividendMode === 'shares'} onClick={() => setStockDividendMode('shares')}>Số cổ phiếu</button>
-                  <button className={`dca-choice-btn${stockDividendMode === 'value' ? ' dca-choice-btn--active' : ''}`} aria-pressed={stockDividendMode === 'value'} onClick={() => setStockDividendMode('value')}>Giá trị tham chiếu</button>
+                  <button className={`dca-choice-btn${effectiveMode === 'shares' ? ' dca-choice-btn--active' : ''}`} aria-pressed={effectiveMode === 'shares'} disabled={aggregate} title={aggregate ? 'Cộng số cổ phiếu của nhiều mã khác nhau không có nghĩa' : undefined} onClick={() => setStockDividendMode('shares')}>Số cổ phiếu</button>
+                  <button className={`dca-choice-btn${effectiveMode === 'value' ? ' dca-choice-btn--active' : ''}`} aria-pressed={effectiveMode === 'value'} onClick={() => setStockDividendMode('value')}>Giá trị tham chiếu</button>
                 </div>
                 <span
                   className="chart-tooltip-icon"
@@ -85,9 +95,9 @@ function StockAnnualDividendsBlockImpl({ data }: Props) {
               <BarChart data={[...data]} margin={{ top: 12, right: 8, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={stockDividendMode === 'shares' ? formatSharesAxis : formatVNDAxis} width={62} />
-                <Tooltip content={<DividendTooltip mode={stockDividendMode} />} />
-                <Bar dataKey={stockDividendMode === 'shares' ? 'stockShares' : 'stockValueVnd'} fill="#5e7c6a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={effectiveMode === 'shares' ? formatSharesAxis : formatVNDAxis} width={62} />
+                <Tooltip content={<DividendTooltip mode={effectiveMode} />} />
+                <Bar dataKey={effectiveMode === 'shares' ? 'stockShares' : 'stockValueVnd'} fill="#5e7c6a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </section>
@@ -124,7 +134,7 @@ function AnnualDividendChart({ title, data, dataKey, color, axisFormatter, toolt
 }
 
 function formatShares(value: number): string {
-  return value.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return value.toLocaleString('vi-VN', { maximumFractionDigits: 0 })
 }
 
 function formatSharesAxis(value: number): string {

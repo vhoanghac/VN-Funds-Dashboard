@@ -34,6 +34,11 @@ export interface StockSplitAction {
 }
 
 export type RightsIssueChoice = 'ignore' | 'exercise' | 'sell'
+/**
+ * @deprecated Kept for the legacy single-stock simulator only. The production engine
+ * (`stockPortfolioDca.ts`) ignores this field: every rights subscription is funded from
+ * external capital.
+ */
 export type RightsIssueFunding = 'account' | 'external'
 
 export interface RightsIssueAction {
@@ -45,6 +50,7 @@ export interface RightsIssueAction {
   lastDate: string
   settlementDate: string
   choice: RightsIssueChoice
+  /** @deprecated Ignored by `stockPortfolioDca.ts`; kept for the legacy single-stock simulator. */
   funding?: RightsIssueFunding
   salePricePerRight?: number
 }
@@ -209,6 +215,10 @@ export function generateStockContributions(
  * Simulate an account ledger from raw stock prices. Contributions and settled cash
  * are reinvested into whole lots; pending shares and subscribed rights remain visible
  * until settlement.
+ *
+ * @deprecated Legacy single-stock simulator; production UI uses `stockPortfolioDca.ts`.
+ * Its semantics (shared cash for rights, cash reinvestment) no longer match the engine
+ * that powers the dashboard, so do not reuse it as a reference.
  */
 export function simulateStockAccountDca(input: StockAccountDcaInput): StockAccountDcaResult {
   const prices = normalizePrices(input.prices)

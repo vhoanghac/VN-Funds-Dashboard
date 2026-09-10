@@ -52,8 +52,8 @@ import { parsePortfolios } from '../utils/portfolio'
 import { saveLS } from '../utils/localStorage'
 import { avgDrawdown, annualizedStdevFromCumulative, longestDrawdownDays } from '../utils/drawdownStats'
 import { generateStockContributions, type CorporateAction } from '../utils/stockAccountDca'
-import { simulateStockPortfolioDca, type StockPortfolioDcaResult } from '../utils/stockPortfolioDca'
-import { annualStockDividends, filterStockPrices, presentStockPortfolioDcaResult, stockShareHoldings, type StockDcaPresentation } from '../utils/stockDcaPresentation'
+import { simulateStockPortfolioDca, type StockPortfolioDcaResult, type StockPortfolioPositionPoint, type StockPortfolioValuePoint } from '../utils/stockPortfolioDca'
+import { annualStockDividends, filterStockPrices, presentStockPortfolioDcaResult, stockShareHoldings, type StockAnnualDividendPoint, type StockDcaPresentation } from '../utils/stockDcaPresentation'
 import { buildStockDcaUrl, type ShareUrlState, type StockDcaShareState } from '../utils/shareUrl'
 import { yearsBackDateRange } from '../utils/dateRange'
 
@@ -123,6 +123,7 @@ const STOCK_SECTIONS: { id: StockSectionId; label: string }[] = [
 ]
 
 const ALL_RISK_PORTFOLIOS = '__all__'
+const ALL_STOCK_POSITIONS = '__all__'
 
 const MemoDrawdownChart = memo(DrawdownChart)
 const MemoYearlyPerformanceChart = memo(YearlyPerformanceChart)
@@ -366,7 +367,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
           corporateActionsByStock: actionsByStock,
           rebalFreq: portfolio.rebalFreq,
           transactionCostRates: portfolio.transactionCostRates,
-          lotSize: 100,
+          lotSize: 1,
         })
         const grossResult = simulateStockPortfolioDca({
           pricesByStock,
@@ -375,7 +376,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
           corporateActionsByStock: actionsByStock,
           rebalFreq: portfolio.rebalFreq,
           transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 },
-          lotSize: 100,
+          lotSize: 1,
         })
         views.push({
           id: portfolio.id,
@@ -635,7 +636,7 @@ function StockDcaPanelImpl({ active, shareUrl }: Props) {
           {scheduleError && <p className="dca-cashflow-error">{scheduleError}</p>}
         </div>
 
-      <p className="dca-note">Mỗi lệnh mua theo lô 100 cổ phiếu. Cổ tức tiền mặt và tiền dư được tái đầu tư tự động; chỉ phần chưa đủ một lô mới nằm lại trong tài khoản.</p>
+      <p className="dca-note">Thị trường cho mua lô lẻ nên mỗi kỳ dashboard đầu tư hết tiền. Tiền nạp chia theo tỷ trọng danh mục; cổ tức tiền của mã nào tái đầu tư vào chính mã đó. Phần chưa mua hết nằm lại trong tài khoản chờ kỳ sau.</p>
       </div>
 
       <div className="dca-portfolios-card">
@@ -716,7 +717,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const [activeSection, setActiveSection] = useState<StockSectionId>('summary')
   const [activePortfolioId, setActivePortfolioId] = useState(views[0]!.id)
   const [activeRiskPortfolioId, setActiveRiskPortfolioId] = useState('')
-  const [activeStockId, setActiveStockId] = useState('')
+  const [activeStockId, setActiveStockId] = useState(ALL_STOCK_POSITIONS)
   useEffect(() => {
     setActivePortfolioId(current => views.some(view => view.id === current) ? current : views[0]!.id)
   }, [views])
@@ -730,11 +731,30 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const riskPortfolioId = activeRiskPortfolioId || views[0]?.id
   const riskView = views.find(candidate => candidate.id === riskPortfolioId) ?? views[0]!
   const { result } = view
-  const selectedPosition = result.positions.find(position => position.stockId === activeStockId) ?? result.positions[0]
+  // "Tất cả" chỉ có nghĩa khi danh mục có từ hai mã. Một mã thì luôn chọn chính nó.
+  const showAllStocks = activeStockId === ALL_STOCK_POSITIONS && result.positions.length > 1
+  const selectedPosition = showAllStocks
+    ? undefined
+    : (result.positions.find(position => position.stockId === activeStockId) ?? result.positions[0])
+  const selectedPositionLastPoint = selectedPosition?.points[selectedPosition.points.length - 1]
+  const selectedPositionInvested = selectedPositionLastPoint?.investedCash ?? 0
   useEffect(() => {
-    setActiveStockId(current => result.positions.some(position => position.stockId === current) ? current : result.positions[0]?.stockId ?? '')
+    setActiveStockId(current => current === ALL_STOCK_POSITIONS || result.positions.some(position => position.stockId === current) ? current : ALL_STOCK_POSITIONS)
   }, [result.positions])
-  const annualDividends = useMemo(() => annualStockDividends(selectedPosition?.points ?? []), [selectedPosition])
+  const annualDividends = useMemo(() => {
+    if (!showAllStocks) return annualStockDividends(selectedPosition?.points ?? [])
+    const byYear = new Map<number, StockAnnualDividendPoint>()
+    for (const position of result.positions) {
+      for (const row of annualStockDividends(position.points)) {
+        const accumulated = byYear.get(row.year) ?? { year: row.year, cashVnd: 0, stockShares: 0, stockValueVnd: 0 }
+        accumulated.cashVnd += row.cashVnd
+        accumulated.stockShares += row.stockShares
+        accumulated.stockValueVnd += row.stockValueVnd
+        byYear.set(row.year, accumulated)
+      }
+    }
+    return [...byYear.values()].sort((a, b) => a.year - b.year)
+  }, [showAllStocks, selectedPosition, result.positions])
   const shareHoldings = useMemo(() => stockShareHoldings(selectedPosition?.points ?? []), [selectedPosition])
   const startDate = view.prices[0]!.date
   const endDate = view.prices[view.prices.length - 1]!.date
@@ -858,15 +878,22 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
               portfolios={selectedJourney}
               startDate={startDate}
               endDate={endDate}
-              details={<StockAccountDetails result={result} position={selectedPosition} />}
+              details={<StockAccountDetails result={result} />}
             />
             {result.positions.length > 1 && (
-              <div className="dca-results-filter-toolbar" aria-label="Chọn cổ phiếu trong danh mục">
+              <div className="dca-results-filter-toolbar dca-results-filter-toolbar--inline" aria-label="Chọn cổ phiếu trong danh mục">
+                <button
+                  className={`dca-results-filter-btn${showAllStocks ? ' dca-results-filter-btn--active' : ''}`}
+                  aria-pressed={showAllStocks}
+                  onClick={() => setActiveStockId(ALL_STOCK_POSITIONS)}
+                >
+                  Tất cả
+                </button>
                 {result.positions.map(position => (
                   <button
                     key={position.stockId}
-                    className={`dca-results-filter-btn${selectedPosition?.stockId === position.stockId ? ' dca-results-filter-btn--active' : ''}`}
-                    aria-pressed={selectedPosition?.stockId === position.stockId}
+                    className={`dca-results-filter-btn${!showAllStocks && selectedPosition?.stockId === position.stockId ? ' dca-results-filter-btn--active' : ''}`}
+                    aria-pressed={!showAllStocks && selectedPosition?.stockId === position.stockId}
                     onClick={() => setActiveStockId(position.stockId)}
                   >
                     {position.stockId}
@@ -874,13 +901,26 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
                 ))}
               </div>
             )}
-            <StockAnnualDividendsBlock data={annualDividends} />
-            <StockShareHoldingsBlock points={shareHoldings} />
-            <StockCorporateActions
-              actions={selectedPosition ? view.actionsByStock.get(selectedPosition.stockId) ?? [] : []}
-              pendingActions={selectedPosition ? view.pendingActionsByStock.get(selectedPosition.stockId) ?? [] : []}
-            />
-            <StockLedger result={result} />
+            {result.positions.length > 1 && !showAllStocks && selectedPosition && (
+              <DcaBlock title="Chi tiết khoản đầu tư" className="stock-position-dividends-block">
+                <div className="stock-account-details-grid">
+                  <AccountDetail label="Giá trị hiện tại" value={formatVND(selectedPositionLastPoint?.value ?? 0)} />
+                  <AccountDetail label="Số cổ phiếu" value={formatShares(selectedPositionLastPoint?.shares ?? 0)} />
+                  <AccountDetail label="Tổng tiền đã giải ngân" value={formatVND(selectedPositionInvested)} hint="Tổng tiền đã bỏ ra mua mã này trong suốt kỳ: tiền đầu tư chia theo tỷ trọng, cổ tức tiền tái đầu tư và tiền quyền mua (nếu có). Khi thiết lập tái cân bằng làm cho danh mục mua thêm mã này hoặc bán bớt mã kia cho nên số tiền ở đây có thể chênh lệch lớn giữa các mã cổ phiếu." />
+                  <AccountDetail label="Cổ tức tiền mặt đã nhận" value={formatVND(selectedPosition.totalCashDividends)} />
+                  <AccountDetail label="Cổ tức bằng cổ phiếu đã nhận" value={formatShares(selectedPosition.totalStockDividendShares)} />
+                </div>
+              </DcaBlock>
+            )}
+            <StockAnnualDividendsBlock data={annualDividends} defaultStockMode={showAllStocks ? 'value' : 'shares'} aggregate={showAllStocks} />
+            {!showAllStocks && <StockShareHoldingsBlock points={shareHoldings} />}
+            {!showAllStocks && (
+              <StockCorporateActions
+                actions={selectedPosition ? view.actionsByStock.get(selectedPosition.stockId) ?? [] : []}
+                pendingActions={selectedPosition ? view.pendingActionsByStock.get(selectedPosition.stockId) ?? [] : []}
+              />
+            )}
+            <StockLedger result={result} position={result.positions.length > 1 ? selectedPosition : undefined} />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="risk" active={activeSection === 'risk'}>
@@ -915,25 +955,21 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   )
 })
 
-const StockAccountDetails = memo(function StockAccountDetails({ result, position }: {
-  result: StockPortfolioDcaResult
-  position: StockPortfolioDcaResult['positions'][number] | undefined
-}) {
+const StockAccountDetails = memo(function StockAccountDetails({ result }: { result: StockPortfolioDcaResult }) {
   return (
     <div className="stock-account-details">
       <div className="stock-account-details-title">Chi tiết tài khoản cuối kỳ</div>
       <div className="stock-account-details-grid">
-        <AccountDetail label={position ? `Cổ phiếu ${position.stockId} cuối kỳ` : 'Số mã đang nắm giữ'} value={position ? formatShares(position.points[position.points.length - 1]?.shares ?? 0) : String(result.positions.length)} />
-        <AccountDetail label="Tiền mặt còn lại" value={formatVND(result.finalCash)} />
-        <AccountDetail label="Cổ tức tiền mặt đã nhận" value={formatVND(position?.totalCashDividends ?? result.totalCashDividends)} />
-        <AccountDetail label="Cổ tức bằng cổ phiếu" value={formatShares(position?.totalStockDividendShares ?? result.totalStockDividendShares)} />
+        <AccountDetail label="Số mã đang nắm giữ" value={String(result.positions.length)} />
+        <AccountDetail label="Cổ tức tiền mặt đã nhận" value={formatVND(result.totalCashDividends)} />
+        <AccountDetail label="Cổ tức bằng cổ phiếu" value={formatShares(result.totalStockDividendShares)} />
       </div>
     </div>
   )
 })
 
-function AccountDetail({ label, value }: { label: string; value: string }) {
-  return <div className="dca-journey-stat stock-account-detail"><div className="dca-journey-stat-label">{label}</div><div className="dca-journey-stat-value">{value}</div></div>
+function AccountDetail({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return <div className="dca-journey-stat stock-account-detail"><div className="dca-journey-stat-label">{label}{hint && <span className="chart-tooltip-icon" title={hint}>?</span>}</div><div className="dca-journey-stat-value">{value}</div></div>
 }
 
 const StockAllocationBlock = memo(function StockAllocationBlock({ views }: { views: readonly StockView[] }) {
@@ -962,7 +998,7 @@ const StockCorporateActions = memo(function StockCorporateActions({ actions, pen
       <div className="stock-action-groups">
         <details className="stock-action-group"><summary>Cổ tức tiền mặt <span>{cashDividends.length} đợt</span></summary><div className="stock-action-table-wrap"><table className="stock-action-table"><thead><tr><th>Ngày chốt</th><th>Cổ tức</th><th>Thực nhận sau thuế</th><th>Ngày tiền về</th></tr></thead><tbody>{cashDividends.map((action, index) => <tr key={`${action.kind}-${action.exDate}-${index}`}><td>{formatDate(action.exDate)}</td><td>{formatVND(action.amountPerShare)}/cp</td><td>{formatVND(action.amountPerShare * (1 - (action.taxRate ?? 0)))}/cp</td><td>{formatDate(action.payDate)}</td></tr>)}</tbody></table></div></details>
         <details className="stock-action-group"><summary>Cổ tức bằng cổ phiếu <span>{stockDividends.length} đợt</span></summary><p className="dca-note stock-action-note">Tỷ lệ 13% nghĩa là cứ 1 cổ phiếu cũ nhận 0,13 cổ phiếu mới. Ví dụ, 100 cổ phiếu nhận thêm 13 cổ phiếu, không phải nhận 13% bằng tiền.</p><div className="stock-action-table-wrap"><table className="stock-action-table"><thead><tr><th>Ngày chốt</th><th>Cổ phiếu phát hành thêm</th><th>Ngày cổ phiếu về</th></tr></thead><tbody>{stockDividends.map((action, index) => <tr key={`${action.kind}-${action.exDate}-${index}`}><td>{formatDate(action.exDate)}</td><td>{formatStockDividendRatio(action.sharesPerShare)}</td><td>{formatDate(action.payDate)}</td></tr>)}</tbody></table></div></details>
-        <details className="stock-action-group"><summary>Quyền mua <span>{rightsIssues.length} đợt</span></summary><div className="stock-action-table-wrap"><table className="stock-action-table"><thead><tr><th>Ngày chốt</th><th>Tỷ lệ</th><th>Giá thực hiện</th><th>Ngày cổ phiếu về</th><th>Nguồn tiền</th></tr></thead><tbody>{rightsIssues.map((action, index) => <tr key={`${action.kind}-${action.exDate}-${index}`}><td>{formatDate(action.exDate)}</td><td>{formatPercent(action.rightsPerShare)}</td><td>{formatVND(action.subscriptionPrice)}/cp</td><td>{formatDate(action.settlementDate)}</td><td>{action.funding === 'external' ? 'Tiền ngoài sổ' : 'Tiền mặt trong sổ'}</td></tr>)}</tbody></table></div></details>
+        <details className="stock-action-group"><summary>Quyền mua <span>{rightsIssues.length} đợt</span></summary><div className="stock-action-table-wrap"><table className="stock-action-table"><thead><tr><th>Ngày chốt</th><th>Tỷ lệ</th><th>Giá thực hiện</th><th>Ngày cổ phiếu về</th></tr></thead><tbody>{rightsIssues.map((action, index) => <tr key={`${action.kind}-${action.exDate}-${index}`}><td>{formatDate(action.exDate)}</td><td>{formatPercent(action.rightsPerShare)}</td><td>{formatVND(action.subscriptionPrice)}/cp</td><td>{formatDate(action.settlementDate)}</td></tr>)}</tbody></table></div></details>
         {pendingActions.length > 0 && (
           <details className="stock-action-group stock-action-group--pending" open>
             <summary>Đang chờ ngày thanh toán <span>{pendingActions.length} đợt</span></summary>
@@ -984,30 +1020,46 @@ const StockCorporateActions = memo(function StockCorporateActions({ actions, pen
   )
 })
 
-const StockLedger = memo(function StockLedger({ result }: { result: StockPortfolioDcaResult }) {
+const StockLedger = memo(function StockLedger({ result, position }: {
+  result: StockPortfolioDcaResult
+  /** Có mã đang chọn thì sổ hiển thị riêng mã đó; không thì hiển thị sổ chung danh mục. */
+  position?: StockPortfolioDcaResult['positions'][number]
+}) {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(0)
-  const monthlyPoints = useMemo(() => {
-    const lastPointByMonth = new Map<string, StockPortfolioDcaResult['points'][number]>()
+  const monthlyPortfolioPoints = useMemo(() => {
+    const lastPointByMonth = new Map<string, StockPortfolioValuePoint>()
     for (const point of result.points) lastPointByMonth.set(point.date.slice(0, 7), point)
     return Array.from(lastPointByMonth.values())
   }, [result.points])
+  const monthlyPositionPoints = useMemo(() => {
+    if (!position) return []
+    const lastPointByMonth = new Map<string, StockPortfolioPositionPoint>()
+    for (const point of position.points) lastPointByMonth.set(point.date.slice(0, 7), point)
+    return Array.from(lastPointByMonth.values())
+  }, [position])
+  const totalCount = position ? monthlyPositionPoints.length : monthlyPortfolioPoints.length
   const pageSize = 100
-  const pageCount = Math.max(1, Math.ceil(monthlyPoints.length / pageSize))
-  const visiblePoints = monthlyPoints.slice(page * pageSize, (page + 1) * pageSize)
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
+  const visiblePortfolioPoints = monthlyPortfolioPoints.slice(page * pageSize, (page + 1) * pageSize)
+  const visiblePositionPoints = monthlyPositionPoints.slice(page * pageSize, (page + 1) * pageSize)
 
   useEffect(() => {
     setPage(0)
-  }, [result])
+  }, [result, position])
 
   return (
     <DcaBlock title="Sổ tài khoản">
       <details onToggle={event => setOpen(event.currentTarget.open)}>
-        <summary>Hiện theo tháng, {monthlyPoints.length.toLocaleString('vi-VN')} mốc cuối tháng</summary>
+        <summary>Hiện theo tháng, {totalCount.toLocaleString('vi-VN')} mốc cuối tháng</summary>
         {open && (
           <>
             <div className="stock-account-table-wrap">
-              <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Đã đầu tư</th><th>Giá trị danh mục</th></tr></thead><tbody>{visiblePoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables)}</td><td>{formatVND(point.contributed)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
+              {position ? (
+                <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Giá</th><th>Tổng cổ phiếu</th><th>Đã đầu tư</th><th>Giá trị cổ phiếu</th><th>Cổ tức tiền đã nhận</th><th>Cổ tức cổ phiếu đã nhận</th></tr></thead><tbody>{visiblePositionPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.price)}</td><td>{formatShares(point.shares)}</td><td>{formatVND(point.investedCash)}</td><td>{formatVND(point.value)}</td><td>{formatVND(point.cashDividends)}</td><td>{formatShares(point.stockDividendShares)}</td></tr>)}</tbody></table>
+              ) : (
+                <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Đã đầu tư</th><th>Giá trị danh mục</th></tr></thead><tbody>{visiblePortfolioPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables)}</td><td>{formatVND(point.contributed)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
+              )}
             </div>
             {pageCount > 1 && (
               <div className="stock-ledger-pagination">
@@ -1187,7 +1239,7 @@ function simulateStockPortfolioVariant(
     corporateActionsByStock: actionsByStock,
     rebalFreq: view.portfolio.rebalFreq,
     transactionCostRates: view.portfolio.transactionCostRates,
-    lotSize: 100,
+    lotSize: 1,
   })
 }
 
@@ -1235,7 +1287,7 @@ export function formatStockAxisVND(value: number): string {
 }
 
 function formatShares(value: number): string {
-  return value.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return value.toLocaleString('vi-VN', { maximumFractionDigits: 0 })
 }
 
 function formatPercent(value: number): string {

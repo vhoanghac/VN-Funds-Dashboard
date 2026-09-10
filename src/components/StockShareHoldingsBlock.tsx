@@ -28,7 +28,7 @@ interface ShareHoldingsTooltipProps {
 }
 
 function formatShares(value: number): string {
-  return value.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return value.toLocaleString('vi-VN', { maximumFractionDigits: 0 })
 }
 
 function formatSharesAxis(value: number): string {

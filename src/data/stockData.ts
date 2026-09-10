@@ -128,6 +128,8 @@ function parseCorporateActionRow(row: Record<string, string>, rowNumber: number,
 
   if (kind === 'rights_issue') {
     const choice = row.choice?.trim() as RightsIssueChoice
+    // `funding` vẫn được parse để giữ schema, nhưng `stockPortfolioDca.ts` bỏ qua:
+    // mọi quyền mua được giả định tài trợ bằng tiền ngoài.
     const funding = (row.funding?.trim() || 'account') as RightsIssueFunding
     if (!['ignore', 'exercise', 'sell'].includes(choice)) {
       throw new Error(`Invalid rights issue choice on row ${rowNumber}`)
