@@ -1,9 +1,19 @@
 # Price files that GitHub Actions is allowed to update.
 ACB
+BID
 CHP
+CTG
+FPT
 GEE
+HDB
 MBB
+MSB
 PC1
 REE
-VNM
+STB
+TCB
+VCB
 VEA|UPCOM
+VIB
+VNM
+VPB

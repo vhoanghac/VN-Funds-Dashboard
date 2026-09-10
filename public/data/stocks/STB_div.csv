@@ -1,0 +1,16 @@
+kind,ex_date,record_date,pay_date,last_date,settlement_date,amount_per_share,tax_rate,shares_per_share,rights_per_share,subscription_price,choice,funding,source
+rights_issue,2007-06-07,2007-06-11,,2007-08-21,2007-08-21,,,,1,10000,exercise,external,VCI event 6708f3ec0ec61045ab7fe183; price assumption
+stock_dividend,2007-06-07,2007-06-11,2007-08-21,,,,,0.12,,,,,VCI event 6708f3ec0ec61045ab7fe182
+stock_dividend,2008-07-23,2008-07-25,2008-09-10,,,,,0.15,,,,,VCI event 6708f3ec0ec61045ab7fe184
+rights_issue,2009-09-16,2009-09-18,,2009-12-03,2009-12-03,,,,0.15,10000,exercise,external,VCI event 6708f3ec0ec61045ab7fe2ae; price assumption
+stock_dividend,2009-09-16,2009-09-18,2009-12-03,,,,,0.15,,,,,VCI event 6708f3ec0ec61045ab7fe2ad
+rights_issue,2010-07-07,2010-07-09,,2010-10-22,2010-10-22,,,,0.2,10000,exercise,external,VCI event 6708f3ed0ec61045ab7fe4f4; price assumption
+stock_dividend,2010-07-07,2010-07-09,2010-10-22,,,,,0.15,,,,,VCI event 6708f3ed0ec61045ab7fe4f3
+cash_dividend,2011-08-10,2011-08-12,2011-08-30,,,1500,0.05,,,,,,VCI event 6708f3dd0ec61045ab7fa97e
+rights_issue,2011-08-10,2011-08-12,,2011-12-07,2011-12-07,,,,0.15,10000,exercise,external,VCI event 6708f3ee0ec61045ab7fe979; price assumption
+stock_dividend,2012-05-26,2012-05-26,2012-05-26,,,,,0.15,,,,,VCI event 6708f3ef0ec61045ab7febe2
+cash_dividend,2013-05-20,2013-05-22,2013-06-10,,,600,0.05,,,,,,VCI event 6708f3de0ec61045ab7fae9c
+stock_dividend,2013-05-20,2013-05-22,2013-07-08,,,,,0.14,,,,,VCI event 6708f3ef0ec61045ab7febe1
+cash_dividend,2013-11-29,2013-12-03,2013-12-16,,,800,0.05,,,,,,VCI event 6708f3de0ec61045ab7fb078
+stock_dividend,2015-10-16,2015-10-20,2015-11-26,,,,,0.2,,,,,VCI event 6708f3f00ec61045ab7ff032
+stock_dividend,2015-10-16,2015-10-20,2015-11-26,,,,,0.1,,,,,VCI event 6708f3f00ec61045ab7ff0fc

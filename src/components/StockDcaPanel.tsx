@@ -65,13 +65,23 @@ interface StockOption {
 
 const STOCK_OPTIONS: StockOption[] = [
   { id: 'ACB', label: 'ACB · Ngân hàng Á Châu', load: () => loadStockData('ACB') },
+  { id: 'BID', label: 'BID · BIDV', load: () => loadStockData('BID') },
   { id: 'CHP', label: 'CHP · Thủy điện miền Trung', load: () => loadStockData('CHP') },
+  { id: 'CTG', label: 'CTG · VietinBank', load: () => loadStockData('CTG') },
+  { id: 'FPT', label: 'FPT · Tập đoàn FPT', load: () => loadStockData('FPT') },
   { id: 'GEE', label: 'GEE · GELEX Electric', load: () => loadStockData('GEE') },
+  { id: 'HDB', label: 'HDB · HDBank', load: () => loadStockData('HDB') },
   { id: 'MBB', label: 'MBB · Ngân hàng Quân đội', load: () => loadStockData('MBB') },
+  { id: 'MSB', label: 'MSB · Ngân hàng Hàng Hải', load: () => loadStockData('MSB') },
   { id: 'PC1', label: 'PC1 · Tập đoàn PC1', load: () => loadStockData('PC1') },
   { id: 'REE', label: 'REE · Cơ điện lạnh', load: () => loadStockData('REE') },
-  { id: 'VNM', label: 'VNM · Vinamilk', load: () => loadStockData('VNM') },
+  { id: 'STB', label: 'STB · Sacombank', load: () => loadStockData('STB') },
+  { id: 'TCB', label: 'TCB · Techcombank', load: () => loadStockData('TCB') },
+  { id: 'VCB', label: 'VCB · Vietcombank', load: () => loadStockData('VCB') },
   { id: 'VEA', label: 'VEA · VEAM', load: () => loadStockData('VEA') },
+  { id: 'VIB', label: 'VIB · Ngân hàng Quốc tế', load: () => loadStockData('VIB') },
+  { id: 'VNM', label: 'VNM · Vinamilk', load: () => loadStockData('VNM') },
+  { id: 'VPB', label: 'VPB · VPBank', load: () => loadStockData('VPB') },
 ]
 
 const STOCK_COLOR = '#a8512f'

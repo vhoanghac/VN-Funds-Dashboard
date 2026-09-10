@@ -519,13 +519,13 @@ describe('StockDcaPanel', () => {
 
     await userEvent.setup().click(screen.getByTitle('Thêm cổ phiếu'))
 
-    expect(screen.getByText('CHP · Thủy điện miền Trung')).toBeInTheDocument()
+    expect(screen.getByText('BID · BIDV')).toBeInTheDocument()
     await userEvent.setup().click(screen.getByTitle('Chia đều tỷ trọng'))
     expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
     await userEvent.setup().click(screen.getByRole('button', { name: 'Phân bổ' }))
     expect(screen.getAllByText('ACB').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('CHP').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('BID').length).toBeGreaterThan(0)
   })
 })
