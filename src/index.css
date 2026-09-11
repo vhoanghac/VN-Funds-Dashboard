@@ -8069,6 +8069,110 @@ textarea {
   overflow-y: auto;
 }
 
+/* Hai snapshot danh mục đặt cạnh nhau để đối chiếu */
+.fund-analysis-holdings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fund-analysis-holdings-column {
+  min-width: 0;
+}
+
+.fund-analysis-holdings-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.fund-analysis-holdings-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.fund-analysis-holdings-column .fund-analysis-table-scroll {
+  overflow-x: auto;
+}
+
+/* Cột cố định để hai bảng dễ đọc: cột mã rộng nhất, ba cột số chia phần còn lại.
+   min-width để máy hẹp cuộn ngang thay vì bóp chữ. */
+.fund-analysis-holdings-column .overlap-table {
+  table-layout: fixed;
+  min-width: 480px;
+}
+
+.fund-analysis-holdings-column .overlap-table th:nth-child(1),
+.fund-analysis-holdings-column .overlap-table td:nth-child(1) {
+  width: 37%;
+}
+
+.fund-analysis-holdings-column .overlap-table th:nth-child(2),
+.fund-analysis-holdings-column .overlap-table td:nth-child(2) {
+  width: 24%;
+}
+
+.fund-analysis-holdings-column .overlap-table th:nth-child(3),
+.fund-analysis-holdings-column .overlap-table td:nth-child(3) {
+  width: 22%;
+}
+
+.fund-analysis-holdings-column .overlap-table th:nth-child(4),
+.fund-analysis-holdings-column .overlap-table td:nth-child(4) {
+  width: 17%;
+}
+
+.fund-analysis-holdings-column .fund-analysis-industry {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bảng thay đổi số lượng cổ phiếu giữa hai kỳ (nằm dưới lưới hai bảng) */
+.fund-analysis-qty-diff {
+  margin-top: 22px;
+}
+
+.fund-analysis-qty-diff-header {
+  margin-bottom: 10px;
+}
+
+.fund-analysis-qty-diff-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.fund-analysis-qty-diff-sub {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.fund-analysis-qty-diff .overlap-table {
+  min-width: 680px;
+}
+
+.fund-analysis-qty-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fund-analysis-qty-tag--new {
+  background: rgba(21, 128, 61, 0.12);
+  color: #15803d;
+}
+
+.fund-analysis-qty-tag--closed {
+  background: rgba(153, 26, 26, 0.12);
+  color: #991a1a;
+}
+
+
 /* Lưới 2 cột cho các chart phân tích (mỗi hàng 2 chart song song) */
 .fund-analysis-charts-grid {
   display: grid;
@@ -8135,6 +8239,10 @@ textarea {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 12px 24px;
+  }
+
+  .fund-analysis-holdings-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -6,6 +6,8 @@ import {
   parseTidyIndicators,
   fundReportPeriods,
   resolveReportPeriod,
+  computeQuantityChanges,
+  type FundStockHolding,
 } from './fundReport'
 
 // Dữ liệu thật từ public/data/DCDS/tidied/tidy_portfolio.csv — toàn bộ kỳ
@@ -322,5 +324,83 @@ describe('fundReportPeriods / resolveReportPeriod', () => {
     expect(resolveReportPeriod(periods, '2026-02-28')).toBe('2026-01-31')
     expect(resolveReportPeriod(periods, '2025-01-31')).toBe('2026-01-31')
     expect(resolveReportPeriod([], '2026-01-31')).toBeNull()
+  })
+})
+
+describe('computeQuantityChanges', () => {
+  const holding = (ticker: string, quantity: number, marketPrice = 1): FundStockHolding => ({
+    ticker, quantity, marketPrice, value: quantity * marketPrice, weightPct: 1,
+  })
+
+  it('tính tăng/giảm, vị thế mới (Mới) và bán hết (Bán hết)', () => {
+    const before = [holding('MBB', 1_000_000, 20_000), holding('VND', 200_000, 16_600), holding('VIC', 500)]
+    const after = [holding('MBB', 1_300_000, 25_000), holding('DXG', 500_000, 12_000), holding('VIC', 500)]
+    const byTicker = new Map(computeQuantityChanges(before, after).map(r => [r.ticker, r]))
+
+    expect(byTicker.get('MBB')).toMatchObject({
+      beforeQty: 1_000_000, afterQty: 1_300_000, delta: 300_000, status: 'increased',
+    })
+    expect(byTicker.get('MBB')!.deltaPct).toBeCloseTo(30, 5)
+
+    expect(byTicker.get('DXG')).toMatchObject({
+      beforeQty: 0, afterQty: 500_000, delta: 500_000, status: 'new',
+    })
+    expect(byTicker.get('DXG')!.deltaPct).toBeNull()
+
+    expect(byTicker.get('VND')).toMatchObject({
+      beforeQty: 200_000, afterQty: 0, delta: -200_000, status: 'closed',
+    })
+    expect(byTicker.get('VND')!.deltaPct).toBeCloseTo(-100, 5)
+
+    expect(byTicker.get('VIC')).toMatchObject({ delta: 0, status: 'unchanged', refValueChange: 0 })
+  })
+
+  it('giá tham chiếu theo kỳ mà phần thay đổi hiện diện', () => {
+    const before = [holding('MBB', 1_000_000, 20_000), holding('POW', 200_000, 13_600), holding('VND', 200_000, 16_600)]
+    const after = [holding('MBB', 1_300_000, 25_000), holding('POW', 100_000, 13_100), holding('DXG', 500_000, 12_000)]
+    const byTicker = new Map(computeQuantityChanges(before, after).map(r => [r.ticker, r]))
+
+    // Tăng → giá kỳ MỚI.
+    expect(byTicker.get('MBB')).toMatchObject({ refPriceBasis: 'new', refPrice: 25_000, refValueChange: 300_000 * 25_000 })
+    // Mã mới → giá kỳ MỚI.
+    expect(byTicker.get('DXG')).toMatchObject({ refPriceBasis: 'new', refPrice: 12_000, refValueChange: 500_000 * 12_000 })
+    // Giảm nhưng vẫn còn nắm → giá kỳ CŨ (không cần case riêng cho mã bán hết).
+    expect(byTicker.get('POW')).toMatchObject({ refPriceBasis: 'old', refPrice: 13_600, refValueChange: -100_000 * 13_600 })
+    // Bán hết → giá kỳ CŨ.
+    expect(byTicker.get('VND')).toMatchObject({ refPriceBasis: 'old', refPrice: 16_600, refValueChange: -200_000 * 16_600 })
+  })
+
+  it('sắp theo |giá trị thay đổi| giảm dần (không phải theo số lượng)', () => {
+    const after = [
+      holding('A', 1_000_000, 5_000),    // qty lớn nhất, giá trị 5 tỷ
+      holding('B', 200_000, 100_000),    // qty nhỏ hơn, giá trị 20 tỷ
+      holding('C', 1_000, 1_000),        // giá trị 1 triệu
+    ]
+    expect(computeQuantityChanges([], after).map(r => r.ticker)).toEqual(['B', 'A', 'C'])
+  })
+
+  it('thiếu giá → refPrice/refValueChange null và xếp xuống cuối', () => {
+    const before = [holding('X', 100, 0), holding('Y', 100, 1_000)]
+    const after = [holding('X', 200, 0), holding('Y', 200, 1_000)]
+    const rows = computeQuantityChanges(before, after)
+
+    const x = rows.find(r => r.ticker === 'X')!
+    expect(x).toMatchObject({ delta: 100, refPrice: null, refPriceBasis: null, refValueChange: null })
+    expect(rows.find(r => r.ticker === 'Y')!.refValueChange).toBe(100 * 1_000)
+    // Y có giá trị, X null → Y đứng trước.
+    expect(rows.map(r => r.ticker)).toEqual(['Y', 'X'])
+  })
+
+  it('gộp nhiều dòng cùng ticker trong một kỳ', () => {
+    const before = [holding('ACB', 100), holding('ACB', 50)]
+    const rows = computeQuantityChanges(before, [holding('ACB', 200)])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ beforeQty: 150, afterQty: 200, delta: 50 })
+  })
+
+  it('trả về mảng rỗng khi thiếu dữ liệu một hoặc cả hai bên', () => {
+    expect(computeQuantityChanges(null, null)).toEqual([])
+    expect(computeQuantityChanges(undefined, [])).toEqual([])
+    expect(computeQuantityChanges([], [holding('ACB', 10)])[0]).toMatchObject({ ticker: 'ACB', status: 'new' })
   })
 })

@@ -9,22 +9,22 @@ import { loadLS, saveLS } from '../utils/localStorage'
 import { formatVND, formatVNDAxis } from '../utils/vndFormat'
 import { maxDrawdown, drawdownSeries } from '../utils/calculations'
 import {
-  parseTidyPortfolio, parseTidyAssets, parseTidyIncome, parseTidyIndicators, fundReportPeriods, resolveReportPeriod,
-  type FundPeriodSummary, type FundAssetsSnapshot, type FundIncomeSummary, type FundFlowSummary,
+  parseTidyPortfolio, parseTidyAssets, parseTidyIncome, parseTidyIndicators, fundReportPeriods, resolveReportPeriod, computeQuantityChanges,
+  type FundPeriodSummary, type FundAssetsSnapshot, type FundIncomeSummary, type FundFlowSummary, type QuantityChangeRow,
 } from '../utils/fundReport'
 import { RedFlagDetectors } from './RedFlagSection'
 
 /**
  * Tab "Phân Tích Quỹ" — đọc báo cáo tài chính tháng chính thức (Thông tư
- * 98/2020/TT-BTC) của quỹ, hiện tại chỉ DCDS có dữ liệu tidy (92 kỳ).
+ * 98/2020/TT-BTC) của quỹ, hiện tại chỉ DCDS có dữ liệu tidy (93 kỳ).
  *
  * Bố cục:
  *   1. Tổng tài sản — pie phân bổ 4 loại tài sản + chi tiết bên phải.
  *   2. Tổng tài sản qua các tháng — cột, luôn hiện toàn bộ lịch sử.
  *   3. Tiền mặt qua các tháng — cột, luôn hiện toàn bộ lịch sử.
  *   4. Danh mục quỹ — bảng cổ phiếu.
- * Input "Kỳ báo cáo" đặt RIÊNG trong block 1 và block 4 (độc lập nhau,
- * mặc định "Mới nhất"). Hai biểu đồ cột là xu hướng nên không có input.
+ * Input "Kỳ báo cáo" đặt RIÊNG trong block 1 và hai cột của block 4 (độc lập nhau).
+ * Hai biểu đồ cột là xu hướng nên không có input.
  */
 
 interface Props {
@@ -87,9 +87,10 @@ const FLOW_AXIS_COLOR = '#f97316'
 /** Palette cho donut phân bổ ngành. */
 const INDUSTRY_COLORS = ['#3b82f6', '#f59e0b', '#059669', '#8b5cf6', '#ef4444', '#0ea5e9', '#f97316', '#64748b']
 
-/** Các section kết quả (kiểu tab DCA): bấm pill để chỉ hiện section đó. */
+/** Các section kết quả (kiểu tab DCA): bấm pill để chỉ hiện section đó.
+ *  Không có mục "Tất cả" — trạng thái đó render cả 31 chart một lúc, là chi phí
+ *  nặng nhất của tab. Chỉ mount đúng section đang chọn. */
 const ANALYSIS_SECTIONS = [
-  { id: 'all', label: 'Tất cả' },
   { id: 'allocation', label: 'Cấu trúc & Phân bổ' },
   { id: 'perf', label: 'Hiệu suất & Rủi ro' },
   { id: 'size', label: 'Quy mô & Dòng tiền' },
@@ -106,6 +107,15 @@ interface PeriodOption {
   value: string | null
   label: string
 }
+
+interface TablePeriodSelection {
+  leftPeriod: string | null
+  rightPeriod: string | null
+}
+
+type TablePeriodSelections = Record<string, TablePeriodSelection>
+
+const TABLE_PERIODS_KEY = 'fund_analysis_table_periods'
 
 const selectStyles = {
   control: (base: Record<string, unknown>) => ({
@@ -155,7 +165,59 @@ function formatVNDLocale(value: number): string {
 /** Chữ ký delta có dấu, vd "+16,3%" / "-17,2%". value = phân số (0.163). */
 function signedPct(value: number): string {
   const sign = value >= 0 ? '+' : '-'
-  return `${sign}${(Math.abs(value) * 100).toFixed(1)}%`
+  return `${sign}${(Math.abs(value) * 100).toFixed(1).replace('.', ',')}%`
+}
+
+/** Số lượng cổ phiếu có dấu, nhóm nghìn dấu chấm: "+300.000" / "-200.000". */
+function signedQty(value: number): string {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : ''
+  return `${sign}${Math.abs(value).toLocaleString('vi-VN')}`
+}
+
+/** % thay đổi số lượng có dấu, 1 số lẻ (dấu phẩy thập phân); "Mới" khi kỳ trước = 0. */
+function formatQtyChangePct(row: QuantityChangeRow): string {
+  if (row.status === 'new') return 'Mới'
+  if (row.status === 'closed') return 'Bán hết'
+  if (row.deltaPct === null) return '—'
+  const sign = row.deltaPct >= 0 ? '+' : '-'
+  return `${sign}${Math.abs(row.deltaPct).toFixed(1).replace('.', ',')}%`
+}
+
+/** Giá trị thay đổi tham chiếu có dấu, đơn vị tỷ: "+241,0 tỷ" / "-77,5 tỷ". */
+function signedValueTy(value: number): string {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : ''
+  return `${sign}${formatVNDLocale(Math.abs(value))}`
+}
+
+function loadTablePeriodSelections(): TablePeriodSelections {
+  const saved = loadLS<unknown>(TABLE_PERIODS_KEY, {})
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {}
+  return saved as TablePeriodSelections
+}
+
+export function resolveTablePeriodSelection(
+  periods: string[],
+  saved: TablePeriodSelection | undefined,
+  legacyLeft: string | null,
+): TablePeriodSelection {
+  if (periods.length === 0) return { leftPeriod: null, rightPeriod: null }
+
+  const leftPeriod = typeof saved?.leftPeriod === 'string' && periods.includes(saved.leftPeriod)
+    ? saved.leftPeriod
+    : !saved && legacyLeft && periods.includes(legacyLeft)
+      ? legacyLeft
+      : periods[0]!
+  const leftIndex = periods.indexOf(leftPeriod)
+  const defaultRight = leftIndex >= 0
+    ? periods[leftIndex + 1] ?? periods.find(period => period !== leftPeriod) ?? null
+    : null
+  const rightPeriod = saved && saved.rightPeriod === null
+    ? null
+    : typeof saved?.rightPeriod === 'string' && periods.includes(saved.rightPeriod)
+      ? saved.rightPeriod
+      : defaultRight
+
+  return { leftPeriod, rightPeriod }
 }
 
 export function top10StocksForPeriod(
@@ -190,7 +252,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     return REPORT_FUNDS.includes(saved) ? saved : REPORT_FUNDS[0]!
   })
   const [piePeriod, setPiePeriod] = useState<string | null>(() => loadLS<string | null>('fund_analysis_pie_period', null))
-  const [tablePeriod, setTablePeriod] = useState<string | null>(() => loadLS<string | null>('fund_analysis_table_period', null))
+  const [tableLeftPeriod, setTableLeftPeriod] = useState<string | null>(null)
+  const [tableRightPeriod, setTableRightPeriod] = useState<string | null>(null)
+  const [tablePeriodSelections, setTablePeriodSelections] = useState<TablePeriodSelections>(loadTablePeriodSelections)
+  const [legacyTablePeriod] = useState<string | null>(() => loadLS<string | null>('fund_analysis_table_period', null))
 
   const [portfolio, setPortfolio] = useState<Map<string, FundPeriodSummary> | null>(null)
   const [assets, setAssets] = useState<Map<string, FundAssetsSnapshot> | null>(null)
@@ -199,14 +264,18 @@ function FundAnalysisPanelImpl({ funds }: Props) {
   const [industryMap, setIndustryMap] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<AnalysisSectionId>('all')
+  const [activeSection, setActiveSection] = useState<AnalysisSectionId>('allocation')
 
   useEffect(() => { saveLS('fund_analysis_fund', fundId) }, [fundId])
   useEffect(() => { saveLS('fund_analysis_pie_period', piePeriod) }, [piePeriod])
-  useEffect(() => { saveLS('fund_analysis_table_period', tablePeriod) }, [tablePeriod])
-
-  const showSection = (id: AnalysisSectionId) =>
-    activeSection === 'all' || activeSection === id ? undefined : 'none'
+  useEffect(() => {
+    if (tableLeftPeriod === null && tableRightPeriod === null) return
+    setTablePeriodSelections(saved => ({
+      ...saved,
+      [fundId]: { leftPeriod: tableLeftPeriod, rightPeriod: tableRightPeriod },
+    }))
+  }, [fundId, tableLeftPeriod, tableRightPeriod])
+  useEffect(() => { saveLS(TABLE_PERIODS_KEY, tablePeriodSelections) }, [tablePeriodSelections])
 
   // Load dữ liệu báo cáo của quỹ đang chọn (static, chỉ fetch 1 lần mỗi fund).
   useEffect(() => {
@@ -253,13 +322,25 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     [portfolio],
   )
 
+  useEffect(() => {
+    if (periods.length === 0) {
+      setTableLeftPeriod(null)
+      setTableRightPeriod(null)
+      return
+    }
+
+    const selection = resolveTablePeriodSelection(
+      periods,
+      tablePeriodSelections[fundId],
+      legacyTablePeriod,
+    )
+    setTableLeftPeriod(selection.leftPeriod)
+    setTableRightPeriod(selection.rightPeriod)
+  }, [fundId, periods])
+
   const pieResolved = useMemo(
     () => portfolio ? resolveReportPeriod(periods, piePeriod) : null,
     [portfolio, periods, piePeriod],
-  )
-  const tableResolved = useMemo(
-    () => portfolio ? resolveReportPeriod(periods, tablePeriod) : null,
-    [portfolio, periods, tablePeriod],
   )
 
   const fundOptions: FundOption[] = useMemo(
@@ -583,12 +664,6 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     return top.map((d, i) => ({ ...d, color: INDUSTRY_COLORS[i % INDUSTRY_COLORS.length]! }))
   }, [industryAlloc])
 
-  // ── Nhóm 3: danh mục kỳ đang chọn (bảng) ──
-  const tableStocks = useMemo(
-    () => (tableResolved ? portfolio?.get(tableResolved)?.stocks : null) ?? [],
-    [portfolio, tableResolved],
-  )
-
   // Top 10 nằm cùng snapshot với Tổng tài sản, không dùng kỳ của bảng.
   const top10Stocks = useMemo(
     () => top10StocksForPeriod(portfolio, pieResolved),
@@ -652,22 +727,110 @@ function FundAnalysisPanelImpl({ funds }: Props) {
     [flow, income, chartPeriods],
   )
 
+  // ── Bảng thay đổi số lượng cổ phiếu giữa hai kỳ đang chọn ──
+  // So chuỗi ngày (YYYY-MM-DD) để biết bên nào cũ hơn; dấu luôn là "mới − cũ"
+  // bất kể người dùng đặt kỳ nào ở cột trái/phải. Ẩn mã không đổi (delta = 0).
+  const quantityDiff = useMemo(() => {
+    if (!tableLeftPeriod || !tableRightPeriod || tableLeftPeriod === tableRightPeriod) return null
+    const older = tableLeftPeriod < tableRightPeriod ? tableLeftPeriod : tableRightPeriod
+    const newer = tableLeftPeriod < tableRightPeriod ? tableRightPeriod : tableLeftPeriod
+    const rows = computeQuantityChanges(
+      portfolio?.get(older)?.stocks,
+      portfolio?.get(newer)?.stocks,
+    ).filter(r => r.delta !== 0)
+    return { older, newer, rows }
+  }, [portfolio, tableLeftPeriod, tableRightPeriod])
+
   const selectPeriod = (
     value: string | null,
     onChange: (v: string | null) => void,
+    inputId: string,
+    ariaLabel: string,
+    emptyLabel = 'Mới nhất',
+    resolveLatest = false,
+    isDisabled = false,
   ) => (
     <Select<PeriodOption>
       className="fund-search-select"
       classNamePrefix="fund-search"
+      inputId={inputId}
+      aria-label={ariaLabel}
       options={periodOptions}
       value={value === null
-        ? { value: null, label: 'Mới nhất' }
+        ? { value: null, label: emptyLabel }
         : { value, label: formatPeriodLabel(value) }}
-      onChange={opt => opt && onChange(opt.value)}
+      onChange={opt => {
+        if (!opt) return
+        onChange(resolveLatest && opt.value === null ? periods[0] ?? null : opt.value)
+      }}
       isClearable={false}
+      isDisabled={isDisabled}
       styles={selectStyles}
     />
   )
+
+  const renderHoldingsTable = (
+    period: string | null,
+    heading: string,
+    selectId: string,
+    onChange: (value: string | null) => void,
+    isDisabled = false,
+  ) => {
+    const stocks = period ? portfolio?.get(period)?.stocks ?? [] : []
+    return (
+      <div className="fund-analysis-holdings-column">
+        <div className="fund-analysis-holdings-header">
+          <label className="fund-analysis-holdings-label" htmlFor={selectId}>{heading}</label>
+          {selectPeriod(
+            period,
+            onChange,
+            selectId,
+            heading,
+            isDisabled ? 'Chưa có kỳ đối chiếu' : 'Mới nhất',
+            true,
+            isDisabled,
+          )}
+        </div>
+        {isDisabled ? (
+          <p className="overlap-empty">Chưa có kỳ đối chiếu.</p>
+        ) : stocks.length > 0 ? (
+          <div
+            className="dca-stats-table-scroll fund-analysis-table-scroll"
+            tabIndex={0}
+            aria-label={`${heading}, danh sách cổ phiếu`}
+          >
+            <table className="dca-stats-table overlap-table">
+              <thead>
+                <tr>
+                  <th>Chứng khoán</th>
+                  <th>Số lượng</th>
+                  <th>Tổng giá trị</th>
+                  <th>Tỷ trọng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stocks.map(s => (
+                  <tr key={s.ticker}>
+                    <td>
+                      <span className="fund-analysis-symbol">{s.ticker}</span>
+                      {industryMap[s.ticker] && (
+                        <span className="fund-analysis-industry">{industryMap[s.ticker]}</span>
+                      )}
+                    </td>
+                    <td>{s.quantity > 0 ? s.quantity.toLocaleString('vi-VN') : '—'}</td>
+                    <td>{formatVND(s.value)}</td>
+                    <td>{s.weightPct.toFixed(2)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="overlap-empty">Kỳ này không có cổ phiếu trong danh mục.</p>
+        )}
+      </div>
+    )
+  }
 
   if (error) {
     return (
@@ -720,7 +883,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
           </div>
 
           {/* ════════════ Nhóm 3: Cấu trúc & Phân bổ ════════════ */}
-          <div style={{ display: showSection('allocation') }}>
+          {activeSection === 'allocation' && (<div>
             <div className="section-divider">
               <span className="section-divider-label">Cấu trúc & Phân bổ</span>
             </div>
@@ -732,7 +895,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
               </div>
               <div className="dca-param-row">
                 <label className="dca-label">Kỳ báo cáo</label>
-                <div className="overlap-select">{selectPeriod(piePeriod, setPiePeriod)}</div>
+                <div className="overlap-select">{selectPeriod(piePeriod, setPiePeriod, 'fund-analysis-pie-period', 'Kỳ báo cáo tổng tài sản')}</div>
               </div>
               {piePeriodSummary && pieData.length > 0 ? (
                 <>
@@ -877,51 +1040,92 @@ function FundAnalysisPanelImpl({ funds }: Props) {
                 </p>
               </div>
 
-            {/* ── Danh mục quỹ (bảng, kèm kỳ báo cáo riêng) ── */}
+            {/* ── Danh mục quỹ (hai bảng để đối chiếu kỳ) ── */}
             <div className="chart-container">
               <div className="chart-header">
                 <h3>Danh mục quỹ</h3>
               </div>
-              <div className="dca-param-row">
-                <label className="dca-label">Kỳ báo cáo</label>
-                <div className="overlap-select">{selectPeriod(tablePeriod, setTablePeriod)}</div>
+              <div className="fund-analysis-holdings-grid">
+                {renderHoldingsTable(tableLeftPeriod, 'Kỳ gần nhất', 'fund-analysis-table-left', setTableLeftPeriod)}
+                {renderHoldingsTable(tableRightPeriod, 'Kỳ đối chiếu', 'fund-analysis-table-right', setTableRightPeriod, tableRightPeriod === null)}
               </div>
-              {tableStocks.length > 0 ? (
-                <div className="dca-stats-table-scroll fund-analysis-table-scroll">
-                  <table className="dca-stats-table overlap-table">
-                    <thead>
-                      <tr>
-                        <th>Chứng khoán</th>
-                        <th>Khối lượng nắm giữ</th>
-                        <th>Tổng giá trị</th>
-                        <th>Tỷ trọng</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableStocks.map(s => (
-                        <tr key={s.ticker}>
-                          <td>
-                            <span className="fund-analysis-symbol">{s.ticker}</span>
-                            {industryMap[s.ticker] && (
-                              <span className="fund-analysis-industry">{industryMap[s.ticker]}</span>
-                            )}
-                          </td>
-                          <td>{s.quantity > 0 ? s.quantity.toLocaleString('vi-VN') : '—'}</td>
-                          <td>{formatVND(s.value)}</td>
-                          <td>{s.weightPct.toFixed(2)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+
+              {tableLeftPeriod && tableRightPeriod && (
+                <div className="fund-analysis-qty-diff">
+                  <div className="fund-analysis-qty-diff-header">
+                    <h3>Thay đổi số lượng cổ phiếu</h3>
+                    <p className="fund-analysis-qty-diff-sub">
+                      {quantityDiff
+                        ? `Từ ${formatPeriodLabel(quantityDiff.older)} đến ${formatPeriodLabel(quantityDiff.newer)}`
+                        : 'Hai kỳ đang chọn trùng nhau.'}
+                    </p>
+                  </div>
+                  {quantityDiff && (<>
+                    {quantityDiff.rows.length > 0 ? (
+                      <div
+                        className="dca-stats-table-scroll fund-analysis-table-scroll"
+                        tabIndex={0}
+                        aria-label="Thay đổi số lượng cổ phiếu giữa hai kỳ"
+                      >
+                        <table className="dca-stats-table overlap-table">
+                          <thead>
+                            <tr>
+                              <th>Cổ phiếu</th>
+                              <th>SL kỳ trước</th>
+                              <th>SL kỳ này</th>
+                              <th>Thay đổi</th>
+                              <th>% thay đổi</th>
+                              <th>Giá trị thay đổi*</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {quantityDiff.rows.map(row => {
+                              const dir = row.delta > 0 ? 'pos' : 'neg'
+                              const dirValue = row.refValueChange === null ? null : row.refValueChange >= 0 ? 'pos' : 'neg'
+                              return (
+                                <tr key={row.ticker}>
+                                  <td>
+                                    <span className="fund-analysis-symbol">{row.ticker}</span>
+                                    {industryMap[row.ticker] && (
+                                      <span className="fund-analysis-industry">{industryMap[row.ticker]}</span>
+                                    )}
+                                  </td>
+                                  <td>{row.beforeQty.toLocaleString('vi-VN')}</td>
+                                  <td>{row.afterQty.toLocaleString('vi-VN')}</td>
+                                  <td className={`overlap-diff-${dir}`}>{signedQty(row.delta)}</td>
+                                  <td className={`overlap-diff-${dir}`}>
+                                    {row.status === 'new' || row.status === 'closed' ? (
+                                      <span className={`fund-analysis-qty-tag fund-analysis-qty-tag--${row.status}`}>
+                                        {formatQtyChangePct(row)}
+                                      </span>
+                                    ) : formatQtyChangePct(row)}
+                                  </td>
+                                  <td className={dirValue ? `overlap-diff-${dirValue}` : undefined}>
+                                    {row.refValueChange === null ? '—' : signedValueTy(row.refValueChange)}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="overlap-empty">Không có mã nào đổi số lượng giữa hai kỳ này.</p>
+                    )}
+                    <p className="fund-analysis-chart-note">
+                      Giá trị thay đổi là giá trị tham chiếu của chênh lệch số lượng tại giá snapshot tương ứng,
+                      không phải giá trị giao dịch thực tế. Thay đổi số lượng có thể bao gồm tác động của chia tách,
+                      cổ tức cổ phiếu, quyền mua và các sự kiện doanh nghiệp khác.
+                    </p>
+                  </>)}
                 </div>
-              ) : (
-                <p className="overlap-empty">Kỳ này không có cổ phiếu trong danh mục.</p>
               )}
             </div>
           </div>
+          )}
 
           {/* ════════════ Nhóm 1: Hiệu suất & Rủi ro ════════════ */}
-          <div style={{ display: showSection('perf') }}>
+          {activeSection === 'perf' && (<div>
             <div className="section-divider">
               <span className="section-divider-label">Hiệu suất & Rủi ro</span>
             </div>
@@ -1086,9 +1290,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
               </div>
             </div>
           </div>
+          )}
 
           {/* ════════════ Nhóm 2: Quy mô & Dòng tiền ════════════ */}
-          <div style={{ display: showSection('size') }}>
+          {activeSection === 'size' && (<div>
             <div className="section-divider">
               <span className="section-divider-label">Quy mô & Dòng tiền</span>
             </div>
@@ -1466,9 +1671,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
               </div>
             </div>
           </div>
+          )}
 
           {/* ════════════ Nhóm 4: Chi phí & Hiệu quả ════════════ */}
-          <div style={{ display: showSection('cost') }}>
+          {activeSection === 'cost' && (<div>
             <div className="section-divider">
               <span className="section-divider-label">Chi phí & Hiệu quả</span>
             </div>
@@ -1607,9 +1813,10 @@ function FundAnalysisPanelImpl({ funds }: Props) {
               </div>
             </div>
           </div>
+          )}
 
           {/* ════════════ Nhóm 5: Red Flags ════════════ */}
-          <div style={{ display: showSection('redflags') }}>
+          {activeSection === 'redflags' && (<div>
             <div className="section-divider">
               <span className="section-divider-label">Dấu vết nghi vấn (Red Flags)</span>
             </div>
@@ -1736,6 +1943,7 @@ function FundAnalysisPanelImpl({ funds }: Props) {
 
             <RedFlagDetectors points={redFlagPoints} />
           </div>
+          )}
         </>
       )}
     </div>

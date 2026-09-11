@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { industryAllocationForPeriod, top10StocksForPeriod } from './FundAnalysisPanel'
+import { industryAllocationForPeriod, resolveTablePeriodSelection, top10StocksForPeriod } from './FundAnalysisPanel'
 import type { FundPeriodSummary } from '../utils/fundReport'
 
 function period(periodEnd: string, tickers: string[]): FundPeriodSummary {
@@ -52,5 +52,40 @@ describe('industryAllocationForPeriod', () => {
       '2026-06-30',
       { JUNE_TOP: 'Ngân hàng', JULY_TOP: 'Bất động sản' },
     )).toEqual([{ name: 'Ngân hàng', value: 1 }])
+  })
+})
+
+describe('resolveTablePeriodSelection', () => {
+  const periods = ['2026-08-31', '2026-07-31', '2026-06-30']
+
+  it('defaults to the latest and previous available report', () => {
+    expect(resolveTablePeriodSelection(periods, undefined, null)).toEqual({
+      leftPeriod: '2026-08-31',
+      rightPeriod: '2026-07-31',
+    })
+  })
+
+  it('keeps the two saved periods independent and falls back when stale', () => {
+    expect(resolveTablePeriodSelection(periods, {
+      leftPeriod: '2026-06-30',
+      rightPeriod: '2025-12-31',
+    }, null)).toEqual({
+      leftPeriod: '2026-06-30',
+      rightPeriod: '2026-08-31',
+    })
+  })
+
+  it('uses the legacy period only for the left side', () => {
+    expect(resolveTablePeriodSelection(periods, undefined, '2026-07-31')).toEqual({
+      leftPeriod: '2026-07-31',
+      rightPeriod: '2026-06-30',
+    })
+  })
+
+  it('does not duplicate a single available period', () => {
+    expect(resolveTablePeriodSelection(['2026-08-31'], undefined, null)).toEqual({
+      leftPeriod: '2026-08-31',
+      rightPeriod: null,
+    })
   })
 })

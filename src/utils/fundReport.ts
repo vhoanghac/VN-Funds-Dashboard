@@ -443,3 +443,117 @@ export function resolveReportPeriod(periods: string[], targetPeriod: string | nu
   }
   return sorted[0]!
 }
+
+/** Trạng thái thay đổi số lượng của một mã giữa hai kỳ. */
+export type QuantityChangeStatus = 'new' | 'closed' | 'increased' | 'decreased' | 'unchanged'
+
+/** Một dòng thay đổi số lượng cổ phiếu giữa kỳ cũ và kỳ mới. */
+export interface QuantityChangeRow {
+  ticker: string
+  /** Số lượng nắm giữ ở kỳ CŨ hơn (0 nếu kỳ đó chưa nắm). */
+  beforeQty: number
+  /** Số lượng nắm giữ ở kỳ MỚI hơn (0 nếu đã bán hết). */
+  afterQty: number
+  /** afterQty − beforeQty. */
+  delta: number
+  /** % thay đổi so với kỳ cũ; null khi kỳ cũ = 0 (vị thế mới). */
+  deltaPct: number | null
+  status: QuantityChangeStatus
+  /**
+   * Giá dùng để định giá phần thay đổi. null khi snapshot không báo giá
+   * (nguồn để trống) — KHÔNG quy về 0, vì 0 nghĩa là "thay đổi đáng 0 đồng",
+   * khác hẳn "không đủ dữ liệu để định giá".
+   */
+  refPrice: number | null
+  /** Giá lấy từ kỳ nào; null khi không đủ dữ liệu. */
+  refPriceBasis: 'new' | 'old' | null
+  /**
+   * ΔQty × refPrice. Đây là giá trị THAM CHIẾU của phần thay đổi tại mức giá
+   * snapshot, KHÔNG phải tiền quỹ thực bỏ ra mua/bán. null khi thiếu giá.
+   */
+  refValueChange: number | null
+}
+
+/** Giá hợp lệ (> 0 mới coi là có báo giá); trả null nếu thiếu. */
+function priceOf(map: Map<string, number>, ticker: string): number | null {
+  const p = map.get(ticker)
+  return p !== undefined && p > 0 ? p : null
+}
+
+/**
+ * So số lượng cổ phiếu nắm giữ giữa hai kỳ (before = kỳ CŨ hơn,
+ * after = kỳ MỚI hơn). Gộp union theo ticker, tính `delta = after − before`.
+ *
+ * Giá tham chiếu lấy theo KỲ MÀ PHẦN THAY ĐỔI HIỆN DIỆN: tăng (kể cả mã mới)
+ * dùng giá kỳ mới; giảm (kể cả mã bán hết) dùng giá kỳ cũ. Nhờ vậy không cần
+ * case riêng cho mã đã biến mất, và metric nhất quán về ý nghĩa.
+ *
+ * Trả về CẢ mã không đổi để hàm thuần và đầy đủ; UI tự lọc nếu muốn chỉ hiện
+ * mã có thay đổi. Sắp giảm theo |refValueChange|, các row thiếu giá xuống cuối,
+ * rồi tie-break |delta| và ticker.
+ */
+export function computeQuantityChanges(
+  before: FundStockHolding[] | null | undefined,
+  after: FundStockHolding[] | null | undefined,
+): QuantityChangeRow[] {
+  const beforeQty = new Map<string, number>()
+  const afterQty = new Map<string, number>()
+  const beforePrice = new Map<string, number>()
+  const afterPrice = new Map<string, number>()
+  for (const s of before ?? []) {
+    beforeQty.set(s.ticker, (beforeQty.get(s.ticker) ?? 0) + s.quantity)
+    if (s.marketPrice > 0) beforePrice.set(s.ticker, s.marketPrice)
+  }
+  for (const s of after ?? []) {
+    afterQty.set(s.ticker, (afterQty.get(s.ticker) ?? 0) + s.quantity)
+    if (s.marketPrice > 0) afterPrice.set(s.ticker, s.marketPrice)
+  }
+
+  const rows: QuantityChangeRow[] = []
+  for (const ticker of new Set([...beforeQty.keys(), ...afterQty.keys()])) {
+    const b = beforeQty.get(ticker) ?? 0
+    const a = afterQty.get(ticker) ?? 0
+    const delta = a - b
+    const status: QuantityChangeStatus =
+      b === 0 && a !== 0 ? 'new'
+        : a === 0 && b !== 0 ? 'closed'
+          : delta > 0 ? 'increased'
+            : delta < 0 ? 'decreased'
+              : 'unchanged'
+
+    // Tăng → giá kỳ mới; giảm → giá kỳ cũ; không đổi → ưu tiên kỳ mới.
+    let refPriceBasis: 'new' | 'old' | null
+    if (delta > 0) refPriceBasis = 'new'
+    else if (delta < 0) refPriceBasis = 'old'
+    else refPriceBasis = afterPrice.has(ticker) ? 'new' : beforePrice.has(ticker) ? 'old' : null
+    const refPrice = refPriceBasis === 'new'
+      ? priceOf(afterPrice, ticker)
+      : refPriceBasis === 'old'
+        ? priceOf(beforePrice, ticker)
+        : null
+
+    rows.push({
+      ticker,
+      beforeQty: b,
+      afterQty: a,
+      delta,
+      deltaPct: b > 0 ? (delta / b) * 100 : null,
+      status,
+      refPrice,
+      refPriceBasis: refPrice === null ? null : refPriceBasis,
+      refValueChange: refPrice === null ? null : delta * refPrice,
+    })
+  }
+
+  rows.sort((x, y) => {
+    const xKnown = x.refValueChange !== null
+    const yKnown = y.refValueChange !== null
+    if (xKnown !== yKnown) return xKnown ? -1 : 1
+    if (xKnown && yKnown) {
+      const byValue = Math.abs(y.refValueChange!) - Math.abs(x.refValueChange!)
+      if (byValue !== 0) return byValue
+    }
+    return Math.abs(y.delta) - Math.abs(x.delta) || x.ticker.localeCompare(y.ticker)
+  })
+  return rows
+}
