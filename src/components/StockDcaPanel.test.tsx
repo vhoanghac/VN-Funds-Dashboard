@@ -223,6 +223,39 @@ describe('StockDcaPanel', () => {
     expect(screen.getByLabelText('Tỷ trọng tài sản của MBB')).toBeInTheDocument()
   })
 
+  it('shows only the account drawdown and recovery charts when the drawdown filter is "Tất cả"', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB', 'MBB'])} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Mức sụt giảm' }))
+
+    const allButton = screen.getAllByRole('button', { name: 'Tất cả' }).find(button => button.className.includes('dca-results-filter-btn'))
+    expect(allButton).toBeDefined()
+
+    await userEvent.setup().click(allButton!)
+
+    expect(screen.getByRole('heading', { name: 'Giá trị danh mục sụt giảm bao nhiêu?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Hiệu suất để về lại đỉnh' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'So sánh các chu kỳ drawdown' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Tóm tắt drawdown' })).not.toBeInTheDocument()
+  })
+
   it('starts multiple stock portfolios on their common first date', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const path = String(input)

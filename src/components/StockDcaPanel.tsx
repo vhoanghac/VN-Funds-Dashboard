@@ -127,6 +127,7 @@ const STOCK_SECTIONS: { id: StockSectionId; label: string }[] = [
 const ALL_RISK_PORTFOLIOS = '__all__'
 const ALL_STOCK_POSITIONS = '__all__'
 const ALL_PERFORMANCE_SCOPE = '__all__'
+const ALL_DRAWDOWN_PORTFOLIOS = '__all__'
 
 const MemoDrawdownChart = memo(DrawdownChart)
 const MemoYearlyPerformanceChart = memo(YearlyPerformanceChart)
@@ -720,6 +721,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const [activeSection, setActiveSection] = useState<StockSectionId>('summary')
   const [activePortfolioId, setActivePortfolioId] = useState(views[0]!.id)
   const [activeRiskPortfolioId, setActiveRiskPortfolioId] = useState('')
+  const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState(views[0]!.id)
   const [activeStockId, setActiveStockId] = useState(ALL_STOCK_POSITIONS)
   const [perfScope, setPerfScope] = useState(ALL_PERFORMANCE_SCOPE)
   useEffect(() => {
@@ -730,10 +732,16 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
       setActiveRiskPortfolioId(views[0]?.id ?? '')
     }
   }, [activeRiskPortfolioId, views])
+  useEffect(() => {
+    if (activeDrawdownPortfolioId !== ALL_DRAWDOWN_PORTFOLIOS && !views.some(view => view.id === activeDrawdownPortfolioId)) {
+      setActiveDrawdownPortfolioId(views[0]?.id ?? '')
+    }
+  }, [activeDrawdownPortfolioId, views])
 
   const view = views.find(candidate => candidate.id === activePortfolioId) ?? views[0]!
   const riskPortfolioId = activeRiskPortfolioId || views[0]?.id
   const riskView = views.find(candidate => candidate.id === riskPortfolioId) ?? views[0]!
+  const drawdownPortfolioId = activeDrawdownPortfolioId || views[0]?.id
   const { result } = view
   // "Tất cả" chỉ có nghĩa khi danh mục có từ hai mã. Một mã thì luôn chọn chính nó.
   const showAllStocks = activeStockId === ALL_STOCK_POSITIONS && result.positions.length > 1
@@ -831,7 +839,11 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
    const selectedRiskReturnPainPortfolios = useMemo(() => riskReturnPainPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskReturnPainPortfolios])
    const selectedRiskHistoricalPortfolios = useMemo(() => riskHistoricalPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskHistoricalPortfolios])
    const selectedRiskRollingPortfolios = useMemo(() => riskRollingPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskRollingPortfolios])
-  const selectedDrawdownPortfolios = useMemo(() => drawdownPortfolios.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, drawdownPortfolios])
+  const showAllDrawdowns = hasMultiplePortfolios && drawdownPortfolioId === ALL_DRAWDOWN_PORTFOLIOS
+  const selectedDrawdownPortfolios = useMemo(
+    () => showAllDrawdowns ? drawdownPortfolios : drawdownPortfolios.filter(candidate => candidate.id === drawdownPortfolioId),
+    [drawdownPortfolios, drawdownPortfolioId, showAllDrawdowns],
+  )
   const selectedProjection = useMemo(() => projection.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, projection])
   const selectedMonteCarlo = useMemo(() => monteCarlo.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, monteCarlo])
   const needsPortfolioFilter = (
@@ -843,12 +855,26 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   ) && !(activeSection === 'perf' && !hasMultiplePortfolios)
   const activeSectionLabel = STOCK_SECTIONS.find(section => section.id === activeSection)?.label ?? ''
   // Mọi section dùng chung một thanh lọc danh mục ngay dưới thanh nav, nhưng mỗi
-  // section giữ state riêng: Rủi ro dùng riskPortfolioId, Hiệu suất dùng perfScope.
+  // section giữ state riêng: Rủi ro dùng riskPortfolioId, Hiệu suất dùng perfScope,
+  // Drawdowns dùng drawdownPortfolioId (có thêm lựa chọn "Tất cả").
   const scopedPortfolioFilterId = activeSection === 'risk'
     ? riskPortfolioId
     : activeSection === 'perf'
       ? effectivePerfScope
-      : activePortfolioId
+      : activeSection === 'drawdowns'
+        ? drawdownPortfolioId
+        : activePortfolioId
+  const scopeAllValue = activeSection === 'risk'
+    ? ALL_RISK_PORTFOLIOS
+    : activeSection === 'drawdowns'
+      ? ALL_DRAWDOWN_PORTFOLIOS
+      : ALL_PERFORMANCE_SCOPE
+  const setScope = (id: string) => {
+    if (activeSection === 'risk') setActiveRiskPortfolioId(id)
+    else if (activeSection === 'perf') setPerfScope(id)
+    else if (activeSection === 'drawdowns') setActiveDrawdownPortfolioId(id)
+    else setActivePortfolioId(id)
+  }
 
   return (
     <>
@@ -867,11 +893,11 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
           </div>
           {needsPortfolioFilter && (
             <div className="dca-results-filter-toolbar" aria-label={`Chọn danh mục trong ${activeSectionLabel}`}>
-              {(activeSection === 'risk' || activeSection === 'perf') && views.length > 1 && (
+              {(activeSection === 'risk' || activeSection === 'perf' || activeSection === 'drawdowns') && views.length > 1 && (
                 <button
-                  className={`dca-results-filter-btn${scopedPortfolioFilterId === (activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE) ? ' dca-results-filter-btn--active' : ''}`}
-                  aria-pressed={scopedPortfolioFilterId === (activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE)}
-                  onClick={() => activeSection === 'risk' ? setActiveRiskPortfolioId(ALL_RISK_PORTFOLIOS) : setPerfScope(ALL_PERFORMANCE_SCOPE)}
+                  className={`dca-results-filter-btn${scopedPortfolioFilterId === scopeAllValue ? ' dca-results-filter-btn--active' : ''}`}
+                  aria-pressed={scopedPortfolioFilterId === scopeAllValue}
+                  onClick={() => setScope(scopeAllValue)}
                 >
                   Tất cả
                 </button>
@@ -881,7 +907,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
                   key={candidate.id}
                     className={`dca-results-filter-btn${scopedPortfolioFilterId === candidate.id ? ' dca-results-filter-btn--active' : ''}`}
                     aria-pressed={scopedPortfolioFilterId === candidate.id}
-                    onClick={() => activeSection === 'risk' ? setActiveRiskPortfolioId(candidate.id) : activeSection === 'perf' ? setPerfScope(candidate.id) : setActivePortfolioId(candidate.id)}
+                    onClick={() => setScope(candidate.id)}
                 >
                   {candidate.name}
                 </button>
@@ -978,7 +1004,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
           </DcaSectionPanel>
 
           <DcaSectionPanel id="drawdowns" active={activeSection === 'drawdowns'}>
-             <DcaStormBlock portfolios={selectedDrawdownPortfolios} assetLabel="cổ phiếu" />
+            <DcaStormBlock portfolios={selectedDrawdownPortfolios} assetLabel="cổ phiếu" overview={showAllDrawdowns} />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="endgame" active={activeSection === 'endgame'}>

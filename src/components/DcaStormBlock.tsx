@@ -39,6 +39,8 @@ export interface StormPortfolio {
 interface Props {
   portfolios: StormPortfolio[]
   assetLabel?: string
+  /** Chế độ "Tất cả": chỉ vẽ 2 chart cấp danh mục, bỏ stat, bảng summary và so chu kỳ. */
+  overview?: boolean
 }
 
 const BEAR_LABEL: Record<NonNullable<DCAStormStats['inBearPeriod']>, string> = {
@@ -47,8 +49,25 @@ const BEAR_LABEL: Record<NonNullable<DCAStormStats['inBearPeriod']>, string> = {
   bear2022: 'bear market 2022',
 }
 
-function DcaStormBlockImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
+function DcaStormBlockImpl({ portfolios, assetLabel = 'quỹ', overview = false }: Props) {
   if (portfolios.length === 0) return null
+
+  // Chế độ "Tất cả": chỉ 2 chart cấp danh mục (giá trị sụt giảm + hiệu suất về
+  // đỉnh), không hiện stat, bảng summary hay so sánh chu kỳ drawdown từng danh mục.
+  if (overview) {
+    const worst = [...portfolios].sort((a, b) => a.storm.maxDrawdown - b.storm.maxDrawdown)[0]!
+    return (
+      <>
+        <AccountDrawdownChart
+          portfolios={portfolios}
+          worstPortfolioId={worst.id}
+          marketMaxDD={worst.storm.maxDrawdown}
+          assetLabel={assetLabel}
+        />
+        <DcaRecoveryChart portfolios={portfolios} assetLabel={assetLabel} />
+      </>
+    )
+  }
 
   // Lọc portfolio có bão đáng kể (DD ≤ -10%)
   const stormed = portfolios.filter(p => p.storm.maxDrawdown <= -0.10)
