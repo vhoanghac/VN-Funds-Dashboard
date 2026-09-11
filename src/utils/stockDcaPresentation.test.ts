@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { annualStockDividends, compactStockLedgerToMonthly, stockShareHoldings } from './stockDcaPresentation'
+import { annualStockDividends, buildStockAllocatedValueSeries, compactStockLedgerToMonthly, stockShareHoldings } from './stockDcaPresentation'
 import type { StockAccountValuePoint } from './stockAccountDca'
+import type { StockPortfolioPositionPoint } from './stockPortfolioDca'
 
 function point(date: string, value: number): StockAccountValuePoint {
   return {
@@ -78,3 +79,32 @@ describe('stockShareHoldings', () => {
     ])
   })
 })
+
+describe('buildStockAllocatedValueSeries', () => {
+  it('maps each position point to its allocated sleeve value', () => {
+    const points = [positionPoint('2026-01-05', 100), positionPoint('2026-02-05', 130)]
+
+    expect(buildStockAllocatedValueSeries(points)).toEqual([
+      { date: '2026-01-05', value: 100 },
+      { date: '2026-02-05', value: 130 },
+    ])
+  })
+})
+
+function positionPoint(date: string, value: number): StockPortfolioPositionPoint {
+  return {
+    date,
+    price: value,
+    shares: 1,
+    purchasedShares: 1,
+    stockDividendHoldings: 0,
+    pendingShares: 0,
+    pendingSubscriptionPayable: 0,
+    cashReceivables: 0,
+    cashDividends: 0,
+    stockDividendShares: 0,
+    investedCash: value,
+    reservedCash: 0,
+    value,
+  }
+}

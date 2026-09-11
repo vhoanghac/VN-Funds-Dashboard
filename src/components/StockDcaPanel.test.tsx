@@ -82,6 +82,15 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+/** Mở khối Chất lượng dữ liệu và trả về đoạn nêu khoảng so sánh thực tế đã căn chỉnh. */
+async function alignedRangeText(): Promise<string> {
+  const header = screen.getByRole('button', { name: /Chất lượng dữ liệu:|Dữ liệu đầy đủ/ })
+  if (header.getAttribute('aria-expanded') !== 'true') {
+    await userEvent.setup().click(header)
+  }
+  return screen.getByText(/Khoảng so sánh thực tế đã được căn chỉnh/).textContent ?? ''
+}
+
 describe('StockDcaPanel', () => {
   it('uses compact axis labels for account-value charts', () => {
     expect(formatStockAxisVND(2_500_000_000)).toBe('2.5B')
@@ -239,13 +248,15 @@ describe('StockDcaPanel', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
     await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
 
-    expect(screen.getByText('DCA từ 06/01/2026 đến 05/02/2026')).toBeInTheDocument()
+    const aligned = await alignedRangeText()
+    expect(aligned).toContain('06/01/2026')
+    expect(aligned).toContain('05/02/2026')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Rủi ro & biến động' }))
     const mbbFilter = screen.getAllByRole('button', { name: 'MBB' }).find(button => button.className.includes('dca-results-filter-btn'))
     expect(mbbFilter).toBeDefined()
     await userEvent.setup().click(mbbFilter!)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
-    expect(screen.getByText('DCA từ 06/01/2026 đến 05/02/2026')).toBeInTheDocument()
+    expect(await alignedRangeText()).toContain('06/01/2026')
   })
 
   it('warns instead of silently dropping a portfolio with no price in the selected period', async () => {
@@ -337,12 +348,14 @@ describe('StockDcaPanel', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
     await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
-    expect(screen.getAllByText('DCA từ 05/01/2026 đến 06/01/2026').length).toBeGreaterThan(0)
+    const aligned = await alignedRangeText()
+    expect(aligned).toContain('05/01/2026')
+    expect(aligned).toContain('06/01/2026')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
     const mbbFilter = screen.getAllByRole('button', { name: 'MBB' }).find(button => button.className.includes('dca-results-filter-btn'))
     expect(mbbFilter).toBeDefined()
     await userEvent.setup().click(mbbFilter!)
-    expect(screen.getAllByText('DCA từ 05/01/2026 đến 06/01/2026').length).toBeGreaterThan(0)
+    expect(await alignedRangeText()).toContain('05/01/2026')
   })
 
   it('keeps each stock ledger on its own raw quote dates inside the shared period', async () => {
@@ -584,7 +597,7 @@ describe('StockDcaPanel', () => {
     expect(screen.queryByRole('columnheader', { name: 'Tiền mặt' })).not.toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Tổng cổ phiếu' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Đã đầu tư' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Giá trị cổ phiếu' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Giá trị phân bổ' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Cổ tức tiền đã nhận' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Cổ tức cổ phiếu đã nhận' })).toBeInTheDocument()
   })
@@ -639,5 +652,147 @@ describe('StockDcaPanel', () => {
     expect(sharesBtn).toBeEnabled()
     expect(sharesBtn).toHaveAttribute('aria-pressed', 'true')
     expect(valueBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('defaults the performance section to All and filters every block to the picked portfolio', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB', 'MBB'])} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+
+    const perfToolbar = screen.getByLabelText('Chọn danh mục trong Hiệu suất đầu tư')
+    expect(within(perfToolbar).getByRole('button', { name: 'Tất cả' })).toHaveAttribute('aria-pressed', 'true')
+    const allBank = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' }).closest('.dca-block') as HTMLElement
+    expect(allBank).toHaveTextContent('ACB')
+    expect(allBank).toHaveTextContent('MBB')
+    // "Tất cả" là nhiều series cạnh nhau, không gộp thành một danh mục mới.
+    expect(screen.queryAllByRole('heading', { name: /^Giá trị phân bổ - / })).toHaveLength(0)
+
+    await userEvent.setup().click(within(perfToolbar).getByRole('button', { name: 'ACB' }))
+    expect(within(perfToolbar).getByRole('button', { name: 'ACB' })).toHaveAttribute('aria-pressed', 'true')
+    const acbBank = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' }).closest('.dca-block') as HTMLElement
+    expect(acbBank).toHaveTextContent('ACB')
+    expect(acbBank).not.toHaveTextContent('MBB')
+  })
+
+  it('shows one allocated-value chart per stock for a single portfolio, with no performance toolbar', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB'])} />)
+    await waitFor(() => expect(screen.getByTitle('Thêm cổ phiếu')).toBeEnabled())
+    await userEvent.setup().click(screen.getByTitle('Thêm cổ phiếu'))
+    await userEvent.setup().click(screen.getByTitle('Chia đều tỷ trọng'))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+
+    expect(screen.queryByLabelText('Chọn danh mục trong Hiệu suất đầu tư')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: /^Giá trị phân bổ - / })).toHaveLength(2)
+  })
+
+  it('keeps the dividend stock filter independent from the performance scope', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    const shareUrl = stockShareUrl(['ACB'])
+    shareUrl.parsedPayload = {
+      ...shareUrl.parsedPayload,
+      dateFrom: '',
+      dateTo: '',
+      portfolios: [
+        { name: 'P1', slots: [{ fundId: 'ACB', weight: 50 }, { fundId: 'BID', weight: 50 }], rebalFreq: 'monthly', transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 } },
+        { name: 'P2', slots: [{ fundId: 'ACB', weight: 50 }, { fundId: 'BID', weight: 50 }], rebalFreq: 'monthly', transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0, sellTaxRate: 0 } },
+      ],
+    }
+    render(<StockDcaPanel active shareUrl={shareUrl} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
+    const stockToolbar = screen.getByLabelText('Chọn cổ phiếu trong danh mục')
+    await userEvent.setup().click(within(stockToolbar).getByRole('button', { name: 'BID' }))
+    expect(within(stockToolbar).getByRole('button', { name: 'BID' })).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+    const perfToolbar = screen.getByLabelText('Chọn danh mục trong Hiệu suất đầu tư')
+    await userEvent.setup().click(within(perfToolbar).getByRole('button', { name: 'P2' }))
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
+    const stockToolbarAfter = screen.getByLabelText('Chọn cổ phiếu trong danh mục')
+    expect(within(stockToolbarAfter).getByRole('button', { name: 'BID' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(stockToolbarAfter).getByRole('button', { name: 'Tất cả' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('lets the user type a custom savings rate in the bank comparison', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => path.endsWith('_div.csv') ? ACTIONS_CSV : path.endsWith('_pending.csv') ? PENDING_ACTIONS_CSV : PRICE_CSV,
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl(['ACB'])} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Chạy DCA' })).toBeEnabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Chạy DCA' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã cập nhật' })).toBeDisabled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
+
+    const rateInput = screen.getByLabelText('Lãi suất tiết kiệm tự nhập')
+    expect(rateInput).toHaveValue('6,5')
+    await userEvent.setup().clear(rateInput)
+    await userEvent.setup().type(rateInput, '9,5')
+
+    const bankBlock = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' }).closest('.dca-block') as HTMLElement
+    expect(bankBlock).toHaveTextContent('9.5%/năm')
   })
 })

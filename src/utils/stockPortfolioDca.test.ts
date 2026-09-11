@@ -345,4 +345,51 @@ describe('stock portfolio DCA', () => {
     expect(aaa[2]!.reservedCash).toBeCloseTo(200, 6)
     expect(result.totalContributed).toBe(1_020)
   })
+
+  it('reconciles every per-stock allocated value with the portfolio value on every date', () => {
+    const result = simulateStockPortfolioDca({
+      pricesByStock,
+      slots: [{ fundId: 'AAA', weight: 60 }, { fundId: 'BBB', weight: 40 }],
+      contributions: [{ date: '2026-01-05', amount: 2_000 }],
+      corporateActionsByStock: new Map([['AAA', [
+        { kind: 'cash_dividend' as const, exDate: '2026-01-06', payDate: '2026-02-05', amountPerShare: 1 },
+        { kind: 'stock_dividend' as const, exDate: '2026-01-05', payDate: '2026-01-06', sharesPerShare: 0.1 },
+      ]]]),
+      rebalFreq: 'monthly',
+      lotSize: 1,
+      transactionCostRates: { buyFeeRate: 0.001, sellFeeRate: 0.001, sellTaxRate: 0.001 },
+    })
+
+    expect(result.points.length).toBeGreaterThan(0)
+    result.points.forEach((portfolioPoint, index) => {
+      const allocated = result.positions.reduce((sum, position) => sum + position.points[index]!.value, 0)
+      expect(allocated).toBeCloseTo(portfolioPoint.value, 6)
+    })
+  })
+
+  it('reconciles allocated values when a rights subscription is funded externally', () => {
+    const flat = [
+      { date: '2026-01-05', price: 3 },
+      { date: '2026-01-06', price: 3 },
+      { date: '2026-02-05', price: 3 },
+    ]
+    const result = simulateStockPortfolioDca({
+      pricesByStock: new Map([['AAA', flat], ['BBB', flat]]),
+      slots: [{ fundId: 'AAA', weight: 50 }, { fundId: 'BBB', weight: 50 }],
+      contributions: [{ date: '2026-01-05', amount: 1_000 }],
+      corporateActionsByStock: new Map([['BBB', [{
+        kind: 'rights_issue' as const,
+        exDate: '2026-01-06', recordDate: '2026-01-06', rightsPerShare: 0.2,
+        subscriptionPrice: 1, lastDate: '2026-01-06', settlementDate: '2026-02-05',
+        choice: 'exercise' as const, funding: 'external' as const,
+      }]]]),
+      rebalFreq: 'yearly',
+      lotSize: 100,
+    })
+
+    result.points.forEach((portfolioPoint, index) => {
+      const allocated = result.positions.reduce((sum, position) => sum + position.points[index]!.value, 0)
+      expect(allocated).toBeCloseTo(portfolioPoint.value, 6)
+    })
+  })
 })

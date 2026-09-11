@@ -1989,6 +1989,7 @@ textarea {
 
 .dca-bank-compare-rate {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
@@ -1998,6 +1999,33 @@ textarea {
 .dca-bank-compare-rate-btns {
   display: flex;
   gap: 4px;
+}
+
+.dca-bank-compare-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5e5d59;
+}
+
+.dca-bank-compare-custom-input {
+  width: 64px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.85rem;
+  text-align: right;
+  color: #141413;
+}
+
+.dca-bank-compare-custom-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.dca-bank-compare-custom-unit {
+  color: #5e5d59;
 }
 
 .dca-bank-compare-sub {
@@ -3677,6 +3705,19 @@ textarea {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-primary-fg);
+}
+
+/* Biểu đồ giá trị phân bổ của từng mã trong danh mục (mục Hiệu suất đầu tư).
+   Mỗi mã một block, xếp dọc, tiêu đề nhỏ hơn block chính cho đỡ rối. */
+.stock-position-value-block .dca-block-title {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 480px) {
+  .stock-position-value-block {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 }
 
 /* ── Chú giải sự kiện Wall of Worry overlay trên PortfolioValueChart ── */

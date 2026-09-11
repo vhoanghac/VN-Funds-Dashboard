@@ -23,6 +23,11 @@ const RATE_OPTIONS = [
   { label: '8%', value: 0.08 },
 ]
 
+/** Hiển thị lãi suất thập phân thành "6,5" cho ô nhập (dấu phẩy kiểu Việt Nam). */
+function formatRateText(rate: number): string {
+  return (rate * 100).toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+}
+
 export interface BankCompareResult {
   id: string
   name: string
@@ -39,8 +44,24 @@ interface Props {
 
 function BankComparisonBlockImpl({ results, endDate, assetLabel = 'quỹ' }: Props) {
   const [bankRate, setBankRate] = useState<number>(DEFAULT_BANK_RATE)
+  const [rateText, setRateText] = useState<string>(formatRateText(DEFAULT_BANK_RATE))
 
   if (results.length === 0) return null
+
+  function applyRate(rate: number) {
+    setBankRate(rate)
+    setRateText(formatRateText(rate))
+  }
+
+  // Ô nhập giữ nguyên chữ người dùng gõ; chỉ cập nhật lãi suất khi parse ra số hợp lệ.
+  // Chấp nhận cả dấu phẩy thập phân kiểu Việt Nam ("6,5").
+  function handleRateTextChange(text: string) {
+    setRateText(text)
+    const normalized = text.replace(',', '.').trim()
+    if (normalized === '') return
+    const parsed = Number(normalized)
+    if (Number.isFinite(parsed) && parsed >= 0) setBankRate(parsed / 100)
+  }
 
   const end = new Date(endDate).getTime()
   const msPerYear = 365.25 * 24 * 3600 * 1000
@@ -75,13 +96,26 @@ function BankComparisonBlockImpl({ results, endDate, assetLabel = 'quỹ' }: Pro
               <button
                 key={opt.value}
                 className={`dca-choice-btn${Math.abs(opt.value - bankRate) < 1e-6 ? ' dca-choice-btn--active' : ''}`}
-                onClick={() => setBankRate(opt.value)}
+                onClick={() => applyRate(opt.value)}
                 title="Lãi suất tiết kiệm có kỳ hạn giả định, compound hàng năm"
               >
                 {opt.label}
               </button>
             ))}
           </div>
+          <label className="dca-bank-compare-custom">
+            <span>Hoặc tự nhập</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              className="dca-bank-compare-custom-input"
+              value={rateText}
+              onChange={event => handleRateTextChange(event.target.value)}
+              aria-label="Lãi suất tiết kiệm tự nhập"
+              title="Nhập lãi suất tiết kiệm bạn muốn so sánh, đơn vị %/năm. Ví dụ 7,5."
+            />
+            <span className="dca-bank-compare-custom-unit">%/năm</span>
+          </label>
       </div>
 
       <p className="dca-bank-compare-sub">

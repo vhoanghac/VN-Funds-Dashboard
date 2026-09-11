@@ -29,6 +29,7 @@ import { DcaAllocationBlock } from './DcaAllocationBlock'
 import { DataQualityBlock } from './DataQualityBlock'
 import { StockAnnualDividendsBlock } from './StockAnnualDividendsBlock'
 import { StockShareHoldingsBlock } from './StockShareHoldingsBlock'
+import { StockPositionValueChart } from './StockPositionValueChart'
 import { PortfolioCard, MAX_FUNDS_PER_PORTFOLIO, MAX_PORTFOLIOS, PORTFOLIO_COLORS } from './PortfolioCard'
 import { useCommittedRun } from '../hooks/useCommittedRun'
 import { useSharePersistence } from '../hooks/useSharePersistence'
@@ -96,6 +97,7 @@ const STOCK_OPTIONS: StockOption[] = [
 ]
 
 const STOCK_COLOR = '#a8512f'
+const STOCK_POSITION_COLORS = ['#a8512f', '#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2', '#4d7c0f']
 const OPEN_ENDED_DATE = '9999-12-31'
 const INITIAL_AMOUNT = 5_000_000
 const DEFAULT_PHASES: DCAContributionPhase[] = [{ amount: 5_000_000, freq: 'monthly', until: null }]
@@ -124,6 +126,7 @@ const STOCK_SECTIONS: { id: StockSectionId; label: string }[] = [
 
 const ALL_RISK_PORTFOLIOS = '__all__'
 const ALL_STOCK_POSITIONS = '__all__'
+const ALL_PERFORMANCE_SCOPE = '__all__'
 
 const MemoDrawdownChart = memo(DrawdownChart)
 const MemoYearlyPerformanceChart = memo(YearlyPerformanceChart)
@@ -718,6 +721,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const [activePortfolioId, setActivePortfolioId] = useState(views[0]!.id)
   const [activeRiskPortfolioId, setActiveRiskPortfolioId] = useState('')
   const [activeStockId, setActiveStockId] = useState(ALL_STOCK_POSITIONS)
+  const [perfScope, setPerfScope] = useState(ALL_PERFORMANCE_SCOPE)
   useEffect(() => {
     setActivePortfolioId(current => views.some(view => view.id === current) ? current : views[0]!.id)
   }, [views])
@@ -779,10 +783,10 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
       profitFactor: candidatePresentation.profitFactor,
     }
   }), [views])
-  const valueChart = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, values: candidate.presentation.valueSeries, invested: candidate.presentation.investedSeries })), [views])
+  const valueChart = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, values: candidate.presentation.valueSeries, invested: candidate.presentation.investedSeries })), [views])
   const drawdownChart = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, data: candidate.presentation.drawdown })), [views])
   const journey = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, totalInvested: candidate.result.totalContributed, finalValue: candidate.result.finalValue, valueSeries: candidate.presentation.valueSeries, cashflows: candidate.result.cashflows })), [views])
-  const yearly = useMemo(() => views.map(candidate => ({ name: candidate.name, color: candidate.color, data: dcaYearlyMWRR(candidate.presentation.valueSeries, candidate.result.cashflows).map(row => ({ year: row.year, value: row.value, isPartial: row.isPartial, isOpeningYear: row.isOpeningYear })) })), [views])
+  const yearly = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, data: dcaYearlyMWRR(candidate.presentation.valueSeries, candidate.result.cashflows).map(row => ({ year: row.year, value: row.value, isPartial: row.isPartial, isOpeningYear: row.isOpeningYear })) })), [views])
   const projection = useMemo(() => views.map(candidate => {
     const candidateCagr = dcaCagr(candidate.presentation.cumulative)
     const monthlyContribution = monthlyEquivalentContribution(candidate.params.phases[0]?.amount ?? 0, candidate.params.phases[0]?.freq ?? 'monthly')
@@ -803,6 +807,26 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
     investedSeries: candidate.presentation.investedSeries,
   })), [views])
   const bankComparisonEndDate = views[0]!.prices[views[0]!.prices.length - 1]!.date
+  // Bộ lọc Hiệu suất giữ theo id danh mục, không theo index/name. Id biến mất thì tự về "Tất cả",
+  // và một danh mục duy nhất tự vào chế độ chi tiết mà không cần toolbar.
+  const hasMultiplePortfolios = views.length > 1
+  const effectivePerfScope = !hasMultiplePortfolios
+    ? (views[0]?.id ?? ALL_PERFORMANCE_SCOPE)
+    : (perfScope !== ALL_PERFORMANCE_SCOPE && views.some(candidate => candidate.id === perfScope) ? perfScope : ALL_PERFORMANCE_SCOPE)
+  const perfView = effectivePerfScope === ALL_PERFORMANCE_SCOPE ? undefined : views.find(candidate => candidate.id === effectivePerfScope)
+  const perfStats = useMemo(() => effectivePerfScope === ALL_PERFORMANCE_SCOPE ? stats : stats.filter(row => row.id === effectivePerfScope), [stats, effectivePerfScope])
+  const perfValueChart = useMemo(() => effectivePerfScope === ALL_PERFORMANCE_SCOPE ? valueChart : valueChart.filter(series => series.id === effectivePerfScope), [valueChart, effectivePerfScope])
+  const perfYearly = useMemo(() => effectivePerfScope === ALL_PERFORMANCE_SCOPE ? yearly : yearly.filter(series => series.id === effectivePerfScope), [yearly, effectivePerfScope])
+  const perfJourney = useMemo(() => effectivePerfScope === ALL_PERFORMANCE_SCOPE ? journey : journey.filter(candidate => candidate.id === effectivePerfScope), [journey, effectivePerfScope])
+  const perfBankComparison = useMemo(() => effectivePerfScope === ALL_PERFORMANCE_SCOPE ? bankComparisonResults : bankComparisonResults.filter(candidate => candidate.id === effectivePerfScope), [bankComparisonResults, effectivePerfScope])
+  const perfReturnExplainer = useMemo(() => effectivePerfScope === ALL_PERFORMANCE_SCOPE ? returnExplainerPortfolios : returnExplainerPortfolios.filter(candidate => candidate.id === effectivePerfScope), [returnExplainerPortfolios, effectivePerfScope])
+  const perfStockCharts = useMemo(() => perfView
+    ? perfView.result.positions.map((position, index) => ({
+        stockId: position.stockId,
+        points: position.points,
+        color: STOCK_POSITION_COLORS[index % STOCK_POSITION_COLORS.length] ?? STOCK_COLOR,
+      }))
+    : [], [perfView])
   const selectedJourney = useMemo(() => journey.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, journey])
    const selectedRiskReturnPainPortfolios = useMemo(() => riskReturnPainPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskReturnPainPortfolios])
    const selectedRiskHistoricalPortfolios = useMemo(() => riskHistoricalPortfolios.filter(candidate => candidate.id === riskPortfolioId), [riskPortfolioId, riskHistoricalPortfolios])
@@ -810,11 +834,21 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   const selectedDrawdownPortfolios = useMemo(() => drawdownPortfolios.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, drawdownPortfolios])
   const selectedProjection = useMemo(() => projection.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, projection])
   const selectedMonteCarlo = useMemo(() => monteCarlo.filter(candidate => candidate.id === activePortfolioId), [activePortfolioId, monteCarlo])
-  const needsPortfolioFilter = activeSection === 'journey'
+  const needsPortfolioFilter = (
+    activeSection === 'journey'
     || activeSection === 'risk'
     || activeSection === 'drawdowns'
     || activeSection === 'endgame'
+    || activeSection === 'perf'
+  ) && !(activeSection === 'perf' && !hasMultiplePortfolios)
   const activeSectionLabel = STOCK_SECTIONS.find(section => section.id === activeSection)?.label ?? ''
+  // Mọi section dùng chung một thanh lọc danh mục ngay dưới thanh nav, nhưng mỗi
+  // section giữ state riêng: Rủi ro dùng riskPortfolioId, Hiệu suất dùng perfScope.
+  const scopedPortfolioFilterId = activeSection === 'risk'
+    ? riskPortfolioId
+    : activeSection === 'perf'
+      ? effectivePerfScope
+      : activePortfolioId
 
   return (
     <>
@@ -833,11 +867,11 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
           </div>
           {needsPortfolioFilter && (
             <div className="dca-results-filter-toolbar" aria-label={`Chọn danh mục trong ${activeSectionLabel}`}>
-              {activeSection === 'risk' && views.length > 1 && (
+              {(activeSection === 'risk' || activeSection === 'perf') && views.length > 1 && (
                 <button
-                  className={`dca-results-filter-btn${riskPortfolioId === ALL_RISK_PORTFOLIOS ? ' dca-results-filter-btn--active' : ''}`}
-                  aria-pressed={riskPortfolioId === ALL_RISK_PORTFOLIOS}
-                  onClick={() => setActiveRiskPortfolioId(ALL_RISK_PORTFOLIOS)}
+                  className={`dca-results-filter-btn${scopedPortfolioFilterId === (activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE) ? ' dca-results-filter-btn--active' : ''}`}
+                  aria-pressed={scopedPortfolioFilterId === (activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE)}
+                  onClick={() => activeSection === 'risk' ? setActiveRiskPortfolioId(ALL_RISK_PORTFOLIOS) : setPerfScope(ALL_PERFORMANCE_SCOPE)}
                 >
                   Tất cả
                 </button>
@@ -845,9 +879,9 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
               {views.map(candidate => (
                 <button
                   key={candidate.id}
-                    className={`dca-results-filter-btn${(activeSection === 'risk' ? riskPortfolioId : activePortfolioId) === candidate.id ? ' dca-results-filter-btn--active' : ''}`}
-                    aria-pressed={(activeSection === 'risk' ? riskPortfolioId : activePortfolioId) === candidate.id}
-                    onClick={() => activeSection === 'risk' ? setActiveRiskPortfolioId(candidate.id) : setActivePortfolioId(candidate.id)}
+                    className={`dca-results-filter-btn${scopedPortfolioFilterId === candidate.id ? ' dca-results-filter-btn--active' : ''}`}
+                    aria-pressed={scopedPortfolioFilterId === candidate.id}
+                    onClick={() => activeSection === 'risk' ? setActiveRiskPortfolioId(candidate.id) : activeSection === 'perf' ? setPerfScope(candidate.id) : setActivePortfolioId(candidate.id)}
                 >
                   {candidate.name}
                 </button>
@@ -864,13 +898,15 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
           </DcaSectionPanel>
 
           <DcaSectionPanel id="perf" active={activeSection === 'perf'}>
-            <div className="comparison-period" style={{ marginBottom: 16 }}>DCA từ {formatDate(startDate)} đến {formatDate(endDate)}</div>
-            <DCAStatsTable portfolios={stats} assetLabel="cổ phiếu" />
-            <PortfolioValueChart portfolios={valueChart} />
-            <MemoYearlyPerformanceChart series={yearly} title="Hiệu suất theo năm" assetLabel="cổ phiếu" />
-            <EOYReturnsTable portfolios={journey} assetLabel="cổ phiếu" />
-            <BankComparisonBlock results={bankComparisonResults} endDate={bankComparisonEndDate} assetLabel="cổ phiếu" />
-            <DcaReturnExplainer portfolios={returnExplainerPortfolios} assetLabel="cổ phiếu" />
+            <DCAStatsTable portfolios={perfStats} assetLabel="cổ phiếu" />
+            <PortfolioValueChart portfolios={perfValueChart} />
+            {perfStockCharts.map(chart => (
+              <StockPositionValueChart key={chart.stockId} stockId={chart.stockId} points={chart.points} color={chart.color} />
+            ))}
+            <MemoYearlyPerformanceChart series={perfYearly} title="Hiệu suất theo năm" assetLabel="cổ phiếu" />
+            <EOYReturnsTable portfolios={perfJourney} assetLabel="cổ phiếu" />
+            <BankComparisonBlock results={perfBankComparison} endDate={bankComparisonEndDate} assetLabel="cổ phiếu" />
+            <DcaReturnExplainer portfolios={perfReturnExplainer} assetLabel="cổ phiếu" />
           </DcaSectionPanel>
 
           <DcaSectionPanel id="journey" active={activeSection === 'journey'}>
@@ -977,9 +1013,11 @@ const StockAllocationBlock = memo(function StockAllocationBlock({ views }: { vie
     id: view.id,
     name: view.name,
     assetValues: [
+      // `point.value` là giá trị sleeve đầy đủ (gồm cả tiền để dành và khoản phải thu),
+      // nên ở đây tách lại phần giá thị trường để biểu đồ tỷ trọng vẫn hiện tiền mặt riêng.
       ...view.result.positions.map(position => ({
         fundId: position.stockId,
-        values: position.points.map(point => ({ date: point.date, value: point.value })),
+        values: position.points.map(point => ({ date: point.date, value: point.value - point.reservedCash - point.cashReceivables })),
       })),
       { fundId: 'Tiền mặt', values: view.result.points.map(point => ({ date: point.date, value: point.cash })) },
       { fundId: 'Tiền chờ nhận', values: view.result.points.map(point => ({ date: point.date, value: point.cashReceivables })) },
@@ -1056,7 +1094,7 @@ const StockLedger = memo(function StockLedger({ result, position }: {
           <>
             <div className="stock-account-table-wrap">
               {position ? (
-                <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Giá</th><th>Tổng cổ phiếu</th><th>Đã đầu tư</th><th>Giá trị cổ phiếu</th><th>Cổ tức tiền đã nhận</th><th>Cổ tức cổ phiếu đã nhận</th></tr></thead><tbody>{visiblePositionPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.price)}</td><td>{formatShares(point.shares)}</td><td>{formatVND(point.investedCash)}</td><td>{formatVND(point.value)}</td><td>{formatVND(point.cashDividends)}</td><td>{formatShares(point.stockDividendShares)}</td></tr>)}</tbody></table>
+                <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Giá</th><th>Tổng cổ phiếu</th><th>Đã đầu tư</th><th>Giá trị phân bổ</th><th>Cổ tức tiền đã nhận</th><th>Cổ tức cổ phiếu đã nhận</th></tr></thead><tbody>{visiblePositionPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.price)}</td><td>{formatShares(point.shares)}</td><td>{formatVND(point.investedCash)}</td><td>{formatVND(point.value)}</td><td>{formatVND(point.cashDividends)}</td><td>{formatShares(point.stockDividendShares)}</td></tr>)}</tbody></table>
               ) : (
                 <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Đã đầu tư</th><th>Giá trị danh mục</th></tr></thead><tbody>{visiblePortfolioPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables)}</td><td>{formatVND(point.contributed)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
               )}

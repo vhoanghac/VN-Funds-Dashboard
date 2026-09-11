@@ -57,6 +57,15 @@ export function presentStockDcaResult(result: StockAccountDcaResult): StockDcaPr
   }
 }
 
+/**
+ * Chuỗi giá trị phân bổ của một mã để vẽ chart riêng. Mỗi điểm là giá trị sleeve
+ * đầy đủ (giá thị trường + cổ phiếu chờ về − khoản phải trả + khoản phải thu +
+ * tiền để dành), nên cộng mọi mã tại cùng một ngày ra đúng giá trị danh mục.
+ */
+export function buildStockAllocatedValueSeries(points: readonly StockPortfolioPositionPoint[]): { date: string; value: number }[] {
+  return points.map(point => ({ date: point.date, value: point.value }))
+}
+
 /** Convert a shared-cash stock portfolio ledger into the chart view models. */
 export function presentStockPortfolioDcaResult(result: StockPortfolioDcaResult): StockDcaPresentation {
   const cumulative = result.twrrCumulative

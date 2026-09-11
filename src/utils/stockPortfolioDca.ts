@@ -10,12 +10,18 @@ export interface StockPortfolioPositionPoint {
   stockDividendHoldings: number
   pendingShares: number
   pendingSubscriptionPayable: number
+  /** Tiền cổ tức/quyền mua đã chốt quyền nhưng chưa về tài khoản của mã này. */
+  cashReceivables: number
   cashDividends: number
   stockDividendShares: number
   /** Tiền mặt ròng đã bỏ vào mã: cộng tiền mua và quyền mua, trừ tiền thu về khi bán. */
   investedCash: number
   /** Tiền đã chia cho mã theo tỷ trọng nhưng chưa mua được lô nào, còn để dành cho mã. */
   reservedCash: number
+  /**
+   * Giá trị sleeve đầy đủ của mã: giá thị trường + cổ phiếu chờ về − khoản phải trả
+   * cho quyền mua + khoản phải thu + tiền để dành. Cộng mọi mã lại bằng giá trị danh mục.
+   */
   value: number
 }
 
@@ -213,11 +219,13 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
         date, price, shares: position.shares, purchasedShares: position.purchasedShares,
         stockDividendHoldings: position.stockDividendHoldings, pendingShares: position.pendingShares,
         pendingSubscriptionPayable: position.pendingSubscriptionPayable,
+        cashReceivables: position.cashReceivables,
         cashDividends: position.cashDividends,
         stockDividendShares: position.stockDividendShares,
         investedCash: position.investedCash,
         reservedCash: position.reserved,
-        value: position.shares * price + position.pendingShares * price - position.pendingSubscriptionPayable,
+        value: position.shares * price + position.pendingShares * price
+          - position.pendingSubscriptionPayable + position.cashReceivables + position.reserved,
       })
     }
     points.push({ date, cash, cashReceivables: totalReceivables, contributed, buyFees, sellFees, sellTaxes, cashDividends, value })
