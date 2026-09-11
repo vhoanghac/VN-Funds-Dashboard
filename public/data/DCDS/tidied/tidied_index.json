@@ -99,9 +99,10 @@
     "DCDS_2026_04.xlsx",
     "DCDS_2026_05.xlsx",
     "DCDS_2026_06.xlsx",
-    "DCDS_2026_07.xlsx"
+    "DCDS_2026_07.xlsx",
+    "DCDS_2026_08.xlsx"
   ],
-  "latest_period": "2026-07-31",
-  "latest_as_of": "2026-08-03",
-  "updated": "2026-08-13"
+  "latest_period": "2026-08-31",
+  "latest_as_of": "2026-09-03",
+  "updated": "2026-09-11"
 }

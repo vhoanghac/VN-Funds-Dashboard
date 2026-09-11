@@ -920,6 +920,16 @@
       "company_en": "Dragon Capital Vietfund Management Joint Stock Company",
       "bank_vi": "Ngân hàng TNHH Một thành viên Standard Chartered (Việt Nam)",
       "bank_en": "Standard Chartered Bank (Vietnam) Limited"
+    },
+    {
+      "source_file": "DCDS_2026_08.xlsx",
+      "as_of": "2026-09-03",
+      "fund_name_vi": "Quỹ Đầu tư Chứng khoán Năng động DC (DCDS)",
+      "fund_name_en": "DC Dynamic Securities Fund (DCDS)",
+      "company_vi": "Công ty Cổ phần Quản lý Quỹ Đầu tư Dragon Capital Việt Nam",
+      "company_en": "Dragon Capital Vietfund Management Joint Stock Company",
+      "bank_vi": "Ngân hàng TNHH Một thành viên Standard Chartered (Việt Nam)",
+      "bank_en": "Standard Chartered Bank (Vietnam) Limited"
     }
   ]
 }
