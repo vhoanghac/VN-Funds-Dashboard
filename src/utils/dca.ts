@@ -661,6 +661,18 @@ export function buildDcaExecutionDates(
   return Array.from(dateSets[0]!).filter(date => dateSets.every(dateSet => dateSet.has(date))).sort()
 }
 
+/**
+ * Build one contribution calendar for all portfolios in a comparison run.
+ * Without this, savings-only and market-only portfolios can count different
+ * anniversaries when annual contribution increases are enabled.
+ */
+export function buildSharedDcaExecutionDates(
+  priceData: Map<string, PricePoint[]>,
+  portfolios: readonly (readonly DCASlot[])[],
+): string[] {
+  return buildDcaExecutionDates(priceData, portfolios.flatMap(slots => slots))
+}
+
 function normalizeExecutionDates(
   executionDates: readonly string[],
   valuationDates: readonly string[],

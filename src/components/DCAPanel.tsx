@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, buildDcaExecutionDates, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
+import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, buildSharedDcaExecutionDates, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -640,6 +640,10 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     const commonAlignedPrices = trimToCommonDates(alignedPrices)
     const commonAlignedRawPrices = trimToCommonDates(alignedRawPrices)
     const commonAlignedPurchasePrices = trimToCommonDates(alignedPurchasePrices)
+    const sharedExecutionDates = buildSharedDcaExecutionDates(
+      allFilteredPrices,
+      eligiblePortfolios.map(portfolio => portfolio.slots),
+    ).filter(date => commonDates.has(date))
 
     // ── Step 3: Run DCA for each portfolio with aligned dates ──
     const portfolioResults: DCAPortfolioResult[] = []
@@ -670,8 +674,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
         }
       }
 
-      const executionDates = buildDcaExecutionDates(allFilteredPrices, activeSlots)
-        .filter(date => commonDates.has(date))
+      const executionDates = sharedExecutionDates
       const dcaResult = simulateDCA(
         filteredPrices,
         activeSlots,

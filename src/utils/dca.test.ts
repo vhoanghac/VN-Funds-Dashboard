@@ -4,7 +4,7 @@ import {
   trackDividendNarrative, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast, monthlyEquivalentContribution,
   contributionAmountAtDate, firstScheduledContributionDate, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates,
   dcaMonthlyContributionSchedule, normalizeDCAContributionSchedule, slicePricesWithPredecessor, trailingWindowCagr,
-  buildDcaExecutionDates,
+  buildDcaExecutionDates, buildSharedDcaExecutionDates,
 } from './dca'
 import { applyDividendAdjustment, type DividendEvent } from './dividendAdjust'
 import type { PricePoint, ReturnPoint } from '../types'
@@ -97,6 +97,52 @@ describe('DCA execution calendar', () => {
 
     expect(result.totalInvested).toBe(2_000)
     expect(result.cashflows.slice(0, -1).map(cashflow => cashflow.date)).toEqual(['2024-01-01', '2024-01-08'])
+  })
+
+  it('shares one market calendar across savings-only and market-only portfolios', () => {
+    const prices = new Map([
+      ['SAVINGS:7', [
+        { date: '2020-01-01', price: 100 },
+        { date: '2020-02-01', price: 100 },
+        { date: '2020-02-03', price: 100 },
+        { date: '2021-02-03', price: 107 },
+        { date: '2022-02-03', price: 114 },
+      ]],
+      ['E1VFVN30', [
+        { date: '2020-01-01', price: 100 },
+        { date: '2020-02-03', price: 100 },
+        { date: '2021-02-03', price: 110 },
+        { date: '2022-02-03', price: 120 },
+      ]],
+    ])
+    const executionDates = buildSharedDcaExecutionDates(prices, [
+      [{ fundId: 'SAVINGS:7', weight: 100 }],
+      [{ fundId: 'E1VFVN30', weight: 100 }],
+    ])
+    const params = {
+      initialAmount: 50_000_000,
+      cashflowAmount: 5_000_000,
+      cashflowFreq: 'monthly' as const,
+      annualContributionIncreaseAmount: 500_000,
+    }
+
+    const savingsResult = simulateDCA(
+      new Map([['SAVINGS:7', prices.get('SAVINGS:7')!]]),
+      [{ fundId: 'SAVINGS:7', weight: 100 }],
+      params,
+      'yearly',
+      { executionDates },
+    )
+    const marketResult = simulateDCA(
+      new Map([['E1VFVN30', prices.get('E1VFVN30')!]]),
+      [{ fundId: 'E1VFVN30', weight: 100 }],
+      params,
+      'yearly',
+      { executionDates },
+    )
+
+    expect(executionDates).toEqual(['2020-01-01', '2020-02-03', '2021-02-03', '2022-02-03'])
+    expect(savingsResult.totalInvested).toBe(marketResult.totalInvested)
   })
 
   it('starts TWRR at the first executable cashflow instead of the valuation start', () => {
