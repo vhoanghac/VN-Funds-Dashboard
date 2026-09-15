@@ -7,6 +7,8 @@ interface StatsRow {
   color: string
   finalValue: number
   totalInvested: number
+  scheduledContributed?: number
+  rightsContributed?: number
   transactionCosts: number
   cagr: number | null
   mwrr: number | null
@@ -27,6 +29,7 @@ interface Props {
 /** Bảng thống kê ngang: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh — bổ sung cho dca-summary-grid (dạng thẻ dọc) ở trên. */
 function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
   if (portfolios.length === 0) return null
+  const showsContributionBreakdown = portfolios.some(p => p.scheduledContributed !== undefined || p.rightsContributed !== undefined)
 
   return (
     <DcaBlock
@@ -46,8 +49,10 @@ function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
                 <span className="dca-info-icon" title="Giá trị danh mục tại thời điểm cuối kỳ backtest.">?</span>
               </th>
               <th>
-                Tổng đầu tư
-                <span className="dca-info-icon" title="Tổng số tiền đã đầu tư vào danh mục (vốn ban đầu + tất cả các lần DCA).">?</span>
+                {showsContributionBreakdown ? 'Tổng vốn đầu tư' : 'Tổng đầu tư'}
+                <span className="dca-info-icon" title={showsContributionBreakdown
+                  ? 'Tổng tiền từ bên ngoài đưa vào danh mục, gồm vốn ban đầu, các khoản DCA định kỳ và tiền bổ sung để thực hiện quyền mua. Không bao gồm cổ tức hay thu nhập do danh mục tạo ra.'
+                  : 'Tổng số tiền đã đầu tư vào danh mục (vốn ban đầu + tất cả các lần DCA).'}>?</span>
               </th>
               <th>
                 Thuế phí
@@ -105,7 +110,15 @@ function DCAStatsTableImpl({ portfolios, assetLabel = 'quỹ' }: Props) {
                     {p.name}
                   </td>
                   <td>{formatVND(Math.round(p.finalValue))}</td>
-                  <td>{formatVND(p.totalInvested)}</td>
+                   <td>
+                     {showsContributionBreakdown && (p.rightsContributed ?? 0) > 0 ? (
+                       <div className="dca-contribution-breakdown">
+                         <span>Vốn DCA</span><strong>{formatVND(p.scheduledContributed ?? p.totalInvested)}</strong>
+                         <span>Bổ sung vốn cho quyền mua</span><strong>{formatVND(p.rightsContributed ?? 0)}</strong>
+                         <span>Tổng vốn đầu tư</span><strong>{formatVND(p.totalInvested)}</strong>
+                       </div>
+                     ) : formatVND(p.totalInvested)}
+                   </td>
                   <td>{formatVND(p.transactionCosts)}</td>
                   <td className={signClass(cumReturn)}>{formatSignedPercent(cumReturn)}</td>
                   <td className={signClass(p.cagr)}>{formatSignedPercent(p.cagr)}</td>

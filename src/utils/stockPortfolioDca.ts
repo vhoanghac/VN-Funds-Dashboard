@@ -51,6 +51,11 @@ export interface StockPortfolioDcaResult {
   twrrCumulative: ReturnPoint[]
   cumulativeTWRR: number
   annualizedTWRR: number | null
+  /** Vốn ban đầu và các khoản DCA theo lịch người dùng đã nhập. */
+  scheduledContributed: number
+  /** Tiền bên ngoài bổ sung để thực hiện quyền mua. */
+  rightsContributed: number
+  /** Tổng mọi khoản tiền từ bên ngoài đi vào danh mục. */
   totalContributed: number
   totalBuyFees: number
   totalSellFees: number
@@ -131,6 +136,8 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
   const positions = slots.map(slot => makePosition(slot.fundId, input.corporateActionsByStock?.get(slot.fundId) ?? []))
   const weights = slots.map(slot => slot.weight)
   let cash = 0
+  let scheduledContributed = 0
+  let rightsContributed = 0
   let contributed = 0
   let buyFees = 0
   let sellFees = 0
@@ -166,6 +173,7 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
     // Khoản tiền này là vốn ngoài thật: tính vào contributed, vào external flow và MWRR.
     const externalRightsPayable = settlements.reduce((sum, settlement) => sum + settlement.externalRightsPayable, 0)
     if (externalRightsPayable > 0) {
+      rightsContributed += externalRightsPayable
       contributed += externalRightsPayable
       externalFlow += externalRightsPayable
       cashflows.push({ date, amount: -externalRightsPayable })
@@ -173,6 +181,7 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
 
     const contribution = contributionByDate.get(date) ?? 0
     if (contribution > 0) {
+      scheduledContributed += contribution
       cash += contribution
       contributed += contribution
       externalFlow += contribution
@@ -241,6 +250,8 @@ export function simulateStockPortfolioDca(input: StockPortfolioDcaInput): StockP
     twrrCumulative,
     cumulativeTWRR: twrrGrowth - 1,
     annualizedTWRR: dcaCagr(twrrCumulative),
+    scheduledContributed,
+    rightsContributed,
     totalContributed: contributed,
     totalBuyFees: buyFees,
     totalSellFees: sellFees,
@@ -453,5 +464,5 @@ function shouldRebalance(previousDate: string, date: string, frequency: Rebalanc
 }
 
 function emptyResult(): StockPortfolioDcaResult {
-  return { points: [], positions: [], cashflows: [], twrrCumulative: [], cumulativeTWRR: 0, annualizedTWRR: null, totalContributed: 0, totalBuyFees: 0, totalSellFees: 0, totalSellTaxes: 0, totalTransactionCosts: 0, totalCashDividends: 0, totalStockDividendShares: 0, finalCash: 0, finalValue: 0 }
+  return { points: [], positions: [], cashflows: [], twrrCumulative: [], cumulativeTWRR: 0, annualizedTWRR: null, scheduledContributed: 0, rightsContributed: 0, totalContributed: 0, totalBuyFees: 0, totalSellFees: 0, totalSellTaxes: 0, totalTransactionCosts: 0, totalCashDividends: 0, totalStockDividendShares: 0, finalCash: 0, finalValue: 0 }
 }

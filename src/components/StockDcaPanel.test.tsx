@@ -146,6 +146,10 @@ describe('StockDcaPanel', () => {
     expect(screen.getByText(/giá cổ phiếu cần tăng thêm/)).toBeInTheDocument()
     expect(screen.getByText(/thay vì mua cổ phiếu/)).toBeInTheDocument()
     expect(screen.getAllByText(/lịch sử cổ phiếu/).length).toBeGreaterThan(0)
+    expect(screen.getByRole('columnheader', { name: /^Tổng vốn đầu tư/ })).toBeInTheDocument()
+    expect(screen.queryByText('Vốn DCA')).not.toBeInTheDocument()
+    expect(screen.queryByText('Bổ sung vốn cho quyền mua')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Tổng vốn đầu tư').length).toBeGreaterThan(0)
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Hiệu suất đầu tư' }))
     const yearlyReturns = screen.getByRole('heading', { name: 'Hiệu suất danh mục của bạn từng năm' })

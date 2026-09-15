@@ -778,9 +778,11 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
     return {
       id: candidate.id,
       name: candidate.name,
-      color: candidate.color,
-      finalValue: candidateResult.finalValue,
-      totalInvested: candidateResult.totalContributed,
+       color: candidate.color,
+       finalValue: candidateResult.finalValue,
+       totalInvested: candidateResult.totalContributed,
+       scheduledContributed: candidateResult.scheduledContributed,
+       rightsContributed: candidateResult.rightsContributed,
        transactionCosts: candidateResult.totalTransactionCosts,
       cagr: investorCagr(candidatePresentation.cumulative, candidateResult.totalContributed, candidateResult.finalValue),
       mwrr: dcaMWRR(candidateResult.cashflows),
@@ -1124,7 +1126,7 @@ const StockLedger = memo(function StockLedger({ result, position }: {
               {position ? (
                 <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Giá</th><th>Tổng cổ phiếu</th><th>Đã đầu tư</th><th>Giá trị phân bổ</th><th>Cổ tức tiền đã nhận</th><th>Cổ tức cổ phiếu đã nhận</th></tr></thead><tbody>{visiblePositionPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.price)}</td><td>{formatShares(point.shares)}</td><td>{formatVND(point.investedCash)}</td><td>{formatVND(point.value)}</td><td>{formatVND(point.cashDividends)}</td><td>{formatShares(point.stockDividendShares)}</td></tr>)}</tbody></table>
               ) : (
-                <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Đã đầu tư</th><th>Giá trị danh mục</th></tr></thead><tbody>{visiblePortfolioPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables)}</td><td>{formatVND(point.contributed)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
+                <table className="stock-account-table"><thead><tr><th>Ngày</th><th>Tiền mặt</th><th>Chờ nhận</th><th>Vốn đã đóng góp</th><th>Giá trị danh mục</th></tr></thead><tbody>{visiblePortfolioPoints.map(point => <tr key={point.date}><td>{formatDate(point.date)}</td><td>{formatVND(point.cash)}</td><td>{formatVND(point.cashReceivables)}</td><td>{formatVND(point.contributed)}</td><td>{formatVND(point.value)}</td></tr>)}</tbody></table>
               )}
             </div>
             {pageCount > 1 && (

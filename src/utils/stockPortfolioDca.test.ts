@@ -25,6 +25,8 @@ describe('stock portfolio DCA', () => {
     })
 
     expect(result.totalContributed).toBe(2_000)
+    expect(result.scheduledContributed).toBe(2_000)
+    expect(result.rightsContributed).toBe(0)
     expect(result.positions.map(position => [position.stockId, position.points[0]?.shares])).toEqual([
       ['AAA', 120], ['BBB', 80],
     ])
@@ -143,6 +145,9 @@ describe('stock portfolio DCA', () => {
     // 120 cổ phiếu AAA × 0,2 = 24 quyền × 8 = 192, trả hẳn từ ngoài.
     expect(result.positions[0]!.points[2]!.shares).toBe(144)
     expect(result.totalContributed).toBe(2_692)
+    expect(result.scheduledContributed).toBe(2_500)
+    expect(result.rightsContributed).toBe(192)
+    expect(result.totalContributed).toBe(result.scheduledContributed + result.rightsContributed)
     // Tiền dư không bị rút để trả quyền nữa, nên còn nguyên.
     expect(result.finalCash).toBe(100)
     expect(result.cashflows).toContainEqual({ date: '2026-02-05', amount: -192 })

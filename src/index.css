@@ -1784,6 +1784,25 @@ textarea {
   gap: 8px;
 }
 
+.dca-contribution-breakdown {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 12px;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.dca-contribution-breakdown strong {
+  text-align: right;
+}
+
+.dca-contribution-breakdown span:last-of-type,
+.dca-contribution-breakdown strong:last-child {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid var(--color-border);
+}
+
 .dca-eoy-footnote {
   margin-top: 6px;
   font-size: 0.78rem;
