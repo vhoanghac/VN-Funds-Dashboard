@@ -1,4 +1,5 @@
 # Corporate-action files that GitHub Actions is allowed to update.
+ABB
 ACB
 BID
 BMP
@@ -9,6 +10,7 @@ DVP
 FPT
 GEE
 HDB
+LPB
 MBB
 MSB
 NT2

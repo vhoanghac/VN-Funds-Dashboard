@@ -94,6 +94,8 @@ const STOCK_OPTIONS: StockOption[] = [
   { id: 'VIB', label: 'VIB · Ngân hàng Quốc tế', load: () => loadStockData('VIB') },
   { id: 'VNM', label: 'VNM · Vinamilk', load: () => loadStockData('VNM') },
   { id: 'VPB', label: 'VPB · VPBank', load: () => loadStockData('VPB') },
+  { id: 'ABB', label: 'ABB · Ngân hàng An Bình', load: () => loadStockData('ABB') },
+  { id: 'LPB', label: 'LPB · Ngân hàng Lộc Phát Việt Nam', load: () => loadStockData('LPB') },
 ]
 
 const STOCK_COLOR = '#a8512f'

@@ -98,6 +98,21 @@ describe('StockDcaPanel', () => {
     expect(formatStockAxisVND(750)).toBe('750')
   })
 
+  it('offers ABB and LPB in the stock portfolio selector', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
+
+    render(<StockDcaPanel active shareUrl={stockShareUrl()} />)
+
+    await userEvent.setup().click(screen.getByText('ACB · Ngân hàng Á Châu'))
+    expect(screen.getByRole('option', { name: 'ABB · Ngân hàng An Bình' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'LPB · Ngân hàng Lộc Phát Việt Nam' })).toBeInTheDocument()
+  })
+
   it('loads stock CSVs, hydrates dates, and commits a run', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const path = String(input)

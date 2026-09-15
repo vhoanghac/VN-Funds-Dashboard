@@ -1,4 +1,5 @@
 # Price files that GitHub Actions is allowed to update.
+ABB|UPCOM
 ACB
 BID
 BMP
@@ -9,6 +10,7 @@ DVP
 FPT
 GEE
 HDB
+LPB
 MBB
 MSB
 NT2

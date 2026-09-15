@@ -1,0 +1,9 @@
+kind,ex_date,record_date,pay_date,last_date,settlement_date,amount_per_share,tax_rate,shares_per_share,rights_per_share,subscription_price,choice,funding,source
+stock_dividend,2011-01-31,2011-01-31,2011-01-31,,,,,0.1,,,,,VCI event 6708f3f50ec61045ab80016c
+stock_dividend,2016-08-30,2016-08-30,2016-08-30,,,,,0.108696,,,,,VCI event 6708f3f30ec61045ab7ffaea
+stock_dividend,2019-06-29,2019-06-29,2019-07-10,,,,,0.074,,,,,VCI event 6708f3f40ec61045ab7ffe90
+rights_issue,2021-11-09,2021-11-10,,2022-03-28,2022-03-28,,,,0.2,10000,exercise,external,VCI event 6708f3f60ec61045ab80034c; price assumption
+stock_dividend,2022-02-10,2022-02-11,2022-04-12,,,,,0.35,,,,,VCI event 6708f3f60ec61045ab80034d
+stock_dividend,2023-05-30,2023-05-31,2023-07-19,,,,,0.1,,,,,VCI event 6708f3f70ec61045ab800620
+rights_issue,2026-01-14,2026-01-15,,2026-06-19,2026-06-19,,,,0.3,10000,exercise,external,VCI event 68cdf49977867b0e0cc1b978; price assumption
+stock_dividend,2026-07-09,2026-07-10,2026-08-12,,,,,0.15,,,,,VCI event 69deda748e0e35deadec0880
