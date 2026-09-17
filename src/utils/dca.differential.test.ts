@@ -23,7 +23,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   resampleToWeeklyGrid, monthlyEquivalentContribution, derivePortfolioName, simulateDCA,
-  dcaMWRR, dcaCagr, investorCagr, dcaMaxDrawdown, dcaYearlyReturns, dcaYearlyMWRR,
+  dcaMWRR, dcaCagr, dcaMaxDrawdown, dcaYearlyReturns, dcaYearlyMWRR,
   computeDCARolling, dcaStormStats, dcaProfitFactor, rollingCAGR, trailingWindowCagr,
   histogramBuckets, dcaMonthlyReturns, monteCarloProjection, probabilityAtLeast,
   trackDividendNarrative,
@@ -313,15 +313,6 @@ function refDcaCagr(cumulative: ReturnPoint[]): number | null {
   const growth = 1 + cumulative[cumulative.length - 1]!.value
   if (!Number.isFinite(growth) || growth < 0) return null
   return Math.pow(growth, 1 / years) - 1
-}
-
-function refInvestorCagr(cumulative: ReturnPoint[], totalInvested: number, finalValue: number): number | null {
-  if (cumulative.length < 2 || totalInvested <= 0 || finalValue <= 0) return null
-  const days = (Date.parse(cumulative[cumulative.length - 1]!.date + 'T00:00:00Z') - Date.parse(cumulative[0]!.date + 'T00:00:00Z')) / (24 * 60 * 60 * 1000)
-  // Không annualize kỳ chưa đủ 365 ngày.
-  if (days < 365) return null
-  const years = days / 365.25
-  return Math.pow(finalValue / totalInvested, 1 / years) - 1
 }
 
 /** max drawdown — hai mảng peak riêng thay vì một vòng chạy running-peak. */
@@ -1166,25 +1157,16 @@ describe('differential: dcaMWRR (bisection reference)', () => {
 })
 
 // ============================================================================
-describe('differential: CAGR / maxDrawdown / profitFactor / investorCagr', () => {
+describe('differential: TWRR / maxDrawdown / profitFactor', () => {
   it('dcaCagr khớp reference', () => {
     expect(dcaCagr(CUM_WK)).toBeCloseTo(refDcaCagr(CUM_WK)!, 9)
     expect(dcaCagr([])).toBeNull()
-  })
-
-  it('investorCagr khớp reference', () => {
-    const total = 12_000_000
-    const final = 15_000_000
-    expect(investorCagr(CUM_WK, total, final)).toBeCloseTo(refInvestorCagr(CUM_WK, total, final)!, 9)
-    expect(investorCagr(CUM_WK, 0, final)).toBeNull()
   })
 
   it('ngưỡng 365 ngày: 364 ngày null, đúng 365 ngày vẫn quy năm', () => {
     const span = (start: string, end: string) => [{ date: start, value: 0 }, { date: end, value: 0.2 }]
     expect(dcaCagr(span('2023-01-01', '2023-12-31'))).toBeNull() // 364 ngày
     expect(dcaCagr(span('2023-01-01', '2024-01-01'))).not.toBeNull() // 365 ngày
-    expect(investorCagr(span('2023-01-01', '2023-12-31'), 1_000, 1_200)).toBeNull()
-    expect(investorCagr(span('2023-01-01', '2024-01-01'), 1_000, 1_200)).not.toBeNull()
   })
 
   it('growth âm hơn 100% → null thay vì NaN', () => {
@@ -1539,8 +1521,6 @@ describe('differential: pipeline end-to-end (đúng quy trình DCAPanel)', () =>
     expect(dcaCagr(prod.cumulative)).toBeCloseTo(refDcaCagr(ref.cumulative)!, 8)
     expect(dcaMaxDrawdown(prod.cumulative)).toBeCloseTo(refDcaMaxDrawdown(ref.cumulative), 8)
     expect(dcaProfitFactor(prod.returns)).toBeCloseTo(refDcaProfitFactor(ref.returns)!, 8)
-    expect(investorCagr(prod.cumulative, prod.totalInvested, prod.finalValue))
-      .toBeCloseTo(refInvestorCagr(ref.cumulative, ref.totalInvested, ref.finalValue)!, 8)
     expect(dcaMWRR(prod.cashflows)).toBeCloseTo(refDcaMWRR(ref.cashflows)!, 4)
 
     // Rolling & yearly

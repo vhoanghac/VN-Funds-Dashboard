@@ -38,7 +38,6 @@ import {
   dcaCagr,
   dcaMWRR,
   dcaYearlyMWRR,
-  investorCagr,
   monthlyEquivalentContribution,
   derivePortfolioName,
   DEFAULT_TRANSACTION_COST_RATES,
@@ -784,8 +783,7 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
        scheduledContributed: candidateResult.scheduledContributed,
        rightsContributed: candidateResult.rightsContributed,
        transactionCosts: candidateResult.totalTransactionCosts,
-      cagr: investorCagr(candidatePresentation.cumulative, candidateResult.totalContributed, candidateResult.finalValue),
-      mwrr: dcaMWRR(candidateResult.cashflows),
+       mwrr: dcaMWRR(candidateResult.cashflows),
       twrrNet: dcaCagr(candidatePresentation.cumulative),
       twrrGross: dcaCagr(candidate.grossCumulative),
       maxDrawdown: candidatePresentation.storm.maxDrawdown,
@@ -806,7 +804,14 @@ const StockResults = memo(function StockResults({ views }: { views: StockView[] 
   }), [views, endDate])
   const monteCarlo = useMemo(() => views.map((candidate, index) => ({ ...projection[index]!, cumulative: candidate.presentation.cumulative })), [views, projection])
   const recoveryPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, drawdown: candidate.presentation.drawdown })), [views])
-  const returnExplainerPortfolios = useMemo(() => stats.map(row => ({ id: row.id, name: row.name, color: row.color, cagr: row.cagr, twrr: row.twrrNet, mwrr: row.mwrr })), [stats])
+  const returnExplainerPortfolios = useMemo(() => stats.map(row => ({
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    cumulativeReturn: row.totalInvested > 0 ? row.finalValue / row.totalInvested - 1 : null,
+    twrr: row.twrrNet,
+    mwrr: row.mwrr,
+  })), [stats])
   const riskReturnPainPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, finalValue: candidate.result.finalValue, totalInvested: candidate.result.totalContributed, maxDrawdown: candidate.presentation.storm.maxDrawdown * 100 })), [views])
   const riskHistoricalPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, cumulative: candidate.presentation.cumulative })), [views])
   const drawdownPortfolios = useMemo(() => views.map(candidate => ({ id: candidate.id, name: candidate.name, color: candidate.color, assetCount: candidate.portfolio.slots.filter(slot => slot.weight > 0).length, storm: candidate.presentation.storm, drawdown: candidate.presentation.drawdown, valueSeries: candidate.presentation.valueSeries })), [views])

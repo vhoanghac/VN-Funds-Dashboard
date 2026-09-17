@@ -147,6 +147,8 @@ describe('StockDcaPanel', () => {
     expect(screen.getByText(/thay vì mua cổ phiếu/)).toBeInTheDocument()
     expect(screen.getAllByText(/lịch sử cổ phiếu/).length).toBeGreaterThan(0)
     expect(screen.getByRole('columnheader', { name: /^Tổng vốn đầu tư/ })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: /^CAGR$/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /^MWRR/ })).toBeInTheDocument()
     expect(screen.queryByText('Vốn DCA')).not.toBeInTheDocument()
     expect(screen.queryByText('Bổ sung vốn cho quyền mua')).not.toBeInTheDocument()
     expect(screen.getAllByText('Tổng vốn đầu tư').length).toBeGreaterThan(0)
@@ -156,7 +158,7 @@ describe('StockDcaPanel', () => {
     const bankComparison = screen.getByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' })
     expect(yearlyReturns.compareDocumentPosition(bankComparison) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     await userEvent.setup().click(screen.getByRole('button', { name: /Vì sao có 3 con số/ }))
-    expect(screen.getByText(/CAGR thuần của cổ phiếu/)).toBeInTheDocument()
+    expect(screen.getByText(/TWRR là lợi nhuận của chính cổ phiếu/)).toBeInTheDocument()
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Cổ tức' }))
     expect(screen.queryByRole('heading', { name: 'So với gửi tiết kiệm ngân hàng thì sao?' })).not.toBeInTheDocument()

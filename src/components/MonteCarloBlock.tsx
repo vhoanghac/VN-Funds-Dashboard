@@ -2,7 +2,7 @@
  * MonteCarloBlock: "Trong 1.000 kịch bản dựa trên lịch sử, bạn đạt mục tiêu bao
  * nhiêu % số lần?"
  *
- * Khác với ProjectionBlock (chiếu tương lai bằng CAGR tĩnh —
+ * Khác với ProjectionBlock (chiếu tương lai bằng TWRR tĩnh,
  * đúng 3 kịch bản Xấu/Base/Tốt cố định), block này dùng block-bootstrap: xáo
  * trộn ngẫu nhiên các khối 12-tháng lợi nhuận lịch sử THẬT của chính danh mục
  * (giữ nguyên thứ tự bên trong khối để bảo toàn phần nào momentum/tự tương
@@ -33,7 +33,7 @@ export interface MonteCarloPortfolio {
   monthlyContribution: number
   monthlyContributionIncrease: number
   cumulative: ReturnPoint[]
-  /** CAGR lịch sử (TWRR) của chính giai đoạn dùng làm pool bootstrap — chỉ để đối chiếu, không dùng trong phép tính Monte Carlo. */
+  /** TWRR lịch sử của chính giai đoạn dùng làm pool bootstrap, chỉ để đối chiếu. */
   cagr: number | null
   /** Lịch DCA nhiều giai đoạn, chỉ có khi người dùng đã tạo từ 2 dòng. */
   cashflowSchedule?: DCAContributionPhase[]
@@ -301,7 +301,7 @@ function MonteCarloForPortfolio({
       title={portfolio.name}
       className="dca-mc-card"
       actions={<span className="dca-mc-card-sub">
-          {portfolio.cagr !== null && <>CAGR lịch sử: {(portfolio.cagr * 100).toFixed(1)}%/năm · </>}
+          {portfolio.cagr !== null && <>TWRR lịch sử: {(portfolio.cagr * 100).toFixed(1)}%/năm · </>}
           {ITERATIONS.toLocaleString('vi-VN')} kịch bản · dựa trên {monthlyPool.length} tháng lịch sử
         </span>}
     >
@@ -431,8 +431,8 @@ function MonteCarloDetails({
         </div>
 
         <DistributionChart
-          title="Phân phối CAGR"
-          description="CAGR đo trên path lợi nhuận. Tiền góp hằng tháng không đi vào công thức này."
+          title="Phân phối TWRR"
+          description="TWRR đo trên path lợi nhuận. Tiền góp hằng tháng không đi vào công thức này."
           values={result.cagrs}
           color={portfolio.color}
           valueFormatter={formatPercent}
@@ -490,7 +490,7 @@ function RepresentativePathChart({
         </LineChart>
       </ResponsiveContainer>
       <div className="dca-mc-path-metrics">
-        <span>CAGR <strong>{formatPercent(path.cagr)}</strong></span>
+        <span>TWRR <strong>{formatPercent(path.cagr)}</strong></span>
         <span>Max DD <strong>{formatPercent(path.maxDrawdown)}</strong></span>
       </div>
     </div>

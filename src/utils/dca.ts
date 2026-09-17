@@ -978,7 +978,7 @@ export function dcaMWRR(cashflows: { date: string; amount: number }[]): number |
   const t0 = new Date(cashflows[0]!.date).getTime()
   const msPerYear = 365.25 * 24 * 60 * 60 * 1000
 
-  // Không annualize MWRR khi kỳ chưa đủ 365 ngày (khớp dcaCagr/investorCagr).
+  // Không annualize MWRR khi kỳ chưa đủ 365 ngày, khớp quy tắc của TWRR.
   const spanDays = (new Date(cashflows[cashflows.length - 1]!.date).getTime() - t0) / (24 * 60 * 60 * 1000)
   if (spanDays < 365) return null
 
@@ -1045,29 +1045,6 @@ export function dcaCagr(cumulative: ReturnPoint[]): number | null {
   // Growth âm nghĩa là chuỗi đã mất hơn 100%, không lấy căn bậc được.
   if (!Number.isFinite(twrrGrowth) || twrrGrowth < 0) return null
   return Math.pow(twrrGrowth, 1 / years) - 1
-}
-
-/**
- * "CAGR nhà đầu tư" — quy năm lợi nhuận tích lũy dựa trên finalValue/totalInvested,
- * giả định (sai) toàn bộ vốn đã hoạt động từ ngày đầu tiên. Thấp hơn dcaCagr() vì
- * phần lớn vốn DCA chỉ mới nạp gần đây. Dùng để đối chiếu với MWRR trong bảng thống
- * kê — không dùng để chiếu tương lai (xem projectionData trong DCAPanel.tsx).
- */
-export function investorCagr(
-  cumulative: ReturnPoint[],
-  totalInvested: number,
-  finalValue: number,
-): number | null {
-  if (cumulative.length < 2 || totalInvested <= 0 || finalValue <= 0) return null
-
-  const msPerDay = 24 * 60 * 60 * 1000
-  const days = (new Date(cumulative[cumulative.length - 1]!.date).getTime() -
-    new Date(cumulative[0]!.date).getTime()) / msPerDay
-  // Kỳ chưa đủ 365 ngày thì không quy năm.
-  if (days < 365) return null
-
-  const years = days / 365.25
-  return Math.pow(finalValue / totalInvested, 1 / years) - 1
 }
 
 /**

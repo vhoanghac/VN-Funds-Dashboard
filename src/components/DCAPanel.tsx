@@ -6,7 +6,7 @@ import type { DcaShareState, ShareUrlState } from '../utils/shareUrl'
 import { saveLS } from '../utils/localStorage'
 import { useSharePersistence } from '../hooks/useSharePersistence'
 import type { Portfolio, PortfolioCardState, ReturnPoint, FundMeta, PricePoint, RebalanceFrequency, TransactionCostRates } from '../types'
-import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, buildSharedDcaExecutionDates, dcaMWRR, dcaCagr, investorCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
+import { DEFAULT_TRANSACTION_COST_RATES, simulateDCA, buildSharedDcaExecutionDates, dcaMWRR, dcaCagr, dcaProfitFactor, dcaStormStats, dcaYearlyMWRR, trackDividendNarrative, derivePortfolioName, monthlyEquivalentContribution, dcaContributionPhaseAtDate, isDCAFrequency, normalizeDCAContributionSchedule, normalizeAnnualContributionIncreaseAmount, normalizeTransactionCostRates, slicePricesWithPredecessor, type DCAContributionPhase, type DCAFrequency, type DCASlot, type DCAStormStats, type DCAAssetValueSeries } from '../utils/dca'
 import { avgDrawdown, longestDrawdownDays, annualizedStdevFromCumulative } from '../utils/drawdownStats'
 import { alignFundsToCommonGridDaily } from '../utils/weeklyResample'
 import { loadDividends, type DividendEvent, type DividendNarrativeStats } from '../utils/dividendAdjust'
@@ -837,7 +837,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     finalValue: r.finalValue,
     totalInvested: r.totalInvested,
     transactionCosts: r.transactionCosts,
-    cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
     mwrr: r.mwrr,
     twrrNet: dcaCagr(r.cumulative),
     twrrGross: dcaCagr(r.cumulativeGross),
@@ -880,7 +879,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     id: r.id,
     name: r.name,
     color: r.color,
-    cagr: investorCagr(r.cumulative, r.totalInvested, r.finalValue),
+    cumulativeReturn: r.totalInvested > 0 ? r.finalValue / r.totalInvested - 1 : null,
     twrr: dcaCagr(r.cumulative),
     mwrr: r.mwrr,
   })), [validResults])
@@ -995,7 +994,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   })), [validResults])
 
   const projectionData = useMemo(() => validResults.map(r => {
-    // CAGR của danh mục (TWRR, tách khỏi thời điểm dòng tiền) — dùng làm base
+    // TWRR năm hóa của danh mục, tách khỏi thời điểm dòng tiền, dùng làm base
     // rate chiếu tương lai, KHÔNG dùng finalValue/totalInvested (bị kéo thấp
     // vì phần lớn vốn DCA chỉ mới đầu tư gần đây, chưa kịp sinh lời).
     const cagr = dcaCagr(r.cumulative)
@@ -1496,7 +1495,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                   portfolios={journeyPortfolios}
                 />
 
-                {/* Giải thích CAGR, TWRR, MWRR (collapsible), ngay dưới summary cards để trả lời câu hỏi về các con số lợi nhuận */}
+                {/* Giải thích lợi nhuận tích lũy, TWRR, MWRR (collapsible), ngay dưới summary cards */}
                 <DcaReturnExplainer
                   portfolios={dcaReturnExplainerData}
                 />

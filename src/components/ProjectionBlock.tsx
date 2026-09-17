@@ -1,8 +1,8 @@
 /**
  * ProjectionBlock: "Nếu bạn tiếp tục DCA thêm X năm nữa?"
  *
- * Chiếu về tương lai dựa trên CAGR lịch sử + lịch đầu tư hiện tại.
- * 3 scenario: pessimistic (CAGR − 3%), base (CAGR), optimistic (CAGR + 3%).
+ * Chiếu về tương lai dựa trên TWRR năm hóa lịch sử + lịch đầu tư hiện tại.
+ * 3 scenario: pessimistic (TWRR − 3%), base (TWRR), optimistic (TWRR + 3%).
  *
  * Đây KHÔNG phải dự báo. Là thought experiment để user thấy magnitude của
  * compound interest khi giữ kỷ luật DCA trong nhiều năm. Phải có disclaimer.
@@ -25,7 +25,7 @@ export interface ProjectionPortfolio {
   color: string
   totalInvested: number
   finalValue: number
-  /** CAGR đã quy năm từ backtest, dùng làm base rate cho projection */
+  /** TWRR từ backtest, dùng làm base rate cho projection */
   cagr: number | null
   /** Số tiền đầu tư mỗi tháng (ước lượng từ lịch đầu tư thực tế) */
   monthlyContribution: number
@@ -48,7 +48,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
 
   if (portfolios.length === 0) return null
 
-  // Chỉ project được cho portfolio có CAGR dương và > 0
+  // Chỉ project được cho portfolio có TWRR năm hóa dương và > 0
   const valid = portfolios.filter(p => p.cagr !== null && p.finalValue > 0)
   if (valid.length === 0) return null
 
@@ -61,7 +61,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
   return (
     <DcaBlock title="Nếu bạn kiên trì thêm nhiều năm nữa thì sao?" className="dca-projection-block">
       <p className="dca-projection-sub">
-        Giả sử bạn vẫn duy trì lịch DCA hiện tại, và CAGR tương lai loanh
+        Giả sử bạn vẫn duy trì lịch DCA hiện tại, và TWRR tương lai loanh
         quanh mức lịch sử. Đây không phải là dự báo, không ai biết trước thị trường sẽ
         đi đâu. Chỉ là để bạn cảm nhận sức nặng của lãi kép khi chơi đủ lâu.
       </p>
@@ -116,7 +116,7 @@ function ProjectionBlockImpl({ portfolios }: Props) {
 
       <div className="dca-projection-disclaimer">
         ⚠️ Thị trường không bao giờ đi thẳng như một đường kẻ. Có những năm sập sâu,
-        có những năm bùng mạnh. Biểu đồ trên chỉ minh họa lãi kép theo CAGR trung bình.
+        có những năm bùng mạnh. Biểu đồ trên chỉ minh họa lãi kép theo TWRR trung bình.
         Thực tế sẽ dao động lớn hơn nhiều, và kết quả của bạn có thể lệch xa cả ba kịch
         bản này. Hãy xem đây là "nếu thì", không phải "sẽ là".
       </div>
@@ -201,7 +201,7 @@ function ProjectionForPortfolio({
       <DcaBlock title={portfolio.name} className="dca-projection-card">
       <div className="dca-projection-card-header">
         <span className="dca-projection-card-cagr">
-          CAGR lịch sử: {(cagr * 100).toFixed(1)}%/năm
+          TWRR lịch sử: {(cagr * 100).toFixed(1)}%/năm
         </span>
       </div>
 
@@ -249,7 +249,7 @@ function ProjectionForPortfolio({
       <div className="dca-projection-takeaway">
         Danh mục <strong>{portfolio.name}</strong> hiện có giá trị{' '}
         <strong>{formatVND(Math.round(portfolio.finalValue))}</strong> — đây là điểm xuất phát,
-        không phải bắt đầu từ 0 đồng. Nếu CAGR giữ được mức lịch sử{' '}
+        không phải bắt đầu từ 0 đồng. Nếu TWRR giữ được mức lịch sử{' '}
         <strong>{(cagr * 100).toFixed(1)}%/năm</strong> và
         {cashflowSchedule && cashflowSchedule.length > 1
           ? ' bạn vẫn duy trì lịch DCA hiện tại'
