@@ -34,6 +34,7 @@ import { DrawdownChart } from './DrawdownChart'
 import { DcaRecoveryChart } from './DcaRecoveryChart'
 import { YearlyPerformanceChart } from './YearlyPerformanceChart'
 import { DcaAllocationBlock } from './DcaAllocationBlock'
+import { DcaFundValueChart, buildFundAllocatedValueSeries } from './DcaFundValueChart'
 import { DcaSectionPanel } from './DcaLayout'
 import { parsePortfolios } from '../utils/portfolio'
 import { FUND_COLORS } from '../constants'
@@ -158,6 +159,7 @@ const DCA_SECTIONS: { id: DcaSectionId; label: string }[] = [
 ]
 
 const ALL_RISK_PORTFOLIOS = '__all__'
+const ALL_PERFORMANCE_SCOPE = '__all__'
 
 const FREQ_OPTIONS: { value: DCAFrequency; label: string }[] = [
   { value: 'daily', label: 'Hàng ngày' },
@@ -235,6 +237,7 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
   const [activeDrawdownPortfolioId, setActiveDrawdownPortfolioId] = useState('')
   const [activeRiskPortfolioId, setActiveRiskPortfolioId] = useState('')
   const [activeEndgamePortfolioId, setActiveEndgamePortfolioId] = useState('')
+  const [perfScope, setPerfScope] = useState(ALL_PERFORMANCE_SCOPE)
 
   // ── Portfolios ──
   const [portfolios, setPortfolios] = useState<DCAPortfolioState[]>(() => {
@@ -823,13 +826,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     cumulative: r.cumulative,
   })), [validResults])
 
-  const ratioChartData = useMemo(() => validResults.map(r => ({
-    id: r.id,
-    name: r.name,
-    color: r.color,
-    values: r.valueSeries,
-  })), [validResults])
-
   const dcaStatsTableData = useMemo(() => validResults.map(r => ({
     id: r.id,
     name: r.name,
@@ -936,6 +932,62 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     investedSeries: r.investedSeries,
   })), [validResults])
 
+  const hasMultiplePortfolios = validResults.length > 1
+  const effectivePerfScope = !hasMultiplePortfolios
+    ? (validResults[0]?.id ?? ALL_PERFORMANCE_SCOPE)
+    : (perfScope !== ALL_PERFORMANCE_SCOPE && validResults.some(r => r.id === perfScope) ? perfScope : ALL_PERFORMANCE_SCOPE)
+  const perfResults = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? validResults
+      : validResults.filter(r => r.id === effectivePerfScope),
+    [effectivePerfScope, validResults],
+  )
+  const perfStatsTableData = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? dcaStatsTableData
+      : dcaStatsTableData.filter(p => p.id === effectivePerfScope),
+    [dcaStatsTableData, effectivePerfScope],
+  )
+  const perfValueChartData = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? portfolioValueChartData
+      : perfResults.map(r => ({
+        name: r.name,
+        color: r.color,
+        values: r.valueSeries,
+        invested: r.investedSeries,
+      })),
+    [effectivePerfScope, perfResults, portfolioValueChartData],
+  )
+  const perfYearlyPerformanceSeries = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? yearlyPerformanceSeries
+      : yearlyPerformanceSeries.filter(p => p.name === perfResults[0]?.name),
+    [effectivePerfScope, perfResults, yearlyPerformanceSeries],
+  )
+  const perfJourneyPortfolios = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? journeyPortfolios
+      : journeyPortfolios.filter(p => p.id === effectivePerfScope),
+    [effectivePerfScope, journeyPortfolios],
+  )
+  const perfBankComparisonData = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? bankComparisonData
+      : bankComparisonData.filter(p => p.id === effectivePerfScope),
+    [bankComparisonData, effectivePerfScope],
+  )
+  const perfReturnExplainerData = useMemo(
+    () => effectivePerfScope === ALL_PERFORMANCE_SCOPE
+      ? dcaReturnExplainerData
+      : dcaReturnExplainerData.filter(p => p.id === effectivePerfScope),
+    [dcaReturnExplainerData, effectivePerfScope],
+  )
+  const perfFundValueSeries = useMemo(
+    () => perfResults.length === 1 ? buildFundAllocatedValueSeries(perfResults[0]!.assetValues) : [],
+    [perfResults],
+  )
+
   const entryPointPortfolios = useMemo(() => validResults
     .filter(r => r.simulationInputs !== null)
     .map(r => ({
@@ -1028,6 +1080,28 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     }
   }), [validResults])
 
+  const needsPortfolioFilter = (
+    activeSection === 'risk'
+    || activeSection === 'drawdowns'
+    || activeSection === 'endgame'
+    || activeSection === 'perf'
+  ) && !(activeSection === 'perf' && !hasMultiplePortfolios)
+  const activeSectionLabel = DCA_SECTIONS.find(section => section.id === activeSection)?.label ?? ''
+  const scopedPortfolioFilterId = activeSection === 'risk'
+    ? activeRiskPortfolioId
+    : activeSection === 'perf'
+      ? effectivePerfScope
+      : activeSection === 'drawdowns'
+        ? activeDrawdownPortfolioId
+        : activeEndgamePortfolioId
+
+  function setScope(id: string) {
+    if (activeSection === 'risk') setActiveRiskPortfolioId(id)
+    else if (activeSection === 'perf') setPerfScope(id)
+    else if (activeSection === 'drawdowns') setActiveDrawdownPortfolioId(id)
+    else setActiveEndgamePortfolioId(id)
+  }
+
   const monteCarloData = useMemo(() => validResults.map(r => {
     const params = r.simulationInputs!.params
     const projectionStartDate = r.valueSeries[r.valueSeries.length - 1]?.date
@@ -1102,12 +1176,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
     () => rollingReturnData.filter(p => p.id === riskPortfolioId),
     [rollingReturnData, riskPortfolioId],
   )
-
-  // ── Format helpers ──
-  function formatDate(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-')
-    return `${d}/${m}/${y}`
-  }
 
   // ── Render ──
   const effectiveDates = getEffectiveDates()
@@ -1388,51 +1456,23 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               ))}
             </div>
 
-            {activeSection === 'drawdowns' && (
-              <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Mức sụt giảm">
-                {dcaStormData.map(p => (
+            {needsPortfolioFilter && (
+              <div className="dca-results-filter-toolbar" aria-label={`Chọn danh mục trong ${activeSectionLabel}`}>
+                {(activeSection === 'risk' || activeSection === 'perf') && (
                   <button
-                    key={p.id}
-                    className={`dca-results-filter-btn${activeDrawdownPortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
-                    aria-pressed={activeDrawdownPortfolioId === p.id}
-                    onClick={() => setActiveDrawdownPortfolioId(p.id)}
+                    className={`dca-results-filter-btn${scopedPortfolioFilterId === (activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE) ? ' dca-results-filter-btn--active' : ''}`}
+                    aria-pressed={scopedPortfolioFilterId === (activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE)}
+                    onClick={() => setScope(activeSection === 'risk' ? ALL_RISK_PORTFOLIOS : ALL_PERFORMANCE_SCOPE)}
                   >
-                    {p.name}
+                    Tất cả
                   </button>
-                ))}
-              </div>
-            )}
-
-            {activeSection === 'risk' && (
-              <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Rủi ro và biến động">
-                <button
-                  className={`dca-results-filter-btn${riskPortfolioId === ALL_RISK_PORTFOLIOS ? ' dca-results-filter-btn--active' : ''}`}
-                  aria-pressed={riskPortfolioId === ALL_RISK_PORTFOLIOS}
-                  onClick={() => setActiveRiskPortfolioId(ALL_RISK_PORTFOLIOS)}
-                >
-                  Tất cả
-                </button>
-                {validResults.map(p => (
+                )}
+                {(activeSection === 'drawdowns' ? dcaStormData : validResults).map(p => (
                   <button
                     key={p.id}
-                    className={`dca-results-filter-btn${riskPortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
-                    aria-pressed={riskPortfolioId === p.id}
-                    onClick={() => setActiveRiskPortfolioId(p.id)}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {activeSection === 'endgame' && (
-              <div className="dca-results-filter-toolbar" aria-label="Chọn danh mục trong Endgame">
-                {validResults.map(p => (
-                  <button
-                    key={p.id}
-                    className={`dca-results-filter-btn${endgamePortfolioId === p.id ? ' dca-results-filter-btn--active' : ''}`}
-                    aria-pressed={endgamePortfolioId === p.id}
-                    onClick={() => setActiveEndgamePortfolioId(p.id)}
+                    className={`dca-results-filter-btn${scopedPortfolioFilterId === p.id ? ' dca-results-filter-btn--active' : ''}`}
+                    aria-pressed={scopedPortfolioFilterId === p.id}
+                    onClick={() => setScope(p.id)}
                   >
                     {p.name}
                   </button>
@@ -1462,42 +1502,47 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
               </DcaSectionPanel>
 
               <DcaSectionPanel id="perf" active={activeSection === 'perf'}>
-                {/* Period info */}
-                {startDate && endDate && (
-                  <div className="comparison-period" style={{ marginBottom: 16 }}>
-                    DCA từ {formatDate(startDate)} đến {formatDate(endDate)}
-                  </div>
-                )}
-
                 {/* Bảng thống kê: mỗi danh mục 1 hàng, các chỉ số nằm cạnh nhau để dễ so sánh. */}
                 <DCAStatsTable
-                  portfolios={dcaStatsTableData}
+                  portfolios={perfStatsTableData}
                 />
 
                 {/* Portfolio Value Chart (MWRR): visual hook trước narrative */}
                 <PortfolioValueChart
-                  portfolios={portfolioValueChartData}
+                  portfolios={perfValueChartData}
                 />
 
+                <DcaFundValueChart series={perfFundValueSeries} />
+
                 {/* Tỷ số sức mạnh tương đối giữa 2 danh mục (chỉ hiện khi có từ 2 danh mục) */}
-                {validResults.length >= 2 && (
-                  <DcaRatioChart portfolios={ratioChartData} />
+                {perfResults.length >= 2 && (
+                  <DcaRatioChart portfolios={perfResults.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    color: r.color,
+                    values: r.valueSeries,
+                  }))} />
                 )}
 
                 <YearlyPerformanceChart
-                  series={yearlyPerformanceSeries}
+                  series={perfYearlyPerformanceSeries}
                   title="Hiệu suất theo năm"
                 />
 
                 {/* Hiệu suất từng năm (Modified Dietz) — ngay dưới summary cards vì cùng
                     trả lời câu hỏi "hiệu suất thực sự của tôi", trước khi đi vào giải thích chi tiết */}
                 <EOYReturnsTable
-                  portfolios={journeyPortfolios}
+                  portfolios={perfJourneyPortfolios}
+                />
+
+                <BankComparisonBlock
+                  results={perfBankComparisonData}
+                  endDate={endDate ?? ''}
                 />
 
                 {/* Giải thích lợi nhuận tích lũy, TWRR, MWRR (collapsible), ngay dưới summary cards */}
                 <DcaReturnExplainer
-                  portfolios={dcaReturnExplainerData}
+                  portfolios={perfReturnExplainerData}
                 />
               </DcaSectionPanel>
 
@@ -1522,13 +1567,6 @@ function DCAPanelImpl({ funds, shareUrl, active }: Props) {
                   />
                 )}
 
-                {/* So sánh với gửi tiết kiệm */}
-                {endDate && (
-                  <BankComparisonBlock
-                    results={bankComparisonData}
-                    endDate={endDate}
-                  />
-                )}
               </DcaSectionPanel>
 
               <DcaSectionPanel id="risk" active={activeSection === 'risk'}>
