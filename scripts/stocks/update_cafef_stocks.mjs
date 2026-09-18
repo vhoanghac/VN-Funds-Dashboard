@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Append stock prices from CafeF and fail on historical corrections.
+ * Append stock prices from CafeF and refresh adjusted history when needed.
  *
  * The updater reloads the latest three months so it can detect CafeF changes
- * to either price column before writing anything.
+ * to either price column. An adjusted-only correction triggers a full-history
+ * refresh for that symbol; unadjusted corrections still fail safely.
  *
  * Usage:
  *   node scripts/stocks/update_cafef_stocks.mjs --symbol ACB
@@ -13,12 +14,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { addDays, fetchQuarter, normalizeExchange, todayIso } from './scrape_cafef_stock.mjs'
+import { addDays, fetchHistory, normalizeExchange, todayIso } from './scrape_cafef_stock.mjs'
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.join(SCRIPT_DIR, '..', '..')
 const STOCK_DATA_DIR = path.join(ROOT_DIR, 'public', 'data', 'stocks')
 const HEADER = 'date,adjusted_price,unadjusted_price'
+const RECENT_LOOKBACK_DAYS = 90
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
@@ -45,39 +47,48 @@ async function updateSymbol(spec, args) {
 
   const existingRows = readCsv(outputPath)
   const lastDate = existingRows[existingRows.length - 1].date
-  const fetchStart = addDays(lastDate, -90)
-  const fetchedRows = await fetchQuarter(symbol, fetchStart, to, exchange)
-  const existingByDate = new Map(existingRows.map(row => [row.date, row]))
-  const corrections = []
+  const recentStart = addDays(lastDate, -RECENT_LOOKBACK_DAYS)
+  let checkedStart = recentStart
+  let fetchedRows = await fetchHistory(symbol, recentStart, to, exchange)
+  let corrections = findCorrections(existingRows, fetchedRows)
+  ensureUnadjustedPricesUnchanged(symbol, corrections)
 
-  for (const row of fetchedRows) {
-    const existing = existingByDate.get(row.date)
-    if (existing && (existing.adjustedPrice !== row.adjustedPrice || existing.unadjustedPrice !== row.unadjustedPrice)) {
-      corrections.push({ date: row.date, existing, fetched: row })
+  let adjustedCorrections = corrections.filter(({ existing, fetched }) => existing.adjustedPrice !== fetched.adjustedPrice)
+  if (adjustedCorrections.length > 0) {
+    checkedStart = existingRows[0].date
+    console.log([
+      `${symbol}: CafeF changed ${adjustedCorrections.length} adjusted historical row(s).`,
+      `Refreshing full history (${checkedStart}..${to}) to keep adjusted prices consistent.`,
+    ].join(' '))
+    fetchedRows = await fetchHistory(symbol, checkedStart, to, exchange)
+    corrections = findCorrections(existingRows, fetchedRows)
+    ensureUnadjustedPricesUnchanged(symbol, corrections)
+    const missingRows = findMissingExistingRows(existingRows, fetchedRows, checkedStart, to)
+    if (missingRows.length > 0) {
+      throw new Error([
+        `${symbol}: CafeF full refresh omitted ${missingRows.length} existing session(s); no file was written.`,
+        ...missingRows.slice(0, 10).map(row => row.date),
+      ].join('\n'))
     }
-  }
-
-  if (corrections.length > 0) {
-    const details = corrections.slice(0, 10).map(item => (
-      `${item.date}: ${item.existing.adjustedPrice}/${item.existing.unadjustedPrice} -> ${item.fetched.adjustedPrice}/${item.fetched.unadjustedPrice}`
-    ))
-    throw new Error([
-      `CafeF changed ${corrections.length} historical row(s); no file was written.`,
-      ...details,
-    ].join('\n'))
+    adjustedCorrections = corrections.filter(({ existing, fetched }) => existing.adjustedPrice !== fetched.adjustedPrice)
   }
 
   const newRows = fetchedRows.filter(row => row.date > lastDate)
-  const mergedRows = [...existingRows, ...newRows].sort((a, b) => a.date.localeCompare(b.date))
+  const mergedRows = mergeRows(existingRows, fetchedRows)
   validateRows(mergedRows)
 
-  console.log(`${symbol}: checked ${fetchedRows.length} CafeF sessions (${fetchStart}..${to})`)
-  if (newRows.length === 0) {
+  console.log(`${symbol}: checked ${fetchedRows.length} CafeF sessions (${checkedStart}..${to})`)
+  if (adjustedCorrections.length > 0) {
+    console.log(`${symbol}: refreshed ${adjustedCorrections.length} adjusted historical row(s); unadjusted prices unchanged`)
+  }
+  if (newRows.length === 0 && adjustedCorrections.length === 0) {
     console.log(`Already up to date (last: ${lastDate})`)
     return
   }
 
-  console.log(`New sessions: ${newRows.length} (${newRows[0].date}..${newRows[newRows.length - 1].date})`)
+  if (newRows.length > 0) {
+    console.log(`New sessions: ${newRows.length} (${newRows[0].date}..${newRows[newRows.length - 1].date})`)
+  }
   if (args.dryRun) {
     console.log('Dry run: no file written')
     return
@@ -157,6 +168,52 @@ function printUsage() {
   ].join('\n'))
 }
 
+function findCorrections(existingRows, fetchedRows) {
+  const existingByDate = new Map(existingRows.map(row => [row.date, row]))
+  return fetchedRows.flatMap(fetched => {
+    const existing = existingByDate.get(fetched.date)
+    if (!existing || (existing.adjustedPrice === fetched.adjustedPrice && existing.unadjustedPrice === fetched.unadjustedPrice)) {
+      return []
+    }
+    return [{ date: fetched.date, existing, fetched }]
+  })
+}
+
+function findMissingExistingRows(existingRows, fetchedRows, from, to) {
+  const fetchedDates = new Set(fetchedRows.map(row => row.date))
+  return existingRows.filter(row => row.date >= from && row.date <= to && !fetchedDates.has(row.date))
+}
+
+function ensureUnadjustedPricesUnchanged(symbol, corrections) {
+  const rawCorrections = corrections.filter(({ existing, fetched }) => existing.unadjustedPrice !== fetched.unadjustedPrice)
+  if (rawCorrections.length === 0) return
+
+  throw new Error([
+    `${symbol}: CafeF changed ${rawCorrections.length} historical unadjusted row(s); no file was written.`,
+    ...formatCorrectionDetails(rawCorrections),
+  ].join('\n'))
+}
+
+function formatCorrectionDetails(corrections) {
+  return corrections.slice(0, 10).map(item => (
+    `${item.date}: ${item.existing.adjustedPrice}/${item.existing.unadjustedPrice} -> ${item.fetched.adjustedPrice}/${item.fetched.unadjustedPrice}`
+  ))
+}
+
+function mergeRows(existingRows, fetchedRows) {
+  const fetchedByDate = new Map(fetchedRows.map(row => [row.date, row]))
+  const mergedByDate = new Map(existingRows.map(row => [row.date, row]))
+
+  for (const [date, fetched] of fetchedByDate) {
+    const existing = mergedByDate.get(date)
+    mergedByDate.set(date, existing
+      ? { ...fetched, unadjustedPrice: existing.unadjustedPrice }
+      : fetched)
+  }
+
+  return [...mergedByDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
 function readCsv(filePath) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Missing ${filePath}. Run the backfill script first.`)
@@ -221,3 +278,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = 1
   })
 }
+
+export { ensureUnadjustedPricesUnchanged, findCorrections, findMissingExistingRows, mergeRows }

@@ -218,9 +218,11 @@ các quỹ khác, một loại vàng lỗi không chặn vàng khác. Ngoại l�
 kể cả khi vài nguồn API ốm.
 
 Script `stocks/update_cafef_stocks.mjs` tải lại 90 ngày gần nhất cho từng mã trong
-`stocks/stock_symbols.txt`. Script chỉ nối thêm phiên mới vào file tương ứng trong
-`public/data/stocks/`. Nếu CafeF sửa giá của một ngày đã có, script dừng với lỗi và không
-ghi file, để người dùng kiểm tra trước khi dữ liệu đi vào repo.
+`stocks/stock_symbols.txt`. Nếu CafeF chỉ sửa `adjusted_price`, thường do cập nhật cổ tức,
+script tải lại toàn bộ lịch sử của đúng mã đó để tránh chuỗi adjusted bị chia thành hai đoạn.
+Script giữ nguyên `unadjusted_price` cũ và dừng nếu CafeF sửa giá raw hoặc bỏ mất một phiên
+trong lần full refresh. Sau khi kiểm tra, script nối phiên mới hoặc cập nhật adjusted vào file
+tương ứng trong `public/data/stocks/`.
 
 Script `stocks/update_vnstock_divs.py` chỉ cập nhật các mã đã ghi trong
 `stocks/div_symbols.txt`. Backfill chạy local bằng `--symbol` và `--backfill`; workflow

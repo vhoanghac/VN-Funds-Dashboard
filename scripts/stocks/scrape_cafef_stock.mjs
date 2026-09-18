@@ -44,13 +44,23 @@ async function main() {
     throw new Error(`Output already exists: ${outputPath}. Use --force to overwrite it.`)
   }
 
+  const rows = await fetchHistory(symbol, from, to, exchange)
+  writeCsv(outputPath, rows)
+
+  console.log(`\nWrote ${rows.length} sessions to ${outputPath}`)
+  console.log(`Range returned by CafeF: ${rows[0].date}..${rows[rows.length - 1].date}`)
+}
+
+async function fetchHistory(symbol, from, to, exchange = 'HOSE') {
+  assertIsoDate(from, '--from')
+  assertIsoDate(to, '--to')
+  if (from > to) throw new Error(`--from must be before --to: ${from} > ${to}`)
+
   const rowsByDate = new Map()
-  let chunkCount = 0
 
   for (let chunkStart = from; chunkStart <= to;) {
     const naturalChunkEnd = addDays(addMonths(chunkStart, 3), -1)
     const chunkEnd = naturalChunkEnd < to ? naturalChunkEnd : to
-    chunkCount++
 
     const rows = await fetchQuarter(symbol, chunkStart, chunkEnd, exchange)
     for (const row of rows) {
@@ -74,11 +84,7 @@ async function main() {
   if (rows.length === 0) throw new Error(`${symbol}: CafeF returned no rows`)
 
   validateRows(rows, from, to)
-  writeCsv(outputPath, rows)
-
-  console.log(`\nWrote ${rows.length} sessions to ${outputPath}`)
-  console.log(`Range returned by CafeF: ${rows[0].date}..${rows[rows.length - 1].date}`)
-  console.log(`Chunks: ${chunkCount}`)
+  return rows
 }
 
 function parseArgs(argv) {
@@ -330,4 +336,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   })
 }
 
-export { addDays, fetchQuarter, normalizeExchange, todayIso }
+export { addDays, fetchHistory, fetchQuarter, normalizeExchange, todayIso }

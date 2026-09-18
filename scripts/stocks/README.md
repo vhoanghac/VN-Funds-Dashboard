@@ -162,8 +162,10 @@ Phần liên quan tới cổ phiếu chạy theo thứ tự sau:
 ```text
 1. update_cafef_stocks.mjs
     Đọc từng mã và sàn trong stock_symbols.txt.
-   Tải lại khoảng 90 ngày gần nhất của từng mã.
-   Kiểm tra dữ liệu cũ rồi nối phiên mới vào <SYMBOL>.csv.
+    Tải lại khoảng 90 ngày gần nhất của từng mã.
+    Nếu chỉ adjusted_price thay đổi, tải lại toàn bộ lịch sử của đúng mã đó rồi cập nhật adjusted_price.
+    unadjusted_price của các ngày cũ phải giữ nguyên; nếu raw thay đổi, script dừng trước khi ghi.
+    Sau khi kiểm tra, nối phiên mới hoặc ghi lại adjusted_price vào <SYMBOL>.csv.
 
 2. update_vnstock_divs.py
    Đọc từng mã trong div_symbols.txt.
