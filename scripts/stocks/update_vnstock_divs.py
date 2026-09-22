@@ -20,6 +20,7 @@ import csv
 import os
 import re
 import tempfile
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any, Iterable
@@ -56,6 +57,14 @@ PENDING_CSV_FIELDS = [
     "source",
 ]
 SOURCE_ID_RE = re.compile(r"VCI event ([0-9a-f]+)", re.IGNORECASE)
+RETRY_ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 5
+TRANSIENT_ERROR_MARKERS = (
+    "timed out",
+    "timeout",
+    "connection",
+    "api request failed",
+)
 
 
 class CorporateActionCorrection(RuntimeError):
@@ -606,6 +615,27 @@ def update_symbol(symbol: str, args: argparse.Namespace) -> int:
     return change_count
 
 
+def is_transient_error(error: Exception) -> bool:
+    """True for flaky network failures worth retrying; data-integrity errors are not."""
+    if isinstance(error, (CorporateActionCorrection, FileNotFoundError)):
+        return False
+    message = str(error).lower()
+    return any(marker in message for marker in TRANSIENT_ERROR_MARKERS)
+
+
+def update_symbol_with_retry(symbol: str, args: argparse.Namespace) -> int:
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            return update_symbol(symbol, args)
+        except Exception as error:
+            if attempt >= RETRY_ATTEMPTS or not is_transient_error(error):
+                raise
+            delay = RETRY_DELAY_SECONDS * attempt
+            print(f"{symbol}: transient error (attempt {attempt}/{RETRY_ATTEMPTS}): {error} — retrying in {delay}s")
+            time.sleep(delay)
+    raise AssertionError("unreachable")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     symbols = load_symbols(args)
@@ -616,7 +646,7 @@ def main(argv: list[str] | None = None) -> int:
         register_user(api_key=api_key)
     total_new = 0
     for symbol in symbols:
-        total_new += update_symbol(symbol, args)
+        total_new += update_symbol_with_retry(symbol, args)
     print(f"Completed {len(symbols)} symbol(s), {total_new} new corporate action(s)")
     return 0
 

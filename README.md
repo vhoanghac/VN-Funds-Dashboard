@@ -125,4 +125,4 @@ Dashboard so sánh hiệu suất các quỹ đầu tư mở (cổ phiếu, trái
 ### Nguồn dữ liệu
 - **Quỹ mở:** [fmarket.vn](https://fmarket.vn) API
 - **ETF:** [vnstock](https://github.com/thinh-vu/vnstock) (nguồn VCI)
-- **Cập nhật:** GitHub Actions chạy tự động 18:00 (giờ VN), thứ 2–6
+- **Cập nhật:** GitHub Actions chạy tự động mỗi ngày. Quỹ, ETF, vàng, BTC lúc 18:11; cổ phiếu lúc 01:10 (giờ VN)

@@ -21,6 +21,10 @@ const STOCK_DATA_DIR = path.join(ROOT_DIR, 'public', 'data', 'stocks')
 const ENDPOINT = 'https://cafef.vn/du-lieu/Ajax/PageNew/DataHistory/PriceHistory.ashx'
 const MAX_RETRIES = 3
 const REQUEST_DELAY_MS = 150
+// CafeF occasionally drops the last session(s) of an export. Overlapping each
+// chunk by this many days lets the next chunk heal the gap (rows are deduped
+// by date, and conflicting values still throw).
+const CHUNK_OVERLAP_DAYS = 7
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
@@ -77,7 +81,8 @@ async function fetchHistory(symbol, from, to, exchange = 'HOSE') {
 
     console.log(`  ${chunkStart}..${chunkEnd}: ${rows.length} sessions`)
     if (chunkEnd < to) await sleep(REQUEST_DELAY_MS)
-    chunkStart = addDays(chunkEnd, 1)
+    if (chunkEnd >= to) break
+    chunkStart = addDays(chunkEnd, 1 - CHUNK_OVERLAP_DAYS)
   }
 
   const rows = [...rowsByDate.values()].sort((a, b) => a.date.localeCompare(b.date))
@@ -141,6 +146,7 @@ async function fetchQuarter(stockSymbol, startDate, endDate, exchange = 'HOSE') 
           Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'User-Agent': 'VN-Funds-Dashboard/1.0',
         },
+        signal: AbortSignal.timeout(30_000),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 

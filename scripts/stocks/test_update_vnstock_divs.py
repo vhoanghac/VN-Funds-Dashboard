@@ -1,10 +1,15 @@
+import argparse
 import unittest
+from unittest.mock import patch
 
 from scripts.stocks.update_vnstock_divs import (
+    RETRY_ATTEMPTS,
     CorporateActionCorrection,
+    is_transient_error,
     merge_rows,
     normalize_events,
     normalize_pending_events,
+    update_symbol_with_retry,
 )
 
 
@@ -84,6 +89,42 @@ class UpdateVnstockDivsTests(unittest.TestCase):
         self.assertEqual(by_kind["stock_dividend"]["ratio"], "0.15")
         self.assertEqual(by_kind["rights_issue"]["ratio"], "0.1")
         self.assertEqual(by_kind["rights_issue"]["subscription_price"], "10000")
+
+
+class RetryTests(unittest.TestCase):
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.update_symbol")
+    def test_non_transient_error_raises_without_retry(self, m_update, m_sleep):
+        m_update.side_effect = CorporateActionCorrection("bad")
+        with self.assertRaises(CorporateActionCorrection):
+            update_symbol_with_retry("ACB", argparse.Namespace())
+        self.assertEqual(m_update.call_count, 1)
+        m_sleep.assert_not_called()
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.update_symbol")
+    def test_transient_error_retries_then_raises(self, m_update, m_sleep):
+        m_update.side_effect = ConnectionError("Read timed out")
+        with self.assertRaises(ConnectionError):
+            update_symbol_with_retry("ACB", argparse.Namespace())
+        self.assertEqual(m_update.call_count, RETRY_ATTEMPTS)
+        self.assertEqual(m_sleep.call_count, RETRY_ATTEMPTS - 1)
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.update_symbol")
+    def test_transient_error_succeeds_on_second_attempt(self, m_update, m_sleep):
+        m_update.side_effect = [ConnectionError("timeout"), 3]
+        self.assertEqual(update_symbol_with_retry("ACB", argparse.Namespace()), 3)
+        self.assertEqual(m_update.call_count, 2)
+        self.assertEqual(m_sleep.call_count, 1)
+
+    def test_is_transient_error_classification(self):
+        self.assertFalse(is_transient_error(CorporateActionCorrection("x")))
+        self.assertFalse(is_transient_error(FileNotFoundError("x")))
+        self.assertFalse(is_transient_error(ValueError("invalid date")))
+        self.assertTrue(is_transient_error(ConnectionError("Read timed out")))
+        self.assertTrue(is_transient_error(RuntimeError("API request failed")))
+        self.assertTrue(is_transient_error(RuntimeError("connection reset")))
 
 
 if __name__ == "__main__":

@@ -1,19 +1,18 @@
-name: Update Fund NAV Data
+name: Update Stock Data
 
 on:
   schedule:
-    # 11:11 UTC = 18:11 Vietnam (after market close)
-    # Run Mon-Fri for fund NAV; also Sat-Sun so Bitcoin (24/7) stays current
-    - cron: '11 11 * * *'
+    # 18:10 UTC = 01:10 Vietnam (staggered from the fund workflow at 11:11 UTC)
+    - cron: '10 18 * * *'
   workflow_dispatch: # Allow manual trigger
 
-# Serialize with update_stocks.yml so two runs never push at the same time
+# Serialize with update_daily.yml so two runs never push at the same time
 concurrency:
   group: data-push
   cancel-in-progress: false
 
 jobs:
-  update-nav:
+  update-stocks:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,31 +40,18 @@ jobs:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
         run: python -X utf8 -c "import os; from vnstock import register_user; register_user(api_key=os.environ['VNSTOCK_API_KEY'])"
 
-      - name: Update NAV data
-        run: node scripts/update_nav.mjs
+      - name: Update stock price data
+        run: node scripts/stocks/update_cafef_stocks.mjs --symbols-file scripts/stocks/stock_symbols.txt
+
+      - name: Update stock corporate actions
+        run: python -X utf8 scripts/stocks/update_vnstock_divs.py --symbols-file scripts/stocks/div_symbols.txt --require-existing
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-
-      - name: Update ETF and BTC data
-        run: python -X utf8 scripts/update_vnstock.py
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-
-      - name: Update fund holdings (Overlap tab)
-        run: python -X utf8 scripts/fund_report/update_holdings.py
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-
-      - name: Update digiinvest funds (TCBF, TCEF)
-        run: node scripts/update_TCEF_TCBF_digiinvest.mjs
-
-      - name: Update gold price data
-        run: node scripts/update_gold.mjs
 
       - name: Check for changes
         id: changes
         run: |
-          if [ -z "$(git status --porcelain -- public/data)" ]; then
+          if [ -z "$(git status --porcelain -- public/data/stocks)" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -76,8 +62,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/
-          git commit -m "Update fund NAV data $(date -u +%Y-%m-%d)"
+          git add public/data/stocks/
+          git commit -m "Update stock data $(date -u +%Y-%m-%d)"
           for attempt in 1 2; do
             if git pull --rebase origin master && git push; then
               exit 0

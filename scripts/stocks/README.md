@@ -154,7 +154,8 @@ không bắt buộc, nhưng nếu có thì cũng phải qua parser contract. Wor
 
 ## Cập nhật hằng ngày
 
-GitHub Actions chạy trong `.github/workflows/update_daily.yml` vào 18:00 giờ Việt Nam mỗi ngày. Có thể chạy lại bằng
+GitHub Actions chạy trong `.github/workflows/update_stocks.yml` vào 01:10 giờ Việt Nam mỗi ngày (tách khỏi
+workflow quỹ `.github/workflows/update_daily.yml` chạy 18:11 — một nguồn lỗi không chặn nguồn kia). Có thể chạy lại bằng
 `workflow_dispatch` trên GitHub.
 
 Phần liên quan tới cổ phiếu chạy theo thứ tự sau:
@@ -186,8 +187,7 @@ python -X utf8 scripts/stocks/update_vnstock_divs.py \
 
 Workflow truyền `VNSTOCK_API_KEY` từ GitHub secret. Không ghi API key vào file hoặc commit vào repository.
 
-Sau tất cả bước cập nhật dữ liệu, workflow chạy `git diff`. Có thay đổi thì bot commit toàn bộ `public/data/` và push.
-Không có thay đổi thì workflow không tạo commit rỗng.
+Sau tất cả bước cập nhật dữ liệu, workflow kiểm tra thay đổi trong `public/data/stocks/`. Có thay đổi thì bot commit thư mục đó với message `Update stock data YYYY-MM-DD` rồi push. Không có thay đổi thì workflow không tạo commit rỗng.
 
 ## Quy tắc merge corporate actions
 

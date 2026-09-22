@@ -1,7 +1,8 @@
 # Daily Price Update Pipeline — giá & NAV hàng ngày
 
 Thư mục này chứa các script **tự động chạy mỗi ngày** qua GitHub Actions
-(`.github/workflows/update_daily.yml`) để cập nhật **giá** và **NAV** của quỹ, vàng,
+(`.github/workflows/update_daily.yml` cho quỹ, vàng, BTC; `.github/workflows/update_stocks.yml`
+cho cổ phiếu) để cập nhật **giá** và **NAV** của quỹ, vàng,
 Bitcoin. Đây là pipeline "giữ cho dashboard luôn tươi", khác hẳn pipeline báo cáo tài
 chính trong `scripts/fund_report/` (chạy thủ công khi quỹ công bố báo cáo).
 
@@ -25,7 +26,7 @@ Hai pipeline **độc lập**: cập nhật giá hàng ngày không đụng hold
 hàng ngày gọi — xem Bước 5.
 
 ```
-              .github/workflows/update_daily.yml  (mỗi ngày 18:00 VN)
+              .github/workflows/update_daily.yml  (mỗi ngày 18:11 VN)
                           │
         ┌─────────────────┼──────────────────┬─────────────────┬───────────────┐
         ▼                 ▼                  ▼                 ▼               ▼
@@ -35,6 +36,17 @@ hàng ngày gọi — xem Bước 5.
         └─────────────────┴──────────────────────┬───────────────┴───────────────────┘
                                                  ▼
                                     git commit + push public/data/
+
+              .github/workflows/update_stocks.yml  (mỗi ngày 01:10 VN)
+                          │
+                ┌─────────┴──────────┐
+                ▼                    ▼
+   update_cafef_stocks.mjs   update_vnstock_divs.py
+   (giá cổ phiếu CafeF)      (corporate actions VCI)
+                │                    │
+                └─────────┬──────────┘
+                          ▼
+             git commit + push public/data/stocks/
 ```
 
 ---
@@ -193,24 +205,38 @@ python -X utf8 scripts/fund_report/update_holdings.py
 
 ## Workflow `update_daily.yml` — nhịp chạy tổng thể
 
-File `.github/workflows/update_daily.yml` điều phối toàn bộ:
+File `.github/workflows/update_daily.yml` điều phối pipeline quỹ, vàng, BTC.
+Cổ phiếu tách riêng sang `.github/workflows/update_stocks.yml` (xem cuối mục này).
 
-- **Lịch:** `cron: '0 11 * * *'` = 18:00 giờ Việt Nam, **mỗi ngày** (kể cả cuối tuần —
+- **Lịch:** `cron: '11 11 * * *'` = 18:11 giờ Việt Nam, **mỗi ngày** (kể cả cuối tuần —
   BTC giao dịch 24/7 nên không được để tụt). Cũng có thể bấm nút chạy tay
   (`workflow_dispatch`) trên GitHub.
 - **Môi trường:** Ubuntu, Node 24 + Python 3.12; `pip install vnstock` và đăng ký
   `VNSTOCK_API_KEY` (secret của repo — không bao giờ viết thẳng vào file).
-- **Thứ tự 7 bước** (mỗi bước một `run` riêng):
+- **Thứ tự 5 bước** (mỗi bước một `run` riêng):
   1. `update_nav.mjs` — NAV quỹ mở fmarket
   2. `update_vnstock.py` — ETF + BTC
   3. `fund_report/update_holdings.py` — holdings Overlap
   4. `update_TCEF_TCBF_digiinvest.mjs` — NAV TCBF/TCEF
   5. `update_gold.mjs` — vàng
-  6. `stocks/update_cafef_stocks.mjs` — giá đóng cửa và giá điều chỉnh các mã trong `stocks/stock_symbols.txt` từ CafeF
-  7. `stocks/update_vnstock_divs.py` — corporate actions của các mã trong `stocks/div_symbols.txt` từ VCI qua vnstock
-- **Commit + push:** sau 7 bước, kiểm tra `git diff`. Nếu có thay đổi → `git add
+- **Commit + push:** sau 5 bước, kiểm tra `git diff`. Nếu có thay đổi → `git add
   public/data/` rồi commit với message "Update fund NAV data YYYY-MM-DD" và push bởi
-  `github-actions[bot]`. Không có thay đổi → không commit (tránh commit rỗng).
+  `github-actions[bot]`. Push chạy `git pull --rebase` trước, thử tối đa 2 lần, để
+  hai workflow không đè commit nhau. Không có thay đổi → không commit (tránh commit rỗng).
+- **`concurrency` group `data-push`:** hai workflow dùng chung một nhóm, run nào cũng
+  phải chờ run kia xong mới push — không bao giờ push cùng lúc.
+
+## Workflow `update_stocks.yml` — nhịp chạy cổ phiếu
+
+File `.github/workflows/update_stocks.yml` chạy phần cổ phiếu, tách khỏi workflow
+quỹ để một nguồn lỗi không chặn nguồn kia.
+
+- **Lịch:** `cron: '10 18 * * *'` = 01:10 giờ Việt Nam, **mỗi ngày**.
+- **Bước:**
+  1. `stocks/update_cafef_stocks.mjs` — giá đóng cửa và giá điều chỉnh các mã trong `stocks/stock_symbols.txt` từ CafeF
+  2. `stocks/update_vnstock_divs.py` — corporate actions của các mã trong `stocks/div_symbols.txt` từ VCI qua vnstock
+- **Commit + push:** chỉ `public/data/stocks/`, message "Update stock data YYYY-MM-DD",
+  cũng `git pull --rebase` + retry 2 lần và dùng chung `concurrency` group `data-push`.
 
 **Tính chịu lỗi:** mỗi script tự bắt lỗi theo tài sản/quỹ — một quỹ lỗi không chặn
 các quỹ khác, một loại vàng lỗi không chặn vàng khác. Ngoại lệ: `update_vnstock.py`
