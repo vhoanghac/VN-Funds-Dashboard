@@ -32,8 +32,17 @@ jobs:
           python-version: '3.12'
 
       - name: Install vnstock
-        # vnstock 4.0.6 has an UnboundLocalError in the VCI execution path.
-        run: pip install vnstock==4.0.5
+        # TEMPORARY: PyPI quarantined both the vnstock and vnai projects
+        # (2026-09-24), so `pip install vnstock==...` finds no files. vnstock is
+        # pinned by git SHA (4.0.8 — includes the fix for the UnboundLocalError
+        # that banned 4.0.6); the required vnai dependency comes from the official
+        # vendor index. Revert to `pip install vnstock==<ver>` once PyPI unblocks.
+        run: >
+          pip install --extra-index-url https://vnstocks.com/api/simple
+          git+https://github.com/thinh-vu/vnstock@9c0a7bc7a29bd495e42916276615e1588abaf6b5
+
+      - name: Verify vnstock
+        run: python -c "import vnstock, importlib.metadata as m; v=m.version('vnstock'); assert v=='4.0.8', v; print('vnstock', v)"
 
       - name: Register vnstock API key
         env:
