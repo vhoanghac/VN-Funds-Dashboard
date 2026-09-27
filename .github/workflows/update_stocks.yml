@@ -4,7 +4,16 @@ on:
   schedule:
     # 18:10 UTC = 01:10 Vietnam (staggered from the fund workflow at 11:11 UTC)
     - cron: '10 18 * * *'
+    # Full-history sweep on the 1st of each month: re-reads every VCI event from
+    # 2007 so events that only gained their dates years after their ex-date
+    # (seen for MBB: ex-date 2019, listing date filled 2024-12-05) still resolve.
+    - cron: '10 18 1 * *'
   workflow_dispatch: # Allow manual trigger
+    inputs:
+      full:
+        description: 'Run the full 2007→today sweep instead of the recent window'
+        type: boolean
+        default: false
 
 # Serialize with update_daily.yml so two runs never push at the same time
 concurrency:
@@ -50,31 +59,70 @@ jobs:
         run: python -X utf8 -c "import os; from vnstock import register_user; register_user(api_key=os.environ['VNSTOCK_API_KEY'])"
 
       - name: Update stock price data
+        id: price
+        # Independent of vnstock: run even if an earlier step failed.
+        if: ${{ !cancelled() }}
         run: node scripts/stocks/update_cafef_stocks.mjs --symbols-file scripts/stocks/stock_symbols.txt
 
-      - name: Update stock corporate actions
-        run: python -X utf8 scripts/stocks/update_vnstock_divs.py --symbols-file scripts/stocks/div_symbols.txt --require-existing
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-
-      - name: Check for changes
-        id: changes
-        run: |
-          if [ -z "$(git status --porcelain -- public/data/stocks)" ]; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit and push
-        if: steps.changes.outputs.changed == 'true'
+      - name: Commit stock prices
+        # Push whatever prices were written even if the price step partially
+        # failed (the run stays red); never touch *_div/_pending here.
+        if: ${{ !cancelled() && steps.price.outcome != 'skipped' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/stocks/
-          git commit -m "Update stock data $(date -u +%Y-%m-%d)"
+          git add -- 'public/data/stocks/*.csv' ':(exclude)public/data/stocks/*_div.csv' ':(exclude)public/data/stocks/*_pending.csv'
+          if git diff --cached --quiet; then
+            echo "No stock price changes to commit."
+            exit 0
+          fi
+          git commit -m "Update stock prices $(date -u +%Y-%m-%d)"
           for attempt in 1 2; do
-            if git pull --rebase origin master && git push; then
+            if git pull --rebase --autostash origin master && git push; then
+              exit 0
+            fi
+            git rebase --abort >/dev/null 2>&1 || true
+            if [ "$attempt" -lt 2 ]; then
+              echo "Push attempt $attempt failed, retrying..."
+              sleep 10
+            else
+              echo "Push attempt $attempt failed, giving up."
+            fi
+          done
+          exit 1
+
+      - name: Update stock corporate actions
+        id: ca
+        # Independent of the price data: run even if an earlier step failed.
+        if: ${{ !cancelled() }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "10 18 1 * *" ] || [ "${{ inputs.full }}" = "true" ]; then
+            FROM=2007-01-01
+            echo "Full corporate-action sweep from $FROM"
+          else
+            FROM="$(date -u -d '730 days ago' +%F)"
+            echo "Recent-window corporate-action update from $FROM"
+          fi
+          python -X utf8 scripts/stocks/update_vnstock_divs.py --symbols-file scripts/stocks/div_symbols.txt --require-existing --from "$FROM"
+        env:
+          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
+      - name: Commit stock corporate actions
+        # Only commit when the corporate-action step itself fully succeeded, so
+        # a batch with any failed symbol is never pushed. A failed step leaves
+        # the working tree dirty and the run red; the next run refetches.
+        if: ${{ !cancelled() && steps.ca.outcome == 'success' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- 'public/data/stocks/*_div.csv' 'public/data/stocks/*_pending.csv'
+          if git diff --cached --quiet; then
+            echo "No corporate action changes to commit."
+            exit 0
+          fi
+          git commit -m "Update stock corporate actions $(date -u +%Y-%m-%d)"
+          for attempt in 1 2; do
+            if git pull --rebase --autostash origin master && git push; then
               exit 0
             fi
             git rebase --abort >/dev/null 2>&1 || true

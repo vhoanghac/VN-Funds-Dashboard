@@ -154,24 +154,30 @@ không bắt buộc, nhưng nếu có thì cũng phải qua parser contract. Wor
 
 ## Cập nhật hằng ngày
 
-GitHub Actions chạy trong `.github/workflows/update_stocks.yml` vào 01:10 giờ Việt Nam mỗi ngày (tách khỏi
-workflow quỹ `.github/workflows/update_daily.yml` chạy 18:11 — một nguồn lỗi không chặn nguồn kia). Có thể chạy lại bằng
-`workflow_dispatch` trên GitHub.
+GitHub Actions chạy trong `.github/workflows/update_stocks.yml`. Có hai mốc:
 
-Phần liên quan tới cổ phiếu chạy theo thứ tự sau:
+- `cron: '10 18 * * *'` = 01:10 giờ Việt Nam mỗi ngày, quét cửa sổ gần.
+- `cron: '10 18 1 * *'` = 01:10 ngày 1 mỗi tháng, quét lại toàn bộ từ 2007 (gọi tắt là sweep).
+
+Lịch này tách khỏi workflow quỹ `.github/workflows/update_daily.yml` (chạy 18:11), nên một nguồn lỗi không chặn nguồn kia. Muốn chạy tay thì bấm `workflow_dispatch`; tick ô `full` để ép chạy sweep.
+
+Phần cổ phiếu chạy hai bước độc lập, mỗi bước một commit:
 
 ```text
-1. update_cafef_stocks.mjs
-    Đọc từng mã và sàn trong stock_symbols.txt.
+1. Update stock price data → Commit stock prices
+    update_cafef_stocks.mjs đọc từng mã và sàn trong stock_symbols.txt.
     Tải lại khoảng 90 ngày gần nhất của từng mã.
     Nếu chỉ adjusted_price thay đổi, tải lại toàn bộ lịch sử của đúng mã đó rồi cập nhật adjusted_price.
-    unadjusted_price của các ngày cũ phải giữ nguyên; nếu raw thay đổi, script dừng trước khi ghi.
-    Sau khi kiểm tra, nối phiên mới hoặc ghi lại adjusted_price vào <SYMBOL>.csv.
+    unadjusted_price của các ngày cũ phải giữ nguyên; nếu raw thay đổi, script dừng riêng mã đó.
+    Một mã lỗi không chặn các mã còn lại. Cuối script exit 1 nếu còn mã lỗi.
+    Commit chỉ đụng <SYMBOL>.csv, message "Update stock prices YYYY-MM-DD".
 
-2. update_vnstock_divs.py
-   Đọc từng mã trong div_symbols.txt.
-   Tải lại toàn bộ lịch sử corporate actions.
-   Chỉ ghi phần event mới vào <SYMBOL>_div.csv.
+2. Update stock corporate actions → Commit stock corporate actions
+    update_vnstock_divs.py đọc từng mã trong div_symbols.txt, lấy event trong cửa sổ --from truyền vào.
+    Mỗi lần thử VCI lỗi tạm thời được thử lại 5 lần, chờ lần lượt 10, 20, 30, 60 giây.
+    Một mã lỗi không chặn các mã còn lại. Cuối script exit 1 nếu còn mã lỗi.
+    Commit chỉ đụng <SYMBOL>_div.csv và <SYMBOL>_pending.csv, và chỉ chạy khi bước này xanh hoàn toàn.
+    Message "Update stock corporate actions YYYY-MM-DD".
 ```
 
 Lệnh workflow hiện tại:
@@ -180,14 +186,21 @@ Lệnh workflow hiện tại:
 node scripts/stocks/update_cafef_stocks.mjs \
   --symbols-file scripts/stocks/stock_symbols.txt
 
+# hằng ngày: chỉ 730 ngày gần nhất
 python -X utf8 scripts/stocks/update_vnstock_divs.py \
   --symbols-file scripts/stocks/div_symbols.txt \
-  --require-existing
+  --require-existing --from "$(date -u -d '730 days ago' +%F)"
+
+# sweep ngày 1 hằng tháng: toàn bộ từ 2007
+python -X utf8 scripts/stocks/update_vnstock_divs.py \
+  --symbols-file scripts/stocks/div_symbols.txt \
+  --require-existing --from 2007-01-01
 ```
 
 Workflow truyền `VNSTOCK_API_KEY` từ GitHub secret. Không ghi API key vào file hoặc commit vào repository.
 
-Sau tất cả bước cập nhật dữ liệu, workflow kiểm tra thay đổi trong `public/data/stocks/`. Có thay đổi thì bot commit thư mục đó với message `Update stock data YYYY-MM-DD` rồi push. Không có thay đổi thì workflow không tạo commit rỗng.
+Vì sao cần sweep: VCI có event chỉ được điền đủ ngày rất lâu sau ex-date. MBB có một event ex-date 2019, tới 2024-12-05 mới có ngày niêm yết. Cửa sổ gần sẽ không bao giờ thấy lại event đó, nên sweep hằng tháng mới gom được.
+
 
 ## Quy tắc merge corporate actions
 

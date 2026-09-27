@@ -213,47 +213,56 @@ Cổ phiếu tách riêng sang `.github/workflows/update_stocks.yml` (xem cuối
   (`workflow_dispatch`) trên GitHub.
 - **Môi trường:** Ubuntu, Node 24 + Python 3.12; `pip install vnstock` và đăng ký
   `VNSTOCK_API_KEY` (secret của repo — không bao giờ viết thẳng vào file).
-- **Thứ tự 5 bước** (mỗi bước một `run` riêng):
-  1. `update_nav.mjs` — NAV quỹ mở fmarket
-  2. `update_vnstock.py` — ETF + BTC
-  3. `fund_report/update_holdings.py` — holdings Overlap
-  4. `update_TCEF_TCBF_digiinvest.mjs` — NAV TCBF/TCEF
-  5. `update_gold.mjs` — vàng
-- **Commit + push:** sau 5 bước, kiểm tra `git diff`. Nếu có thay đổi → `git add
-  public/data/` rồi commit với message "Update fund NAV data YYYY-MM-DD" và push bởi
-  `github-actions[bot]`. Push chạy `git pull --rebase` trước, thử tối đa 2 lần, để
-  hai workflow không đè commit nhau. Không có thay đổi → không commit (tránh commit rỗng).
+- **Thứ tự 5 bước** (mỗi bước một `run` riêng, mỗi bước đều chạy kể cả khi bước trước lỗi):
+  1. `update_nav.mjs`: NAV quỹ mở fmarket
+  2. `update_vnstock.py`: ETF + BTC
+  3. `fund_report/update_holdings.py`: holdings Overlap
+  4. `update_TCEF_TCBF_digiinvest.mjs`: NAV TCBF/TCEF
+  5. `update_gold.mjs`: vàng
+- **Commit:** hai lần commit, bỏ qua khi phần đó không có thay đổi.
+  - `Commit fund NAV data`: gom `public/data/` trừ `holdings/`, `holdings_index.json` và
+    `stocks/`; message "Update fund NAV data YYYY-MM-DD".
+  - `Commit fund holdings`: chỉ chạy khi bước holdings xanh hoàn toàn; chỉ đụng `holdings/`
+    và `holdings_index.json`; message "Update fund holdings YYYY-MM-DD".
+- **Push:** mỗi commit chạy `git pull --rebase --autostash` rồi `git push`, thử tối đa 2 lần.
 - **`concurrency` group `data-push`:** hai workflow dùng chung một nhóm, run nào cũng
-  phải chờ run kia xong mới push — không bao giờ push cùng lúc.
+  phải chờ run kia xong mới push, không bao giờ push cùng lúc.
 
 ## Workflow `update_stocks.yml` — nhịp chạy cổ phiếu
 
 File `.github/workflows/update_stocks.yml` chạy phần cổ phiếu, tách khỏi workflow
 quỹ để một nguồn lỗi không chặn nguồn kia.
 
-- **Lịch:** `cron: '10 18 * * *'` = 01:10 giờ Việt Nam, **mỗi ngày**.
-- **Bước:**
-  1. `stocks/update_cafef_stocks.mjs` — giá đóng cửa và giá điều chỉnh các mã trong `stocks/stock_symbols.txt` từ CafeF
-  2. `stocks/update_vnstock_divs.py` — corporate actions của các mã trong `stocks/div_symbols.txt` từ VCI qua vnstock
-- **Commit + push:** chỉ `public/data/stocks/`, message "Update stock data YYYY-MM-DD",
-  cũng `git pull --rebase` + retry 2 lần và dùng chung `concurrency` group `data-push`.
+- **Lịch:** `cron: '10 18 * * *'` = 01:10 giờ Việt Nam mỗi ngày, cộng
+  `cron: '10 18 1 * *'` = 01:10 ngày 1 mỗi tháng cho sweep toàn bộ.
+- **Bước:** hai bước độc lập, mỗi bước một commit.
+  1. `stocks/update_cafef_stocks.mjs`: giá đóng cửa và giá điều chỉnh các mã trong
+     `stocks/stock_symbols.txt` từ CafeF, rồi commit "Update stock prices YYYY-MM-DD"
+     (chỉ `<SYMBOL>.csv`).
+  2. `stocks/update_vnstock_divs.py`: corporate actions các mã trong `stocks/div_symbols.txt`
+     từ VCI qua vnstock, rồi commit "Update stock corporate actions YYYY-MM-DD"
+     (chỉ `<SYMBOL>_div.csv` và `<SYMBOL>_pending.csv`, chỉ chạy khi bước này xanh hoàn toàn).
+- **Cửa sổ ngày:** chạy hằng ngày lấy 730 ngày gần nhất; sweep lấy từ 2007-01-01. Script
+  thử lại 5 lần, chờ 10/20/30/60 giây, khi VCI lỗi tạm thời.
+- **Push:** mỗi commit `git pull --rebase --autostash` + thử 2 lần, dùng chung
+  `concurrency` group `data-push`.
 
-**Tính chịu lỗi:** mỗi script tự bắt lỗi theo tài sản/quỹ — một quỹ lỗi không chặn
-các quỹ khác, một loại vàng lỗi không chặn vàng khác. Ngoại lệ: `update_vnstock.py`
-`exit 1` nếu BTC fail hẳn (để workflow báo đỏ). Nhờ đó commit hàng ngày luôn diễn ra
-kể cả khi vài nguồn API ốm.
+**Tính chịu lỗi:** mỗi script bắt lỗi theo từng mục và chạy hết danh sách, rồi `exit 1`
+nếu còn mục nào lỗi. Nhờ đó workflow đỏ khi có nguồn ốm, mà commit vẫn ghi phần đã cập
+nhật xong. Riêng commit corporate actions chỉ chạy khi bước corporate actions xanh hoàn
+toàn, để không bao giờ đẩy một batch dở.
 
 Script `stocks/update_cafef_stocks.mjs` tải lại 90 ngày gần nhất cho từng mã trong
 `stocks/stock_symbols.txt`. Nếu CafeF chỉ sửa `adjusted_price`, thường do cập nhật cổ tức,
 script tải lại toàn bộ lịch sử của đúng mã đó để tránh chuỗi adjusted bị chia thành hai đoạn.
-Script giữ nguyên `unadjusted_price` cũ và dừng nếu CafeF sửa giá raw hoặc bỏ mất một phiên
-trong lần full refresh. Sau khi kiểm tra, script nối phiên mới hoặc cập nhật adjusted vào file
-tương ứng trong `public/data/stocks/`.
+Script giữ nguyên `unadjusted_price` cũ và dừng riêng mã đó nếu CafeF sửa giá raw hoặc bỏ mất
+một phiên trong lần full refresh; các mã khác vẫn chạy tiếp. Sau khi kiểm tra, script nối
+phiên mới hoặc cập nhật adjusted vào file tương ứng trong `public/data/stocks/`.
 
 Script `stocks/update_vnstock_divs.py` chỉ cập nhật các mã đã ghi trong
 `stocks/div_symbols.txt`. Backfill chạy local bằng `--symbol` và `--backfill`; workflow
-không tạo file mới. Script lấy toàn bộ event `DIV,ISS`, lọc cổ tức tiền mặt, cổ tức bằng
-cổ phiếu và quyền mua, rồi dừng nếu VCI sửa một event đã có.
+không tạo file mới. Script lấy event `DIV,ISS` trong cửa sổ `--from`, lọc cổ tức tiền mặt,
+cổ tức bằng cổ phiếu và quyền mua, rồi dừng riêng mã đó nếu VCI sửa một event đã có.
 
 ---
 

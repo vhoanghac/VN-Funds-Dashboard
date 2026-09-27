@@ -34,9 +34,32 @@ async function main() {
     throw new Error('--output can only be used with one symbol')
   }
 
-  for (const spec of symbols) {
-    await updateSymbol(spec, args)
+  const ok = await runUpdates(symbols, spec => updateSymbol(spec, args))
+  if (!ok) {
+    process.exitCode = 1
   }
+}
+
+/**
+ * Run each symbol in turn, isolating failures so one broken symbol cannot stop
+ * the rest. Returns false when at least one symbol failed; the caller then
+ * exits 1 (workflow stays red without dropping the symbols that succeeded).
+ */
+export async function runUpdates(symbols, runOne) {
+  const failures = []
+  for (const spec of symbols) {
+    try {
+      await runOne(spec)
+    } catch (error) {
+      console.error(`ERROR: ${spec.symbol}: ${error.message}`)
+      failures.push(spec.symbol)
+    }
+  }
+  if (failures.length > 0) {
+    console.error(`ERROR: ${failures.length} symbol(s) failed: ${failures.join(', ')}`)
+    return false
+  }
+  return true
 }
 
 async function updateSymbol(spec, args) {

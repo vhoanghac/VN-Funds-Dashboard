@@ -1,11 +1,14 @@
 import argparse
+import os
 import unittest
 from unittest.mock import patch
 
 from scripts.stocks.update_vnstock_divs import (
     RETRY_ATTEMPTS,
+    RETRY_DELAYS,
     CorporateActionCorrection,
     is_transient_error,
+    main,
     merge_rows,
     normalize_events,
     normalize_pending_events,
@@ -125,6 +128,56 @@ class RetryTests(unittest.TestCase):
         self.assertTrue(is_transient_error(ConnectionError("Read timed out")))
         self.assertTrue(is_transient_error(RuntimeError("API request failed")))
         self.assertTrue(is_transient_error(RuntimeError("connection reset")))
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.update_symbol")
+    def test_transient_error_uses_backoff_ladder(self, m_update, m_sleep):
+        m_update.side_effect = ConnectionError("Read timed out")
+
+        with self.assertRaises(ConnectionError):
+            update_symbol_with_retry("ACB", argparse.Namespace())
+
+        delays = [call.args[0] for call in m_sleep.call_args_list]
+        self.assertEqual(delays, list(RETRY_DELAYS))
+
+
+def _fail_on(symbol_to_fail):
+    def run(symbol, _args):
+        if symbol == symbol_to_fail:
+            raise ConnectionError("Read timed out")
+        return 1
+
+    return run
+
+
+class MainLoopTests(unittest.TestCase):
+    @patch("scripts.stocks.update_vnstock_divs.update_symbol_with_retry")
+    @patch("scripts.stocks.update_vnstock_divs.load_symbols")
+    @patch("scripts.stocks.update_vnstock_divs.parse_args")
+    def test_continues_after_a_symbol_fails_and_returns_1(self, m_parse, m_load, m_retry):
+        m_parse.return_value = argparse.Namespace(symbol=None, symbols_file=None)
+        m_load.return_value = ["AAA", "BBB", "CCC"]
+        m_retry.side_effect = _fail_on("BBB")
+
+        with patch.dict(os.environ, {"VNSTOCK_API_KEY": ""}):
+            exit_code = main([])
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual([call.args[0] for call in m_retry.call_args_list], ["AAA", "BBB", "CCC"])
+
+    @patch("scripts.stocks.update_vnstock_divs.update_symbol_with_retry")
+    @patch("scripts.stocks.update_vnstock_divs.load_symbols")
+    @patch("scripts.stocks.update_vnstock_divs.parse_args")
+    def test_returns_0_when_all_symbols_succeed(self, m_parse, m_load, m_retry):
+        m_parse.return_value = argparse.Namespace(symbol=None, symbols_file=None)
+        m_load.return_value = ["AAA", "BBB"]
+        m_retry.return_value = 2
+
+        with patch.dict(os.environ, {"VNSTOCK_API_KEY": ""}):
+            exit_code = main([])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(m_retry.call_count, 2)
 
 
 if __name__ == "__main__":

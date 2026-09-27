@@ -7,10 +7,15 @@ GitHub Actions mode:
     python -X utf8 scripts/stocks/update_vnstock_divs.py \
       --symbols-file scripts/stocks/div_symbols.txt --require-existing
 
-The script fetches the complete requested date range because corporate-action
-history is small. Existing rows are keyed by VCI event id, kind, and ex-date.
-New events are appended; changed existing events stop the run before any file
-is written.
+The caller picks the date range with --from/--to. CI uses a recent window every
+day and a full 2007→today window once a month (a "sweep") to catch VCI events
+that only gained their dates long after their ex-date. Existing rows are keyed
+by VCI event id, kind, and ex-date. New events are appended; changed existing
+events stop the run before any file is written.
+
+A failure on one symbol does not stop the others: every symbol is attempted,
+failures are listed at the end, and the process exits 1 if any failed (so the
+workflow stays red without dropping the symbols that did succeed).
 """
 
 from __future__ import annotations
@@ -57,8 +62,9 @@ PENDING_CSV_FIELDS = [
     "source",
 ]
 SOURCE_ID_RE = re.compile(r"VCI event ([0-9a-f]+)", re.IGNORECASE)
-RETRY_ATTEMPTS = 3
-RETRY_DELAY_SECONDS = 5
+RETRY_ATTEMPTS = 5
+# Backoff giữa các lần thử. Giá trị cuối lặp lại nếu số lần thử vượt độ dài ladder.
+RETRY_DELAYS = (10, 20, 30, 60)
 TRANSIENT_ERROR_MARKERS = (
     "timed out",
     "timeout",
@@ -630,7 +636,7 @@ def update_symbol_with_retry(symbol: str, args: argparse.Namespace) -> int:
         except Exception as error:
             if attempt >= RETRY_ATTEMPTS or not is_transient_error(error):
                 raise
-            delay = RETRY_DELAY_SECONDS * attempt
+            delay = RETRY_DELAYS[min(attempt - 1, len(RETRY_DELAYS) - 1)]
             print(f"{symbol}: transient error (attempt {attempt}/{RETRY_ATTEMPTS}): {error} — retrying in {delay}s")
             time.sleep(delay)
     raise AssertionError("unreachable")
@@ -645,9 +651,18 @@ def main(argv: list[str] | None = None) -> int:
 
         register_user(api_key=api_key)
     total_new = 0
+    failures: list[str] = []
     for symbol in symbols:
-        total_new += update_symbol_with_retry(symbol, args)
-    print(f"Completed {len(symbols)} symbol(s), {total_new} new corporate action(s)")
+        try:
+            total_new += update_symbol_with_retry(symbol, args)
+        except Exception as error:  # noqa: BLE001: cô lập từng mã, không để một mã chặn các mã còn lại
+            print(f"ERROR: {symbol}: {error}")
+            failures.append(symbol)
+    succeeded = len(symbols) - len(failures)
+    print(f"Completed {succeeded}/{len(symbols)} symbol(s), {total_new} new corporate action(s)")
+    if failures:
+        print(f"ERROR: {len(failures)} symbol(s) failed: {', '.join(failures)}")
+        return 1
     return 0
 
 

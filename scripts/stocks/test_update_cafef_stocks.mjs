@@ -5,6 +5,7 @@ import {
   findCorrections,
   findMissingExistingRows,
   mergeRows,
+  runUpdates,
 } from './update_cafef_stocks.mjs'
 
 function row(date, adjustedPrice, unadjustedPrice = adjustedPrice) {
@@ -61,4 +62,25 @@ test('is idempotent after an adjusted correction', () => {
 
     assert.deepEqual(findCorrections(updated, updated), [])
     assert.deepEqual(mergeRows(updated, updated), updated)
+})
+
+test('runUpdates continues past a failed symbol and reports failure', async () => {
+    const symbols = [{ symbol: 'AAA' }, { symbol: 'BBB' }, { symbol: 'CCC' }]
+    const seen = []
+    const ok = await runUpdates(symbols, spec => {
+      seen.push(spec.symbol)
+      if (spec.symbol === 'BBB') throw new Error('CafeF returned no rows')
+    })
+
+    assert.equal(ok, false)
+    assert.deepEqual(seen, ['AAA', 'BBB', 'CCC'])
+})
+
+test('runUpdates returns true when every symbol succeeds', async () => {
+    const symbols = [{ symbol: 'AAA' }, { symbol: 'BBB' }]
+    let count = 0
+    const ok = await runUpdates(symbols, () => { count += 1 })
+
+    assert.equal(ok, true)
+    assert.equal(count, 2)
 })

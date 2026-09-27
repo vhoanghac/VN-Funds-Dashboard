@@ -241,6 +241,11 @@ async function main() {
   console.log(`⏭️  Skipped (up to date): ${skippedCount}`)
   console.log(`❌ Errors: ${errorCount}`)
   console.log(`${'─'.repeat(50)}\n`)
+
+  // Báo đỏ cho workflow khi có quỹ lỗi, thay vì im lặng thoát 0.
+  if (errorCount > 0) {
+    process.exitCode = 1
+  }
 }
 
 main().catch(err => {

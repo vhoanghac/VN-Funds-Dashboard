@@ -286,6 +286,10 @@ def main():
             print(f'   {e}')
     print(f'{"─" * 60}\n')
 
+    # Báo đỏ cho workflow khi có quỹ lỗi, thay vì im lặng thoát 0.
+    if errors:
+        sys.exit(1)
+
 
 def read_csv_dates(path):
     """Tập hợp các `date` (kỳ báo cáo) đã có trong file CSV. Rỗng nếu chưa có file."""

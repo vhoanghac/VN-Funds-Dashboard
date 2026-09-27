@@ -50,45 +50,83 @@ jobs:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
         run: python -X utf8 -c "import os; from vnstock import register_user; register_user(api_key=os.environ['VNSTOCK_API_KEY'])"
 
+      # Each update step is an independent data source: run all of them even if
+      # an earlier one failed, so a single source cannot drop the rest. A step
+      # that fails turns the run red (its script exits 1).
       - name: Update NAV data
+        id: nav
+        if: ${{ !cancelled() }}
         run: node scripts/update_nav.mjs
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Update ETF and BTC data
+        id: etf
+        if: ${{ !cancelled() }}
         run: python -X utf8 scripts/update_vnstock.py
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Update fund holdings (Overlap tab)
+        id: holdings
+        if: ${{ !cancelled() }}
         run: python -X utf8 scripts/fund_report/update_holdings.py
         env:
           VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Update digiinvest funds (TCBF, TCEF)
+        id: digi
+        if: ${{ !cancelled() }}
         run: node scripts/update_TCEF_TCBF_digiinvest.mjs
 
       - name: Update gold price data
+        id: gold
+        if: ${{ !cancelled() }}
         run: node scripts/update_gold.mjs
 
-      - name: Check for changes
-        id: changes
-        run: |
-          if [ -z "$(git status --porcelain -- public/data)" ]; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit and push
-        if: steps.changes.outputs.changed == 'true'
+      - name: Commit fund NAV data
+        # Push the price/NAV data written by the steps above. The holdings and
+        # stocks paths are excluded here and committed separately.
+        if: ${{ !cancelled() && steps.nav.outcome != 'skipped' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/
+          git add -A -- public/data ':(exclude)public/data/holdings' ':(exclude)public/data/holdings_index.json' ':(exclude)public/data/stocks'
+          if git diff --cached --quiet; then
+            echo "No fund NAV changes to commit."
+            exit 0
+          fi
           git commit -m "Update fund NAV data $(date -u +%Y-%m-%d)"
           for attempt in 1 2; do
-            if git pull --rebase origin master && git push; then
+            if git pull --rebase --autostash origin master && git push; then
+              exit 0
+            fi
+            git rebase --abort >/dev/null 2>&1 || true
+            if [ "$attempt" -lt 2 ]; then
+              echo "Push attempt $attempt failed, retrying..."
+              sleep 10
+            else
+              echo "Push attempt $attempt failed, giving up."
+            fi
+          done
+          exit 1
+
+      - name: Commit fund holdings
+        # Only commit when the holdings step itself succeeded (it exits 1 on any
+        # fund error), so a partial holdings batch is never pushed. Runs even if
+        # a later data step (digiinvest, gold) failed.
+        if: ${{ !cancelled() && steps.holdings.outcome == 'success' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A -- public/data/holdings public/data/holdings_index.json
+          if git diff --cached --quiet; then
+            echo "No fund holdings changes to commit."
+            exit 0
+          fi
+          git commit -m "Update fund holdings $(date -u +%Y-%m-%d)"
+          for attempt in 1 2; do
+            if git pull --rebase --autostash origin master && git push; then
               exit 0
             fi
             git rebase --abort >/dev/null 2>&1 || true
