@@ -175,6 +175,7 @@ Phần cổ phiếu chạy hai bước độc lập, mỗi bước một commit:
 2. Update stock corporate actions → Commit stock corporate actions
     update_vnstock_divs.py đọc từng mã trong div_symbols.txt, lấy event trong cửa sổ --from truyền vào.
     Mỗi lần thử VCI lỗi tạm thời được thử lại 5 lần, chờ lần lượt 10, 20, 30, 60 giây.
+    Cửa sổ không có event nào là bình thường (STB không có cổ tức từ 2015), script bỏ qua mã đó chứ không báo lỗi.
     Một mã lỗi không chặn các mã còn lại. Cuối script exit 1 nếu còn mã lỗi.
     Commit chỉ đụng <SYMBOL>_div.csv và <SYMBOL>_pending.csv, và chỉ chạy khi bước này xanh hoàn toàn.
     Message "Update stock corporate actions YYYY-MM-DD".

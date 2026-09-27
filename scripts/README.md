@@ -262,7 +262,8 @@ phiên mới hoặc cập nhật adjusted vào file tương ứng trong `public/
 Script `stocks/update_vnstock_divs.py` chỉ cập nhật các mã đã ghi trong
 `stocks/div_symbols.txt`. Backfill chạy local bằng `--symbol` và `--backfill`; workflow
 không tạo file mới. Script lấy event `DIV,ISS` trong cửa sổ `--from`, lọc cổ tức tiền mặt,
-cổ tức bằng cổ phiếu và quyền mua, rồi dừng riêng mã đó nếu VCI sửa một event đã có.
+cổ tức bằng cổ phiếu và quyền mua, rồi dừng riêng mã đó nếu VCI sửa một event đã có. Mã
+không có event nào trong cửa sổ thì bỏ qua, không tính là lỗi.
 
 ---
 

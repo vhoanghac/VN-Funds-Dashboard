@@ -1,6 +1,8 @@
 import argparse
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from scripts.stocks.update_vnstock_divs import (
@@ -12,7 +14,9 @@ from scripts.stocks.update_vnstock_divs import (
     merge_rows,
     normalize_events,
     normalize_pending_events,
+    update_symbol,
     update_symbol_with_retry,
+    write_csv,
 )
 
 
@@ -148,6 +152,46 @@ def _fail_on(symbol_to_fail):
         return 1
 
     return run
+
+
+class EmptyWindowTests(unittest.TestCase):
+    def _existing_rows(self):
+        return normalize_events([
+            event("a00001", "DIV", "Trả cổ tức bằng tiền mặt", "2020-01-01", "2020-01-02", payoutDate="2020-01-10T00:00:00", valuePerShare=700),
+        ], rights_price=10_000)
+
+    @patch("scripts.stocks.update_vnstock_divs.fetch_vci_events", return_value=[])
+    def test_empty_window_is_a_noop_and_keeps_the_file(self, _m_fetch):
+        from scripts.stocks import update_vnstock_divs as mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            div = tmp_dir / "ZZZ_div.csv"
+            write_csv(div, self._existing_rows())
+            before = div.read_text(encoding="utf-8")
+            args = argparse.Namespace(
+                from_date="2025-01-01", to_date="2026-01-01",
+                require_existing=True, backfill=False, dry_run=False, rights_price=10_000,
+            )
+
+            with patch.object(mod, "DATA_DIR", tmp_dir):
+                self.assertEqual(update_symbol("ZZZ", args), 0)
+
+            self.assertEqual(div.read_text(encoding="utf-8"), before)
+
+    @patch("scripts.stocks.update_vnstock_divs.fetch_vci_events", return_value=[])
+    def test_empty_result_fails_a_backfill(self, _m_fetch):
+        from scripts.stocks import update_vnstock_divs as mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                from_date="2007-01-01", to_date="2026-01-01",
+                require_existing=False, backfill=True, dry_run=False, rights_price=10_000,
+            )
+
+            with patch.object(mod, "DATA_DIR", Path(tmp)):
+                with self.assertRaises(ValueError):
+                    update_symbol("ZZZ", args)
 
 
 class MainLoopTests(unittest.TestCase):

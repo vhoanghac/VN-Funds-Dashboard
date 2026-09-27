@@ -587,7 +587,12 @@ def update_symbol(symbol: str, args: argparse.Namespace) -> int:
     incoming = normalize_events(raw_events, args.rights_price)
     pending_incoming = normalize_pending_events(raw_events, args.rights_price)
     if not incoming and not pending_incoming:
-        raise ValueError(f"{symbol}: VCI returned no supported corporate actions")
+        if args.backfill:
+            raise ValueError(f"{symbol}: VCI returned no supported corporate actions")
+        # A short update window can legitimately hold no events (e.g. STB has had
+        # no DIV/ISS since 2015). Nothing to merge, so nothing to write.
+        print(f"{symbol}: no DIV/ISS corporate actions in {args.from_date}..{args.to_date}")
+        return 0
     validate_rows(incoming)
     validate_pending_rows(pending_incoming)
     if args.backfill:
