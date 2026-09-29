@@ -12,9 +12,12 @@ Thumbs.db
 .playwright-mcp/
 .context/
 .claude/
+.opencode/
+.playwright-out/
 tsconfig.tsbuildinfo
 TODOS.md
 CLAUDE.md
+AGENTS.md
 CONTEXT.md
 GRAND_PLAN.md
 GRAND_PLAN_PROCESS.md
