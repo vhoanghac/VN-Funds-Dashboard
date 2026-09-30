@@ -1,4 +1,4 @@
-"""Backfill and update stock corporate actions from VCI through vnstock.
+"""Backfill and update stock corporate actions from VCI.
 
 Local backfill:
     python -X utf8 scripts/stocks/update_vnstock_divs.py --symbol ACB
@@ -16,6 +16,14 @@ events stop the run before any file is written.
 A failure on one symbol does not stop the others: every symbol is attempted,
 failures are listed at the end, and the process exits 1 if any failed (so the
 workflow stays red without dropping the symbols that did succeed).
+
+The VCI endpoint is called directly, with a short timeout and an immediate
+retry. It silently drops roughly one request in four: the connection opens,
+then no byte comes back. A dropped request never answers late (measured at 15
+and 30 seconds), while the retry lands in under a second. vnstock used to sit
+in front of this call, but its public events() takes no date window and no page
+number, and its private _fetch_events hides the 30 second timeout this script
+has to control.
 """
 
 from __future__ import annotations
@@ -30,6 +38,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Iterable
 
+import requests
+
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "public" / "data" / "stocks"
@@ -37,6 +47,29 @@ DEFAULT_FROM_DATE = "2007-01-01"
 DEFAULT_TAX_RATE = 0.05
 DEFAULT_RIGHTS_PRICE = 10_000
 PAGE_SIZE = 50
+# VCI drops requests: the TCP connection opens, then the read hangs until the
+# timeout. Measured 2026-09-30 from a home connection: 28 of 40 requests came
+# back in under a second, 12 hung to the end of a 15 second timeout, and a
+# retry of a hung symbol succeeded immediately. A short timeout with a few
+# quick retries therefore costs far less than one long timeout.
+VCI_EVENTS_URL = "https://iq.vietcap.com.vn/api/iq-insight-service/v1/events"
+VCI_HEADERS = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9,vi-VN;q=0.8,vi;q=0.7",
+    "Connection": "keep-alive",
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Referer": "https://trading.vietcap.com.vn/",
+    "Origin": "https://trading.vietcap.com.vn",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+}
+REQUEST_TIMEOUT = 8
+REQUEST_ATTEMPTS = 6
+REQUEST_DELAY = 1
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 CSV_FIELDS = [
     "kind",
     "ex_date",
@@ -146,27 +179,66 @@ def read_symbols_file(path: Path) -> list[str]:
     return symbols
 
 
+def fetch_vci_page(symbol: str, from_date: str, to_date: str, page: int, size: int) -> list[dict[str, Any]]:
+    """Fetch one page of VCI DIV/ISS events, retrying each request.
+
+    A hang or a truncated body is retried up to REQUEST_ATTEMPTS times; any
+    other failure surfaces straight away, because retrying it would only hide
+    a real error. Returns an empty list when the source answers with no content.
+    """
+    params = {
+        "ticker": symbol,
+        "fromDate": from_date.replace("-", ""),
+        "toDate": to_date.replace("-", ""),
+        "eventCode": "DIV,ISS",
+        "page": page,
+        "size": size,
+    }
+    last_error: str = "no attempt was made"
+    for attempt in range(1, REQUEST_ATTEMPTS + 1):
+        try:
+            response = requests.get(
+                VCI_EVENTS_URL, headers=VCI_HEADERS, params=params, timeout=REQUEST_TIMEOUT
+            )
+        except requests.RequestException as error:
+            last_error = f"{type(error).__name__}: {error}"
+        else:
+            if response.status_code in RETRYABLE_STATUS:
+                last_error = f"HTTP {response.status_code} {response.reason}"
+            elif response.status_code != 200:
+                raise ConnectionError(
+                    f"VCI returned HTTP {response.status_code} for {symbol} page {page}"
+                )
+            else:
+                try:
+                    payload = response.json()
+                except ValueError as error:
+                    last_error = f"invalid JSON body: {error}"
+                else:
+                    data = payload.get("data")
+                    if not isinstance(data, dict):
+                        return []
+                    content = data.get("content")
+                    return content if isinstance(content, list) else []
+        if attempt < REQUEST_ATTEMPTS:
+            print(
+                f"{symbol}: VCI page {page} failed ({last_error}), "
+                f"retrying {attempt}/{REQUEST_ATTEMPTS - 1}",
+                flush=True,
+            )
+            time.sleep(REQUEST_DELAY)
+    raise ConnectionError(
+        f"VCI request failed after {REQUEST_ATTEMPTS} attempts ({symbol} page {page}): {last_error}"
+    )
+
+
 def fetch_vci_events(symbol: str, from_date: str, to_date: str) -> list[dict[str, Any]]:
-    """Fetch all DIV/ISS pages through vnstock's VCI provider adapter."""
-    from vnstock import Company
-
-    company = Company(source="VCI", symbol=symbol)
-    provider = company.provider
-    fetch_page = getattr(provider, "_fetch_events", None)
-    if fetch_page is None:
-        raise RuntimeError("Installed vnstock version has no VCI event pagination adapter")
-
+    """Fetch every DIV/ISS page for one symbol, oldest page first."""
     rows: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     page = 0
     while True:
-        page_rows = fetch_page(
-            event_codes="DIV,ISS",
-            from_date=from_date.replace("-", ""),
-            to_date=to_date.replace("-", ""),
-            page=page,
-            size=PAGE_SIZE,
-        ) or []
+        page_rows = fetch_vci_page(symbol, from_date, to_date, page, PAGE_SIZE)
         if not page_rows:
             break
         for row in page_rows:
@@ -650,11 +722,6 @@ def update_symbol_with_retry(symbol: str, args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     symbols = load_symbols(args)
-    api_key = os.environ.get("VNSTOCK_API_KEY")
-    if api_key:
-        from vnstock import register_user
-
-        register_user(api_key=api_key)
     total_new = 0
     failures: list[str] = []
     for symbol in symbols:

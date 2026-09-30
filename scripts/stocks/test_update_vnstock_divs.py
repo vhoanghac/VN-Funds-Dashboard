@@ -3,12 +3,17 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import requests
 
 from scripts.stocks.update_vnstock_divs import (
+    REQUEST_ATTEMPTS,
     RETRY_ATTEMPTS,
     RETRY_DELAYS,
     CorporateActionCorrection,
+    fetch_vci_events,
+    fetch_vci_page,
     is_transient_error,
     main,
     merge_rows,
@@ -222,6 +227,90 @@ class MainLoopTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(m_retry.call_count, 2)
+
+
+class FetchVciPageTests(unittest.TestCase):
+    """VCI hangs on a share of requests, so each request retries in place."""
+
+    def _response(self, status=200, payload=None, reason="OK"):
+        response = Mock()
+        response.status_code = status
+        response.reason = reason
+        if payload is None:
+            response.json.side_effect = ValueError("Expecting value: line 1 column 1")
+        else:
+            response.json.return_value = payload
+        return response
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.requests.get")
+    def test_retries_a_hang_then_succeeds(self, m_get, m_sleep):
+        m_get.side_effect = [
+            requests.exceptions.ReadTimeout("Read timed out"),
+            requests.exceptions.ReadTimeout("Read timed out"),
+            self._response(payload={"data": {"content": [{"id": "a1"}]}}),
+        ]
+
+        self.assertEqual(fetch_vci_page("ACB", "2024-09-30", "2026-09-30", 0, 50), [{"id": "a1"}])
+        self.assertEqual(m_get.call_count, 3)
+        self.assertEqual(m_sleep.call_count, 2)
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.requests.get")
+    def test_raises_only_after_every_attempt(self, m_get, m_sleep):
+        m_get.side_effect = requests.exceptions.ReadTimeout("Read timed out")
+
+        with self.assertRaises(ConnectionError) as caught:
+            fetch_vci_page("ACB", "2024-09-30", "2026-09-30", 0, 50)
+
+        self.assertEqual(m_get.call_count, REQUEST_ATTEMPTS)
+        self.assertEqual(m_sleep.call_count, REQUEST_ATTEMPTS - 1)
+        self.assertIn(f"after {REQUEST_ATTEMPTS} attempts", str(caught.exception))
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.requests.get")
+    def test_retries_a_body_that_is_not_json(self, m_get, _m_sleep):
+        m_get.side_effect = [
+            self._response(),
+            self._response(payload={"data": {"content": [{"id": "b1"}]}}),
+        ]
+
+        self.assertEqual(fetch_vci_page("ACB", "2024-09-30", "2026-09-30", 0, 50), [{"id": "b1"}])
+        self.assertEqual(m_get.call_count, 2)
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.requests.get")
+    def test_retries_a_retryable_status(self, m_get, m_sleep):
+        m_get.side_effect = [
+            self._response(status=503, reason="Service Unavailable"),
+            self._response(payload={"data": {"content": []}}),
+        ]
+
+        self.assertEqual(fetch_vci_page("ACB", "2024-09-30", "2026-09-30", 0, 50), [])
+        self.assertEqual(m_get.call_count, 2)
+        self.assertEqual(m_sleep.call_count, 1)
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.requests.get")
+    def test_does_not_retry_a_client_error(self, m_get, m_sleep):
+        m_get.side_effect = self._response(status=404, reason="Not Found")
+
+        with self.assertRaises(ConnectionError):
+            fetch_vci_page("ACB", "2024-09-30", "2026-09-30", 0, 50)
+
+        self.assertEqual(m_get.call_count, 1)
+        m_sleep.assert_not_called()
+
+    @patch("scripts.stocks.update_vnstock_divs.fetch_vci_page")
+    def test_pages_until_a_short_page_and_dedupes(self, m_page):
+        first = [{"id": f"e{index}"} for index in range(50)]
+        m_page.side_effect = [first, [{"id": "e0"}, {"id": "last"}]]
+
+        rows = fetch_vci_events("ACB", "2007-01-01", "2026-09-30")
+
+        self.assertEqual(len(rows), 51)
+        self.assertEqual(m_page.call_args_list[0].args, ("ACB", "2007-01-01", "2026-09-30", 0, 50))
+        self.assertEqual(m_page.call_args_list[1].args, ("ACB", "2007-01-01", "2026-09-30", 1, 50))
 
 
 if __name__ == "__main__":
