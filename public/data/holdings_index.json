@@ -6,12 +6,12 @@
   },
   {
     "id": "ABEF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
     "id": "AEIF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
@@ -21,12 +21,12 @@
   },
   {
     "id": "BVFED",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "BVPF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
@@ -56,12 +56,12 @@
   },
   {
     "id": "ENF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "EVESG",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
@@ -76,27 +76,27 @@
   },
   {
     "id": "KDEF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
     "id": "LHCDF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "LPLF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "MAFBAL",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
     "id": "MAFEQI",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
@@ -121,7 +121,7 @@
   },
   {
     "id": "MDI",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
@@ -131,7 +131,7 @@
   },
   {
     "id": "PBIF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
@@ -151,7 +151,7 @@
   },
   {
     "id": "SSIEF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
@@ -181,22 +181,22 @@
   },
   {
     "id": "UVDIF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "UVEEF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "VBIF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "VCAMBF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
@@ -206,22 +206,22 @@
   },
   {
     "id": "VCBFAIF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   },
   {
     "id": "VCBFBCF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
     "id": "VCBFMGF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
     "id": "VCBFTBF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
@@ -246,7 +246,7 @@
   },
   {
     "id": "VIBF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "digiinvest"
   },
   {
@@ -261,7 +261,7 @@
   },
   {
     "id": "VNDAF",
-    "update_at": "2026-08-01",
+    "update_at": "2026-09-01",
     "source": "fmarket"
   }
 ]
