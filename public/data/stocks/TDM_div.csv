@@ -15,3 +15,4 @@ cash_dividend,2023-12-28,2023-12-29,2024-05-15,,,1400,0.05,,,,,,VCI event 6708f3
 rights_issue,2023-12-28,2023-12-29,,2024-05-06,2024-05-06,,,,0.1,10000,exercise,external,VCI event 6708f3f70ec61045ab80088d; price assumption
 cash_dividend,2025-02-11,2025-02-12,2025-07-02,,,1400,0.05,,,,,,VCI event 6786fde900c681772bef0397
 cash_dividend,2026-04-14,2026-04-15,2026-05-29,,,1300,0.05,,,,,,VCI event 69c47cde7310df0ee93eb305
+rights_issue,2026-07-15,2026-07-16,,2026-10-26,2026-10-26,,,,0.1,10000,exercise,external,VCI event 69c47cde7310df0ee93eb306; price assumption
