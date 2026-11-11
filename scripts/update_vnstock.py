@@ -1,24 +1,48 @@
-"""
-Update fund NAV & ETF prices using vnstock library.
-Handles:
-  1. ETFs (E1VFVN30, FUEVFVND, FUEDCMID) via vnstock Quote (VCI source)
-  2. Mutual funds with different names on fmarket (DFVNCAF→DCAF, SSIVLGF→VLGF, MBBMFF→BMFF)
-  3. Funds not on fmarket at all (PRULINK, VSF, TCFIN, TCSME) — skipped with warning
+"""Update ETF prices and BTC/VND from public endpoints.
+
+ETF prices come from CafeF's price history endpoint, the same source the stock
+pipeline already uses. This script used to go through vnstock's Quote(VCI)
+adapter; vnstock 4.x stopped authenticating on 2026-11-10 and the vendor index
+now answers HTTP 410, so that adapter is gone. CafeF carries the same numbers:
+GiaDieuChinh * 1000 equals the VCI-sourced rows already stored in
+public/data/<symbol>.csv, compared row by row on 2026-11-11 for all 7 ETFs.
+
+BTC/VND comes from CoinGecko and never involved vnstock.
+
+The file name is historical. Nothing here imports vnstock any more.
 
 Usage:  python -X utf8 scripts/update_vnstock.py
 """
 
+import json
 import os
 import sys
-import pandas as pd
+import urllib.request
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
+
+import pandas as pd
 
 # ─── Config ────────────────────────────────────────────────
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'public', 'data')
 
-# ETFs — use Quote(source='VCI') to get stock prices
+# ETFs — listed securities on HOSE, priced through CafeF like the stock pipeline
 ETF_FUNDS = ['E1VFVN30', 'FUEVFVND', 'FUEDCMID', 'FUESSVFL', 'FUEVN100', 'FUESSV50', 'FUEIP100']
+
+# CafeF returns at most 30 rows per request whatever PageSize asks for
+# (measured 2026-11-11: PageSize=5000 still returned 30). A daily run only ever
+# needs the newest page, so paging stays at 1.
+CAFEF_PRICE_URL = 'https://cafef.vn/du-lieu/Ajax/PageNew/DataHistory/PriceHistory.ashx'
+CAFEF_PAGE_ROWS = 30
+# PageIndex walks back in 30-session blocks (measured 2026-11-11: page 1 covers
+# 30/09..10/11, page 2 goes back to 14/08). 40 pages covers roughly five years,
+# which is far more than a normal gap, and only a repair ever needs that many.
+CAFEF_MAX_PAGES = 40
+CAFEF_HEADERS = {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (compatible; VN-Funds-Dashboard/1.0)',
+}
 
 
 
@@ -59,11 +83,84 @@ def append_to_csv(csv_path, new_df):
     return len(new_df)
 
 
-# ─── ETF update via Quote ─────────────────────────────────
+def fetch_cafef_rows(symbol, page):
+    """One page of CafeF price history, newest row first.
+
+    CafeF caps a page at 30 rows and ignores StartDate/EndDate entirely, so the
+    only way to reach older sessions is PageIndex (measured 2026-11-11).
+    """
+    url = (
+        f'{CAFEF_PRICE_URL}?Symbol={quote(symbol)}'
+        f'&PageIndex={page}&PageSize={CAFEF_PAGE_ROWS}'
+    )
+    request = urllib.request.Request(url, headers=CAFEF_HEADERS)
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode('utf-8'))
+
+    if not payload.get('Success'):
+        raise RuntimeError(f'CafeF rejected the request: {payload.get("Message")!r}')
+
+    return (payload.get('Data') or {}).get('Data') or []
+
+
+def cafef_prices(rows):
+    """CafeF rows -> {iso_date: price in VND}. Rows without a price are skipped."""
+    prices = {}
+    for row in rows:
+        raw_date = row.get('Ngay')
+        raw_price = row.get('GiaDieuChinh')
+        if not raw_date or raw_price is None:
+            continue
+        iso = datetime.strptime(raw_date, '%d/%m/%Y').strftime('%Y-%m-%d')
+        # CafeF quotes in thousand VND; the CSV files store VND.
+        prices[iso] = int(round(float(raw_price) * 1000))
+    return prices
+
+
+def fetch_cafef_since(symbol, since):
+    """Every CafeF row with date >= since, as {iso_date: price}.
+
+    Walks PageIndex backwards until it reaches `since`, so a run resuming after
+    a long outage backfills the hole instead of appending past it.
+    """
+    prices = {}
+    for page in range(1, CAFEF_MAX_PAGES + 1):
+        rows = fetch_cafef_rows(symbol, page)
+        if not rows:
+            break
+        prices.update(cafef_prices(rows))
+        if min(prices) <= since or len(rows) < CAFEF_PAGE_ROWS:
+            break
+    return {day: price for day, price in prices.items() if day >= since}
+
+
+def check_junction(symbol, csv_path, last_date, remote):
+    """-> (ok, message). The stored row we append after must agree on both sides.
+
+    The existing CSV came from VCI, the new rows come from CafeF. The two agree
+    on every recent session except 2026-10-06, where they still disagree for all
+    7 ETFs, so comparing the whole tail would wedge the run forever over a
+    historical vendor difference we cannot repair from here. What matters is the
+    junction: when the last stored row matches, the appended series has no step.
+    """
+    existing = pd.read_csv(csv_path)
+    if existing.empty:
+        return True, 'no stored rows'
+
+    if last_date not in remote:
+        return False, f'{last_date} not reachable within {CAFEF_MAX_PAGES} pages'
+
+    stored = int(existing['price'].iloc[-1])
+    if stored != remote[last_date]:
+        return False, f'{last_date}: csv {stored} vs CafeF {remote[last_date]}'
+
+    return True, f'{last_date} at {stored} on both sides'
+
+
+# ─── ETF prices via CafeF ─────────────────────────────────
 
 def update_etf(symbol):
-    """Update ETF price data using vnstock Quote (VCI source)."""
-    from vnstock import Quote
+    """Append new CafeF price rows for one ETF."""
 
     csv_path = os.path.join(DATA_DIR, f'{symbol}.csv')
     last_date = get_last_date(csv_path)
@@ -79,26 +176,26 @@ def update_etf(symbol):
         return True
 
     try:
-        quote = Quote(symbol=symbol, source='VCI')
-        df = quote.history(start=start, end=end, interval='1D')
+        remote = fetch_cafef_since(symbol, last_date or start)
 
-        if df is None or df.empty:
+        if last_date:
+            junction_ok, detail = check_junction(symbol, csv_path, last_date, remote)
+            if not junction_ok:
+                print(f'  ❌ {symbol}: no clean junction with CafeF ({detail}).')
+                print('     Refusing to append: the series would step. Rebuild that CSV first.')
+                return False
+
+        new_prices = {day: price for day, price in remote.items() if day >= start}
+
+        if not new_prices:
             print(f'  ✅ {symbol}: no new data available (last: {last_date})')
             return True
 
-        # vnstock Quote returns: time, open, high, low, close, volume
-        df_filtered = df[['time', 'close']].copy()
-        df_filtered = df_filtered.rename(columns={'time': 'date', 'close': 'price'})
-        df_filtered['date'] = pd.to_datetime(df_filtered['date']).dt.strftime('%Y-%m-%d')
+        df_new = pd.DataFrame(sorted(new_prices.items()), columns=['date', 'price'])
 
-        # VCI price is in 1000 VND → multiply by 1000
-        df_filtered['price'] = (df_filtered['price'] * 1000).astype(int)
-
-        df_filtered = df_filtered.sort_values('date').reset_index(drop=True)
-
-        count = append_to_csv(csv_path, df_filtered)
+        count = append_to_csv(csv_path, df_new)
         if count > 0:
-            new_last = df_filtered['date'].iloc[-1]
+            new_last = df_new['date'].iloc[-1]
             print(f'  📈 {symbol}: +{count} rows ({last_date or "start"} → {new_last})')
         else:
             print(f'  ✅ {symbol}: already up to date (last: {last_date})')
@@ -196,21 +293,12 @@ def update_btc_vnd():
 # ─── Main ─────────────────────────────────────────────────
 
 def main():
-    print(f'\n🚀 vnstock Updater — {datetime.now().strftime("%Y-%m-%d %H:%M")}\n')
+    print(f'\n🚀 ETF & BTC updater — {datetime.now().strftime("%Y-%m-%d %H:%M")}\n')
 
-    # Register API key (from environment variable)
-    from vnstock import register_user
-    api_key = os.environ.get('VNSTOCK_API_KEY')
-    if not api_key:
-        print('❌ VNSTOCK_API_KEY environment variable not set!')
-        print('   Set it with: export VNSTOCK_API_KEY=your_key_here')
-        return
-    print('🔑 Registering vnstock API key...')
-    register_user(api_key=api_key)
-    print()
+
 
     # ── 1. ETFs ──
-    print('📊 Updating ETFs via vnstock Quote (VCI)...')
+    print('📊 Updating ETFs via CafeF...')
     etf_failures = []
     for symbol in ETF_FUNDS:
         if not update_etf(symbol):

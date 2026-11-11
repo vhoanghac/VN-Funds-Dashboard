@@ -142,28 +142,6 @@ async function fetchFmarketNAV(productId, fromDate) {
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 
-// ─── ETF: delegate to update_vnstock.py ───────────────────
-
-async function updateETFs() {
-  const { execSync } = await import('child_process')
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url))
-  const pyScript = path.join(scriptDir, 'update_vnstock.py')
-
-  try {
-    const output = execSync(`python -X utf8 "${pyScript}"`, {
-      encoding: 'utf-8',
-      timeout: 120000,
-      cwd: scriptDir,
-    })
-    // Print python output (ETF + mapped fund updates)
-    output.split('\n').forEach(line => {
-      if (line.trim()) console.log(`  ${line}`)
-    })
-  } catch (err) {
-    console.error('❌ vnstock update failed:', err.message)
-  }
-}
-
 // ─── Main ─────────────────────────────────────────────────
 
 async function main() {
@@ -230,10 +208,6 @@ async function main() {
     // Polite delay to avoid rate limiting
     await sleep(300)
   }
-
-  // ── ETFs + mapped funds via vnstock Python ──
-  console.log('\n📊 Updating ETFs & mapped funds via vnstock...\n')
-  await updateETFs()
 
   // ── Summary ──
   console.log(`\n${'─'.repeat(50)}`)

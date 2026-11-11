@@ -40,27 +40,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install vnstock
-        # TEMPORARY: PyPI quarantined both the vnstock and vnai projects
-        # (2026-09-24), so `pip install vnstock==...` finds no files. vnstock is
-        # pinned by git SHA (4.0.8 — includes the fix for the UnboundLocalError
-        # that banned 4.0.6); the required vnai dependency comes from the official
-        # vendor index. Revert to `pip install vnstock==<ver>` once PyPI unblocks.
-        run: >
-          pip install --extra-index-url https://vnstocks.com/api/simple
-          git+https://github.com/thinh-vu/vnstock@9c0a7bc7a29bd495e42916276615e1588abaf6b5
-
-      - name: Verify vnstock
-        run: python -c "import vnstock, importlib.metadata as m; v=m.version('vnstock'); assert v=='4.0.8', v; print('vnstock', v)"
-
-      - name: Register vnstock API key
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-        run: python -X utf8 -c "import os; from vnstock import register_user; register_user(api_key=os.environ['VNSTOCK_API_KEY'])"
+      - name: Install Python dependencies
+        # vnstock is gone. Nothing on this side has imported it since 2026-09-30,
+        # when update_vnstock_divs.py started calling the VCI events endpoint
+        # directly; the install step survived only because `requests` arrived as
+        # a vnstock dependency. On 2026-11-10 the vendor index started answering
+        # HTTP 410, which is what turned these runs red.
+        run: pip install requests
 
       - name: Update stock price data
         id: price
-        # Independent of vnstock: run even if an earlier step failed.
+        # Independent of the dependency install: run even if an earlier step failed.
         if: ${{ !cancelled() }}
         run: node scripts/stocks/update_cafef_stocks.mjs --symbols-file scripts/stocks/stock_symbols.txt
 
@@ -104,8 +94,6 @@ jobs:
             echo "Recent-window corporate-action update from $FROM"
           fi
           python -X utf8 scripts/stocks/update_vnstock_divs.py --symbols-file scripts/stocks/div_symbols.txt --require-existing --from "$FROM"
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Commit stock corporate actions
         # Only commit when the corporate-action step itself fully succeeded, so

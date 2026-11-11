@@ -32,23 +32,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install vnstock
-        # TEMPORARY: PyPI quarantined both the vnstock and vnai projects
-        # (2026-09-24), so `pip install vnstock==...` finds no files. vnstock is
-        # pinned by git SHA (4.0.8 — includes the fix for the UnboundLocalError
-        # that banned 4.0.6); the required vnai dependency comes from the official
-        # vendor index. Revert to `pip install vnstock==<ver>` once PyPI unblocks.
-        run: >
-          pip install --extra-index-url https://vnstocks.com/api/simple
-          git+https://github.com/thinh-vu/vnstock@9c0a7bc7a29bd495e42916276615e1588abaf6b5
-
-      - name: Verify vnstock
-        run: python -c "import vnstock, importlib.metadata as m; v=m.version('vnstock'); assert v=='4.0.8', v; print('vnstock', v)"
-
-      - name: Register vnstock API key
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-        run: python -X utf8 -c "import os; from vnstock import register_user; register_user(api_key=os.environ['VNSTOCK_API_KEY'])"
+      - name: Install Python dependencies
+        # vnstock is gone. Its 4.x line stopped authenticating on 2026-11-10 and
+        # the vendor index now answers HTTP 410, which broke every run from then
+        # on. ETF prices come from CafeF over urllib, holdings from fmarket over
+        # urllib, so pandas (used to read and append the ETF/BTC CSVs) is the
+        # only third-party package left on this side.
+        run: pip install pandas
 
       # Each update step is an independent data source: run all of them even if
       # an earlier one failed, so a single source cannot drop the rest. A step
@@ -57,22 +47,16 @@ jobs:
         id: nav
         if: ${{ !cancelled() }}
         run: node scripts/update_nav.mjs
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Update ETF and BTC data
         id: etf
         if: ${{ !cancelled() }}
         run: python -X utf8 scripts/update_vnstock.py
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Update fund holdings (Overlap tab)
         id: holdings
         if: ${{ !cancelled() }}
         run: python -X utf8 scripts/fund_report/update_holdings.py
-        env:
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
 
       - name: Update digiinvest funds (TCBF, TCEF)
         id: digi

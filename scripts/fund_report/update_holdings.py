@@ -114,14 +114,6 @@ def parse_date_ms(ts):
 def main():
     os.makedirs(HOLDINGS_DIR, exist_ok=True)
 
-    # Register vnstock API key if present (same pattern as update_vnstock.py).
-    api_key = os.environ.get('VNSTOCK_API_KEY')
-    if api_key:
-        try:
-            from vnstock import register_user
-            register_user(api_key=api_key)
-        except Exception as e:
-            print(f'⚠️  vnstock register_user failed (non-fatal): {e}')
 
     # Load metadata
     meta_path = os.path.join(DATA_DIR, 'fund_metadata.json')
