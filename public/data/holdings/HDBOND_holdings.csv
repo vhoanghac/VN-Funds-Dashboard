@@ -6,3 +6,7 @@ date,stock_code,industry,weight_pct,asset_value,type_asset
 2026-08-01,MBS,Chứng khoán,2.25,1235100000,STOCK
 2026-09-01,HSG,Vật liệu xây dựng,2.98,1612000000,STOCK
 2026-09-01,VPB,Ngân hàng,2.73,1474668000,STOCK
+2026-10-01,HSG,Vật liệu xây dựng,3.23,1749020000,STOCK
+2026-10-01,VPB,Ngân hàng,2.67,1446309000,STOCK
+2026-10-01,MBS,Chứng khoán,1.91,1035000000,STOCK
+2026-10-01,SSI,Chứng khoán,1.03,555840000,STOCK

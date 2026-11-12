@@ -4,3 +4,5 @@ date,stock_code,industry,weight_pct,asset_value,type_asset
 2026-08-01,VPB,Ngân hàng,0.01,2780000,STOCK
 2026-09-01,BID,Ngân hàng,0.01,3810700,STOCK
 2026-09-01,VPB,Ngân hàng,0.01,2948400,STOCK
+2026-10-01,BID,Ngân hàng,0.01,3540400,STOCK
+2026-10-01,VPB,Ngân hàng,0.01,2891700,STOCK
