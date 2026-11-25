@@ -113,8 +113,8 @@ function MethodologyPanelImpl() {
         <p>
           Chuỗi giá này hoạt động giống như chứng chỉ quỹ. Mỗi lần nạp tiền, vẫn mua
           "đơn vị" tại giá hôm đó. Vẫn trộn theo tỷ trọng. Vẫn tái cân bằng theo lịch bạn
-          chọn. Tiền nạp tháng nào, sinh lãi từ tháng đó, không gộp lại rồi cộng lãi một
-          cục cuối năm.
+          chọn, hoặc để tỷ trọng trôi tự do nếu bạn chọn Không tái cân bằng. Tiền nạp tháng
+          nào, sinh lãi từ tháng đó, không gộp lại rồi cộng lãi một cục cuối năm.
         </p>
         <p>
           Giới hạn cần biết: lãi suất ngân hàng thật đổi theo từng năm, lúc 4%, lúc 8%. Số
@@ -176,8 +176,9 @@ function MethodologyPanelImpl() {
             tại NAV ngày đó, chia theo tỷ trọng danh mục. Số đơn vị quỹ tăng lên.
           </li>
           <li>
-            <strong>Tái cân bằng (nếu tới lịch).</strong> Bán bớt quỹ đang vượt tỷ trọng,
-            mua thêm quỹ đang thiếu, đưa danh mục về đúng tỷ trọng mục tiêu.
+            <strong>Tái cân bằng (nếu bạn có đặt lịch).</strong> Bán bớt quỹ đang vượt tỷ trọng,
+            mua thêm quỹ đang thiếu, đưa danh mục về đúng tỷ trọng mục tiêu. Chọn Không tái cân
+            bằng thì không có lệnh bán nào; tiền nạp mới vẫn chia theo tỷ trọng mục tiêu.
           </li>
         </ol>
         <p>

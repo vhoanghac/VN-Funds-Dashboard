@@ -24,6 +24,7 @@ export const REBAL_OPTIONS: { value: RebalanceFrequency; label: string }[] = [
   { value: 'quarterly', label: 'Quý' },
   { value: 'monthly', label: 'Tháng' },
   { value: 'yearly', label: 'Năm' },
+  { value: 'none', label: 'Không tái cân bằng' },
 ]
 
 interface Props {

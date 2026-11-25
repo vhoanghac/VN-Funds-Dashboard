@@ -324,6 +324,7 @@ function refShouldRebalance(currentDate: string, nextDate: string, freq: Rebalan
   const next = { y: +nextDate.slice(0, 4), m: +nextDate.slice(5, 7) }
   const q = (m: number) => Math.ceil(m / 3)
   switch (freq) {
+    case 'none': return false
     case 'weekly': return (Date.parse(nextDate) - Date.parse(currentDate)) / 86400000 >= 5
     case 'monthly': return cur.y !== next.y || cur.m !== next.m
     case 'quarterly': return cur.y !== next.y || q(cur.m) !== q(next.m)

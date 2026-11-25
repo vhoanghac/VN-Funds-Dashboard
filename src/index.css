@@ -2536,6 +2536,7 @@ textarea {
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .portfolio-color-dot {
@@ -2575,6 +2576,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .portfolio-rebal label {
@@ -2588,6 +2590,7 @@ textarea {
   border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 0.85rem;
+  max-width: 100%;
 }
 
 /* ─── Portfolio Actions ──────────────────────── */

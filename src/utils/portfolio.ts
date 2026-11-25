@@ -13,7 +13,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isRebalanceFrequency(value: unknown): value is RebalanceFrequency {
-  return value === 'weekly' || value === 'monthly' || value === 'quarterly' || value === 'yearly'
+  return value === 'weekly' || value === 'monthly' || value === 'quarterly' || value === 'yearly' || value === 'none'
 }
 
 function parseSlots(value: unknown): PortfolioSlot[] | null {
@@ -160,6 +160,8 @@ function shouldRebalance(
   const next = parseYMD(nextDate)
 
   switch (freq) {
+    case 'none':
+      return false
     case 'weekly':
       return weekKey(current) !== weekKey(next)
     case 'monthly':

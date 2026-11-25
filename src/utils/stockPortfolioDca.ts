@@ -455,6 +455,7 @@ function sellTowardWeights(positions: readonly Position[], prices: readonly numb
 }
 
 function shouldRebalance(previousDate: string, date: string, frequency: RebalanceFrequency): boolean {
+  if (frequency === 'none') return false
   const previous = new Date(`${previousDate}T00:00:00Z`)
   const current = new Date(`${date}T00:00:00Z`)
   if (frequency === 'weekly') return current.getTime() - previous.getTime() >= 7 * 24 * 60 * 60 * 1000

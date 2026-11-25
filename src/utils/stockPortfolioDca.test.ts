@@ -247,6 +247,27 @@ describe('stock portfolio DCA', () => {
     expect(bbbLast.investedCash).toBeCloseTo(1_300, 6)
   })
 
+  it('buys by target weight and never sells when rebalance frequency is none', () => {
+    const result = simulateStockPortfolioDca({
+      pricesByStock,
+      slots: [{ fundId: 'AAA', weight: 50 }, { fundId: 'BBB', weight: 50 }],
+      contributions: [
+        { date: '2026-01-05', amount: 2_000 },
+        { date: '2026-02-05', amount: 2_000 },
+      ],
+      rebalFreq: 'none',
+      lotSize: 1,
+      transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0.01, sellTaxRate: 0.001 },
+    })
+
+    // AAA tăng từ 10 lên 20, BBB đứng giá. Tiền nạp mới vẫn chia 50/50, không bán AAA.
+    expect(result.positions[0]!.points[2]!.shares).toBe(150)
+    expect(result.positions[1]!.points[2]!.shares).toBe(200)
+    expect(result.totalSellFees).toBe(0)
+    expect(result.totalSellTaxes).toBe(0)
+    expect(result.finalValue).toBe(5_000)
+  })
+
   it('counts external rights subscription cash as invested in the stock', () => {
     const result = simulateStockPortfolioDca({
       pricesByStock: new Map([['AAA', [

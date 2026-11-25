@@ -81,6 +81,7 @@ function refShouldRebal(prevDate: string, nextDate: string, freq: RebalanceFrequ
   const py = +prevDate.slice(0, 4), pm = +prevDate.slice(5, 7)
   const ny = +nextDate.slice(0, 4), nm = +nextDate.slice(5, 7)
   switch (freq) {
+    case 'none': return false
     case 'weekly': return daysBetween(prevDate, nextDate) >= 7
     case 'monthly': return py !== ny || pm !== nm
     case 'quarterly': return py !== ny || Math.ceil(pm / 3) !== Math.ceil(nm / 3)

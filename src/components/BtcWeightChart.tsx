@@ -42,6 +42,7 @@ const REBAL_LABEL: Record<RebalanceFrequency, string> = {
   monthly:   'hàng tháng',
   quarterly: 'hàng quý',
   yearly:    'hàng năm',
+  none:      'không tái cân bằng',
 }
 
 function BtcWeightChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
@@ -91,7 +92,7 @@ function BtcWeightChartImpl({ allSimReturns, rebalFreq, fundId }: Props) {
       <p className="btc-weight-chart-sub">
         {periodLabel} rolling cumulative returns
         &nbsp;·&nbsp;{fundId} + Bitcoin
-        &nbsp;·&nbsp;Tái cân bằng {REBAL_LABEL[rebalFreq]}
+        &nbsp;·&nbsp;{rebalFreq === 'none' ? 'Không tái cân bằng' : `Tái cân bằng ${REBAL_LABEL[rebalFreq]}`}
       </p>
 
       {/* Period selector */}

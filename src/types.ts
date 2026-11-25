@@ -85,8 +85,8 @@ export interface MonthlyReturn {
   isPartial: boolean // true for incomplete months (first/last)
 }
 
-/** Rebalancing frequency options */
-export type RebalanceFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+/** Rebalancing frequency options. `none` = không bao giờ bán để cân lại tỷ trọng. */
+export type RebalanceFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'none'
 
 export interface PortfolioSlot {
   fundId: string

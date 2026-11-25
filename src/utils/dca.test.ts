@@ -822,6 +822,33 @@ describe('simulateDCA assetValues', () => {
     expect(result.assetValues?.[1]?.values[1]?.value).toBeCloseTo(525, 8)
   })
 
+  it('splits new money by target weight but never rebalances when frequency is none', () => {
+    const result = simulateDCA(
+      new Map([
+        ['A', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 200 },
+          { date: '2024-03-01', price: 200 },
+        ]],
+        ['B', [
+          { date: '2024-01-01', price: 100 },
+          { date: '2024-02-01', price: 100 },
+          { date: '2024-03-01', price: 100 },
+        ]],
+      ]),
+      [{ fundId: 'A', weight: 50 }, { fundId: 'B', weight: 50 }],
+      { initialAmount: 1000, cashflowAmount: 1000, cashflowFreq: 'monthly' },
+      'none',
+      { transactionCostRates: { buyFeeRate: 0, sellFeeRate: 0.01, sellTaxRate: 0.001 } },
+    )
+
+    // A tăng gấp đôi, B đứng giá. Tiền nạp vẫn chia 50/50 nhưng không có lệnh bán nào.
+    expect(result.assetValues?.[0]?.values[2]?.value).toBeCloseTo(2000, 8)
+    expect(result.assetValues?.[1]?.values[2]?.value).toBeCloseTo(1500, 8)
+    expect(result.transactionCosts.sellFees).toBe(0)
+    expect(result.transactionCosts.sellTaxes).toBe(0)
+  })
+
   it('keeps duplicate fund slots as separate value series for allocation aggregation', () => {
     const result = simulateDCA(
       new Map([['A', [

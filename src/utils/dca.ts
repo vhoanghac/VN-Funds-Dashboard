@@ -1368,6 +1368,8 @@ function shouldRebalForDCA(
   const next = new Date(nextDate)
 
   switch (freq) {
+    case 'none':
+      return false
     case 'weekly':
       return daysBetween(prevDate, nextDate) >= 7
     case 'monthly':
