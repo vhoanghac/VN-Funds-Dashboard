@@ -232,10 +232,11 @@ class MainLoopTests(unittest.TestCase):
 class FetchVciPageTests(unittest.TestCase):
     """VCI hangs on a share of requests, so each request retries in place."""
 
-    def _response(self, status=200, payload=None, reason="OK"):
+    def _response(self, status=200, payload=None, reason="OK", text=""):
         response = Mock()
         response.status_code = status
         response.reason = reason
+        response.text = text
         if payload is None:
             response.json.side_effect = ValueError("Expecting value: line 1 column 1")
         else:
@@ -293,13 +294,27 @@ class FetchVciPageTests(unittest.TestCase):
     @patch("scripts.stocks.update_vnstock_divs.time.sleep")
     @patch("scripts.stocks.update_vnstock_divs.requests.get")
     def test_does_not_retry_a_client_error(self, m_get, m_sleep):
-        m_get.side_effect = self._response(status=404, reason="Not Found")
+        m_get.return_value = self._response(status=404, reason="Not Found", text='{"msg":"gone"}')
 
-        with self.assertRaises(ConnectionError):
+        with self.assertRaises(ConnectionError) as caught:
             fetch_vci_page("ACB", "2024-09-30", "2026-09-30", 0, 50)
 
+        self.assertIn('{"msg":"gone"}', str(caught.exception))
         self.assertEqual(m_get.call_count, 1)
         m_sleep.assert_not_called()
+
+    @patch("scripts.stocks.update_vnstock_divs.time.sleep")
+    @patch("scripts.stocks.update_vnstock_divs.requests.get")
+    def test_retries_a_400(self, m_get, m_sleep):
+        # On 2026-11-26 VCI answered 400 for all 31 symbols, then 200 minutes
+        # later, so a 400 is treated as worth one more try.
+        m_get.side_effect = [
+            self._response(status=400, reason="Bad Request", text='{"code":400}'),
+            self._response(payload={"data": {"content": []}}),
+        ]
+
+        self.assertEqual(fetch_vci_page("ACB", "2024-10-01", "2024-12-31", 0, 50), [])
+        self.assertEqual(m_get.call_count, 2)
 
     @patch("scripts.stocks.update_vnstock_divs.fetch_vci_page")
     def test_pages_until_a_short_page_and_dedupes(self, m_page):

@@ -69,7 +69,7 @@ VCI_HEADERS = {
 REQUEST_TIMEOUT = 8
 REQUEST_ATTEMPTS = 6
 REQUEST_DELAY = 1
-RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+RETRYABLE_STATUS = frozenset({400, 429, 500, 502, 503, 504})
 CSV_FIELDS = [
     "kind",
     "ex_date",
@@ -207,7 +207,8 @@ def fetch_vci_page(symbol: str, from_date: str, to_date: str, page: int, size: i
                 last_error = f"HTTP {response.status_code} {response.reason}"
             elif response.status_code != 200:
                 raise ConnectionError(
-                    f"VCI returned HTTP {response.status_code} for {symbol} page {page}"
+                    f"VCI returned HTTP {response.status_code} for {symbol} page {page}: "
+                    f"{response.text[:200].strip()!r}"
                 )
             else:
                 try:

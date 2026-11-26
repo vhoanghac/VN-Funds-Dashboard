@@ -19,7 +19,17 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.join(SCRIPT_DIR, '..', '..')
 const STOCK_DATA_DIR = path.join(ROOT_DIR, 'public', 'data', 'stocks')
 const ENDPOINT = 'https://cafef.vn/du-lieu/Ajax/PageNew/DataHistory/PriceHistory.ashx'
-const MAX_RETRIES = 3
+// CafeF drops a share of requests: the connection opens, then nothing arrives
+// until the timeout (measured 2026-11-26 from a home line: 2 of 12 hung, and a
+// retry answered in about a second). A short timeout plus a few retries costs
+// far less than waiting 30 seconds for a request that never answers, and the
+// delay carries jitter so the symbols do not all retry after a shared hiccup.
+// Six attempts, not three: a single attempt lost 3 to 7 symbols per run, which
+// points at a per-request drop rate near 40 percent. Six attempts bring the
+// chance of a lost chunk under one percent; three left it around seven.
+const MAX_RETRIES = 6
+const TIMEOUT_MS = 8_000
+const RETRY_DELAY_MS = 1_000
 const REQUEST_DELAY_MS = 150
 // CafeF occasionally drops the last session(s) of an export. Overlapping each
 // chunk by this many days lets the next chunk heal the gap (rows are deduped
@@ -146,7 +156,7 @@ async function fetchQuarter(stockSymbol, startDate, endDate, exchange = 'HOSE') 
           Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'User-Agent': 'VN-Funds-Dashboard/1.0',
         },
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
@@ -160,7 +170,7 @@ async function fetchQuarter(stockSymbol, startDate, endDate, exchange = 'HOSE') 
     } catch (error) {
       lastError = error
       if (attempt < MAX_RETRIES) {
-        const delay = attempt * 1000
+        const delay = RETRY_DELAY_MS + Math.floor(Math.random() * 500)
         console.log(`  Retry ${attempt}/${MAX_RETRIES - 1} for ${startDate}..${endDate} in ${delay}ms`)
         await sleep(delay)
       }

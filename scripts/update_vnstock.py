@@ -16,7 +16,10 @@ Usage:  python -X utf8 scripts/update_vnstock.py
 
 import json
 import os
+import random
 import sys
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
@@ -39,6 +42,19 @@ CAFEF_PAGE_ROWS = 30
 # 30/09..10/11, page 2 goes back to 14/08). 40 pages covers roughly five years,
 # which is far more than a normal gap, and only a repair ever needs that many.
 CAFEF_MAX_PAGES = 40
+# CafeF drops a share of requests: the connection opens, then nothing arrives
+# until the read timeout (measured 2026-11-26 from a home line: 2 of 12 hung,
+# and the retry answered in about a second). Waiting 30 seconds for a request
+# that never answers only wastes time, so each attempt gets a short timeout and
+# a few retries. The delay carries jitter so the seven symbols do not retry in
+# lockstep after a shared hiccup.
+CAFEF_TIMEOUT = 8
+# Six attempts, not four: the runner dropped 3 to 5 of 7 symbols per run when
+# there was a single attempt, so the per-request drop rate there looked closer
+# to 40 percent than the 17 percent measured at home. At 40 percent, six
+# attempts leave under one percent per symbol; four would leave about three.
+CAFEF_ATTEMPTS = 6
+CAFEF_BACKOFF = 1.0
 CAFEF_HEADERS = {
     'Accept': 'application/json, text/plain, */*',
     'User-Agent': 'Mozilla/5.0 (compatible; VN-Funds-Dashboard/1.0)',
@@ -93,14 +109,31 @@ def fetch_cafef_rows(symbol, page):
         f'{CAFEF_PRICE_URL}?Symbol={quote(symbol)}'
         f'&PageIndex={page}&PageSize={CAFEF_PAGE_ROWS}'
     )
-    request = urllib.request.Request(url, headers=CAFEF_HEADERS)
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode('utf-8'))
+    last_error = 'no attempt was made'
+    for attempt in range(1, CAFEF_ATTEMPTS + 1):
+        try:
+            request = urllib.request.Request(url, headers=CAFEF_HEADERS)
+            with urllib.request.urlopen(request, timeout=CAFEF_TIMEOUT) as response:
+                payload = json.loads(response.read().decode('utf-8'))
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as error:
+            last_error = f'{type(error).__name__}: {error}'
+        else:
+            if not payload.get('Success'):
+                raise RuntimeError(f'CafeF rejected the request: {payload.get("Message")!r}')
+            return (payload.get('Data') or {}).get('Data') or []
 
-    if not payload.get('Success'):
-        raise RuntimeError(f'CafeF rejected the request: {payload.get("Message")!r}')
+        if attempt < CAFEF_ATTEMPTS:
+            delay = CAFEF_BACKOFF * attempt + random.uniform(0, 0.5)
+            print(
+                f'  ⚠️  {symbol}: CafeF page {page} failed ({last_error}), '
+                f'retry {attempt}/{CAFEF_ATTEMPTS - 1} in {delay:.1f}s',
+                flush=True,
+            )
+            time.sleep(delay)
 
-    return (payload.get('Data') or {}).get('Data') or []
+    raise RuntimeError(
+        f'CafeF page {page} failed after {CAFEF_ATTEMPTS} attempts: {last_error}'
+    )
 
 
 def cafef_prices(rows):
