@@ -67,8 +67,11 @@ jobs:
             exit 0
           fi
           git commit -m "Update stock prices $(date -u +%Y-%m-%d)"
+          # Rebase onto this branch's own upstream, not master. Pulling master
+          # from a branch rewrites the branch's commits away, and the push that
+          # follows is then rejected as non-fast-forward.
           for attempt in 1 2; do
-            if git pull --rebase --autostash origin master && git push; then
+            if git pull --rebase --autostash && git push; then
               exit 0
             fi
             git rebase --abort >/dev/null 2>&1 || true
@@ -109,8 +112,11 @@ jobs:
             exit 0
           fi
           git commit -m "Update stock corporate actions $(date -u +%Y-%m-%d)"
+          # Rebase onto this branch's own upstream, not master. Pulling master
+          # from a branch rewrites the branch's commits away, and the push that
+          # follows is then rejected as non-fast-forward.
           for attempt in 1 2; do
-            if git pull --rebase --autostash origin master && git push; then
+            if git pull --rebase --autostash && git push; then
               exit 0
             fi
             git rebase --abort >/dev/null 2>&1 || true
